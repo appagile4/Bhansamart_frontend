@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Attach to packager",
+      "type": "reactnativedirect",
+      "request": "attach",
+      "port": 8081
+    },
+    {
+      "name": "Debug Android (Expo)",
+      "type": "reactnative",
+      "request": "launch",
+      "platform": "android",
+      "target": "custom",
+      "expoHostType": "tunnel"
+    }
+  ]
+}
