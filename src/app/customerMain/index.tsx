@@ -186,9 +186,10 @@ export default function HomeScreen() {
               }
             />
 
-            {/* 5. Top Deals Single-Row Trending Carousel */}
+            {/* 5. Top Deals Double-Row Trending Carousel */}
             <TopDeals
               title="Top Deals & Trending Picks"
+              isDoubleRow={true}
               onProductPress={handleProductPress}
               onAddPress={handleAddToCart}
               onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}

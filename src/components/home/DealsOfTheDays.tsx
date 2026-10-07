@@ -12,6 +12,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 
@@ -27,70 +28,66 @@ interface DealsOfTheDaysProps {
 
 // ── Animated Skeleton Card Component ─────────────────────────────
 function DealCardSkeleton({ animOpacity }: { animOpacity: Animated.Value }) {
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const dynamicWidth =
+    windowWidth >= 768
+      ? Math.min(Math.round(windowWidth * 0.2), 175)
+      : windowWidth < 360
+      ? Math.round(windowWidth * 0.42)
+      : Math.min(Math.max(Math.round(windowWidth * 0.38), 138), 158);
+
+  const dynamicImageHeight = Math.min(
+    Math.max(Math.round(dynamicWidth * 0.7), scale(95)),
+    Math.round(windowHeight * 0.17)
+  );
+
   return (
-    <View style={styles.cardContainer}>
+    <View style={[styles.cardContainer, { width: dynamicWidth }]}>
       {/* Top Image Box */}
       <Animated.View
         style={[
           styles.cardImageWrapper,
           styles.skeletonBlock,
-          { opacity: animOpacity },
+          { height: dynamicImageHeight, opacity: animOpacity },
         ]}
       />
 
-      {/* Card Details */}
+      {/* Card Details Body */}
       <View style={styles.cardDetails}>
-        {/* Tags Row */}
-        <View style={styles.tagsRow}>
+        {/* Title Skeleton Line */}
+        <Animated.View
+          style={[
+            styles.skeletonBlock,
+            styles.skeletonLine,
+            { width: "85%", height: scale(16), marginBottom: scale(6), opacity: animOpacity },
+          ]}
+        />
+
+        {/* Subtitle Skeleton */}
+        <Animated.View
+          style={[
+            styles.skeletonBlock,
+            styles.skeletonLine,
+            { width: "55%", height: scale(12), marginBottom: scale(10), opacity: animOpacity },
+          ]}
+        />
+
+        {/* Rating & Veg Badge Row Skeleton */}
+        <View style={styles.metaRow}>
           <Animated.View
             style={[
               styles.skeletonBlock,
-              styles.tagPillSkeleton,
-              { width: scale(36), opacity: animOpacity },
+              styles.skeletonLine,
+              { width: scale(80), height: scale(14), opacity: animOpacity },
             ]}
           />
           <Animated.View
             style={[
               styles.skeletonBlock,
-              styles.tagPillSkeleton,
-              { width: scale(52), opacity: animOpacity },
+              { width: scale(65), height: scale(18), borderRadius: scale(10), opacity: animOpacity },
             ]}
           />
         </View>
-
-        {/* Title Skeleton Lines */}
-        <Animated.View
-          style={[
-            styles.skeletonBlock,
-            styles.skeletonLine,
-            { width: "90%", height: scale(11), marginBottom: scale(4), opacity: animOpacity },
-          ]}
-        />
-        <Animated.View
-          style={[
-            styles.skeletonBlock,
-            styles.skeletonLine,
-            { width: "65%", height: scale(11), marginBottom: scale(6), opacity: animOpacity },
-          ]}
-        />
-
-        {/* Rating Stars Line */}
-        <Animated.View
-          style={[
-            styles.skeletonBlock,
-            styles.skeletonLine,
-            { width: "50%", height: scale(9), marginBottom: scale(5), opacity: animOpacity },
-          ]}
-        />
-
-        {/* Price Drop Label Skeleton */}
-        <Animated.View
-          style={[
-            styles.skeletonBlock,
-            styles.skeletonLine,
-            { width: "42%", height: scale(9), marginBottom: scale(6), opacity: animOpacity },
-          ]}
-        />
 
         {/* Price Row Skeleton */}
         <View style={styles.priceRow}>
@@ -98,23 +95,31 @@ function DealCardSkeleton({ animOpacity }: { animOpacity: Animated.Value }) {
             style={[
               styles.skeletonBlock,
               styles.skeletonLine,
-              { width: scale(46), height: scale(14), opacity: animOpacity },
+              { width: scale(65), height: scale(22), opacity: animOpacity },
             ]}
           />
           <Animated.View
             style={[
               styles.skeletonBlock,
               styles.skeletonLine,
-              { width: scale(36), height: scale(11), opacity: animOpacity },
+              { width: scale(45), height: scale(14), opacity: animOpacity },
             ]}
           />
         </View>
 
-        {/* See More Button Skeleton */}
+        {/* Trust Badges Divider Skeleton */}
         <Animated.View
           style={[
             styles.skeletonBlock,
-            styles.seeMoreBtnSkeleton,
+            { width: "100%", height: scale(26), borderRadius: scale(6), marginVertical: scale(8), opacity: animOpacity },
+          ]}
+        />
+
+        {/* Add to Cart Button Skeleton */}
+        <Animated.View
+          style={[
+            styles.skeletonBlock,
+            styles.addToCartBtnSkeleton,
             { opacity: animOpacity },
           ]}
         />
@@ -236,6 +241,27 @@ export default function DealsOfTheDays({
     return [];
   }, [products, publicProducts]);
 
+  // Extract first 3 real product images for the bottom "See all products" bar
+  const previewThumbnails = useMemo(() => {
+    if (displayProducts && displayProducts.length > 0) {
+      return displayProducts.slice(0, 3).map((p) => p.image);
+    }
+    if (publicProducts && publicProducts.length > 0) {
+      return publicProducts
+        .slice(0, 3)
+        .map((p) =>
+          p.images && p.images.length > 0
+            ? { uri: p.images[0].url }
+            : require("@/assets/images/Home/product-maggi.png")
+        );
+    }
+    return [
+      require("@/assets/images/Home/product-maggi.png"),
+      require("@/assets/images/Home/product-waiwai.png"),
+      require("@/assets/images/Home/product-2pm.png"),
+    ];
+  }, [displayProducts, publicProducts]);
+
   const handleProductPress = (product: DealProduct) => {
     if (onProductPress) {
       onProductPress(product);
@@ -307,7 +333,7 @@ export default function DealsOfTheDays({
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
-          ItemSeparatorComponent={() => <View style={{ width: scale(10) }} />}
+          ItemSeparatorComponent={() => <View style={{ width: scale(12) }} />}
         />
 
         {/* Bottom See All Bar Skeleton */}
@@ -315,7 +341,7 @@ export default function DealsOfTheDays({
           style={[
             styles.seeAllBar,
             styles.skeletonBlock,
-            { opacity: pulseAnim, height: scale(42) },
+            { opacity: pulseAnim, height: scale(46) },
           ]}
         />
       </View>
@@ -351,22 +377,37 @@ export default function DealsOfTheDays({
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
-        ItemSeparatorComponent={() => <View style={{ width: scale(10) }} />}
+        ItemSeparatorComponent={() => <View style={{ width: scale(12) }} />}
       />
 
-      {/* See All Products Bottom Bar */}
+      {/* See All Products Bottom Bar with 3 Real Product Images */}
       <TouchableOpacity
         activeOpacity={0.85}
         onPress={handleSeeAllPress}
         style={styles.seeAllBar}
       >
-        <Image
-          source={require("@/assets/images/Home/see-all-thumb.png")}
-          style={styles.seeAllThumb}
-          contentFit="contain"
-        />
+        {/* 3 Real Product Overlapping Thumbnail Avatars */}
+        <View style={styles.avatarGroup}>
+          {previewThumbnails.map((imgSrc, idx) => (
+            <View
+              key={`thumb-${idx}`}
+              style={[
+                styles.avatarCircle,
+                idx > 0 && { marginLeft: -scale(10) },
+                { zIndex: 10 - idx },
+              ]}
+            >
+              <Image
+                source={imgSrc}
+                style={styles.avatarImg}
+                contentFit="contain"
+              />
+            </View>
+          ))}
+        </View>
+
         <Text style={styles.seeAllText}>See all products</Text>
-        <Ionicons name="caret-forward" size={scale(14)} color="#1E3A5F" />
+        <Ionicons name="caret-forward" size={scale(15)} color="#1E3A5F" />
       </TouchableOpacity>
     </View>
   );
@@ -407,22 +448,42 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#ffffff",
     marginHorizontal: scale(16),
-    marginTop: moderateScale(6),
+    marginTop: moderateScale(8),
     paddingVertical: scale(8),
-    paddingHorizontal: scale(14),
-    borderRadius: scale(12),
+    paddingHorizontal: scale(16),
+    borderRadius: scale(14),
     gap: scale(10),
     shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 1.5 },
+    shadowOpacity: 0.06,
+    shadowRadius: 5,
+    elevation: 2,
     borderWidth: 1,
-    borderColor: "#F1F5F9",
+    borderColor: "#E2E8F0",
   },
-  seeAllThumb: {
-    width: scale(60),
-    height: scale(26),
+  avatarGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  avatarCircle: {
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(16),
+    backgroundColor: "#F8FAFC",
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  avatarImg: {
+    width: "88%",
+    height: "88%",
   },
   seeAllText: {
     fontSize: moderateScale(14),
@@ -433,37 +494,36 @@ const styles = StyleSheet.create({
 
   // ── Skeleton Styles ──────────────────────────────────────────
   cardContainer: {
-    width: scale(145),
-    backgroundColor: "#ffffff",
+    backgroundColor: "#FFFFFF",
     borderRadius: scale(14),
     overflow: "hidden",
     shadowColor: "#000000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
     elevation: 2,
     borderWidth: 1,
-    borderColor: "#EEF2F6",
+    borderColor: "#E5E7EB",
   },
   cardImageWrapper: {
     width: "100%",
-    height: scale(105),
+    borderTopLeftRadius: scale(14),
+    borderTopRightRadius: scale(14),
   },
   cardDetails: {
-    padding: scale(8),
+    padding: scale(10),
   },
-  tagsRow: {
+  metaRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: scale(4),
-    marginBottom: moderateScale(6),
+    justifyContent: "space-between",
+    marginBottom: scale(7),
   },
   priceRow: {
     flexDirection: "row",
     alignItems: "baseline",
-    gap: scale(6),
-    marginTop: moderateScale(2),
-    marginBottom: moderateScale(6),
+    gap: scale(4),
+    marginBottom: moderateScale(2),
   },
   skeletonBlock: {
     backgroundColor: "#E2E8F0",
@@ -471,12 +531,8 @@ const styles = StyleSheet.create({
   skeletonLine: {
     borderRadius: scale(4),
   },
-  tagPillSkeleton: {
-    height: scale(14),
-    borderRadius: scale(4),
-  },
-  seeMoreBtnSkeleton: {
-    height: scale(22),
-    borderRadius: scale(6),
+  addToCartBtnSkeleton: {
+    height: scale(36),
+    borderRadius: scale(10),
   },
 });

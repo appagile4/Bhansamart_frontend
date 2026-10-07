@@ -1,12 +1,12 @@
-import { Image } from "expo-image";
 import { moderateScale, scale, useTheme } from "@/theme";
+import { Image } from "expo-image";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export interface CategoryGridItem {
   id: string;
   name: string;
-  imageUrl: string;
+  imageUrl: string | any;
 }
 
 export interface CategoryCardProps {
@@ -17,18 +17,22 @@ export interface CategoryCardProps {
 export default function CategoryCard({ item, onPress }: CategoryCardProps) {
   const theme = useTheme();
 
+  const imageSource =
+    typeof item.imageUrl === "string" ? { uri: item.imageUrl } : item.imageUrl;
+
   return (
     <TouchableOpacity
       activeOpacity={0.82}
       onPress={() => onPress?.(item)}
       style={styles.container}
     >
-      {/* Mint / Cyan Soft Rounded Image Container */}
+      {/* Full-Size Edge-to-Edge Rounded Image Container */}
       <View style={styles.imageBox}>
         <Image
-          source={{ uri: item.imageUrl }}
+          source={imageSource}
           style={styles.image}
-          contentFit="contain"
+          contentFit="cover"
+          transition={150}
         />
       </View>
 
@@ -54,7 +58,7 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     backgroundColor: "#DBF4F6",
     borderRadius: scale(14),
-    padding: scale(6),
+    padding: 0,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
