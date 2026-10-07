@@ -1,101 +1,103 @@
+import { moderateScale, scale, useTheme } from "@/theme";
 import { Image } from "expo-image";
-import { moderateScale, scale } from "@/theme";
-import React from "react";
-import { Dimensions, FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+import { useRef } from "react";
+import {
+  Animated,
+  Dimensions,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import Svg, { Defs, LinearGradient, Path, Stop } from "react-native-svg";
 
 export interface PromoCardItem {
   id: string;
+  tag?: string;
   title: string;
   subtitle: string;
   buttonText: string;
   buttonColor: string;
   buttonTextColor: string;
-  bgColor: string;
-  curveColor1: string;
-  curveColor2: string;
+  gradientColors: [string, string];
   imageUrl: string;
 }
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const CARD_WIDTH = Math.min(Math.round(SCREEN_WIDTH * 0.76), 320);
+const CARD_HEIGHT = Math.round(CARD_WIDTH * 0.58);
+const CARD_SPACING = scale(14);
+const SNAP_INTERVAL = CARD_WIDTH + CARD_SPACING;
+
+// Modern asymmetric organic container path (viewBox: 0 0 320 185)
+const MODERN_CARD_PATH =
+  "M 24 0 " +
+  "H 296 C 309.25 0 320 10.75 320 24 " +
+  "V 161 C 320 174.25 309.25 185 296 185 " +
+  "H 24 C 10.75 185 0 174.25 0 161 " +
+  "V 24 C 0 10.75 10.75 0 24 0 Z";
 
 const PROMO_CARDS: PromoCardItem[] = [
   {
     id: "promo-1",
-    title: "Chocolatey and\nrich bites",
-    subtitle: "Pick from the\nbest collection",
-    buttonText: "Shop now",
-    buttonColor: "#ffffff",
-    buttonTextColor: "#262626",
-    bgColor: "#8D543B",
-    curveColor1: "#7D4831",
-    curveColor2: "#9C6146",
+    tag: "FEATURED",
+    title: "Rich Artisan\nChocolates",
+    subtitle: "Handcrafted single-origin bars & truffles",
+    buttonText: "Shop Now",
+    buttonColor: "#FFFFFF",
+    buttonTextColor: "#4A1E11",
+    gradientColors: ["#7C3E26", "#421C11"],
     imageUrl:
-      "https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?w=500&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?w=600&auto=format&fit=crop&q=80",
   },
   {
     id: "promo-2",
-    title: "Upgrade Your\nBeauty Routine",
-    subtitle: "Up to 40% OFF on\nbig beauty brands",
-    buttonText: "Shop now",
-    buttonColor: "#27272A",
-    buttonTextColor: "#ffffff",
-    bgColor: "#F5D9DF",
-    curveColor1: "#E8C2CA",
-    curveColor2: "#FDE8ED",
+    tag: "LIMITED",
+    title: "Glow & Tone\nEssentials",
+    subtitle: "Up to 40% OFF on high-end beauty brands",
+    buttonText: "Claim Deal",
+    buttonColor: "#18181B",
+    buttonTextColor: "#FFFFFF",
+    gradientColors: ["#FDE2E8", "#F6C1D0"],
     imageUrl:
-      "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=500&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=600&auto=format&fit=crop&q=80",
   },
   {
     id: "promo-3",
-    title: "Fresh Harvest\nDaily Greens",
-    subtitle: "Straight from farm\nto your kitchen",
+    tag: "ORGANIC",
+    title: "Farm Fresh\nDaily Greens",
+    subtitle: "Locally sourced harvest straight to your table",
     buttonText: "Explore",
-    buttonColor: "#ffffff",
-    buttonTextColor: "#1E3A5F",
-    bgColor: "#2D6A4F",
-    curveColor1: "#1B4332",
-    curveColor2: "#40916C",
+    buttonColor: "#FFFFFF",
+    buttonTextColor: "#1B4332",
+    gradientColors: ["#2D6A4F", "#1B4332"],
     imageUrl:
-      "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=500&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&auto=format&fit=crop&q=80",
   },
   {
     id: "promo-4",
-    title: "Crispy Crunch\nSnack Party",
-    subtitle: "Munchies & sips for\nevery mood",
-    buttonText: "Shop now",
-    buttonColor: "#ffffff",
-    buttonTextColor: "#C2410C",
-    bgColor: "#EA580C",
-    curveColor1: "#C2410C",
-    curveColor2: "#FB923C",
+    tag: "POPULAR",
+    title: "Spiced & Glazed\nCrunch Party",
+    subtitle: "Crispy munchies curated for late-night cravings",
+    buttonText: "Grab Snack",
+    buttonColor: "#FFFFFF",
+    buttonTextColor: "#9A3412",
+    gradientColors: ["#F97316", "#C2410C"],
     imageUrl:
-      "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=500&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=600&auto=format&fit=crop&q=80",
   },
   {
     id: "promo-5",
-    title: "Refreshing\nJuice Blends",
-    subtitle: "Real fruit extracts\npacked with energy",
-    buttonText: "Order now",
-    buttonColor: "#ffffff",
-    buttonTextColor: "#0369A1",
-    bgColor: "#0284C7",
-    curveColor1: "#0369A1",
-    curveColor2: "#38BDF8",
+    tag: "COLD PRESSED",
+    title: "Citrus Punch\nPure Juices",
+    subtitle: "Raw fruit elixirs packed with electrolytes",
+    buttonText: "Order Cold",
+    buttonColor: "#FFFFFF",
+    buttonTextColor: "#075985",
+    gradientColors: ["#0284C7", "#03456C"],
     imageUrl:
-      "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=500&auto=format&fit=crop&q=80",
-  },
-  {
-    id: "promo-6",
-    title: "Bakery Warmth\n& Fresh Bakes",
-    subtitle: "Breads, cakes and\nall-time cookies",
-    buttonText: "Shop now",
-    buttonColor: "#27272A",
-    buttonTextColor: "#ffffff",
-    bgColor: "#F59E0B",
-    curveColor1: "#D97706",
-    curveColor2: "#FBBF24",
-    imageUrl:
-      "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=500&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=600&auto=format&fit=crop&q=80",
   },
 ];
 
@@ -106,123 +108,150 @@ interface CurvedPromoScrollerProps {
 export default function CurvedPromoScroller({
   onPromoPress,
 }: CurvedPromoScrollerProps) {
-  const cardWidth = scale(280);
-  const cardHeight = scale(175);
+  const theme = useTheme?.() ?? {};
+  const scrollX = useRef(new Animated.Value(0)).current;
 
-  const renderItem = ({ item }: { item: PromoCardItem }) => {
+  const renderItem = ({
+    item,
+    index,
+  }: {
+    item: PromoCardItem;
+    index: number;
+  }) => {
+    // Parallax & scale interpolation
+    const inputRange = [
+      (index - 1) * SNAP_INTERVAL,
+      index * SNAP_INTERVAL,
+      (index + 1) * SNAP_INTERVAL,
+    ];
+
+    const scaleAnim = scrollX.interpolate({
+      inputRange,
+      outputRange: [0.93, 1, 0.93],
+      extrapolate: "clamp",
+    });
+
+    const opacityAnim = scrollX.interpolate({
+      inputRange,
+      outputRange: [0.75, 1, 0.75],
+      extrapolate: "clamp",
+    });
+
+    const isLightCard = item.gradientColors[0].toLowerCase().startsWith("#f");
+    const textColor = isLightCard ? "#18181B" : "#FFFFFF";
+    const subtextColor = isLightCard ? "#52525B" : "rgba(255, 255, 255, 0.85)";
+    const tagBg = isLightCard ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.18)";
+
     return (
-      <TouchableOpacity
-        activeOpacity={0.92}
-        onPress={() => onPromoPress?.(item)}
+      <Animated.View
         style={[
-          styles.cardContainer,
+          styles.cardWrapper,
           {
-            width: cardWidth,
-            height: cardHeight,
-            backgroundColor: item.bgColor,
+            width: CARD_WIDTH,
+            height: CARD_HEIGHT,
+            transform: [{ scale: scaleAnim }],
+            opacity: opacityAnim,
           },
         ]}
       >
-        {/* Native Fabric-Compatible Pure Curved Waves (Multi-layered organic arcs) */}
-        <View style={styles.curveLayer1} pointerEvents="none">
-          <View
-            style={[
-              styles.curveCircleTop,
-              { backgroundColor: item.curveColor1 },
-            ]}
-          />
-        </View>
-
-        <View style={styles.curveLayer2} pointerEvents="none">
-          <View
-            style={[
-              styles.curveCircleBottom,
-              { backgroundColor: item.curveColor2 },
-            ]}
-          />
-        </View>
-
-        <View style={styles.curveLayer3} pointerEvents="none">
-          <View
-            style={[
-              styles.curveCircleRight,
-              { backgroundColor: item.curveColor1 },
-            ]}
-          />
-        </View>
-
-        {/* Content Column (Left Side) */}
-        <View style={styles.leftContent}>
-          <Text
-            style={[
-              styles.promoTitle,
-              {
-                color:
-                  item.bgColor === "#F5D9DF" || item.bgColor === "#F59E0B"
-                    ? "#27272A"
-                    : "#ffffff",
-              },
-            ]}
+        <Pressable
+          style={styles.pressableContainer}
+          onPress={() => onPromoPress?.(item)}
+          android_ripple={{
+            color: "rgba(255,255,255,0.12)",
+            borderless: false,
+          }}
+        >
+          {/* Layer 1: High Fidelity Gradient SVG Canvas */}
+          <Svg
+            width="100%"
+            height="100%"
+            viewBox="0 0 320 185"
+            preserveAspectRatio="none"
+            style={StyleSheet.absoluteFill}
           >
-            {item.title}
-          </Text>
+            <Defs>
+              <LinearGradient
+                id={`grad-${item.id}`}
+                x1="0%"
+                y1="0%"
+                x2="100%"
+                y2="100%"
+              >
+                <Stop offset="0%" stopColor={item.gradientColors[0]} />
+                <Stop offset="100%" stopColor={item.gradientColors[1]} />
+              </LinearGradient>
+            </Defs>
+            <Path d={MODERN_CARD_PATH} fill={`url(#grad-${item.id})`} />
+          </Svg>
 
-          <Text
-            style={[
-              styles.promoSubtitle,
-              {
-                color:
-                  item.bgColor === "#F5D9DF" || item.bgColor === "#F59E0B"
-                    ? "#52525B"
-                    : "rgba(255, 255, 255, 0.85)",
-              },
-            ]}
-          >
-            {item.subtitle}
-          </Text>
+          {/* Layer 2: Text & Interactive CTA Area */}
+          <View style={styles.contentColumn}>
+            {item.tag ? (
+              <View style={[styles.tagBadge, { backgroundColor: tagBg }]}>
+                <Text style={[styles.tagText, { color: textColor }]}>
+                  {item.tag}
+                </Text>
+              </View>
+            ) : null}
 
-          {/* Action Button Pill */}
-          <View
-            style={[
-              styles.actionBtn,
-              { backgroundColor: item.buttonColor },
-            ]}
-          >
             <Text
-              style={[
-                styles.actionBtnText,
-                { color: item.buttonTextColor },
-              ]}
+              style={[styles.title, { color: textColor }]}
+              numberOfLines={2}
             >
-              {item.buttonText}
+              {item.title}
             </Text>
-          </View>
-        </View>
 
-        {/* Image on the Right */}
-        <View style={styles.imageRightWrapper}>
-          <Image
-            source={{ uri: item.imageUrl }}
-            style={styles.rightImage}
-            contentFit="contain"
-          />
-        </View>
-      </TouchableOpacity>
+            <Text
+              style={[styles.subtitle, { color: subtextColor }]}
+              numberOfLines={2}
+            >
+              {item.subtitle}
+            </Text>
+
+            <View
+              style={[styles.actionBtn, { backgroundColor: item.buttonColor }]}
+            >
+              <Text
+                style={[styles.actionBtnText, { color: item.buttonTextColor }]}
+              >
+                {item.buttonText}
+              </Text>
+            </View>
+          </View>
+
+          {/* Layer 3: Overhanging Floating Image Element */}
+          <View style={styles.imageRightWrapper}>
+            <Image
+              source={{ uri: item.imageUrl }}
+              style={styles.floatingImage}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              transition={200}
+            />
+          </View>
+        </Pressable>
+      </Animated.View>
     );
   };
 
   return (
     <View style={styles.container}>
-      <FlatList
+      <Animated.FlatList
         data={PROMO_CARDS}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
-        ItemSeparatorComponent={() => <View style={{ width: scale(12) }} />}
-        snapToInterval={cardWidth + scale(12)}
+        snapToInterval={SNAP_INTERVAL}
         decelerationRate="fast"
+        bounces={false}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+          { useNativeDriver: true },
+        )}
+        scrollEventThrottle={16}
       />
     </View>
   );
@@ -235,125 +264,108 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: scale(16),
+    paddingVertical: moderateScale(6), // Extra clearance for shadow & overhang
   },
-  cardContainer: {
-    borderRadius: scale(22),
-    overflow: "hidden",
+  cardWrapper: {
+    marginRight: CARD_SPACING,
+    borderRadius: moderateScale(24),
+    ...Platform.select({
+      ios: {
+        shadowColor: "#0F172A",
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.18,
+        shadowRadius: 14,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
+  },
+  pressableContainer: {
+    flex: 1,
+    borderRadius: moderateScale(24),
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     position: "relative",
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 4,
   },
-  // Smooth Pure-Native Organic Curved Wave Layers
-  curveLayer1: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    overflow: "hidden",
-  },
-  curveCircleTop: {
-    position: "absolute",
-    top: -scale(120),
-    left: -scale(60),
-    width: scale(320),
-    height: scale(220),
-    borderRadius: scale(160),
-    opacity: 0.35,
-    transform: [{ rotate: "-20deg" }],
-  },
-  curveLayer2: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    overflow: "hidden",
-  },
-  curveCircleBottom: {
-    position: "absolute",
-    bottom: -scale(140),
-    left: scale(20),
-    width: scale(340),
-    height: scale(240),
-    borderRadius: scale(170),
-    opacity: 0.28,
-    transform: [{ rotate: "15deg" }],
-  },
-  curveLayer3: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    overflow: "hidden",
-  },
-  curveCircleRight: {
-    position: "absolute",
-    bottom: -scale(70),
-    right: -scale(70),
-    width: scale(200),
-    height: scale(200),
-    borderRadius: scale(100),
-    opacity: 0.2,
-  },
-  leftContent: {
+  contentColumn: {
     flex: 1.15,
-    paddingLeft: scale(16),
+    paddingLeft: scale(20),
     paddingRight: scale(6),
-    paddingVertical: scale(16),
+    paddingVertical: moderateScale(16),
     justifyContent: "space-between",
     height: "100%",
     zIndex: 2,
   },
-  promoTitle: {
-    fontSize: moderateScale(15),
-    fontWeight: "800",
-    lineHeight: moderateScale(20),
-    letterSpacing: 0.2,
+  tagBadge: {
+    alignSelf: "flex-start",
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(2.5),
+    borderRadius: scale(6),
+    marginBottom: moderateScale(4),
   },
-  promoSubtitle: {
+  tagText: {
+    fontSize: moderateScale(8.5),
+    fontWeight: "800",
+    letterSpacing: 0.8,
+  },
+  title: {
+    fontSize: moderateScale(16),
+    fontWeight: "800",
+    lineHeight: moderateScale(21),
+    letterSpacing: -0.3,
+  },
+  subtitle: {
     fontSize: moderateScale(11),
     fontWeight: "500",
     lineHeight: moderateScale(15),
-    marginTop: moderateScale(2),
+    marginVertical: moderateScale(3),
   },
   actionBtn: {
     alignSelf: "flex-start",
     paddingHorizontal: scale(14),
-    paddingVertical: scale(6),
-    borderRadius: scale(12),
-    marginTop: moderateScale(8),
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    paddingVertical: scale(7),
+    borderRadius: scale(100),
+    marginTop: moderateScale(4),
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   actionBtnText: {
-    fontSize: moderateScale(11.5),
+    fontSize: moderateScale(11),
     fontWeight: "700",
+    letterSpacing: -0.2,
   },
   imageRightWrapper: {
-    width: scale(115),
-    height: scale(115),
-    marginRight: scale(10),
-    borderRadius: scale(16),
+    width: scale(104),
+    height: scale(104),
+    marginRight: scale(16),
+    borderRadius: scale(18),
     overflow: "hidden",
-    zIndex: 2,
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 3,
+    zIndex: 3,
+    backgroundColor: "rgba(255, 255, 255, 0.12)",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.22,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
-  rightImage: {
+  floatingImage: {
     width: "100%",
     height: "100%",
   },
