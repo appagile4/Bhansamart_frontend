@@ -473,8 +473,8 @@ const FLASH_CATEGORY_MAP: Record<
     row2: KIDS_ROW2,
   },
   baby: {
-    title: "Kids & Baby Flash Sale",
-    subtitle: "Limited-time deals on baby gear, toys & essentials.",
+    title: "Baby Flash Sale",
+    subtitle: "Limited-time deals on baby food, diapers, care & essentials.",
     row1: KIDS_ROW1,
     row2: KIDS_ROW2,
   },

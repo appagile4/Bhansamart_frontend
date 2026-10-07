@@ -157,154 +157,180 @@ const GROCERY_SECTIONS: CatalogSectionData[] = [
 ];
 
 // ==========================================
-// 2. KIDS CATALOG SECTIONS
+// 2. BABY & KIDS CATALOG SECTIONS (7 Subcategories)
 // ==========================================
-const KIDS_SECTIONS: CatalogSectionData[] = [
+const BABY_SECTIONS: CatalogSectionData[] = [
   {
-    id: "k-sec-baby-care",
-    title: "Baby Care Essentials",
+    id: "b-sec-food",
+    title: "Baby Food & Cereals",
     items: [
       {
-        id: "diapers",
-        title: "Diapers",
-        category: "baby-diapers",
+        id: "baby-cereal",
+        title: "Cerelac wheat",
+        category: "Baby Food",
+        image: require("@/assets/images/Home/chocapic-cereal-box.png"),
+      },
+      {
+        id: "fruit-puree",
+        title: "Fruit puree",
+        category: "Baby Food",
+        image: require("@/assets/images/Home/rainbow-fruit-cereal-bowl.png"),
+      },
+      {
+        id: "baby-juice",
+        title: "Apple juice",
+        category: "Baby Food",
+        image: require("@/assets/images/Home/fresh-juice-splash.png"),
+      },
+    ],
+  },
+  {
+    id: "b-sec-diapers",
+    title: "Diapers & Pants",
+    items: [
+      {
+        id: "molfix-diapers",
+        title: "Molfix diapers",
+        category: "Diapers & Pants",
         image: require("@/assets/images/Home/molfix-baby-diaper.png"),
       },
       {
-        id: "wipes",
-        title: "Wipes",
-        category: "baby-wipes",
+        id: "baby-wipes",
+        title: "Baby wipes",
+        category: "Diapers & Pants",
         image: require("@/assets/images/Home/baby-wipes-pack.png"),
       },
       {
-        id: "baby-wash",
-        title: "Baby wash",
-        category: "baby-wash",
+        id: "pampers-pants",
+        title: "Pampers pants",
+        category: "Diapers & Pants",
+        image: require("@/assets/images/Home/pampers-baby-diaper.png"),
+      },
+    ],
+  },
+  {
+    id: "b-sec-care",
+    title: "Baby Care & Skin",
+    items: [
+      {
+        id: "baby-lotion-b",
+        title: "Nourish lotion",
+        category: "Baby Care",
+        image: require("@/assets/images/Home/baby-lotion-pump-pink.png"),
+      },
+      {
+        id: "rash-cream-b",
+        title: "Rash cream",
+        category: "Baby Care",
+        image: require("@/assets/images/Home/baby-care-lotion-bottle.png"),
+      },
+      {
+        id: "baby-oil-b",
+        title: "Baby massage oil",
+        category: "Baby Care",
         image: require("@/assets/images/Home/baby-wash-duo-bottles.png"),
       },
     ],
   },
   {
-    id: "k-sec-snacks-beverages",
-    title: "Snacks & Beverages",
+    id: "b-sec-bath",
+    title: "Baby Bath & Shampoo",
     items: [
       {
-        id: "healthy-cereal",
-        title: "Chocapic",
-        category: "kids-cereals",
-        image: require("@/assets/images/Home/chocapic-cereal-box.png"),
-      },
-      {
-        id: "juices",
-        title: "Juices",
-        category: "kids-juices",
-        image: require("@/assets/images/Home/fresh-juice-splash.png"),
-      },
-      {
-        id: "cereals",
-        title: "Fruit cereals",
-        category: "kids-cereals",
-        image: require("@/assets/images/Home/rainbow-fruit-cereal-bowl.png"),
-      },
-    ],
-  },
-  {
-    id: "k-sec-health-hygiene",
-    title: "Health & Hygiene",
-    items: [
-      {
-        id: "shampoo-soap",
+        id: "baby-wash-b",
         title: "Gentle wash",
-        category: "kids-shampoo-soap",
+        category: "Baby Bath",
         image: require("@/assets/images/Home/himalaya-baby-wash.png"),
       },
       {
-        id: "lotions",
-        title: "Pump lotion",
-        category: "kids-lotions",
-        image: require("@/assets/images/Home/baby-lotion-pump-pink.png"),
+        id: "baby-shampoo-b",
+        title: "Tear-free shampoo",
+        category: "Baby Bath",
+        image: require("@/assets/images/Home/baby-wash-duo-bottles.png"),
       },
       {
-        id: "baby-care",
-        title: "Baby care",
-        category: "kids-care",
-        image: require("@/assets/images/Home/baby-care-lotion-bottle.png"),
-      },
-    ],
-  },
-  {
-    id: "k-sec-toys-games",
-    title: "Toys & Games",
-    items: [
-      {
-        id: "educational-toys",
-        title: "Rattles",
-        category: "educational-toys",
-        image: require("@/assets/images/Home/baby-rattles.png"),
-      },
-      {
-        id: "soft-plush",
-        title: "Plush bunny",
-        category: "soft-toys",
+        id: "bath-sponge-b",
+        title: "Soft sponge",
+        category: "Baby Bath",
         image: require("@/assets/images/Home/plush-bunny-toy.png"),
       },
-      {
-        id: "action-toys",
-        title: "Figurines",
-        category: "kids-toys",
-        image: require("@/assets/images/Home/paw-patrol-figurines.png"),
-      },
     ],
   },
   {
-    id: "k-sec-clothing-accessories",
-    title: "Clothing & Accessories",
+    id: "b-sec-feeding",
+    title: "Baby Feeding & Bottles",
     items: [
       {
-        id: "hooded-onesie",
-        title: "Warm onesie",
-        category: "kids-outfits",
-        image: require("@/assets/images/Home/baby-winter-hooded-onesie.png"),
+        id: "feeder-bottle-b",
+        title: "Feeding bottle",
+        category: "Baby Feeding",
+        image: require("@/assets/images/Home/kids-water-bottle-sipper.png"),
       },
       {
-        id: "baby-booties",
-        title: "Booties",
-        category: "kids-shoes",
-        image: require("@/assets/images/Home/crochet-baby-booties.png"),
+        id: "silicone-bibs-b",
+        title: "Silicone bib",
+        category: "Baby Feeding",
+        image: require("@/assets/images/Home/kids-water-bottle-sipper.png"),
       },
       {
-        id: "playmat",
-        title: "Play mat",
-        category: "kids-accessories",
+        id: "baby-spoons-b",
+        title: "Soft spoons",
+        category: "Baby Feeding",
         image: require("@/assets/images/Home/kids-playmat-shoes.png"),
       },
     ],
   },
   {
-    id: "k-sec-school-essentials",
-    title: "School Essentials",
+    id: "b-sec-clothing",
+    title: "Baby Clothing & Wear",
     items: [
       {
-        id: "giraffe-bag",
-        title: "Giraffe bag",
-        category: "kids-backpacks",
-        image: require("@/assets/images/Home/giraffe-kids-backpack.png"),
+        id: "baby-romper-b",
+        title: "Cotton romper",
+        category: "Baby Clothing",
+        image: require("@/assets/images/Home/baby-winter-hooded-onesie.png"),
       },
       {
-        id: "backpacks",
-        title: "Cartoon bag",
-        category: "kids-backpacks",
-        image: require("@/assets/images/Home/pink-cartoon-backpack.png"),
+        id: "baby-booties-b",
+        title: "Crochet booties",
+        category: "Baby Clothing",
+        image: require("@/assets/images/Home/crochet-baby-booties.png"),
       },
       {
-        id: "water-bottles",
-        title: "Water bottle",
-        category: "kids-water-bottles",
-        image: require("@/assets/images/Home/kids-water-bottle-sipper.png"),
+        id: "baby-towel-b",
+        title: "Hooded wrap",
+        category: "Baby Clothing",
+        image: require("@/assets/images/Home/baby-winter-hooded-onesie.png"),
+      },
+    ],
+  },
+  {
+    id: "b-sec-accessories",
+    title: "Baby Accessories & Toys",
+    items: [
+      {
+        id: "teether-ring-b",
+        title: "Silicone teether",
+        category: "Baby Accessories",
+        image: require("@/assets/images/Home/baby-rattles.png"),
+      },
+      {
+        id: "plush-rattles-b",
+        title: "Soft rattles",
+        category: "Baby Accessories",
+        image: require("@/assets/images/Home/plush-bunny-toy.png"),
+      },
+      {
+        id: "wooden-train-b",
+        title: "Play train",
+        category: "Baby Accessories",
+        image: require("@/assets/images/Home/wooden-toy-train.png"),
       },
     ],
   },
 ];
+
+const KIDS_SECTIONS = BABY_SECTIONS;
 
 // ==========================================
 // 3. GIFTING CATALOG SECTIONS

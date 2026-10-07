@@ -22,6 +22,7 @@ export interface CategoryItem {
 export const CATEGORIES: CategoryItem[] = [
   { id: "all", label: "All", icon: "cart-outline" },
   { id: "grocery", label: "Grocery", icon: "shopping-outline" },
+  { id: "baby", label: "Baby", icon: "baby-carriage" },
   { id: "beauty", label: "Beauty", icon: "lipstick" },
   { id: "kids", label: "Kids", icon: "teddy-bear" },
   { id: "gifting", label: "Gifting", icon: "gift-outline" },

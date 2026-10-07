@@ -1,4 +1,4 @@
-﻿import { moderateScale, scale } from "@/theme";
+import { moderateScale, scale } from "@/theme";
 import { Image } from "expo-image";
 import React from "react";
 import {
@@ -25,21 +25,21 @@ export interface WinterEssentialItem {
 const WINTER_ITEMS: WinterEssentialItem[] = [
   {
     id: "we-1",
-    title: "Clothing, Shoes &\nmore",
-    category: "kids-clothing-shoes",
-    image: require("@/assets/images/Home/molfix-baby-diaper.png"),
+    title: "Baby Clothing &\nWarm Wear",
+    category: "Baby Clothing",
+    image: require("@/assets/images/Home/baby-winter-hooded-onesie.png"),
   },
   {
     id: "we-2",
-    title: "Health & Hygiene",
-    category: "kids-health-hygiene",
+    title: "Diapers &\nPants Care",
+    category: "Diapers & Pants",
     image: require("@/assets/images/Home/pampers-baby-diaper.png"),
   },
   {
     id: "we-3",
-    title: "Accessories",
-    category: "kids-accessories",
-    image: "https://images.unsplash.com/photo-1576871337622-98d48d1cf531?w=400&auto=format&fit=crop&q=80",
+    title: "Baby Care &\nLotions",
+    category: "Baby Care",
+    image: require("@/assets/images/Home/baby-care-lotion-bottle.png"),
   },
 ];
 

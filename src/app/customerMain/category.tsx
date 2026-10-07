@@ -168,10 +168,10 @@ const ALL_CATEGORY_SECTIONS: SectionCategoryData[] = [
           "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=300&q=80",
       },
       {
-        id: "baby-care",
-        name: "Baby Care",
+        id: "fragrances-deodorants",
+        name: "Fragrances &\nDeodorants",
         imageUrl:
-          "https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?w=300&q=80",
+          "https://images.unsplash.com/photo-1594035910387-fea47794261f?w=300&q=80",
       },
       {
         id: "health-pharma",
@@ -184,6 +184,54 @@ const ALL_CATEGORY_SECTIONS: SectionCategoryData[] = [
         name: "Sexual\nWellness",
         imageUrl:
           "https://images.unsplash.com/photo-1583947215259-38e31be8751f?w=300&q=80",
+      },
+    ],
+  },
+  {
+    id: "baby",
+    title: "Baby",
+    items: [
+      {
+        id: "baby-food",
+        name: "Baby Food",
+        imageUrl:
+          "https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?w=300&q=80",
+      },
+      {
+        id: "diapers-pants",
+        name: "Diapers &\nPants",
+        imageUrl:
+          "https://images.unsplash.com/photo-1584820927498-cfe5211fd8bf?w=300&q=80",
+      },
+      {
+        id: "baby-care",
+        name: "Baby Care",
+        imageUrl:
+          "https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?w=300&q=80",
+      },
+      {
+        id: "baby-bath",
+        name: "Baby Bath",
+        imageUrl:
+          "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=300&q=80",
+      },
+      {
+        id: "baby-feeding",
+        name: "Baby\nFeeding",
+        imageUrl:
+          "https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?w=300&q=80",
+      },
+      {
+        id: "baby-clothing",
+        name: "Baby\nClothing",
+        imageUrl:
+          "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=300&q=80",
+      },
+      {
+        id: "baby-accessories",
+        name: "Baby\nAccessories",
+        imageUrl:
+          "https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?w=300&q=80",
       },
     ],
   },

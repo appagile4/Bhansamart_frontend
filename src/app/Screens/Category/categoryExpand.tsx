@@ -180,8 +180,8 @@ const SUBCATEGORY_IMAGES: Record<string, string> = {
     "https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=300&q=80",
   "Feminine Hygiene":
     "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=300&q=80",
-  "Baby Care":
-    "https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?w=300&q=80",
+  "Fragrances & Deodorants":
+    "https://images.unsplash.com/photo-1594035910387-fea47794261f?w=300&q=80",
   "Health & Pharma":
     "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=300&q=80",
   "Sexual Wellness":
@@ -196,6 +196,22 @@ const SUBCATEGORY_IMAGES: Record<string, string> = {
     "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=300&q=80",
   "Art, Craft & Hobby":
     "https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=300&q=80",
+
+  // Baby
+  "Baby Food":
+    "https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?w=300&q=80",
+  "Diapers & Pants":
+    "https://images.unsplash.com/photo-1584820927498-cfe5211fd8bf?w=300&q=80",
+  "Baby Care":
+    "https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?w=300&q=80",
+  "Baby Bath":
+    "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=300&q=80",
+  "Baby Feeding":
+    "https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?w=300&q=80",
+  "Baby Clothing":
+    "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=300&q=80",
+  "Baby Accessories":
+    "https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?w=300&q=80",
 };
 
 export default function CategoryExpandScreen() {
@@ -292,6 +308,22 @@ export default function CategoryExpandScreen() {
 
       // Semantic keyword domain mappings
       if (
+        normTarget.includes("baby") ||
+        normTarget.includes("infant") ||
+        normTarget.includes("toddler") ||
+        normTarget.includes("diaper") ||
+        normTarget.includes("teether") ||
+        normTarget.includes("rattle") ||
+        normTarget.includes("feeder") ||
+        normTarget.includes("onesie") ||
+        normTarget.includes("romper") ||
+        normTarget.includes("kid") ||
+        normTarget.includes("winter")
+      ) {
+        return "Baby";
+      }
+
+      if (
         normTarget.includes("beauty") ||
         normTarget.includes("personal") ||
         normTarget.includes("care") ||
@@ -313,12 +345,7 @@ export default function CategoryExpandScreen() {
         normTarget.includes("cream") ||
         normTarget.includes("hygiene") ||
         normTarget.includes("pharma") ||
-        normTarget.includes("wellness") ||
-        normTarget.includes("diaper") ||
-        normTarget.includes("baby") ||
-        normTarget.includes("kid") ||
-        normTarget.includes("winter") ||
-        normTarget.includes("toy")
+        normTarget.includes("wellness")
       ) {
         return "Beauty & Personal Care";
       }
@@ -391,10 +418,10 @@ export default function CategoryExpandScreen() {
     // D. Use active Redux category if available
     if (reduxCategory && reduxCategory !== "all") {
       const normRedux = normalize(reduxCategory);
+      if (normRedux.includes("baby") || normRedux.includes("kid")) return "Baby";
       if (normRedux.includes("beauty")) return "Beauty & Personal Care";
       if (normRedux.includes("station")) return "School, Office & Stationery";
       if (normRedux.includes("snack")) return "Snacks & Drinks";
-      if (normRedux.includes("kid") || normRedux.includes("baby")) return "Beauty & Personal Care";
       if (normRedux.includes("gift")) return "Snacks & Drinks";
       if (normRedux.includes("groc")) return "Grocery & Kitchen";
     }
@@ -434,6 +461,38 @@ export default function CategoryExpandScreen() {
           normTarget.includes(normalize(s))
       );
       if (match) return match;
+
+      // Baby domain subcategory mappings
+      if (parentCategory === "Baby" || normTarget.includes("baby") || normTarget.includes("infant") || normTarget.includes("kid") || normTarget.includes("winter")) {
+        if (normTarget.includes("food") || normTarget.includes("cerelac") || normTarget.includes("puree")) {
+          const sub = validSubs.find((s) => s.includes("Food"));
+          if (sub) return sub;
+        }
+        if (normTarget.includes("diaper") || normTarget.includes("pant") || normTarget.includes("molfix") || normTarget.includes("pampers")) {
+          const sub = validSubs.find((s) => s.includes("Diapers"));
+          if (sub) return sub;
+        }
+        if (normTarget.includes("bath") || normTarget.includes("wash") || normTarget.includes("shampoo")) {
+          const sub = validSubs.find((s) => s.includes("Bath"));
+          if (sub) return sub;
+        }
+        if (normTarget.includes("feed") || normTarget.includes("bottle") || normTarget.includes("spoon") || normTarget.includes("bib")) {
+          const sub = validSubs.find((s) => s.includes("Feeding"));
+          if (sub) return sub;
+        }
+        if (normTarget.includes("cloth") || normTarget.includes("wear") || normTarget.includes("onesie") || normTarget.includes("romper") || normTarget.includes("towel") || normTarget.includes("shoe") || normTarget.includes("bootie") || normTarget.includes("sock") || normTarget.includes("cap")) {
+          const sub = validSubs.find((s) => s.includes("Clothing"));
+          if (sub) return sub;
+        }
+        if (normTarget.includes("access") || normTarget.includes("teether") || normTarget.includes("rattle") || normTarget.includes("toy") || normTarget.includes("pacifier")) {
+          const sub = validSubs.find((s) => s.includes("Accessories"));
+          if (sub) return sub;
+        }
+        if (normTarget.includes("care") || normTarget.includes("lotion") || normTarget.includes("cream") || normTarget.includes("rash") || normTarget.includes("health") || normTarget.includes("hygiene")) {
+          const sub = validSubs.find((s) => s.includes("Care"));
+          if (sub) return sub;
+        }
+      }
 
       // Domain semantic subcategory mapping
       if (normTarget.includes("skin") || normTarget.includes("face") || normTarget.includes("lotion") || normTarget.includes("cream")) {

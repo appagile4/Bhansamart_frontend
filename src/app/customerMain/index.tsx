@@ -1,5 +1,6 @@
 import { FloatingCartBar } from "@/components/cart";
 import {
+  BabyCategories,
   BeautyPersonalCare,
   CurvedPromoScroller,
   DealsOfTheDays,
@@ -647,27 +648,34 @@ export default function HomeScreen() {
           </>
         )}
 
-        {selectedCategory === "kids" && (
+        {(selectedCategory === "baby" || selectedCategory === "kids") && (
           <>
-            {/* 1. Kids Featured Brands */}
+            {/* 1. Baby Featured Brands */}
             <FeaturedBrands
-              category="kids"
+              category="baby"
               onItemPress={(item) =>
                 handleCategoryPress(item.title, item.category)
               }
             />
 
-            {/* 4. Winter Essentials (3 Icy Blue Category Cards) */}
+            {/* 2. Baby Essentials 7 Subcategories Grid */}
+            <BabyCategories
+              onItemPress={(item) =>
+                handleCategoryPress(item.name, item.subCategory)
+              }
+            />
+
+            {/* 3. Winter Essentials Cards */}
             <KidsWinterEssentials
               onItemPress={(item) =>
                 handleCategoryPress(item.title, item.category)
               }
             />
 
-            {/* 2. Kids Top Deals */}
+            {/* 4. Baby Top Deals */}
             <TopDeals
-              category="kids"
-              title="Top Kids Deals"
+              category="baby"
+              title="Top Baby Deals"
               onProductPress={handleProductPress}
               onAddPress={handleAddToCart}
               onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
@@ -675,8 +683,8 @@ export default function HomeScreen() {
                 router.push({
                   pathname: "/Screens/Product/seeAllProductScreen" as any,
                   params: {
-                    title: "Kids & Baby Deals",
-                    category: "kids-winter-essentials",
+                    title: "Baby Deals & Picks",
+                    category: "baby",
                     filter: "deals",
                     minDiscount: "20",
                   },
@@ -684,17 +692,17 @@ export default function HomeScreen() {
               }
             />
 
-            {/* 6. Multi-Section Kids Sub-Categories Catalog (6 Sections) */}
+            {/* 5. Baby Subcategories Catalog (7 Sections) */}
             <SubCategories
-              category="kids"
+              category="baby"
               onItemPress={(section, item) =>
                 handleCategoryPress(item.title, item.id)
               }
             />
 
-            {/* 3. New Arrivals (Kids Duo Cards) */}
+            {/* 6. Baby New Arrivals (Duo Cards) */}
             <NewArrivals
-              category="kids"
+              category="baby"
               onCategoryPress={(cat) =>
                 handleCategoryPress(cat.title, cat.category)
               }
@@ -702,26 +710,26 @@ export default function HomeScreen() {
                 router.push({
                   pathname: "/Screens/Product/seeAllProductScreen" as any,
                   params: {
-                    title: "Kids & Baby New Arrivals",
-                    category: "kids-winter-essentials",
+                    title: "Baby New Arrivals",
+                    category: "baby",
                     filter: "new_arrival",
                   },
                 })
               }
             />
 
-            {/* 5. Kids Flash Sale */}
+            {/* 7. Baby Flash Sale */}
             <GroceryFlashSale
-              category="kids"
+              category="baby"
               onProductPress={handleProductPress}
               onAddPress={handleAddToCart}
               onSeeAllPress={() =>
                 router.push({
                   pathname: "/Screens/Product/seeAllProductScreen" as any,
                   params: {
-                    title: "Kids & Baby Flash Sale",
-                    category: "kids-winter-essentials",
-                    filter: "kids-flash-sale",
+                    title: "Baby Flash Sale",
+                    category: "baby",
+                    filter: "baby-flash-sale",
                     minDiscount: "20",
                   },
                 })

@@ -46,7 +46,7 @@ export const APP_CATEGORIES: CategoryStructure[] = [
       "Skin & Faces",
       "Beauty & Cosmetics",
       "Feminine Hygiene",
-      "Baby Care",
+      "Fragrances & Deodorants",
       "Health & Pharma",
       "Sexual Wellness",
     ],
@@ -59,6 +59,19 @@ export const APP_CATEGORIES: CategoryStructure[] = [
       "School Supplies",
       "Office Supplies",
       "Art, Craft & Hobby",
+    ],
+  },
+  {
+    id: "baby",
+    name: "Baby",
+    subCategories: [
+      "Baby Food",
+      "Diapers & Pants",
+      "Baby Care",
+      "Baby Bath",
+      "Baby Feeding",
+      "Baby Clothing",
+      "Baby Accessories",
     ],
   },
 ];

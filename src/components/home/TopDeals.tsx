@@ -734,8 +734,8 @@ export default function TopDeals({
         return DEFAULT_STATIONERY_DEALS;
       }
 
-      // F. Kids Filter
-      if (catLower === "kids" || catLower === "baby-kids") {
+      // F. Baby & Kids Filter
+      if (catLower === "baby" || catLower === "kids" || catLower === "baby-kids") {
         const kidsMatches = allDeals.filter((p) => {
           const text = `${p.name} ${p.category} ${p.subCategory} ${(p.tags || []).join(" ")}`.toLowerCase();
           return (
@@ -810,7 +810,7 @@ export default function TopDeals({
     if (catLower === "stationery" || catLower === "office-stationery") {
       return DEFAULT_STATIONERY_DEALS;
     }
-    if (catLower === "kids" || catLower === "baby-kids") {
+    if (catLower === "baby" || catLower === "kids" || catLower === "baby-kids") {
       return DEFAULT_KIDS_DEALS;
     }
     if (catLower === "gifting" || catLower === "gifts") {

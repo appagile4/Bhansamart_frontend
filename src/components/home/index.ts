@@ -1,3 +1,4 @@
+export { default as BabyCategories } from "./BabyCategories";
 export { default as BeautyPersonalCare } from "./BeautyPersonalCare";
 export { default as CategoryCard } from "./category-card";
 export { default as CategoryScroller } from "./category-scroller";
