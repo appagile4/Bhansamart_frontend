@@ -5,8 +5,9 @@ import { moderateScale, scale, useTheme } from "@/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import {
+  Animated,
   FlatList,
   StyleSheet,
   Text,
@@ -24,6 +25,104 @@ interface DealsOfTheDaysProps {
   onSeeAllPress?: () => void;
 }
 
+// ── Animated Skeleton Card Component ─────────────────────────────
+function DealCardSkeleton({ animOpacity }: { animOpacity: Animated.Value }) {
+  return (
+    <View style={styles.cardContainer}>
+      {/* Top Image Box */}
+      <Animated.View
+        style={[
+          styles.cardImageWrapper,
+          styles.skeletonBlock,
+          { opacity: animOpacity },
+        ]}
+      />
+
+      {/* Card Details */}
+      <View style={styles.cardDetails}>
+        {/* Tags Row */}
+        <View style={styles.tagsRow}>
+          <Animated.View
+            style={[
+              styles.skeletonBlock,
+              styles.tagPillSkeleton,
+              { width: scale(36), opacity: animOpacity },
+            ]}
+          />
+          <Animated.View
+            style={[
+              styles.skeletonBlock,
+              styles.tagPillSkeleton,
+              { width: scale(52), opacity: animOpacity },
+            ]}
+          />
+        </View>
+
+        {/* Title Skeleton Lines */}
+        <Animated.View
+          style={[
+            styles.skeletonBlock,
+            styles.skeletonLine,
+            { width: "90%", height: scale(11), marginBottom: scale(4), opacity: animOpacity },
+          ]}
+        />
+        <Animated.View
+          style={[
+            styles.skeletonBlock,
+            styles.skeletonLine,
+            { width: "65%", height: scale(11), marginBottom: scale(6), opacity: animOpacity },
+          ]}
+        />
+
+        {/* Rating Stars Line */}
+        <Animated.View
+          style={[
+            styles.skeletonBlock,
+            styles.skeletonLine,
+            { width: "50%", height: scale(9), marginBottom: scale(5), opacity: animOpacity },
+          ]}
+        />
+
+        {/* Price Drop Label Skeleton */}
+        <Animated.View
+          style={[
+            styles.skeletonBlock,
+            styles.skeletonLine,
+            { width: "42%", height: scale(9), marginBottom: scale(6), opacity: animOpacity },
+          ]}
+        />
+
+        {/* Price Row Skeleton */}
+        <View style={styles.priceRow}>
+          <Animated.View
+            style={[
+              styles.skeletonBlock,
+              styles.skeletonLine,
+              { width: scale(46), height: scale(14), opacity: animOpacity },
+            ]}
+          />
+          <Animated.View
+            style={[
+              styles.skeletonBlock,
+              styles.skeletonLine,
+              { width: scale(36), height: scale(11), opacity: animOpacity },
+            ]}
+          />
+        </View>
+
+        {/* See More Button Skeleton */}
+        <Animated.View
+          style={[
+            styles.skeletonBlock,
+            styles.seeMoreBtnSkeleton,
+            { opacity: animOpacity },
+          ]}
+        />
+      </View>
+    </View>
+  );
+}
+
 export default function DealsOfTheDays({
   title = "DEALS OF THE DAY",
   products,
@@ -34,7 +133,32 @@ export default function DealsOfTheDays({
   const theme = useTheme();
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { publicProducts } = useAppSelector((state) => state.product);
+  const { publicProducts, publicLoading } = useAppSelector(
+    (state) => state.product
+  );
+
+  // Smooth Pulse Animation for Skeletons
+  const pulseAnim = useRef(new Animated.Value(0.35)).current;
+
+  useEffect(() => {
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 0.85,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0.35,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pulseLoop.start();
+
+    return () => pulseLoop.stop();
+  }, [pulseAnim]);
 
   // Automatically fetch products on mount if not loaded
   useEffect(() => {
@@ -164,10 +288,46 @@ export default function DealsOfTheDays({
     }
   };
 
+  // ── 1. Skeleton Loading View when fetching from backend ──────────
+  if (publicLoading && (!publicProducts || publicProducts.length === 0)) {
+    return (
+      <View style={styles.container}>
+        {/* Section Header with Side Lines */}
+        <View style={styles.headerRow}>
+          <View style={styles.headerLine} />
+          <Text style={styles.sectionTitle}>{title}</Text>
+          <View style={styles.headerLine} />
+        </View>
+
+        {/* Skeleton Cards Carousel */}
+        <FlatList
+          data={[1, 2, 3]}
+          keyExtractor={(item) => `skeleton-${item}`}
+          renderItem={() => <DealCardSkeleton animOpacity={pulseAnim} />}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}
+          ItemSeparatorComponent={() => <View style={{ width: scale(10) }} />}
+        />
+
+        {/* Bottom See All Bar Skeleton */}
+        <Animated.View
+          style={[
+            styles.seeAllBar,
+            styles.skeletonBlock,
+            { opacity: pulseAnim, height: scale(42) },
+          ]}
+        />
+      </View>
+    );
+  }
+
+  // ── 2. If no products available and not loading, gracefully return null ──
   if (displayProducts.length === 0) {
     return null;
   }
 
+  // ── 3. Live Product Data View ──────────────────────────────────
   return (
     <View style={styles.container}>
       {/* Section Header with Side Lines */}
@@ -269,5 +429,54 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#1E3A5F",
     letterSpacing: 0.2,
+  },
+
+  // ── Skeleton Styles ──────────────────────────────────────────
+  cardContainer: {
+    width: scale(145),
+    backgroundColor: "#ffffff",
+    borderRadius: scale(14),
+    overflow: "hidden",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: "#EEF2F6",
+  },
+  cardImageWrapper: {
+    width: "100%",
+    height: scale(105),
+  },
+  cardDetails: {
+    padding: scale(8),
+  },
+  tagsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(4),
+    marginBottom: moderateScale(6),
+  },
+  priceRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: scale(6),
+    marginTop: moderateScale(2),
+    marginBottom: moderateScale(6),
+  },
+  skeletonBlock: {
+    backgroundColor: "#E2E8F0",
+  },
+  skeletonLine: {
+    borderRadius: scale(4),
+  },
+  tagPillSkeleton: {
+    height: scale(14),
+    borderRadius: scale(4),
+  },
+  seeMoreBtnSkeleton: {
+    height: scale(22),
+    borderRadius: scale(6),
   },
 });

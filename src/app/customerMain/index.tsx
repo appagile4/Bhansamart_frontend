@@ -193,7 +193,14 @@ export default function HomeScreen() {
               onAddPress={handleAddToCart}
               onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
               onSeeAllPress={() =>
-                handleCategoryPress("Top Deals", "top-deals")
+                router.push({
+                  pathname: "/Screens/Product/seeAllProductScreen" as any,
+                  params: {
+                    title: "Top Deals & Trending Picks",
+                    filter: "trending",
+                    minDiscount: "50",
+                  },
+                })
               }
             />
 

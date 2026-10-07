@@ -1,7 +1,9 @@
-﻿import { moderateScale, scale, useTheme } from "@/theme";
+import { useAppSelector } from "@/store/hooks";
+import { moderateScale, scale, useTheme } from "@/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import React from "react";
+import { useRouter } from "expo-router";
+import React, { useMemo } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -636,7 +638,86 @@ export default function TopDeals({
   onSeeMorePress,
   onSeeAllPress,
 }: TopDealsProps) {
-  const allItems = items || DEALS_CATEGORY_MAP[category.toLowerCase()] || GROCERY_DEALS;
+  const router = useRouter();
+  const { publicProducts } = useAppSelector((state) => state.product);
+
+  const displayItems = useMemo(() => {
+    // 1. If explicit items prop is passed
+    if (items && items.length > 0) {
+      return items;
+    }
+
+    // 2. Map from live MongoDB publicProducts
+    if (publicProducts && publicProducts.length > 0) {
+      const allDeals: DealProduct[] = publicProducts.map((p) => {
+        const curPrice = p.price || 0;
+        const origPrice =
+          p.originalPrice && p.originalPrice > curPrice
+            ? p.originalPrice
+            : p.discountValue && p.discountValue > 0
+            ? Math.round(curPrice / (1 - p.discountValue / 100))
+            : curPrice;
+
+        const calculatedDisc =
+          origPrice > curPrice
+            ? Math.round(((origPrice - curPrice) / origPrice) * 100)
+            : 0;
+
+        const discountPct = Math.max(
+          p.discountValue ? Number(p.discountValue) : 0,
+          calculatedDisc
+        );
+
+        const ordersCount =
+          p.ordersCount ?? (p.metrics?.orders ?? p.ratingsCount ?? 110);
+
+        const imgUrl =
+          p.images && p.images.length > 0
+            ? { uri: p.images[0].url }
+            : require("@/assets/images/Home/product-maggi.png");
+
+        return {
+          id: p._id || p.id || String(Math.random()),
+          name: p.name,
+          tags: [p.unit || "1 unit", p.subCategory || p.category || "Grocery"],
+          image: imgUrl,
+          rating: p.ratingsAverage || 4.5,
+          ratingCount: p.ratingsCount || 45,
+          price: curPrice,
+          originalPrice: origPrice > curPrice ? origPrice : curPrice,
+          optionsText:
+            p.variants && p.variants.length > 0
+              ? `${p.variants.length} options`
+              : undefined,
+          category: p.category,
+          badge: `${discountPct}% OFF`,
+          discountPct,
+          ordersCount,
+        };
+      });
+
+      // Filter: discount > 50% AND ordersCount > 100
+      const matchedDeals = allDeals.filter(
+        (p: any) => p.discountPct > 50 && p.ordersCount > 100
+      );
+
+      if (matchedDeals.length > 0) {
+        return matchedDeals;
+      }
+
+      // Fallback: top trending products sorted by orders and discount
+      return allDeals
+        .sort(
+          (a: any, b: any) =>
+            b.ordersCount - a.ordersCount || b.discountPct - a.discountPct
+        )
+        .slice(0, 12);
+    }
+
+    return DEALS_CATEGORY_MAP[category.toLowerCase()] || GROCERY_DEALS;
+  }, [items, publicProducts, category]);
+
+  const allItems = displayItems;
 
   // Chunk items into pairs for the two-row layout
   const columns: DealProduct[][] = [];
@@ -648,11 +729,47 @@ export default function TopDeals({
     allItems.forEach((item) => columns.push([item]));
   }
 
+  const handleSeeAll = () => {
+    if (onSeeAllPress) {
+      onSeeAllPress();
+    } else {
+      router.push({
+        pathname: "/Screens/Product/seeAllProductScreen" as any,
+        params: {
+          title: title || "Top Deals & Trending Picks",
+          filter: "trending",
+          minDiscount: "50",
+        },
+      });
+    }
+  };
+
+  const handleCardPress = (item: DealProduct) => {
+    if (onProductPress) {
+      onProductPress(item);
+    } else {
+      router.push({
+        pathname: "/Screens/Product/productdetailscreen" as any,
+        params: {
+          id: item.id,
+          name: item.name,
+          price: String(item.price),
+          originalPrice: String(item.originalPrice),
+          image:
+            typeof item.image === "object" && "uri" in item.image
+              ? item.image.uri
+              : "",
+          category: item.category,
+        },
+      });
+    }
+  };
+
   const renderCard = (item: DealProduct) => (
     <TouchableOpacity
       key={item.id}
       activeOpacity={0.9}
-      onPress={() => onProductPress?.(item)}
+      onPress={() => handleCardPress(item)}
       style={styles.card}
     >
       {/* Product Image Area */}
@@ -753,7 +870,7 @@ export default function TopDeals({
       {/* Section Title Header */}
       <View style={styles.headerRow}>
         <Text style={styles.sectionTitle}>{title}</Text>
-        <TouchableOpacity activeOpacity={0.7} onPress={onSeeAllPress}>
+        <TouchableOpacity activeOpacity={0.7} onPress={handleSeeAll}>
           <Text style={styles.seeAllText}>See all</Text>
         </TouchableOpacity>
       </View>
@@ -776,7 +893,7 @@ export default function TopDeals({
       {showBanner && (
         <TouchableOpacity
           activeOpacity={0.88}
-          onPress={onSeeAllPress}
+          onPress={handleSeeAll}
           style={styles.bannerContainer}
         >
           <Image
