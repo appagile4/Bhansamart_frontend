@@ -240,28 +240,106 @@ const ALL_CATEGORY_SECTIONS: SectionCategoryData[] = [
     title: "School, Office & Stationery",
     items: [
       {
-        id: "writing-essentials",
-        name: "Writing\nEssentials",
+        id: "pens-pencils",
+        name: "Pens &\nPencils",
         imageUrl:
           "https://images.unsplash.com/photo-1583485088034-697b5bc54ccd?w=300&q=80",
       },
       {
-        id: "school-supplies",
-        name: "School Supplies",
+        id: "notebooks-diaries",
+        name: "Notebooks &\nDiaries",
+        imageUrl:
+          "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&q=80",
+      },
+      {
+        id: "markers-highlighters",
+        name: "Markers &\nHighlighters",
+        imageUrl:
+          "https://images.unsplash.com/photo-1585336261026-7fcfbdfa95b8?w=300&q=80",
+      },
+      {
+        id: "geometry-scales",
+        name: "Geometry &\nScales",
         imageUrl:
           "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=300&q=80",
       },
       {
-        id: "office-supplies",
-        name: "Office Supplies",
+        id: "art-craft-supplies",
+        name: "Art & Craft\nSupplies",
+        imageUrl:
+          "https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=300&q=80",
+      },
+      {
+        id: "files-folders",
+        name: "Files &\nFolders",
         imageUrl:
           "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=300&q=80",
       },
       {
-        id: "art-craft-hobby",
-        name: "Art, Craft &\nHobby",
+        id: "office-desk-supplies",
+        name: "Office & Desk\nSupplies",
         imageUrl:
-          "https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=300&q=80",
+          "https://images.unsplash.com/photo-1507842229451-79b1be886a20?w=300&q=80",
+      },
+      {
+        id: "printer-paper-labels",
+        name: "Printer Paper\n& Labels",
+        imageUrl:
+          "https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=300&q=80",
+      },
+    ],
+  },
+  {
+    id: "gifting",
+    title: "Gifting",
+    items: [
+      {
+        id: "chocolates-sweets",
+        name: "Chocolates &\nSweets",
+        imageUrl:
+          "https://images.unsplash.com/photo-1549007994-cb92caebd54b?w=300&q=80",
+      },
+      {
+        id: "mens-wear",
+        name: "Men's\nWear",
+        imageUrl:
+          "https://images.unsplash.com/photo-1581655353564-df123a1eb820?w=300&q=80",
+      },
+      {
+        id: "womens-wear",
+        name: "Women's\nWear",
+        imageUrl:
+          "https://images.unsplash.com/photo-1601924994987-69e26d50dc26?w=300&q=80",
+      },
+      {
+        id: "dresses-ethnic",
+        name: "Dresses &\nEthnic",
+        imageUrl:
+          "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=300&q=80",
+      },
+      {
+        id: "cosmetics-hampers",
+        name: "Cosmetics &\nHampers",
+        imageUrl:
+          "https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=300&q=80",
+      },
+      {
+        id: "electronics-gadgets",
+        name: "Electronics &\nGadgets",
+        imageUrl:
+          "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=300&q=80",
+      },
+      {
+        id: "toys-games",
+        name: "Toys &\nGames",
+        imageUrl:
+          "https://images.unsplash.com/photo-1594787318286-3d835c1d207f?w=300&q=80",
+      },
+      {
+        id: "kids-baby-gifts",
+        name: "Kids &\nBaby Gifts",
+        imageUrl:
+          "https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?w=300&q=80",
       },
     ],
   },

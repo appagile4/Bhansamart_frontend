@@ -6,6 +6,7 @@ export { default as CurvedPromoScroller } from "./CurvedPromoScroller";
 export { default as DealsOfTheDays } from "./DealsOfTheDays";
 export { default as FastSales } from "./Fastsales";
 export { default as FeaturedBrands } from "./FeaturedBrands";
+export { default as GiftingCategories } from "./GiftingCategories";
 export { default as GroceryFlashSale } from "./GroceryFlashSale";
 export { default as GroceryKitchen } from "./GroceryKitchen";
 export { default as NewArrivals } from "./GroceryNewArrivals";

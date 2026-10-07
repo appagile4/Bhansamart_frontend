@@ -764,7 +764,12 @@ export default function TopDeals({
             text.includes("combo") ||
             text.includes("chocolate") ||
             text.includes("flower") ||
-            text.includes("sweet")
+            text.includes("sweet") ||
+            text.includes("men") ||
+            text.includes("women") ||
+            text.includes("dress") ||
+            text.includes("electronic") ||
+            text.includes("toy")
           );
         });
         if (giftMatches.length > 0) {

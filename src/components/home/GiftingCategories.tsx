@@ -18,7 +18,7 @@ const CONTAINER_PADDING = scale(16);
 const GAP = scale(10);
 const CARD_WIDTH = (SCREEN_WIDTH - CONTAINER_PADDING * 2 - GAP * 3) / 4;
 
-export interface StationeryCategoryItem {
+export interface GiftingCategoryItem {
   id: string;
   name: string;
   subCategory: string;
@@ -27,82 +27,82 @@ export interface StationeryCategoryItem {
   iconName?: keyof typeof MaterialCommunityIcons.glyphMap;
 }
 
-export const STATIONERY_SUBCATEGORIES: StationeryCategoryItem[] = [
+export const GIFTING_SUBCATEGORIES: GiftingCategoryItem[] = [
   {
-    id: "stat-pens-pencils",
-    name: "Pens &\nPencils",
-    subCategory: "Pens & Pencils",
-    image: require("@/assets/images/Home/black-ballpoint-pens.jpg"),
-    bgColor: "#E0F2FE",
-    iconName: "pen",
-  },
-  {
-    id: "stat-notebooks-diaries",
-    name: "Notebooks &\nDiaries",
-    subCategory: "Notebooks & Diaries",
-    image: require("@/assets/images/Home/notebooks-sticky-notes.png"),
+    id: "g-chocolates",
+    name: "Chocolates &\nSweets",
+    subCategory: "Chocolates & Sweets",
+    image: require("@/assets/images/Home/prod-dairymilk.png"),
     bgColor: "#FEF3C7",
-    iconName: "book-open-page-variant-outline",
+    iconName: "candy-outline",
   },
   {
-    id: "stat-markers-highlighters",
-    name: "Markers &\nHighlighters",
-    subCategory: "Markers & Highlighters",
-    image: require("@/assets/images/Home/desk-crayons-markers-holder.png"),
+    id: "g-mens-wear",
+    name: "Men's\nWear",
+    subCategory: "Men's Wear",
+    image: require("@/assets/images/Home/deals-product-combo.png"),
+    bgColor: "#E0F2FE",
+    iconName: "tshirt-crew-outline",
+  },
+  {
+    id: "g-womens-wear",
+    name: "Women's\nWear",
+    subCategory: "Women's Wear",
+    image: require("@/assets/images/Home/floral-lace-pattern.png"),
     bgColor: "#FCE7F3",
-    iconName: "marker",
+    iconName: "hanger",
   },
   {
-    id: "stat-geometry-scales",
-    name: "Geometry &\nScales",
-    subCategory: "Geometry & Scales",
-    image: require("@/assets/images/Home/executive-fountain-pen.png"),
+    id: "g-dresses",
+    name: "Dresses &\nEthnic",
+    subCategory: "Dresses & Ethnic Wear",
+    image: require("@/assets/images/Home/floral-lace-pattern.png"),
     bgColor: "#EDE9FE",
-    iconName: "ruler",
+    iconName: "party-popper",
   },
   {
-    id: "stat-art-craft",
-    name: "Art & Craft\nSupplies",
-    subCategory: "Art & Craft Supplies",
-    image: require("@/assets/images/Home/colored-pencils-row.png"),
-    bgColor: "#D1FAE5",
-    iconName: "palette-outline",
+    id: "g-cosmetics-hampers",
+    name: "Cosmetics &\nHampers",
+    subCategory: "Cosmetics & Hampers",
+    image: require("@/assets/images/Home/skincare-cosmetics-gift-set.png"),
+    bgColor: "#FFE4E6",
+    iconName: "gift-outline",
   },
   {
-    id: "stat-files-folders",
-    name: "Files &\nFolders",
-    subCategory: "Files & Folders",
-    image: require("@/assets/images/Home/office-folders-notebooks.jpg"),
-    bgColor: "#FFEDD5",
-    iconName: "folder-outline",
-  },
-  {
-    id: "stat-office-desk",
-    name: "Office & Desk\nSupplies",
-    subCategory: "Office & Desk Supplies",
-    image: require("@/assets/images/Home/stationery-organizer-basket.png"),
-    bgColor: "#F1F5F9",
-    iconName: "paperclip",
-  },
-  {
-    id: "stat-paper-labels",
-    name: "Printer Paper\n& Labels",
-    subCategory: "Printer Paper & Labels",
-    image: require("@/assets/images/Home/double-a-paper-reams.png"),
+    id: "g-electronics",
+    name: "Electronics &\nGadgets",
+    subCategory: "Electronics & Gadgets",
+    image: require("@/assets/images/Home/deals-product-combo.png"),
     bgColor: "#E0E7FF",
-    iconName: "file-document-outline",
+    iconName: "cellphone-link",
+  },
+  {
+    id: "g-toys-games",
+    name: "Toys &\nGames",
+    subCategory: "Toys & Games",
+    image: require("@/assets/images/Home/wooden-toy-train.png"),
+    bgColor: "#DCFCE7",
+    iconName: "gamepad-variant-outline",
+  },
+  {
+    id: "g-kids-gifts",
+    name: "Kids &\nBaby Gifts",
+    subCategory: "Kids & Baby Gifts",
+    image: require("@/assets/images/Home/plush-bunny-toy.png"),
+    bgColor: "#FFEDD5",
+    iconName: "teddy-bear",
   },
 ];
 
-interface SchoolOfficeStationeryProps {
+interface GiftingCategoriesProps {
   title?: string;
-  onItemPress?: (item: StationeryCategoryItem) => void;
+  onItemPress?: (item: GiftingCategoryItem) => void;
 }
 
-export default function SchoolOfficeStationery({
-  title = "School & Office Stationery",
+export default function GiftingCategories({
+  title = "Gifting & Celebrations",
   onItemPress,
-}: SchoolOfficeStationeryProps) {
+}: GiftingCategoriesProps) {
   const theme = useTheme();
   const router = useRouter();
   const { publicProducts, publicLoading } = useAppSelector(
@@ -130,7 +130,7 @@ export default function SchoolOfficeStationery({
     return () => pulseLoop.stop();
   }, [pulseAnim]);
 
-  const handlePress = (item: StationeryCategoryItem) => {
+  const handlePress = (item: GiftingCategoryItem) => {
     if (onItemPress) {
       onItemPress(item);
     } else {
@@ -138,7 +138,7 @@ export default function SchoolOfficeStationery({
         pathname: "/Screens/Category/categoryExpand" as any,
         params: {
           title: item.name.replace("\n", " "),
-          category: "School, Office & Stationery",
+          category: "gifting",
           subCategory: item.subCategory,
         },
       });
@@ -152,7 +152,7 @@ export default function SchoolOfficeStationery({
           style={[
             styles.skeletonBlock,
             {
-              width: scale(190),
+              width: scale(180),
               height: scale(20),
               borderRadius: scale(5),
               marginBottom: moderateScale(14),
@@ -162,7 +162,7 @@ export default function SchoolOfficeStationery({
         />
         <View style={styles.gridContainer}>
           {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-            <View key={`stat-skel-${i}`} style={styles.itemWrapper}>
+            <View key={`gifting-skel-${i}`} style={styles.itemWrapper}>
               <Animated.View
                 style={[
                   styles.cardBox,
@@ -198,11 +198,11 @@ export default function SchoolOfficeStationery({
           </Text>
           <View style={styles.badgeContainer}>
             <MaterialCommunityIcons
-              name="book-open-outline"
+              name="gift-outline"
               size={scale(13)}
-              color="#0284C7"
+              color="#DC2626"
             />
-            <Text style={styles.badgeText}>Study & Work</Text>
+            <Text style={styles.badgeText}>Special</Text>
           </View>
         </View>
 
@@ -212,9 +212,9 @@ export default function SchoolOfficeStationery({
             router.push({
               pathname: "/Screens/Category/categoryExpand" as any,
               params: {
-                category: "School, Office & Stationery",
+                category: "Gifting",
                 subCategory: "all",
-                title: "All Stationery",
+                title: "All Gifting",
               },
             })
           }
@@ -226,7 +226,7 @@ export default function SchoolOfficeStationery({
       </View>
 
       <View style={styles.gridContainer}>
-        {STATIONERY_SUBCATEGORIES.map((item) => (
+        {GIFTING_SUBCATEGORIES.map((item) => (
           <TouchableOpacity
             key={item.id}
             activeOpacity={0.82}
@@ -243,7 +243,7 @@ export default function SchoolOfficeStationery({
                 />
               ) : (
                 <MaterialCommunityIcons
-                  name={item.iconName || "book-outline"}
+                  name={item.iconName || "gift-outline"}
                   size={scale(28)}
                   color="#475569"
                 />
@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
   badgeContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#E0F2FE",
+    backgroundColor: "#FEE2E2",
     paddingHorizontal: scale(6),
     paddingVertical: scale(2),
     borderRadius: scale(10),
@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: moderateScale(10.5),
     fontWeight: "700",
-    color: "#0284C7",
+    color: "#DC2626",
   },
   seeAllText: {
     fontSize: moderateScale(13),

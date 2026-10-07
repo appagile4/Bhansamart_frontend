@@ -6,6 +6,7 @@ import {
   DealsOfTheDays,
   FastSales,
   FeaturedBrands,
+  GiftingCategories,
   GroceryFlashSale,
   GroceryKitchen,
   Header,
@@ -585,7 +586,9 @@ export default function HomeScreen() {
               }
             />
             <SchoolOfficeStationery
-              onItemPress={(item) => handleCategoryPress(item.name, item.id)}
+              onItemPress={(item) =>
+                handleCategoryPress(item.name, item.subCategory)
+              }
             />
             <TopDeals
               category="stationery"
@@ -740,13 +743,22 @@ export default function HomeScreen() {
 
         {selectedCategory === "gifting" && (
           <>
-            {/* Featured Gifting Brands */}
+            {/* 1. Featured Gifting Brands */}
             <FeaturedBrands
               category="gifting"
               onItemPress={(item) =>
                 handleCategoryPress(item.title, item.category)
               }
             />
+
+            {/* 2. Gifting 8 Subcategories Grid */}
+            <GiftingCategories
+              onItemPress={(item) =>
+                handleCategoryPress(item.name, item.subCategory)
+              }
+            />
+
+            {/* 3. Top Gifting Deals */}
             <TopDeals
               category="gifting"
               title="Delightful Gift Deals"
@@ -758,13 +770,23 @@ export default function HomeScreen() {
                   pathname: "/Screens/Product/seeAllProductScreen" as any,
                   params: {
                     title: "Gift & Celebration Deals",
-                    category: "all",
+                    category: "gifting",
                     filter: "deals",
                     minDiscount: "20",
                   },
                 })
               }
             />
+
+            {/* 4. Gifting Subcategories Catalog (8 Sections) */}
+            <SubCategories
+              category="gifting"
+              onItemPress={(section, item) =>
+                handleCategoryPress(item.title, item.id)
+              }
+            />
+
+            {/* 5. Gifting New Arrivals */}
             <NewArrivals
               category="gifting"
               onCategoryPress={(cat) =>
@@ -775,12 +797,14 @@ export default function HomeScreen() {
                   pathname: "/Screens/Product/seeAllProductScreen" as any,
                   params: {
                     title: "Gifting New Arrivals",
-                    category: "all",
+                    category: "gifting",
                     filter: "new_arrival",
                   },
                 })
               }
             />
+
+            {/* 6. Gifting Flash Sale */}
             <GroceryFlashSale
               category="gifting"
               onProductPress={handleProductPress}
@@ -790,24 +814,21 @@ export default function HomeScreen() {
                   pathname: "/Screens/Product/seeAllProductScreen" as any,
                   params: {
                     title: "Gifting Flash Sale",
-                    category: "all",
+                    category: "gifting",
                     filter: "gifting-flash-sale",
                     minDiscount: "20",
                   },
                 })
               }
             />
-            <SubCategories
-              category="gifting"
-              onItemPress={(section, item) =>
-                handleCategoryPress(item.title, item.id)
-              }
-            />
+
+            {/* 7. Promotional Banner & Sweet Delights */}
             <CurvedPromoScroller
               onPromoPress={(promo) =>
                 console.log("Promo clicked:", promo.title)
               }
             />
+
             <SweetTooth
               onProductPress={handleProductPress}
               onAddPress={handleAddToCart}
@@ -817,14 +838,12 @@ export default function HomeScreen() {
                   pathname: "/Screens/Product/seeAllProductScreen" as any,
                   params: {
                     title: "Sweet Tooth Delights",
+                    category: "gifting",
                     filter: "sweet-tooth",
                     minDiscount: "30",
                   },
                 })
               }
-            />
-            <BeautyPersonalCare
-              onItemPress={(item) => handleCategoryPress(item.name, item.id)}
             />
           </>
         )}

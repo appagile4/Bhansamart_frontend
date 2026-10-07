@@ -188,14 +188,22 @@ const SUBCATEGORY_IMAGES: Record<string, string> = {
     "https://images.unsplash.com/photo-1583947215259-38e31be8751f?w=300&q=80",
 
   // School, Office & Stationery
-  "Writing Essentials":
+  "Pens & Pencils":
     "https://images.unsplash.com/photo-1583485088034-697b5bc54ccd?w=300&q=80",
-  "School Supplies":
+  "Notebooks & Diaries":
+    "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&q=80",
+  "Markers & Highlighters":
+    "https://images.unsplash.com/photo-1585336261026-7fcfbdfa95b8?w=300&q=80",
+  "Geometry & Scales":
     "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=300&q=80",
-  "Office Supplies":
-    "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=300&q=80",
-  "Art, Craft & Hobby":
+  "Art & Craft Supplies":
     "https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=300&q=80",
+  "Files & Folders":
+    "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=300&q=80",
+  "Office & Desk Supplies":
+    "https://images.unsplash.com/photo-1507842229451-79b1be886a20?w=300&q=80",
+  "Printer Paper & Labels":
+    "https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=300&q=80",
 
   // Baby
   "Baby Food":
@@ -211,6 +219,24 @@ const SUBCATEGORY_IMAGES: Record<string, string> = {
   "Baby Clothing":
     "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=300&q=80",
   "Baby Accessories":
+    "https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?w=300&q=80",
+
+  // Gifting
+  "Chocolates & Sweets":
+    "https://images.unsplash.com/photo-1549007994-cb92caebd54b?w=300&q=80",
+  "Men's Wear":
+    "https://images.unsplash.com/photo-1581655353564-df123a1eb820?w=300&q=80",
+  "Women's Wear":
+    "https://images.unsplash.com/photo-1601924994987-69e26d50dc26?w=300&q=80",
+  "Dresses & Ethnic Wear":
+    "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=300&q=80",
+  "Cosmetics & Hampers":
+    "https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=300&q=80",
+  "Electronics & Gadgets":
+    "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=300&q=80",
+  "Toys & Games":
+    "https://images.unsplash.com/photo-1594787318286-3d835c1d207f?w=300&q=80",
+  "Kids & Baby Gifts":
     "https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?w=300&q=80",
 };
 
@@ -369,6 +395,19 @@ export default function CategoryExpandScreen() {
       }
 
       if (
+        normTarget.includes("gift") ||
+        normTarget.includes("hamper") ||
+        normTarget.includes("mens-wear") ||
+        normTarget.includes("womens-wear") ||
+        normTarget.includes("dress") ||
+        normTarget.includes("ethnic") ||
+        normTarget.includes("gadget") ||
+        normTarget.includes("earbud")
+      ) {
+        return "Gifting";
+      }
+
+      if (
         normTarget.includes("snack") ||
         normTarget.includes("drink") ||
         normTarget.includes("juice") ||
@@ -385,9 +424,7 @@ export default function CategoryExpandScreen() {
         normTarget.includes("namkeen") ||
         normTarget.includes("candy") ||
         normTarget.includes("icecream") ||
-        normTarget.includes("sauce") ||
-        normTarget.includes("gift") ||
-        normTarget.includes("hamper")
+        normTarget.includes("sauce")
       ) {
         return "Snacks & Drinks";
       }
@@ -418,11 +455,11 @@ export default function CategoryExpandScreen() {
     // D. Use active Redux category if available
     if (reduxCategory && reduxCategory !== "all") {
       const normRedux = normalize(reduxCategory);
+      if (normRedux.includes("gift")) return "Gifting";
       if (normRedux.includes("baby") || normRedux.includes("kid")) return "Baby";
       if (normRedux.includes("beauty")) return "Beauty & Personal Care";
       if (normRedux.includes("station")) return "School, Office & Stationery";
       if (normRedux.includes("snack")) return "Snacks & Drinks";
-      if (normRedux.includes("gift")) return "Snacks & Drinks";
       if (normRedux.includes("groc")) return "Grocery & Kitchen";
     }
 
@@ -461,6 +498,83 @@ export default function CategoryExpandScreen() {
           normTarget.includes(normalize(s))
       );
       if (match) return match;
+
+      // Gifting domain subcategory mappings
+      if (parentCategory === "Gifting" || normTarget.includes("gift")) {
+        if (normTarget.includes("men") || normTarget.includes("shirt") || normTarget.includes("polo") || normTarget.includes("chino") || normTarget.includes("trouser")) {
+          const sub = validSubs.find((s) => s.includes("Men"));
+          if (sub) return sub;
+        }
+        if (normTarget.includes("women") || normTarget.includes("kurti") || normTarget.includes("shawl") || normTarget.includes("stole") || normTarget.includes("pashmina")) {
+          const sub = validSubs.find((s) => s.includes("Women"));
+          if (sub) return sub;
+        }
+        if (normTarget.includes("dress") || normTarget.includes("gown") || normTarget.includes("anarkali") || normTarget.includes("ethnic") || normTarget.includes("suit")) {
+          const sub = validSubs.find((s) => s.includes("Dresses"));
+          if (sub) return sub;
+        }
+        if (normTarget.includes("cosmetic") || normTarget.includes("hamper") || normTarget.includes("spa") || normTarget.includes("glow") || normTarget.includes("flower")) {
+          const sub = validSubs.find((s) => s.includes("Cosmetics") || s.includes("Hampers"));
+          if (sub) return sub;
+        }
+        if (normTarget.includes("elect") || normTarget.includes("gadget") || normTarget.includes("earbud") || normTarget.includes("watch") || normTarget.includes("headphone") || normTarget.includes("speaker")) {
+          const sub = validSubs.find((s) => s.includes("Electronics"));
+          if (sub) return sub;
+        }
+        if (normTarget.includes("toy") || normTarget.includes("game") || normTarget.includes("chess") || normTarget.includes("rc") || normTarget.includes("truck")) {
+          const sub = validSubs.find((s) => s.includes("Toys"));
+          if (sub) return sub;
+        }
+        if (normTarget.includes("choco") || normTarget.includes("sweet") || normTarget.includes("cadbury") || normTarget.includes("silk") || normTarget.includes("praline") || normTarget.includes("kitkat")) {
+          const sub = validSubs.find((s) => s.includes("Chocolates"));
+          if (sub) return sub;
+        }
+        if (normTarget.includes("kid") || normTarget.includes("walker") || normTarget.includes("newborn")) {
+          const sub = validSubs.find((s) => s.includes("Kids"));
+          if (sub) return sub;
+        }
+      }
+
+      // School, Office & Stationery domain subcategory mappings
+      if (
+        parentCategory === "School, Office & Stationery" ||
+        normTarget.includes("station") ||
+        normTarget.includes("school") ||
+        normTarget.includes("office")
+      ) {
+        if (normTarget.includes("pen") || normTarget.includes("pencil") || normTarget.includes("ballpoint") || normTarget.includes("gel") || normTarget.includes("fountain") || normTarget.includes("eraser") || normTarget.includes("sharpener") || normTarget.includes("writing")) {
+          const sub = validSubs.find((s) => s.includes("Pens"));
+          if (sub) return sub;
+        }
+        if (normTarget.includes("notebook") || normTarget.includes("diary") || normTarget.includes("planner") || normTarget.includes("register") || normTarget.includes("spiral") || normTarget.includes("notepad")) {
+          const sub = validSubs.find((s) => s.includes("Notebooks"));
+          if (sub) return sub;
+        }
+        if (normTarget.includes("marker") || normTarget.includes("highlighter") || normTarget.includes("whiteboard") || normTarget.includes("permanent")) {
+          const sub = validSubs.find((s) => s.includes("Markers"));
+          if (sub) return sub;
+        }
+        if (normTarget.includes("geometry") || normTarget.includes("scale") || normTarget.includes("ruler") || normTarget.includes("compass") || normTarget.includes("protractor")) {
+          const sub = validSubs.find((s) => s.includes("Geometry"));
+          if (sub) return sub;
+        }
+        if (normTarget.includes("art") || normTarget.includes("craft") || normTarget.includes("drawing") || normTarget.includes("sketch") || normTarget.includes("crayon") || normTarget.includes("color pencil") || normTarget.includes("paint") || normTarget.includes("acrylic") || normTarget.includes("pastel")) {
+          const sub = validSubs.find((s) => s.includes("Art"));
+          if (sub) return sub;
+        }
+        if (normTarget.includes("file") || normTarget.includes("folder") || normTarget.includes("envelope") || normTarget.includes("clipboard") || normTarget.includes("document")) {
+          const sub = validSubs.find((s) => s.includes("Files"));
+          if (sub) return sub;
+        }
+        if (normTarget.includes("stapler") || normTarget.includes("staple") || normTarget.includes("desk") || normTarget.includes("clip") || normTarget.includes("glue") || normTarget.includes("adhesive") || normTarget.includes("calculator") || normTarget.includes("organizer")) {
+          const sub = validSubs.find((s) => s.includes("Office & Desk"));
+          if (sub) return sub;
+        }
+        if (normTarget.includes("printer") || normTarget.includes("paper") || normTarget.includes("copier") || normTarget.includes("double a") || normTarget.includes("a4") || normTarget.includes("sticky") || normTarget.includes("label") || normTarget.includes("sticker")) {
+          const sub = validSubs.find((s) => s.includes("Printer"));
+          if (sub) return sub;
+        }
+      }
 
       // Baby domain subcategory mappings
       if (parentCategory === "Baby" || normTarget.includes("baby") || normTarget.includes("infant") || normTarget.includes("kid") || normTarget.includes("winter")) {

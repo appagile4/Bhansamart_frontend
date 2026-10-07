@@ -244,10 +244,13 @@ export default function SeeAllProductScreen() {
           (cat.includes("beauty") || cat.includes("care") || cat.includes("skin") || sub.includes("hair") || sub.includes("oral"));
         const isStationeryMatch =
           (catTarget.includes("stationery") || catTarget.includes("school") || catTarget.includes("office")) &&
-          (cat.includes("stationery") || cat.includes("office") || cat.includes("school") || sub.includes("pen") || sub.includes("paper"));
+          (cat.includes("stationery") || cat.includes("office") || cat.includes("school") || sub.includes("pen") || sub.includes("pencil") || sub.includes("notebook") || sub.includes("diary") || sub.includes("marker") || sub.includes("geometry") || sub.includes("craft") || sub.includes("folder") || sub.includes("desk") || sub.includes("paper") || sub.includes("sticky"));
         const isKidsMatch =
           (catTarget.includes("kid") || catTarget.includes("baby")) &&
           (cat.includes("kid") || cat.includes("baby") || sub.includes("toy") || sub.includes("diaper"));
+        const isGiftingMatch =
+          (catTarget.includes("gift") || catTarget.includes("celebration")) &&
+          (cat.includes("gift") || sub.includes("men") || sub.includes("women") || sub.includes("dress") || sub.includes("choc") || sub.includes("hamper") || sub.includes("elect") || sub.includes("toy"));
 
         return (
           cat.includes(catTarget) ||
@@ -256,7 +259,8 @@ export default function SeeAllProductScreen() {
           isSnacksMatch ||
           isBeautyMatch ||
           isStationeryMatch ||
-          isKidsMatch
+          isKidsMatch ||
+          isGiftingMatch
         );
       });
       if (matched.length > 0) list = matched;
