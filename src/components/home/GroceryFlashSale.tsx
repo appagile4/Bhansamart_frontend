@@ -1,7 +1,6 @@
-import { moderateScale, scale, useTheme } from "@/theme";
+import { moderateScale, scale } from "@/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import React from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -9,6 +8,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Svg, { Path } from "react-native-svg";
+
+const FLASH_CARD_SVG_PATH =
+  "M18 10C55 8 125 8 162 10 170 11 174 17 174 25 176 55 181.003 135.831 163.967 135.831 88.753 136.152 74.289 131.331 74.61 158.652 74.931 176.652 55 172 18 170 10 169 6 164 6 155 4 125 4 55 6 25 6 17 10 11 18 10Z";
 
 export interface FlashSaleProduct {
   id: string;
@@ -63,7 +66,7 @@ const GROCERY_ROW1: FlashSaleProduct[] = [
     categoryTag: "Rice & Grains",
     image: require("@/assets/images/Home/daawat-basmati-rice.png"),
     stockLeftText: "Selling fast !",
-    stockProgress: 0.40,
+    stockProgress: 0.4,
     rating: 4.9,
     ratingCount: 428,
     price: 650,
@@ -76,7 +79,7 @@ const GROCERY_ROW1: FlashSaleProduct[] = [
     categoryTag: "Meat & Poultry",
     image: require("@/assets/images/Home/bacon-strips-meat.png"),
     stockLeftText: "Almost gone !",
-    stockProgress: 0.20,
+    stockProgress: 0.2,
     rating: 4.6,
     ratingCount: 88,
     price: 320,
@@ -92,7 +95,7 @@ const GROCERY_ROW2: FlashSaleProduct[] = [
     categoryTag: "Noodles",
     image: require("@/assets/images/Home/product-maggi.png"),
     stockLeftText: "Few pieces left !",
-    stockProgress: 0.50,
+    stockProgress: 0.5,
     rating: 4.8,
     ratingCount: 512,
     price: 100,
@@ -106,7 +109,7 @@ const GROCERY_ROW2: FlashSaleProduct[] = [
     categoryTag: "Cereals",
     image: require("@/assets/images/Home/cornflakes-hero.png"),
     stockLeftText: "Few pieces left !",
-    stockProgress: 0.30,
+    stockProgress: 0.3,
     rating: 4.6,
     ratingCount: 165,
     price: 280,
@@ -151,7 +154,7 @@ const KIDS_ROW1: FlashSaleProduct[] = [
     categoryTag: "Diapers",
     image: require("@/assets/images/Home/molfix-baby-diaper.png"),
     stockLeftText: "Few pieces left !",
-    stockProgress: 0.30,
+    stockProgress: 0.3,
     rating: 4.9,
     ratingCount: 380,
     price: 850,
@@ -165,7 +168,7 @@ const KIDS_ROW1: FlashSaleProduct[] = [
     categoryTag: "Baby Wear",
     image: require("@/assets/images/Home/baby-winter-hooded-onesie.png"),
     stockLeftText: "Limited stock !",
-    stockProgress: 0.20,
+    stockProgress: 0.2,
     rating: 4.8,
     ratingCount: 142,
     price: 750,
@@ -178,7 +181,7 @@ const KIDS_ROW1: FlashSaleProduct[] = [
     categoryTag: "Backpacks",
     image: require("@/assets/images/Home/giraffe-kids-backpack.png"),
     stockLeftText: "Selling fast !",
-    stockProgress: 0.40,
+    stockProgress: 0.4,
     rating: 4.7,
     ratingCount: 95,
     price: 490,
@@ -220,7 +223,7 @@ const KIDS_ROW2: FlashSaleProduct[] = [
     categoryTag: "Baby Care",
     image: require("@/assets/images/Home/baby-wipes-pack.png"),
     stockLeftText: "Few pieces left !",
-    stockProgress: 0.60,
+    stockProgress: 0.6,
     rating: 4.7,
     ratingCount: 340,
     price: 180,
@@ -233,7 +236,7 @@ const KIDS_ROW2: FlashSaleProduct[] = [
     categoryTag: "Backpacks",
     image: require("@/assets/images/Home/pink-cartoon-backpack.png"),
     stockLeftText: "Only 5 left !",
-    stockProgress: 0.30,
+    stockProgress: 0.3,
     rating: 4.8,
     ratingCount: 180,
     price: 690,
@@ -265,7 +268,7 @@ const GIFTING_ROW1: FlashSaleProduct[] = [
     categoryTag: "Chocolates",
     image: require("@/assets/images/Home/prod-dairymilk.png"),
     stockLeftText: "Few pieces left !",
-    stockProgress: 0.30,
+    stockProgress: 0.3,
     rating: 4.9,
     ratingCount: 620,
     price: 175,
@@ -304,7 +307,7 @@ const GIFTING_ROW1: FlashSaleProduct[] = [
     categoryTag: "Chocolates",
     image: require("@/assets/images/Home/prod-kitkat.png"),
     stockLeftText: "Few pieces left !",
-    stockProgress: 0.50,
+    stockProgress: 0.5,
     rating: 4.7,
     ratingCount: 310,
     price: 60,
@@ -320,7 +323,7 @@ const GIFTING_ROW2: FlashSaleProduct[] = [
     categoryTag: "Fragrance",
     image: require("@/assets/images/Home/luxury-purple-perfume.png"),
     stockLeftText: "Almost gone !",
-    stockProgress: 0.20,
+    stockProgress: 0.2,
     rating: 4.9,
     ratingCount: 160,
     price: 1250,
@@ -333,7 +336,7 @@ const GIFTING_ROW2: FlashSaleProduct[] = [
     categoryTag: "Gift Hampers",
     image: require("@/assets/images/Home/gift-basket-care.png"),
     stockLeftText: "Only 3 left !",
-    stockProgress: 0.30,
+    stockProgress: 0.3,
     rating: 4.8,
     ratingCount: 74,
     price: 1100,
@@ -346,7 +349,7 @@ const GIFTING_ROW2: FlashSaleProduct[] = [
     categoryTag: "Sweets",
     image: require("@/assets/images/Home/prod-nutties.png"),
     stockLeftText: "Few pieces left !",
-    stockProgress: 0.40,
+    stockProgress: 0.4,
     rating: 4.6,
     ratingCount: 220,
     price: 95,
@@ -378,7 +381,7 @@ const STATIONERY_ROW1: FlashSaleProduct[] = [
     categoryTag: "Paper",
     image: require("@/assets/images/Home/double-a-paper-reams.png"),
     stockLeftText: "Selling fast !",
-    stockProgress: 0.40,
+    stockProgress: 0.4,
     rating: 4.9,
     ratingCount: 460,
     price: 420,
@@ -404,7 +407,7 @@ const STATIONERY_ROW1: FlashSaleProduct[] = [
     categoryTag: "Desk Org",
     image: require("@/assets/images/Home/stationery-pen-holder.png"),
     stockLeftText: "Few pieces left !",
-    stockProgress: 0.50,
+    stockProgress: 0.5,
     rating: 4.6,
     ratingCount: 88,
     price: 140,
@@ -417,7 +420,7 @@ const STATIONERY_ROW1: FlashSaleProduct[] = [
     categoryTag: "Bags",
     image: require("@/assets/images/Home/printed-school-backpack.png"),
     stockLeftText: "Few pieces left !",
-    stockProgress: 0.30,
+    stockProgress: 0.3,
     rating: 4.7,
     ratingCount: 135,
     price: 850,
@@ -459,7 +462,7 @@ const STATIONERY_ROW2: FlashSaleProduct[] = [
     categoryTag: "Office",
     image: require("@/assets/images/Home/office-document-clipboards.png"),
     stockLeftText: "Selling fast !",
-    stockProgress: 0.30,
+    stockProgress: 0.3,
     rating: 4.6,
     ratingCount: 92,
     price: 275,
@@ -472,7 +475,7 @@ const STATIONERY_ROW2: FlashSaleProduct[] = [
     categoryTag: "Notes",
     image: require("@/assets/images/Home/notebooks-sticky-notes.png"),
     stockLeftText: "Selling fast !",
-    stockProgress: 0.60,
+    stockProgress: 0.6,
     rating: 4.8,
     ratingCount: 210,
     price: 90,
@@ -491,7 +494,7 @@ const BEAUTY_ROW1: FlashSaleProduct[] = [
     categoryTag: "Fragrance",
     image: require("@/assets/images/Home/luxury-purple-perfume.png"),
     stockLeftText: "Almost gone !",
-    stockProgress: 0.20,
+    stockProgress: 0.2,
     rating: 4.9,
     ratingCount: 230,
     price: 1299,
@@ -504,7 +507,7 @@ const BEAUTY_ROW1: FlashSaleProduct[] = [
     categoryTag: "Skincare",
     image: require("@/assets/images/Home/skincare-cream-jars-bottles.png"),
     stockLeftText: "Only 4 left !",
-    stockProgress: 0.30,
+    stockProgress: 0.3,
     rating: 4.8,
     ratingCount: 165,
     price: 680,
@@ -517,7 +520,7 @@ const BEAUTY_ROW1: FlashSaleProduct[] = [
     categoryTag: "Makeup",
     image: require("@/assets/images/Home/red-lipstick-tube.png"),
     stockLeftText: "Few pieces left !",
-    stockProgress: 0.40,
+    stockProgress: 0.4,
     rating: 4.7,
     ratingCount: 310,
     price: 320,
@@ -585,7 +588,7 @@ const BEAUTY_ROW2: FlashSaleProduct[] = [
     categoryTag: "Tools",
     image: require("@/assets/images/Home/makeup-powder-brush.png"),
     stockLeftText: "Few pieces left !",
-    stockProgress: 0.50,
+    stockProgress: 0.5,
     rating: 4.6,
     ratingCount: 95,
     price: 180,
@@ -604,7 +607,7 @@ const SNACKS_ROW1: FlashSaleProduct[] = [
     categoryTag: "Noodles",
     image: require("@/assets/images/Home/product-waiwai.png"),
     stockLeftText: "Selling fast !",
-    stockProgress: 0.40,
+    stockProgress: 0.4,
     rating: 4.8,
     ratingCount: 680,
     price: 25,
@@ -617,7 +620,7 @@ const SNACKS_ROW1: FlashSaleProduct[] = [
     categoryTag: "Juices",
     image: require("@/assets/images/Home/capri-sun-orange-juice.png"),
     stockLeftText: "Few pieces left !",
-    stockProgress: 0.30,
+    stockProgress: 0.3,
     rating: 4.7,
     ratingCount: 240,
     price: 80,
@@ -643,7 +646,7 @@ const SNACKS_ROW1: FlashSaleProduct[] = [
     categoryTag: "Quick Bites",
     image: require("@/assets/images/Home/bacon-strips-meat.png"),
     stockLeftText: "Limited stock !",
-    stockProgress: 0.20,
+    stockProgress: 0.2,
     rating: 4.6,
     ratingCount: 115,
     price: 290,
@@ -659,7 +662,7 @@ const SNACKS_ROW2: FlashSaleProduct[] = [
     categoryTag: "Noodles",
     image: require("@/assets/images/Home/product-maggi.png"),
     stockLeftText: "Few pieces left !",
-    stockProgress: 0.50,
+    stockProgress: 0.5,
     rating: 4.9,
     ratingCount: 750,
     price: 100,
@@ -685,7 +688,7 @@ const SNACKS_ROW2: FlashSaleProduct[] = [
     categoryTag: "Chocolates",
     image: require("@/assets/images/Home/prod-munch.png"),
     stockLeftText: "Few pieces left !",
-    stockProgress: 0.60,
+    stockProgress: 0.6,
     rating: 4.8,
     ratingCount: 420,
     price: 20,
@@ -708,7 +711,12 @@ const SNACKS_ROW2: FlashSaleProduct[] = [
 
 const FLASH_CATEGORY_MAP: Record<
   string,
-  { title: string; subtitle: string; row1: FlashSaleProduct[]; row2: FlashSaleProduct[] }
+  {
+    title: string;
+    subtitle: string;
+    row1: FlashSaleProduct[];
+    row2: FlashSaleProduct[];
+  }
 > = {
   grocery: {
     title: "Grocery Flash Sale",
@@ -773,7 +781,14 @@ const FLASH_CATEGORY_MAP: Record<
 };
 
 interface GroceryFlashSaleProps {
-  category?: "grocery" | "kids" | "gifting" | "stationery" | "beauty" | "snacks" | string;
+  category?:
+    | "grocery"
+    | "kids"
+    | "gifting"
+    | "stationery"
+    | "beauty"
+    | "snacks"
+    | string;
   title?: string;
   subtitle?: string;
   row1Data?: FlashSaleProduct[];
@@ -808,17 +823,31 @@ export default function GroceryFlashSale({
       onPress={() => onProductPress?.(item)}
       style={styles.card}
     >
-      {/* Product Image Container */}
+      {/* Product Image Container with Custom SVG Path Background */}
       <View style={styles.imageBox}>
-        <Image
-          source={item.image}
-          style={styles.productImage}
-          contentFit="contain"
-          transition={150}
-        />
+        {/* Custom SVG Path Canvas */}
+        <Svg
+          width="100%"
+          height="100%"
+          viewBox="0 0 186 180"
+          preserveAspectRatio="none"
+          style={StyleSheet.absoluteFill}
+        >
+          <Path d={FLASH_CARD_SVG_PATH} fill="#FFFFFF" />
+        </Svg>
 
-        {/* ADD Button */}
-        <View style={styles.addButtonWrapper}>
+        {/* Product Image inside the SVG Canvas */}
+        <View style={styles.imageInnerWrapper}>
+          <Image
+            source={item.image}
+            style={styles.productImage}
+            contentFit="contain"
+            transition={150}
+          />
+        </View>
+
+        {/* ADD Button in the Left Bottom Corner of the SVG */}
+        <View style={styles.addButtonWrapperLeft}>
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => onAddPress?.(item)}
@@ -913,7 +942,10 @@ export default function GroceryFlashSale({
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={[styles.scrollContent, { marginTop: scale(14) }]}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { marginTop: scale(14) },
+          ]}
         >
           {displayRow2.map(renderProductCard)}
         </ScrollView>
@@ -975,27 +1007,34 @@ const styles = StyleSheet.create({
   },
   imageBox: {
     width: scale(145),
-    height: scale(135),
-    backgroundColor: "#FFFFFF",
-    borderRadius: scale(14),
+    height: scale(140),
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  imageInnerWrapper: {
+    width: "74%",
+    height: "68%",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: scale(-8),
+    marginRight: scale(-4),
+    zIndex: 2,
   },
   productImage: {
-    width: "82%",
-    height: "82%",
+    width: "90%",
+    height: "90%",
   },
-  addButtonWrapper: {
+  addButtonWrapperLeft: {
     position: "absolute",
-    bottom: scale(-10),
-    right: scale(6),
-    alignItems: "center",
+    bottom: scale(4),
+    left: scale(66),
+    alignItems: "flex-end",
     zIndex: 10,
   },
   addButton: {

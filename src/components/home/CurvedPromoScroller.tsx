@@ -1,9 +1,11 @@
 import { moderateScale, scale, useTheme } from "@/theme";
 import { Image } from "expo-image";
-import { useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Platform,
   Pressable,
   StyleSheet,
@@ -29,6 +31,7 @@ const CARD_WIDTH = Math.min(Math.round(SCREEN_WIDTH * 0.76), 320);
 const CARD_HEIGHT = Math.round(CARD_WIDTH * 0.58);
 const CARD_SPACING = scale(14);
 const SNAP_INTERVAL = CARD_WIDTH + CARD_SPACING;
+const AUTO_SCROLL_DELAY = 3200; // 3.2 seconds interval
 
 // Modern asymmetric organic container path (viewBox: 0 0 320 185)
 const MODERN_CARD_PATH =
@@ -38,7 +41,7 @@ const MODERN_CARD_PATH =
   "H 24 C 10.75 185 0 174.25 0 161 " +
   "V 24 C 0 10.75 10.75 0 24 0 Z";
 
-const PROMO_CARDS: PromoCardItem[] = [
+const BASE_PROMO_CARDS: PromoCardItem[] = [
   {
     id: "promo-1",
     tag: "FEATURED",
@@ -101,6 +104,21 @@ const PROMO_CARDS: PromoCardItem[] = [
   },
 ];
 
+// Replicate array to create a seamless infinite circular scroll (loop: 1 2 3 4 5 1 2 3 4 5 ...)
+const LOOP_MULTIPLIER = 20;
+const INFINITE_PROMO_CARDS: (PromoCardItem & { uniqueKey: string })[] = [];
+for (let loop = 0; loop < LOOP_MULTIPLIER; loop++) {
+  BASE_PROMO_CARDS.forEach((item, idx) => {
+    INFINITE_PROMO_CARDS.push({
+      ...item,
+      uniqueKey: `promo-loop-${loop}-${item.id}-${idx}`,
+    });
+  });
+}
+
+const TOTAL_BASE_ITEMS = BASE_PROMO_CARDS.length;
+const INITIAL_INDEX = Math.floor(LOOP_MULTIPLIER / 2) * TOTAL_BASE_ITEMS;
+
 interface CurvedPromoScrollerProps {
   onPromoPress?: (promo: PromoCardItem) => void;
 }
@@ -110,15 +128,63 @@ export default function CurvedPromoScroller({
 }: CurvedPromoScrollerProps) {
   const theme = useTheme?.() ?? {};
   const scrollX = useRef(new Animated.Value(0)).current;
+  const flatListRef = useRef<Animated.FlatList<any>>(null);
+
+  const currentIndexRef = useRef(INITIAL_INDEX);
+  const isInteractingRef = useRef(false);
+
+  // Initialize scroll position to center of loop on mount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      flatListRef.current?.scrollToOffset({
+        offset: INITIAL_INDEX * SNAP_INTERVAL,
+        animated: false,
+      });
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Continuous Auto-Scroll Interval Loop
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (isInteractingRef.current) return;
+
+      currentIndexRef.current += 1;
+      flatListRef.current?.scrollToOffset({
+        offset: currentIndexRef.current * SNAP_INTERVAL,
+        animated: true,
+      });
+    }, AUTO_SCROLL_DELAY);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetX = e.nativeEvent.contentOffset.x;
+    const index = Math.round(offsetX / SNAP_INTERVAL);
+    currentIndexRef.current = index;
+
+    // Reposition to center if near start or end to maintain truly infinite loop
+    if (
+      index < TOTAL_BASE_ITEMS * 2 ||
+      index > TOTAL_BASE_ITEMS * (LOOP_MULTIPLIER - 2)
+    ) {
+      const normalizedIndex = (index % TOTAL_BASE_ITEMS) + INITIAL_INDEX;
+      currentIndexRef.current = normalizedIndex;
+      flatListRef.current?.scrollToOffset({
+        offset: normalizedIndex * SNAP_INTERVAL,
+        animated: false,
+      });
+    }
+  };
 
   const renderItem = ({
     item,
     index,
   }: {
-    item: PromoCardItem;
+    item: PromoCardItem & { uniqueKey: string };
     index: number;
   }) => {
-    // Parallax & scale interpolation
     const inputRange = [
       (index - 1) * SNAP_INTERVAL,
       index * SNAP_INTERVAL,
@@ -172,7 +238,7 @@ export default function CurvedPromoScroller({
           >
             <Defs>
               <LinearGradient
-                id={`grad-${item.id}`}
+                id={`grad-${item.uniqueKey}`}
                 x1="0%"
                 y1="0%"
                 x2="100%"
@@ -182,7 +248,7 @@ export default function CurvedPromoScroller({
                 <Stop offset="100%" stopColor={item.gradientColors[1]} />
               </LinearGradient>
             </Defs>
-            <Path d={MODERN_CARD_PATH} fill={`url(#grad-${item.id})`} />
+            <Path d={MODERN_CARD_PATH} fill={`url(#grad-${item.uniqueKey})`} />
           </Svg>
 
           {/* Layer 2: Text & Interactive CTA Area */}
@@ -238,8 +304,9 @@ export default function CurvedPromoScroller({
   return (
     <View style={styles.container}>
       <Animated.FlatList
-        data={PROMO_CARDS}
-        keyExtractor={(item) => item.id}
+        ref={flatListRef}
+        data={INFINITE_PROMO_CARDS}
+        keyExtractor={(item) => item.uniqueKey}
         renderItem={renderItem}
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -247,6 +314,23 @@ export default function CurvedPromoScroller({
         snapToInterval={SNAP_INTERVAL}
         decelerationRate="fast"
         bounces={false}
+        onScrollBeginDrag={() => {
+          isInteractingRef.current = true;
+        }}
+        onScrollEndDrag={() => {
+          setTimeout(() => {
+            isInteractingRef.current = false;
+          }, 1500);
+        }}
+        onMomentumScrollEnd={(e) => {
+          handleScrollEnd(e);
+          isInteractingRef.current = false;
+        }}
+        getItemLayout={(_, index) => ({
+          length: SNAP_INTERVAL,
+          offset: SNAP_INTERVAL * index,
+          index,
+        })}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { x: scrollX } } }],
           { useNativeDriver: true },
@@ -264,7 +348,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: scale(16),
-    paddingVertical: moderateScale(6), // Extra clearance for shadow & overhang
+    paddingVertical: moderateScale(6),
   },
   cardWrapper: {
     marginRight: CARD_SPACING,
