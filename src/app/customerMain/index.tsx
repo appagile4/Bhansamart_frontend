@@ -219,11 +219,11 @@ export default function HomeScreen() {
 
             {/* 8. Live Grocery Flash Sale (Peach Alert Card + Stock Bars) */}
             <GroceryFlashSale
-              category="grocery"
+              category={selectedCategory}
               onProductPress={handleProductPress}
               onAddPress={handleAddToCart}
               onSeeAllPress={() =>
-                handleCategoryPress("Grocery Flash Sale", "grocery-flash-sale")
+                handleCategoryPress("Flash Sale", "flash-sale")
               }
             />
             {/* 3. New Arrivals (2x3 Dual Product Green Tiles) */}

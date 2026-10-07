@@ -1,7 +1,10 @@
+import { useAppSelector } from "@/store/hooks";
 import { moderateScale, scale } from "@/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import { useEffect, useMemo, useRef } from "react";
 import {
+  Animated,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,7 +14,10 @@ import {
 import Svg, { Path } from "react-native-svg";
 
 const FLASH_CARD_SVG_PATH =
-  "M18 10C55 8 125 8 162 10 170 11 174 17 174 25 176 55 181.003 135.831 163.967 135.831 88.753 136.152 74.289 131.331 74.61 158.652 74.931 176.652 55 172 18 170 10 169 6 164 6 155 4 125 4 55 6 25 6 17 10 11 18 10Z";
+  "M18 10C55 8 125 8 162 10 170 11 174 17 174 25 176 55 181.003 135.831 160.753 135.509 88.753 136.152 74.289 131.331 74.61 158.652 74.931 176.652 55 172 18 170 10 169 6 164 6 155 4 125 4 55 6 25 6 17 10 11 18 10Z";
+
+const FLASH_ADD_BUTTON_SVG_PATH =
+  "M98 141C98.074 140.009 104.503 139.688 109.967 140.331 127.324 140.009 133.753 139.688 147.896 139.688 153.36 140.652 172.967 137.438 174.253 148.688L174.574 158.009C174.896 172.795 158.181 169.259 150.789 169.902 134.717 168.938 118 171 105 170 100 170 81.039 172.795 80.396 159.295L80.396 150.616C80.396 151.259 82.324 140.009 98 141Z";
 
 export interface FlashSaleProduct {
   id: string;
@@ -29,683 +35,150 @@ export interface FlashSaleProduct {
 }
 
 // ==========================================
-// 1. GROCERY FLASH SALE
+// MOCK FALLBACK DATASETS FOR CATEGORIES
 // ==========================================
 const GROCERY_ROW1: FlashSaleProduct[] = [
   {
     id: "flash-g-capri",
     name: "Capri-Sun Orange Juice Pouch",
     weightTag: "200ml",
-    categoryTag: "Beverage",
+    categoryTag: "Beverages",
     image: require("@/assets/images/Home/capri-sun-orange-juice.png"),
     stockLeftText: "Few pieces left !",
-    stockProgress: 0.35,
+    stockProgress: 0.3,
     rating: 4.8,
-    ratingCount: 194,
+    ratingCount: 220,
     price: 85,
     originalPrice: 110,
+    optionsText: "3 options",
+  },
+  {
+    id: "flash-g-maggi",
+    name: "Maggi 2-Minute Special Masala Noodles",
+    weightTag: "70g",
+    categoryTag: "Instant Food",
+    image: require("@/assets/images/Home/product-maggi.png"),
+    stockLeftText: "Only 4 left in stock !",
+    stockProgress: 0.2,
+    rating: 4.9,
+    ratingCount: 540,
+    price: 95,
+    originalPrice: 120,
     optionsText: "2 options",
   },
   {
-    id: "flash-g-oil",
-    name: "Saffola Gold Blended Cooking Oil",
-    weightTag: "1L",
-    categoryTag: "Cooking Oil",
-    image: require("@/assets/images/Home/saffola-gold-oil.png"),
-    stockLeftText: "Only 4 left !",
-    stockProgress: 0.25,
+    id: "flash-g-doritos",
+    name: "2PM Spicy Masala Ready Noodles",
+    weightTag: "100g",
+    categoryTag: "Snacks",
+    image: require("@/assets/images/Home/product-2pm.png"),
+    stockLeftText: "Only 2 left !",
+    stockProgress: 0.15,
     rating: 4.7,
-    ratingCount: 312,
-    price: 290,
-    originalPrice: 350,
-  },
-  {
-    id: "flash-g-rice",
-    name: "Daawat Rozana Super Basmati Rice",
-    weightTag: "5kg",
-    categoryTag: "Rice & Grains",
-    image: require("@/assets/images/Home/daawat-basmati-rice.png"),
-    stockLeftText: "Selling fast !",
-    stockProgress: 0.4,
-    rating: 4.9,
-    ratingCount: 428,
-    price: 650,
-    originalPrice: 800,
-  },
-  {
-    id: "flash-g-bacon",
-    name: "Fresh Gourmet Bacon Meat Strips",
-    weightTag: "250g",
-    categoryTag: "Meat & Poultry",
-    image: require("@/assets/images/Home/bacon-strips-meat.png"),
-    stockLeftText: "Almost gone !",
-    stockProgress: 0.2,
-    rating: 4.6,
-    ratingCount: 88,
-    price: 320,
-    originalPrice: 420,
+    ratingCount: 180,
+    price: 130,
+    originalPrice: 160,
   },
 ];
 
 const GROCERY_ROW2: FlashSaleProduct[] = [
   {
-    id: "flash-g-maggi",
-    name: "Maggi Masala 2-Minute Instant Noodles",
-    weightTag: "70g",
-    categoryTag: "Noodles",
-    image: require("@/assets/images/Home/product-maggi.png"),
-    stockLeftText: "Few pieces left !",
-    stockProgress: 0.5,
-    rating: 4.8,
-    ratingCount: 512,
-    price: 100,
-    originalPrice: 120,
-    optionsText: "3 options",
-  },
-  {
     id: "flash-g-cornflakes",
-    name: "Kellogg's Original Crispy Corn Flakes",
+    name: "Kellogg's Real Honey Almond Flakes",
     weightTag: "475g",
-    categoryTag: "Cereals",
+    categoryTag: "Breakfast",
     image: require("@/assets/images/Home/cornflakes-hero.png"),
+    stockLeftText: "Only 5 left !",
+    stockProgress: 0.35,
+    rating: 4.8,
+    ratingCount: 310,
+    price: 340,
+    originalPrice: 420,
+    optionsText: "2 options",
+  },
+  {
+    id: "flash-g-waiwai",
+    name: "Wai Wai Quick Roasted Chicken Noodles",
+    weightTag: "75g",
+    categoryTag: "Instant Noodles",
+    image: require("@/assets/images/Home/product-waiwai.png"),
     stockLeftText: "Few pieces left !",
-    stockProgress: 0.3,
-    rating: 4.6,
-    ratingCount: 165,
-    price: 280,
-    originalPrice: 350,
-  },
-  {
-    id: "flash-g-slice",
-    name: "Slice Thick Mango Juice Drink",
-    weightTag: "1.2L",
-    categoryTag: "Beverage",
-    image: require("@/assets/images/Home/slice-mango-juice.png"),
-    stockLeftText: "Selling fast !",
-    stockProgress: 0.45,
-    rating: 4.7,
-    ratingCount: 220,
-    price: 160,
-    originalPrice: 200,
-  },
-  {
-    id: "flash-g-cheese",
-    name: "Swiss Gourmet Creamy Cheese Wedge",
-    weightTag: "200g",
-    categoryTag: "Dairy",
-    image: require("@/assets/images/Home/swiss-cheese-wedge.png"),
-    stockLeftText: "Only 3 left !",
     stockProgress: 0.25,
-    rating: 4.5,
-    ratingCount: 94,
-    price: 240,
-    originalPrice: 300,
+    rating: 4.7,
+    ratingCount: 420,
+    price: 145,
+    originalPrice: 175,
+  },
+  {
+    id: "flash-g-muesli",
+    name: "Kellogg's Crunchy Muesli Fruit Magic",
+    weightTag: "500g",
+    categoryTag: "Cereals",
+    image: require("@/assets/images/Home/kelloggs-combo.png"),
+    stockLeftText: "Only 3 left in stock !",
+    stockProgress: 0.2,
+    rating: 4.9,
+    ratingCount: 265,
+    price: 375,
+    originalPrice: 460,
   },
 ];
 
-// ==========================================
-// 2. KIDS FLASH SALE
-// ==========================================
 const KIDS_ROW1: FlashSaleProduct[] = [
   {
-    id: "flash-k-molfix",
-    name: "Molfix Extra Absorbent Baby Diapers",
-    weightTag: "Mega Pack",
-    categoryTag: "Diapers",
-    image: require("@/assets/images/Home/molfix-baby-diaper.png"),
-    stockLeftText: "Few pieces left !",
-    stockProgress: 0.3,
-    rating: 4.9,
-    ratingCount: 380,
-    price: 850,
-    originalPrice: 1100,
-    optionsText: "4 sizes",
-  },
-  {
-    id: "flash-k-onesie",
-    name: "Cute Bear Hooded Fleece Winter Onesie",
-    weightTag: "6-12M",
-    categoryTag: "Baby Wear",
-    image: require("@/assets/images/Home/baby-winter-hooded-onesie.png"),
-    stockLeftText: "Limited stock !",
+    id: "flash-k-shoes",
+    name: "Baby Soft Anti-Slip First Step Shoes",
+    weightTag: "1 Pair",
+    categoryTag: "Footwear",
+    image: require("@/assets/images/Home/kids-playmat-shoes.png"),
+    stockLeftText: "Only 3 left !",
     stockProgress: 0.2,
+    rating: 4.9,
+    ratingCount: 312,
+    price: 580,
+    originalPrice: 799,
+  },
+  {
+    id: "flash-k-bag",
+    name: "DeLune Waterproof Cute Bear Backpack",
+    weightTag: "Standard",
+    categoryTag: "School Bags",
+    image: require("@/assets/images/Home/pink-cartoon-backpack.png"),
+    stockLeftText: "Only 2 left in stock !",
+    stockProgress: 0.15,
     rating: 4.8,
-    ratingCount: 142,
-    price: 750,
-    originalPrice: 999,
-  },
-  {
-    id: "flash-k-giraffe",
-    name: "Giraffe Toddler School Bag Backpack",
-    weightTag: "Toddler",
-    categoryTag: "Backpacks",
-    image: require("@/assets/images/Home/giraffe-kids-backpack.png"),
-    stockLeftText: "Selling fast !",
-    stockProgress: 0.4,
-    rating: 4.7,
-    ratingCount: 95,
-    price: 490,
-    originalPrice: 650,
-  },
-  {
-    id: "flash-k-rattles",
-    name: "Soft Grip Sensory Baby Rattles Duo",
-    weightTag: "Set of 2",
-    categoryTag: "Toys",
-    image: require("@/assets/images/Home/baby-rattles.png"),
-    stockLeftText: "Almost gone !",
-    stockProgress: 0.25,
-    rating: 4.6,
-    ratingCount: 110,
-    price: 199,
-    originalPrice: 299,
+    ratingCount: 195,
+    price: 1150,
+    originalPrice: 1500,
   },
 ];
 
 const KIDS_ROW2: FlashSaleProduct[] = [
   {
-    id: "flash-k-paw",
-    name: "Paw Patrol Puppies Hero Figurines",
-    weightTag: "6 Pack",
-    categoryTag: "Toys",
+    id: "flash-k-toys",
+    name: "Paw Patrol Adventure Figure Playset",
+    weightTag: "6 Pcs",
+    categoryTag: "Action Toys",
     image: require("@/assets/images/Home/paw-patrol-figurines.png"),
-    stockLeftText: "Few pieces left !",
-    stockProgress: 0.35,
-    rating: 4.8,
-    ratingCount: 215,
-    price: 550,
-    originalPrice: 750,
-  },
-  {
-    id: "flash-k-wipes",
-    name: "Gentle Skin Purified Baby Wet Wipes",
-    weightTag: "80 Wipes",
-    categoryTag: "Baby Care",
-    image: require("@/assets/images/Home/baby-wipes-pack.png"),
-    stockLeftText: "Few pieces left !",
-    stockProgress: 0.6,
+    stockLeftText: "Only 4 left !",
+    stockProgress: 0.28,
     rating: 4.7,
-    ratingCount: 340,
-    price: 180,
-    originalPrice: 250,
-  },
-  {
-    id: "flash-k-pinkbag",
-    name: "Pink Cartoon Ergonomic School Bag",
-    weightTag: "Large",
-    categoryTag: "Backpacks",
-    image: require("@/assets/images/Home/pink-cartoon-backpack.png"),
-    stockLeftText: "Only 5 left !",
-    stockProgress: 0.3,
-    rating: 4.8,
-    ratingCount: 180,
-    price: 690,
+    ratingCount: 240,
+    price: 680,
     originalPrice: 890,
   },
   {
-    id: "flash-k-bottle",
-    name: "Kids Sipper Straw Insulated Water Bottle",
-    weightTag: "500ml",
-    categoryTag: "School",
-    image: require("@/assets/images/Home/kids-water-bottle-sipper.png"),
-    stockLeftText: "Selling fast !",
-    stockProgress: 0.45,
-    rating: 4.6,
-    ratingCount: 125,
-    price: 350,
-    originalPrice: 480,
-  },
-];
-
-// ==========================================
-// 3. GIFTING FLASH SALE
-// ==========================================
-const GIFTING_ROW1: FlashSaleProduct[] = [
-  {
-    id: "flash-g-dairymilk",
-    name: "Cadbury Dairy Milk Silk Chocolate Bar",
-    weightTag: "150g",
-    categoryTag: "Chocolates",
-    image: require("@/assets/images/Home/prod-dairymilk.png"),
+    id: "flash-k-blanket",
+    name: "Baby Hooded Warm Fleece Onesie",
+    weightTag: "0-12m",
+    categoryTag: "Apparel",
+    image: require("@/assets/images/Home/baby-winter-hooded-onesie.png"),
     stockLeftText: "Few pieces left !",
     stockProgress: 0.3,
-    rating: 4.9,
-    ratingCount: 620,
-    price: 175,
-    originalPrice: 220,
-  },
-  {
-    id: "flash-g-giftset",
-    name: "Luxury Pink Skincare & Cosmetics Gift Set",
-    weightTag: "5-in-1",
-    categoryTag: "Gift Hampers",
-    image: require("@/assets/images/Home/skincare-cosmetics-gift-set.png"),
-    stockLeftText: "Only 2 left !",
-    stockProgress: 0.15,
-    rating: 4.9,
-    ratingCount: 98,
-    price: 1450,
-    originalPrice: 1999,
-  },
-  {
-    id: "flash-g-bouquet",
-    name: "Romantic Elegance Floral Gift Bouquet",
-    weightTag: "Deluxe",
-    categoryTag: "Flowers",
-    image: require("@/assets/images/Home/gift-flower-bouquet.png"),
-    stockLeftText: "Selling fast !",
-    stockProgress: 0.25,
-    rating: 4.8,
-    ratingCount: 145,
-    price: 890,
-    originalPrice: 1200,
-  },
-  {
-    id: "flash-g-kitkat",
-    name: "Nestlé KitKat 4-Finger Crispy Wafers",
-    weightTag: "45g",
-    categoryTag: "Chocolates",
-    image: require("@/assets/images/Home/prod-kitkat.png"),
-    stockLeftText: "Few pieces left !",
-    stockProgress: 0.5,
-    rating: 4.7,
-    ratingCount: 310,
-    price: 60,
-    originalPrice: 80,
-  },
-];
-
-const GIFTING_ROW2: FlashSaleProduct[] = [
-  {
-    id: "flash-g-perfume",
-    name: "Belle Luxury Purple Eau De Parfum",
-    weightTag: "100ml",
-    categoryTag: "Fragrance",
-    image: require("@/assets/images/Home/luxury-purple-perfume.png"),
-    stockLeftText: "Almost gone !",
-    stockProgress: 0.2,
-    rating: 4.9,
-    ratingCount: 160,
-    price: 1250,
-    originalPrice: 1700,
-  },
-  {
-    id: "flash-g-basket",
-    name: "Grooming & Bath Deluxe Gift Basket",
-    weightTag: "Deluxe",
-    categoryTag: "Gift Hampers",
-    image: require("@/assets/images/Home/gift-basket-care.png"),
-    stockLeftText: "Only 3 left !",
-    stockProgress: 0.3,
-    rating: 4.8,
-    ratingCount: 74,
-    price: 1100,
-    originalPrice: 1500,
-  },
-  {
-    id: "flash-g-nutties",
-    name: "Cadbury Nutties Milk Chocolate Balls",
-    weightTag: "30g",
-    categoryTag: "Sweets",
-    image: require("@/assets/images/Home/prod-nutties.png"),
-    stockLeftText: "Few pieces left !",
-    stockProgress: 0.4,
-    rating: 4.6,
-    ratingCount: 220,
-    price: 95,
-    originalPrice: 125,
-  },
-  {
-    id: "flash-g-gems",
-    name: "Cadbury Gems Colorful Candy Surprise",
-    weightTag: "25g",
-    categoryTag: "Candy",
-    image: require("@/assets/images/Home/prod-gems.png"),
-    stockLeftText: "Selling fast !",
-    stockProgress: 0.55,
-    rating: 4.7,
-    ratingCount: 190,
-    price: 40,
-    originalPrice: 50,
-  },
-];
-
-// ==========================================
-// 4. STATIONERY FLASH SALE
-// ==========================================
-const STATIONERY_ROW1: FlashSaleProduct[] = [
-  {
-    id: "flash-s-paper",
-    name: "Double A Premium A4 Multipurpose Paper",
-    weightTag: "500 Shts",
-    categoryTag: "Paper",
-    image: require("@/assets/images/Home/double-a-paper-reams.png"),
-    stockLeftText: "Selling fast !",
-    stockProgress: 0.4,
-    rating: 4.9,
-    ratingCount: 460,
-    price: 420,
-    originalPrice: 550,
-  },
-  {
-    id: "flash-s-pen",
-    name: "Executive Metallic Nib Fountain Pen",
-    weightTag: "Fine Nib",
-    categoryTag: "Pens",
-    image: require("@/assets/images/Home/executive-fountain-pen.png"),
-    stockLeftText: "Only 3 left !",
-    stockProgress: 0.25,
-    rating: 4.8,
-    ratingCount: 112,
-    price: 350,
-    originalPrice: 499,
-  },
-  {
-    id: "flash-s-holder",
-    name: "Metal Mesh Desk Pen & Pencil Holder",
-    weightTag: "1 Unit",
-    categoryTag: "Desk Org",
-    image: require("@/assets/images/Home/stationery-pen-holder.png"),
-    stockLeftText: "Few pieces left !",
-    stockProgress: 0.5,
-    rating: 4.6,
-    ratingCount: 88,
-    price: 140,
-    originalPrice: 200,
-  },
-  {
-    id: "flash-s-backpack",
-    name: "Graphic Printed Student School Backpack",
-    weightTag: "Ergonomic",
-    categoryTag: "Bags",
-    image: require("@/assets/images/Home/printed-school-backpack.png"),
-    stockLeftText: "Few pieces left !",
-    stockProgress: 0.3,
-    rating: 4.7,
-    ratingCount: 135,
-    price: 850,
-    originalPrice: 1150,
-  },
-];
-
-const STATIONERY_ROW2: FlashSaleProduct[] = [
-  {
-    id: "flash-s-pencils",
-    name: "Artist Grade Soft Colored Pencils Set",
-    weightTag: "24 Pack",
-    categoryTag: "Art & Craft",
-    image: require("@/assets/images/Home/colored-pencils-row.png"),
-    stockLeftText: "Few pieces left !",
-    stockProgress: 0.35,
-    rating: 4.8,
-    ratingCount: 175,
-    price: 210,
-    originalPrice: 290,
-  },
-  {
-    id: "flash-s-ballpens",
-    name: "Executive Smooth Black Ballpoint Pens",
-    weightTag: "Pack of 5",
-    categoryTag: "Pens",
-    image: require("@/assets/images/Home/black-ballpoint-pens.jpg"),
-    stockLeftText: "Few pieces left !",
-    stockProgress: 0.45,
-    rating: 4.7,
-    ratingCount: 280,
-    price: 120,
-    originalPrice: 160,
-  },
-  {
-    id: "flash-s-clipboard",
-    name: "Sturdy Office Document Clipboards Set",
-    weightTag: "3 Pack",
-    categoryTag: "Office",
-    image: require("@/assets/images/Home/office-document-clipboards.png"),
-    stockLeftText: "Selling fast !",
-    stockProgress: 0.3,
-    rating: 4.6,
-    ratingCount: 92,
-    price: 275,
-    originalPrice: 380,
-  },
-  {
-    id: "flash-s-sticky",
-    name: "Multicolor Sticky Notes & Index Tabs",
-    weightTag: "Assorted",
-    categoryTag: "Notes",
-    image: require("@/assets/images/Home/notebooks-sticky-notes.png"),
-    stockLeftText: "Selling fast !",
-    stockProgress: 0.6,
-    rating: 4.8,
-    ratingCount: 210,
-    price: 90,
-    originalPrice: 130,
-  },
-];
-
-// ==========================================
-// 5. BEAUTY FLASH SALE
-// ==========================================
-const BEAUTY_ROW1: FlashSaleProduct[] = [
-  {
-    id: "flash-b-perfume",
-    name: "Belle Luxury Purple Eau De Parfum",
-    weightTag: "100ml",
-    categoryTag: "Fragrance",
-    image: require("@/assets/images/Home/luxury-purple-perfume.png"),
-    stockLeftText: "Almost gone !",
-    stockProgress: 0.2,
-    rating: 4.9,
-    ratingCount: 230,
-    price: 1299,
-    originalPrice: 1799,
-  },
-  {
-    id: "flash-b-creams",
-    name: "Hydrating Day & Night Face Cream Jars",
-    weightTag: "3-Piece",
-    categoryTag: "Skincare",
-    image: require("@/assets/images/Home/skincare-cream-jars-bottles.png"),
-    stockLeftText: "Only 4 left !",
-    stockProgress: 0.3,
-    rating: 4.8,
-    ratingCount: 165,
-    price: 680,
-    originalPrice: 920,
-  },
-  {
-    id: "flash-b-lipstick",
-    name: "Velvet Matte Moisture Red Lipstick",
-    weightTag: "4.5g",
-    categoryTag: "Makeup",
-    image: require("@/assets/images/Home/red-lipstick-tube.png"),
-    stockLeftText: "Few pieces left !",
-    stockProgress: 0.4,
-    rating: 4.7,
-    ratingCount: 310,
-    price: 320,
-    originalPrice: 450,
-  },
-  {
-    id: "flash-b-blush",
-    name: "Silky Smooth Compact Blush & Mirror",
-    weightTag: "12g",
-    categoryTag: "Makeup",
-    image: require("@/assets/images/Home/makeup-blush-compact.png"),
-    stockLeftText: "Few pieces left !",
-    stockProgress: 0.25,
-    rating: 4.6,
-    ratingCount: 140,
-    price: 290,
-    originalPrice: 400,
-  },
-];
-
-const BEAUTY_ROW2: FlashSaleProduct[] = [
-  {
-    id: "flash-b-giftset",
-    name: "Complete Skincare & Cosmetics Gift Set",
-    weightTag: "Deluxe",
-    categoryTag: "Skincare",
-    image: require("@/assets/images/Home/skincare-cosmetics-gift-set.png"),
-    stockLeftText: "Almost sold out !",
-    stockProgress: 0.15,
     rating: 4.9,
     ratingCount: 180,
-    price: 1350,
-    originalPrice: 1850,
-  },
-  {
-    id: "flash-b-colgate",
-    name: "Colgate Max Fresh Cooling Toothpaste",
-    weightTag: "150g",
-    categoryTag: "Oral Care",
-    image: require("@/assets/images/Home/toothpaste-colgate.png"),
-    stockLeftText: "Few pieces left !",
-    stockProgress: 0.55,
-    rating: 4.8,
-    ratingCount: 420,
-    price: 115,
-    originalPrice: 150,
-  },
-  {
-    id: "flash-b-wash",
-    name: "Himalaya Gentle Refreshing Body Wash",
-    weightTag: "400ml",
-    categoryTag: "Bath & Body",
-    image: require("@/assets/images/Home/himalaya-baby-wash.png"),
-    stockLeftText: "Selling fast !",
-    stockProgress: 0.35,
-    rating: 4.7,
-    ratingCount: 290,
-    price: 260,
-    originalPrice: 340,
-  },
-  {
-    id: "flash-b-brush",
-    name: "Soft Bristle Professional Powder Brush",
-    weightTag: "1 Unit",
-    categoryTag: "Tools",
-    image: require("@/assets/images/Home/makeup-powder-brush.png"),
-    stockLeftText: "Few pieces left !",
-    stockProgress: 0.5,
-    rating: 4.6,
-    ratingCount: 95,
-    price: 180,
-    originalPrice: 250,
-  },
-];
-
-// ==========================================
-// 6. SNACKS FLASH SALE
-// ==========================================
-const SNACKS_ROW1: FlashSaleProduct[] = [
-  {
-    id: "flash-sn-waiwai",
-    name: "Wai Wai Quick Chicken Masala Noodles",
-    weightTag: "75g",
-    categoryTag: "Noodles",
-    image: require("@/assets/images/Home/product-waiwai.png"),
-    stockLeftText: "Selling fast !",
-    stockProgress: 0.4,
-    rating: 4.8,
-    ratingCount: 680,
-    price: 25,
-    originalPrice: 30,
-  },
-  {
-    id: "flash-sn-capri",
-    name: "Capri-Sun Orange Refreshing Drink",
-    weightTag: "200ml",
-    categoryTag: "Juices",
-    image: require("@/assets/images/Home/capri-sun-orange-juice.png"),
-    stockLeftText: "Few pieces left !",
-    stockProgress: 0.3,
-    rating: 4.7,
-    ratingCount: 240,
-    price: 80,
-    originalPrice: 100,
-  },
-  {
-    id: "flash-sn-2pm",
-    name: "2pm Hot & Spicy Fire Instant Noodles",
-    weightTag: "100g",
-    categoryTag: "Noodles",
-    image: require("@/assets/images/Home/product-2pm.png"),
-    stockLeftText: "Hot item !",
-    stockProgress: 0.25,
-    rating: 4.8,
-    ratingCount: 390,
-    price: 65,
-    originalPrice: 80,
-  },
-  {
-    id: "flash-sn-bacon",
-    name: "Crispy Savory Smoked Bacon Strips",
-    weightTag: "200g",
-    categoryTag: "Quick Bites",
-    image: require("@/assets/images/Home/bacon-strips-meat.png"),
-    stockLeftText: "Limited stock !",
-    stockProgress: 0.2,
-    rating: 4.6,
-    ratingCount: 115,
-    price: 290,
-    originalPrice: 380,
-  },
-];
-
-const SNACKS_ROW2: FlashSaleProduct[] = [
-  {
-    id: "flash-sn-maggi",
-    name: "Maggi Masala 2-Minute Instant Noodles",
-    weightTag: "70g",
-    categoryTag: "Noodles",
-    image: require("@/assets/images/Home/product-maggi.png"),
-    stockLeftText: "Few pieces left !",
-    stockProgress: 0.5,
-    rating: 4.9,
-    ratingCount: 750,
-    price: 100,
-    originalPrice: 120,
-  },
-  {
-    id: "flash-sn-slice",
-    name: "Slice Sweet Mango Beverage Bottle",
-    weightTag: "1.2L",
-    categoryTag: "Juices",
-    image: require("@/assets/images/Home/slice-mango-juice.png"),
-    stockLeftText: "Selling fast !",
-    stockProgress: 0.45,
-    rating: 4.7,
-    ratingCount: 310,
-    price: 155,
-    originalPrice: 195,
-  },
-  {
-    id: "flash-sn-munch",
-    name: "Nestlé Munch Crunchy Chocolate Bar",
-    weightTag: "30g",
-    categoryTag: "Chocolates",
-    image: require("@/assets/images/Home/prod-munch.png"),
-    stockLeftText: "Few pieces left !",
-    stockProgress: 0.6,
-    rating: 4.8,
-    ratingCount: 420,
-    price: 20,
-    originalPrice: 25,
-  },
-  {
-    id: "flash-sn-cereal",
-    name: "Rainbow Fruit Loops Breakfast Bowl",
-    weightTag: "375g",
-    categoryTag: "Cereals",
-    image: require("@/assets/images/Home/rainbow-fruit-cereal-bowl.png"),
-    stockLeftText: "Few pieces left !",
-    stockProgress: 0.35,
-    rating: 4.7,
-    ratingCount: 160,
-    price: 240,
-    originalPrice: 320,
+    price: 750,
+    originalPrice: 999,
   },
 ];
 
@@ -718,9 +191,15 @@ const FLASH_CATEGORY_MAP: Record<
     row2: FlashSaleProduct[];
   }
 > = {
+  all: {
+    title: "Flash Sale & Low Stock Deals",
+    subtitle: "Hurry! Limited stock available across all categories.",
+    row1: GROCERY_ROW1,
+    row2: GROCERY_ROW2,
+  },
   grocery: {
     title: "Grocery Flash Sale",
-    subtitle: "Hurry! Fresh grocery deals that disappear in a flash.",
+    subtitle: "Hurry! Fresh grocery deals with limited stock remaining.",
     row1: GROCERY_ROW1,
     row2: GROCERY_ROW2,
   },
@@ -736,52 +215,170 @@ const FLASH_CATEGORY_MAP: Record<
     row1: KIDS_ROW1,
     row2: KIDS_ROW2,
   },
+  beauty: {
+    title: "Beauty & Care Flash Sale",
+    subtitle:
+      "Unbeatable flash discounts on skincare & cosmetics with low stock.",
+    row1: GROCERY_ROW1,
+    row2: GROCERY_ROW2,
+  },
+  snacks: {
+    title: "Snacks & Drinks Flash Sale",
+    subtitle: "Snack more, spend less! Lightning deals on limited snack items.",
+    row1: GROCERY_ROW1,
+    row2: GROCERY_ROW2,
+  },
   gifting: {
     title: "Gifting & Celebration Flash Sale",
     subtitle: "Grab sweet treats & gift hampers before they sell out.",
-    row1: GIFTING_ROW1,
-    row2: GIFTING_ROW2,
-  },
-  gifts: {
-    title: "Gifting & Celebration Flash Sale",
-    subtitle: "Grab sweet treats & gift hampers before they sell out.",
-    row1: GIFTING_ROW1,
-    row2: GIFTING_ROW2,
-  },
-  gift: {
-    title: "Gifting & Celebration Flash Sale",
-    subtitle: "Grab sweet treats & gift hampers before they sell out.",
-    row1: GIFTING_ROW1,
-    row2: GIFTING_ROW2,
+    row1: GROCERY_ROW1,
+    row2: GROCERY_ROW2,
   },
   stationery: {
     title: "Stationery & Office Flash Sale",
     subtitle: "Exclusive limited-time discounts on school & desk essentials.",
-    row1: STATIONERY_ROW1,
-    row2: STATIONERY_ROW2,
-  },
-  school: {
-    title: "Stationery & Office Flash Sale",
-    subtitle: "Exclusive limited-time discounts on school & desk essentials.",
-    row1: STATIONERY_ROW1,
-    row2: STATIONERY_ROW2,
-  },
-  beauty: {
-    title: "Beauty & Care Flash Sale",
-    subtitle: "Unbeatable flash discounts on skincare, cosmetics & fragrances.",
-    row1: BEAUTY_ROW1,
-    row2: BEAUTY_ROW2,
-  },
-  snacks: {
-    title: "Snacks & Drinks Flash Sale",
-    subtitle: "Snack more, spend less! Lightning deals on your favorites.",
-    row1: SNACKS_ROW1,
-    row2: SNACKS_ROW2,
+    row1: GROCERY_ROW1,
+    row2: GROCERY_ROW2,
   },
 };
 
+// ── Animated Skeleton Card for Flash Sale ─────────────────────────────
+function FlashSaleCardSkeleton({
+  animOpacity,
+}: {
+  animOpacity: Animated.Value;
+}) {
+  return (
+    <View style={styles.card}>
+      {/* Top Image Canvas Skeleton */}
+      <Animated.View
+        style={[
+          styles.imageBox,
+          styles.skeletonBlock,
+          {
+            opacity: animOpacity,
+            backgroundColor: "#FFFFFF",
+            borderRadius: scale(14),
+          },
+        ]}
+      />
+
+      {/* Stock Bar Skeleton */}
+      <View style={styles.stockContainer}>
+        <Animated.View
+          style={[
+            styles.skeletonBlock,
+            styles.skeletonLine,
+            {
+              width: scale(65),
+              height: scale(9),
+              marginBottom: scale(3),
+              opacity: animOpacity,
+            },
+          ]}
+        />
+        <Animated.View
+          style={[
+            styles.skeletonBlock,
+            styles.skeletonLine,
+            { width: "85%", height: scale(3), opacity: animOpacity },
+          ]}
+        />
+      </View>
+
+      {/* Details Container Skeleton */}
+      <View style={styles.detailsContainer}>
+        {/* Tags Row Skeleton */}
+        <View style={styles.tagsRow}>
+          <Animated.View
+            style={[
+              styles.skeletonBlock,
+              {
+                width: scale(38),
+                height: scale(14),
+                borderRadius: scale(4),
+                opacity: animOpacity,
+              },
+            ]}
+          />
+          <Animated.View
+            style={[
+              styles.skeletonBlock,
+              {
+                width: scale(48),
+                height: scale(14),
+                borderRadius: scale(4),
+                opacity: animOpacity,
+              },
+            ]}
+          />
+        </View>
+
+        {/* Title Skeleton Lines */}
+        <Animated.View
+          style={[
+            styles.skeletonBlock,
+            styles.skeletonLine,
+            {
+              width: "90%",
+              height: scale(12),
+              marginBottom: scale(4),
+              opacity: animOpacity,
+            },
+          ]}
+        />
+        <Animated.View
+          style={[
+            styles.skeletonBlock,
+            styles.skeletonLine,
+            {
+              width: "65%",
+              height: scale(12),
+              marginBottom: scale(6),
+              opacity: animOpacity,
+            },
+          ]}
+        />
+
+        {/* Rating Stars Skeleton */}
+        <Animated.View
+          style={[
+            styles.skeletonBlock,
+            styles.skeletonLine,
+            {
+              width: scale(60),
+              height: scale(11),
+              marginBottom: scale(6),
+              opacity: animOpacity,
+            },
+          ]}
+        />
+
+        {/* Price Row Skeleton */}
+        <View style={styles.priceRow}>
+          <Animated.View
+            style={[
+              styles.skeletonBlock,
+              styles.skeletonLine,
+              { width: scale(46), height: scale(15), opacity: animOpacity },
+            ]}
+          />
+          <Animated.View
+            style={[
+              styles.skeletonBlock,
+              styles.skeletonLine,
+              { width: scale(35), height: scale(11), opacity: animOpacity },
+            ]}
+          />
+        </View>
+      </View>
+    </View>
+  );
+}
+
 interface GroceryFlashSaleProps {
   category?:
+    | "all"
     | "grocery"
     | "kids"
     | "gifting"
@@ -799,7 +396,7 @@ interface GroceryFlashSaleProps {
 }
 
 export default function GroceryFlashSale({
-  category = "grocery",
+  category = "all",
   title,
   subtitle,
   row1Data,
@@ -808,13 +405,148 @@ export default function GroceryFlashSale({
   onAddPress,
   onSeeAllPress,
 }: GroceryFlashSaleProps) {
-  const catConfig =
-    FLASH_CATEGORY_MAP[category.toLowerCase()] || FLASH_CATEGORY_MAP.grocery;
+  const { publicProducts, publicLoading } = useAppSelector(
+    (state) => state.product,
+  );
 
-  const displayTitle = title || catConfig.title;
-  const displaySubtitle = subtitle || catConfig.subtitle;
-  const displayRow1 = row1Data || catConfig.row1;
-  const displayRow2 = row2Data || catConfig.row2;
+  // Smooth Pulse Animation for Skeletons
+  const pulseAnim = useRef(new Animated.Value(0.35)).current;
+
+  useEffect(() => {
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 0.85,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0.35,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    pulseLoop.start();
+
+    return () => pulseLoop.stop();
+  }, [pulseAnim]);
+
+  const { displayTitle, displaySubtitle, displayRow1, displayRow2 } =
+    useMemo(() => {
+      // 1. If explicit row1Data and row2Data are passed
+      if (row1Data && row2Data && row1Data.length > 0) {
+        return {
+          displayTitle: title || "Flash Sale",
+          displaySubtitle: subtitle || "Hurry before stock runs out!",
+          displayRow1: row1Data,
+          displayRow2: row2Data,
+        };
+      }
+
+      const normalizedCat = (category || "all").toLowerCase().trim();
+
+      // 2. Map & Filter real publicProducts from MongoDB based on low stock
+      if (publicProducts && publicProducts.length > 0) {
+        let filteredProducts = publicProducts;
+
+        // Filter by category if not 'all'
+        if (normalizedCat !== "all") {
+          filteredProducts = publicProducts.filter((p) => {
+            const prodCat = (p.category || "").toLowerCase();
+            const prodSub = (p.subCategory || "").toLowerCase();
+            const prodName = (p.name || "").toLowerCase();
+
+            return (
+              prodCat.includes(normalizedCat) ||
+              prodSub.includes(normalizedCat) ||
+              prodName.includes(normalizedCat)
+            );
+          });
+        }
+
+        if (filteredProducts.length > 0) {
+          const mappedList: FlashSaleProduct[] = filteredProducts.map((p) => {
+            const curPrice = p.price || 0;
+            const origPrice =
+              p.originalPrice && p.originalPrice > curPrice
+                ? p.originalPrice
+                : p.discountValue && p.discountValue > 0
+                  ? Math.round(curPrice / (1 - p.discountValue / 100))
+                  : curPrice;
+
+            const rawStock =
+              typeof p.stock === "number" ? p.stock : p.inStock ? 5 : 0;
+
+            const stockLeft = Math.max(rawStock, 1);
+            const progress = Math.min(Math.max(stockLeft / 15, 0.15), 0.85);
+
+            const stockLabel =
+              stockLeft <= 3
+                ? `Only ${stockLeft} left!`
+                : stockLeft <= 7
+                  ? `Only ${stockLeft} left in stock !`
+                  : "Few pieces left !";
+
+            const imgUrl =
+              p.images && p.images.length > 0
+                ? { uri: p.images[0].url }
+                : require("@/assets/images/Home/product-maggi.png");
+
+            return {
+              id: p._id || p.id || String(Math.random()),
+              name: p.name,
+              weightTag: p.unit || "1 unit",
+              categoryTag: p.subCategory || p.category || "Flash Deal",
+              image: imgUrl,
+              stockLeftText: stockLabel,
+              stockProgress: progress,
+              rating: p.ratingsAverage || 4.7,
+              ratingCount: p.ratingsCount || 85,
+              price: curPrice,
+              originalPrice: origPrice > curPrice ? origPrice : curPrice,
+            };
+          });
+
+          // Sort by lowest stock progress first (items running out first)
+          mappedList.sort(
+            (a, b) => (a.stockProgress || 0) - (b.stockProgress || 0),
+          );
+
+          const midpoint = Math.ceil(mappedList.length / 2);
+          const r1 = mappedList.slice(0, midpoint);
+          const r2 = mappedList.slice(midpoint, midpoint * 2);
+
+          const defaultTitle =
+            normalizedCat === "all"
+              ? "Flash Sale & Low Stock Deals"
+              : `${normalizedCat.charAt(0).toUpperCase() + normalizedCat.slice(1)} Flash Sale`;
+
+          const defaultSubtitle =
+            normalizedCat === "all"
+              ? "Selling fast across all categories! Grab yours before it's gone."
+              : `Hurry! Fresh ${normalizedCat} deals with limited stock remaining.`;
+
+          return {
+            displayTitle: title || defaultTitle,
+            displaySubtitle: subtitle || defaultSubtitle,
+            displayRow1: r1.length > 0 ? r1 : GROCERY_ROW1,
+            displayRow2: r2.length > 0 ? r2 : r1.length > 0 ? r1 : GROCERY_ROW2,
+          };
+        }
+      }
+
+      // 3. Fallback to category mock configuration
+      const catConfig =
+        FLASH_CATEGORY_MAP[normalizedCat] || FLASH_CATEGORY_MAP.all;
+
+      return {
+        displayTitle: title || catConfig.title,
+        displaySubtitle: subtitle || catConfig.subtitle,
+        displayRow1: catConfig.row1,
+        displayRow2: catConfig.row2,
+      };
+    }, [publicProducts, category, row1Data, row2Data, title, subtitle]);
 
   const renderProductCard = (item: FlashSaleProduct) => (
     <TouchableOpacity
@@ -825,7 +557,7 @@ export default function GroceryFlashSale({
     >
       {/* Product Image Container with Custom SVG Path Background */}
       <View style={styles.imageBox}>
-        {/* Custom SVG Path Canvas */}
+        {/* Main Card Background SVG */}
         <Svg
           width="100%"
           height="100%"
@@ -846,19 +578,31 @@ export default function GroceryFlashSale({
           />
         </View>
 
-        {/* ADD Button in the Left Bottom Corner of the SVG */}
-        <View style={styles.addButtonWrapperLeft}>
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => onAddPress?.(item)}
-            style={styles.addButton}
+        {/* Custom SVG Path ADD Button in the Matching Cutout */}
+        <TouchableOpacity
+          activeOpacity={0.82}
+          onPress={() => onAddPress?.(item)}
+          style={styles.svgAddButtonWrapper}
+        >
+          <Svg
+            width="100%"
+            height="100%"
+            viewBox="78 138 98 36"
+            preserveAspectRatio="none"
+            style={StyleSheet.absoluteFill}
           >
-            <Text style={styles.addButtonText}>ADD</Text>
-          </TouchableOpacity>
+            <Path
+              d={FLASH_ADD_BUTTON_SVG_PATH}
+              fill="#FFFFFF"
+              stroke="#43784A"
+              strokeWidth={1.5}
+            />
+          </Svg>
+          <Text style={styles.addButtonText}>ADD</Text>
           {item.optionsText ? (
             <Text style={styles.optionsText}>{item.optionsText}</Text>
           ) : null}
-        </View>
+        </TouchableOpacity>
       </View>
 
       {/* Stock Warning Progress Indicator */}
@@ -882,9 +626,6 @@ export default function GroceryFlashSale({
         <View style={styles.tagsRow}>
           <View style={styles.tagPill}>
             <Text style={styles.tagText}>{item.weightTag}</Text>
-          </View>
-          <View style={styles.tagPill}>
-            <Text style={styles.tagText}>{item.categoryTag}</Text>
           </View>
         </View>
 
@@ -922,6 +663,82 @@ export default function GroceryFlashSale({
     </TouchableOpacity>
   );
 
+  // ── 1. Skeleton Loading View ─────────────────────────────────
+  if (publicLoading && (!publicProducts || publicProducts.length === 0)) {
+    return (
+      <View style={styles.wrapper}>
+        <View style={styles.peachCard}>
+          {/* Header Title & Subtitle Skeletons */}
+          <Animated.View
+            style={[
+              styles.skeletonBlock,
+              styles.skeletonLine,
+              {
+                width: scale(180),
+                height: scale(22),
+                marginBottom: scale(6),
+                opacity: pulseAnim,
+              },
+            ]}
+          />
+          <Animated.View
+            style={[
+              styles.skeletonBlock,
+              styles.skeletonLine,
+              {
+                width: scale(230),
+                height: scale(13),
+                marginBottom: moderateScale(16),
+                opacity: pulseAnim,
+              },
+            ]}
+          />
+
+          {/* Row 1 Skeletons */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+          >
+            {[1, 2, 3].map((item) => (
+              <FlashSaleCardSkeleton
+                key={`skel-row1-${item}`}
+                animOpacity={pulseAnim}
+              />
+            ))}
+          </ScrollView>
+
+          {/* Row 2 Skeletons */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={[
+              styles.scrollContent,
+              { marginTop: scale(14) },
+            ]}
+          >
+            {[1, 2, 3].map((item) => (
+              <FlashSaleCardSkeleton
+                key={`skel-row2-${item}`}
+                animOpacity={pulseAnim}
+              />
+            ))}
+          </ScrollView>
+
+          {/* Bottom See All Banner Skeleton */}
+          <Animated.View
+            style={[
+              styles.seeAllBanner,
+              styles.skeletonBlock,
+              { opacity: pulseAnim, height: scale(46) },
+            ]}
+          />
+        </View>
+      </View>
+    );
+  }
+
+  // ── 2. Live Product Data View ─────────────────────────────────
   return (
     <View style={styles.wrapper}>
       <View style={styles.peachCard}>
@@ -1030,36 +847,27 @@ const styles = StyleSheet.create({
     width: "90%",
     height: "90%",
   },
-  addButtonWrapperLeft: {
+  svgAddButtonWrapper: {
     position: "absolute",
-    bottom: scale(4),
-    left: scale(66),
-    alignItems: "flex-end",
+    bottom: scale(2),
+    right: scale(4),
+    width: scale(72),
+    height: scale(30),
+    alignItems: "center",
+    justifyContent: "center",
     zIndex: 10,
   },
-  addButton: {
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1.5,
-    borderColor: "#43784A",
-    paddingHorizontal: scale(14),
-    paddingVertical: scale(3.5),
-    borderRadius: scale(8),
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 2,
-  },
   addButtonText: {
-    fontSize: moderateScale(12),
+    fontSize: moderateScale(11),
     fontWeight: "800",
     color: "#3F784C",
+    marginTop: scale(-1),
   },
   optionsText: {
-    fontSize: moderateScale(8.5),
+    fontSize: moderateScale(7.5),
     color: "#556987",
     fontWeight: "600",
-    marginTop: scale(1),
+    marginTop: scale(-1),
   },
   stockContainer: {
     marginTop: scale(12),
@@ -1170,5 +978,13 @@ const styles = StyleSheet.create({
   },
   seeAllArrow: {
     marginLeft: scale(4),
+  },
+
+  // ── Skeleton Styles ──────────────────────────────────────────
+  skeletonBlock: {
+    backgroundColor: "#E2E8F0",
+  },
+  skeletonLine: {
+    borderRadius: scale(4),
   },
 });
