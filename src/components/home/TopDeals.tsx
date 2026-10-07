@@ -304,6 +304,186 @@ const DEFAULT_SNACK_DEALS: DealProduct[] = [
   },
 ];
 
+const DEFAULT_BEAUTY_DEALS: DealProduct[] = [
+  {
+    id: "beauty-cream-1",
+    weight: "50 g",
+    category: "Beauty & Personal Care",
+    subCategory: "Skincare",
+    name: "Hydrating Day & Night Face Glow Cream",
+    rating: 4.8,
+    reviewsCount: 320,
+    price: 349,
+    originalPrice: 499,
+    discountPct: 30,
+    ordersCount: 650,
+    image: require("@/assets/images/Home/skincare-cream-jars-bottles.png"),
+  },
+  {
+    id: "beauty-perfume-1",
+    weight: "100 ml",
+    category: "Beauty & Personal Care",
+    subCategory: "Fragrances",
+    name: "Luxury Purple Eau De Parfum Long Lasting",
+    rating: 4.9,
+    reviewsCount: 410,
+    price: 799,
+    originalPrice: 1299,
+    discountPct: 38,
+    ordersCount: 820,
+    image: require("@/assets/images/Home/luxury-purple-perfume.png"),
+  },
+  {
+    id: "beauty-makeup-1",
+    weight: "15 g",
+    category: "Beauty & Personal Care",
+    subCategory: "Cosmetics",
+    name: "Velvet Matte Compact Powder & Blush",
+    rating: 4.7,
+    reviewsCount: 280,
+    price: 299,
+    originalPrice: 450,
+    discountPct: 33,
+    ordersCount: 490,
+    image: require("@/assets/images/Home/makeup-blush-compact.png"),
+  },
+];
+
+const DEFAULT_STATIONERY_DEALS: DealProduct[] = [
+  {
+    id: "stat-pen-1",
+    weight: "1 pc",
+    category: "Stationery",
+    subCategory: "Pens & Writing",
+    name: "Executive Gold Trim Fountain Pen",
+    rating: 4.9,
+    reviewsCount: 260,
+    price: 199,
+    originalPrice: 299,
+    discountPct: 33,
+    ordersCount: 580,
+    image: require("@/assets/images/Home/executive-fountain-pen.png"),
+  },
+  {
+    id: "stat-pencils-1",
+    weight: "24 shades",
+    category: "Stationery",
+    subCategory: "Art & Craft",
+    name: "Premium Soft Lead Colored Pencils Set",
+    rating: 4.8,
+    reviewsCount: 340,
+    price: 249,
+    originalPrice: 350,
+    discountPct: 29,
+    ordersCount: 620,
+    image: require("@/assets/images/Home/colored-pencils-row.png"),
+  },
+  {
+    id: "stat-notes-1",
+    weight: "300 sheets",
+    category: "Stationery",
+    subCategory: "Notebooks & Paper",
+    name: "Pastel Sticky Notes & Spiral Notepad Combo",
+    rating: 4.7,
+    reviewsCount: 190,
+    price: 149,
+    originalPrice: 220,
+    discountPct: 32,
+    ordersCount: 430,
+    image: require("@/assets/images/Home/notebooks-sticky-notes.png"),
+  },
+];
+
+const DEFAULT_KIDS_DEALS: DealProduct[] = [
+  {
+    id: "kids-bag-1",
+    weight: "1 pc",
+    category: "Kids & Toys",
+    subCategory: "School Bags",
+    name: "Pink Cartoon Cute School Backpack",
+    rating: 4.9,
+    reviewsCount: 450,
+    price: 499,
+    originalPrice: 799,
+    discountPct: 38,
+    ordersCount: 780,
+    image: require("@/assets/images/Home/pink-cartoon-backpack.png"),
+  },
+  {
+    id: "kids-toy-1",
+    weight: "1 pc",
+    category: "Kids & Toys",
+    subCategory: "Soft Toys",
+    name: "Super Soft Plush Bunny Toy for Kids",
+    rating: 4.8,
+    reviewsCount: 310,
+    price: 349,
+    originalPrice: 550,
+    discountPct: 37,
+    ordersCount: 620,
+    image: require("@/assets/images/Home/plush-bunny-toy.png"),
+  },
+  {
+    id: "kids-bottle-1",
+    weight: "600 ml",
+    category: "Kids & Toys",
+    subCategory: "Bottles & Sippers",
+    name: "BPA-Free Kids Sipper Water Bottle",
+    rating: 4.7,
+    reviewsCount: 220,
+    price: 199,
+    originalPrice: 299,
+    discountPct: 33,
+    ordersCount: 510,
+    image: require("@/assets/images/Home/kids-water-bottle-sipper.png"),
+  },
+];
+
+const DEFAULT_GIFTING_DEALS: DealProduct[] = [
+  {
+    id: "gift-hamper-1",
+    weight: "1 hamper",
+    category: "Gifting",
+    subCategory: "Gift Hampers",
+    name: "Luxury Celebration Gift Hamper Basket",
+    rating: 4.9,
+    reviewsCount: 520,
+    price: 899,
+    originalPrice: 1499,
+    discountPct: 40,
+    ordersCount: 940,
+    image: require("@/assets/images/Home/gift-basket-care.png"),
+  },
+  {
+    id: "gift-flowers-1",
+    weight: "1 bouquet",
+    category: "Gifting",
+    subCategory: "Flowers & Cards",
+    name: "Fresh Red Rose Flower Bouquet Arrangement",
+    rating: 4.8,
+    reviewsCount: 380,
+    price: 499,
+    originalPrice: 750,
+    discountPct: 33,
+    ordersCount: 690,
+    image: require("@/assets/images/Home/gift-flower-bouquet.png"),
+  },
+  {
+    id: "gift-choc-1",
+    weight: "350 g",
+    category: "Gifting",
+    subCategory: "Chocolates",
+    name: "Cadbury Dairy Milk Celebrations Gift Box",
+    rating: 4.9,
+    reviewsCount: 670,
+    price: 350,
+    originalPrice: 500,
+    discountPct: 30,
+    ordersCount: 1120,
+    image: require("@/assets/images/Home/prod-dairymilk.png"),
+  },
+];
+
 export default function TopDeals({
   title = "Top Deals & Trending Picks",
   category = "grocery",
@@ -529,6 +709,7 @@ export default function TopDeals({
             (a, b) => b.ordersCount - a.ordersCount || b.discountPct - a.discountPct
           );
         }
+        return DEFAULT_BEAUTY_DEALS;
       }
 
       // E. Stationery Filter
@@ -550,6 +731,7 @@ export default function TopDeals({
             (a, b) => b.ordersCount - a.ordersCount || b.discountPct - a.discountPct
           );
         }
+        return DEFAULT_STATIONERY_DEALS;
       }
 
       // F. Kids Filter
@@ -569,9 +751,31 @@ export default function TopDeals({
             (a, b) => b.ordersCount - a.ordersCount || b.discountPct - a.discountPct
           );
         }
+        return DEFAULT_KIDS_DEALS;
       }
 
-      // G. Default Top Deals
+      // G. Gifting Filter
+      if (catLower === "gifting" || catLower === "gifts") {
+        const giftMatches = allDeals.filter((p) => {
+          const text = `${p.name} ${p.category} ${p.subCategory} ${(p.tags || []).join(" ")}`.toLowerCase();
+          return (
+            text.includes("gift") ||
+            text.includes("hamper") ||
+            text.includes("combo") ||
+            text.includes("chocolate") ||
+            text.includes("flower") ||
+            text.includes("sweet")
+          );
+        });
+        if (giftMatches.length > 0) {
+          return giftMatches.sort(
+            (a, b) => b.ordersCount - a.ordersCount || b.discountPct - a.discountPct
+          );
+        }
+        return DEFAULT_GIFTING_DEALS;
+      }
+
+      // H. Default Top Deals
       const matchedDeals = allDeals.filter(
         (p) => p.discountPct >= 15 && p.ordersCount > 50
       );
@@ -600,6 +804,18 @@ export default function TopDeals({
     if (catLower === "snacks") {
       return DEFAULT_SNACK_DEALS;
     }
+    if (catLower === "beauty" || catLower === "beauty-personal-care") {
+      return DEFAULT_BEAUTY_DEALS;
+    }
+    if (catLower === "stationery" || catLower === "office-stationery") {
+      return DEFAULT_STATIONERY_DEALS;
+    }
+    if (catLower === "kids" || catLower === "baby-kids") {
+      return DEFAULT_KIDS_DEALS;
+    }
+    if (catLower === "gifting" || catLower === "gifts") {
+      return DEFAULT_GIFTING_DEALS;
+    }
 
     return DEFAULT_GROCERY_DEALS;
   }, [items, publicProducts, category, title]);
@@ -609,7 +825,7 @@ export default function TopDeals({
   // Extract up to 3 real live thumbnails for the bottom "See all products" banner
   const previewThumbnails = useMemo(() => {
     if (allItems && allItems.length > 0) {
-      return allItems.slice(0, 3).map((p) => p.image);
+      return allItems.slice(0, 3).map((p: DealProduct) => p.image);
     }
     return [
       require("@/assets/images/Home/product-maggi.png"),
@@ -625,7 +841,7 @@ export default function TopDeals({
       columns.push(allItems.slice(i, i + 2));
     }
   } else {
-    allItems.forEach((item) => columns.push([item]));
+    allItems.forEach((item: DealProduct) => columns.push([item]));
   }
 
   const handleSeeAll = () => {
@@ -757,7 +973,7 @@ export default function TopDeals({
         >
           {/* 3 Real Live Product Overlapping Thumbnail Avatars */}
           <View style={styles.avatarGroup}>
-            {previewThumbnails.map((imgSrc, idx) => (
+            {previewThumbnails.map((imgSrc: any, idx: number) => (
               <View
                 key={`top-thumb-${idx}`}
                 style={[

@@ -235,6 +235,8 @@ export default function CategoryExpandScreen() {
   const normalize = (str?: string) =>
     (str || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 
+  const reduxCategory = useAppSelector((state) => state.product.selectedCategory);
+
   // 1. Resolve parent category
   const parentCategory = useMemo(() => {
     // A. Direct exact match in CATEGORY_NAMES
@@ -242,7 +244,7 @@ export default function CategoryExpandScreen() {
       return params.category;
     }
 
-    // B. Check category ID match (e.g. 'snacks-drinks', 'snacks', 'grocery-kitchen', etc.)
+    // B. Check category ID match (e.g. 'snacks-drinks', 'beauty-personal-care', 'school-office-stationery', 'grocery-kitchen')
     if (params.category) {
       const catById = APP_CATEGORIES.find(
         (c) =>
@@ -290,14 +292,55 @@ export default function CategoryExpandScreen() {
 
       // Semantic keyword domain mappings
       if (
-        normTarget.includes("kid") ||
-        normTarget.includes("baby") ||
-        normTarget.includes("winter") ||
+        normTarget.includes("beauty") ||
+        normTarget.includes("personal") ||
+        normTarget.includes("care") ||
+        normTarget.includes("skin") ||
+        normTarget.includes("face") ||
+        normTarget.includes("bath") ||
+        normTarget.includes("wash") ||
+        normTarget.includes("hair") ||
+        normTarget.includes("makeup") ||
+        normTarget.includes("cosmetic") ||
+        normTarget.includes("blush") ||
+        normTarget.includes("lipstick") ||
+        normTarget.includes("oral") ||
+        normTarget.includes("paste") ||
+        normTarget.includes("perfume") ||
+        normTarget.includes("fragrance") ||
+        normTarget.includes("shampoo") ||
+        normTarget.includes("lotion") ||
+        normTarget.includes("cream") ||
+        normTarget.includes("hygiene") ||
+        normTarget.includes("pharma") ||
+        normTarget.includes("wellness") ||
         normTarget.includes("diaper") ||
+        normTarget.includes("baby") ||
+        normTarget.includes("kid") ||
+        normTarget.includes("winter") ||
         normTarget.includes("toy")
       ) {
         return "Beauty & Personal Care";
       }
+
+      if (
+        normTarget.includes("station") ||
+        normTarget.includes("pen") ||
+        normTarget.includes("pencil") ||
+        normTarget.includes("school") ||
+        normTarget.includes("office") ||
+        normTarget.includes("book") ||
+        normTarget.includes("notebook") ||
+        normTarget.includes("paper") ||
+        normTarget.includes("art") ||
+        normTarget.includes("craft") ||
+        normTarget.includes("desk") ||
+        normTarget.includes("folder") ||
+        normTarget.includes("file")
+      ) {
+        return "School, Office & Stationery";
+      }
+
       if (
         normTarget.includes("snack") ||
         normTarget.includes("drink") ||
@@ -306,39 +349,58 @@ export default function CategoryExpandScreen() {
         normTarget.includes("chocolate") ||
         normTarget.includes("biscuit") ||
         normTarget.includes("chips") ||
-        normTarget.includes("beverage")
+        normTarget.includes("beverage") ||
+        normTarget.includes("noodle") ||
+        normTarget.includes("maggi") ||
+        normTarget.includes("waiwai") ||
+        normTarget.includes("pasta") ||
+        normTarget.includes("cereal") ||
+        normTarget.includes("namkeen") ||
+        normTarget.includes("candy") ||
+        normTarget.includes("icecream") ||
+        normTarget.includes("sauce") ||
+        normTarget.includes("gift") ||
+        normTarget.includes("hamper")
       ) {
         return "Snacks & Drinks";
       }
-      if (
-        normTarget.includes("station") ||
-        normTarget.includes("pen") ||
-        normTarget.includes("school") ||
-        normTarget.includes("office") ||
-        normTarget.includes("book") ||
-        normTarget.includes("art") ||
-        normTarget.includes("craft")
-      ) {
-        return "School, Office & Stationery";
-      }
+
       if (
         normTarget.includes("groc") ||
         normTarget.includes("fruit") ||
         normTarget.includes("veg") ||
         normTarget.includes("rice") ||
         normTarget.includes("atta") ||
+        normTarget.includes("dal") ||
         normTarget.includes("oil") ||
+        normTarget.includes("ghee") ||
         normTarget.includes("dairy") ||
+        normTarget.includes("bread") ||
+        normTarget.includes("egg") ||
         normTarget.includes("meat") ||
-        normTarget.includes("pulse") ||
-        normTarget.includes("cereal")
+        normTarget.includes("fish") ||
+        normTarget.includes("chicken") ||
+        normTarget.includes("kitchen") ||
+        normTarget.includes("spice") ||
+        normTarget.includes("masala")
       ) {
         return "Grocery & Kitchen";
       }
     }
 
+    // D. Use active Redux category if available
+    if (reduxCategory && reduxCategory !== "all") {
+      const normRedux = normalize(reduxCategory);
+      if (normRedux.includes("beauty")) return "Beauty & Personal Care";
+      if (normRedux.includes("station")) return "School, Office & Stationery";
+      if (normRedux.includes("snack")) return "Snacks & Drinks";
+      if (normRedux.includes("kid") || normRedux.includes("baby")) return "Beauty & Personal Care";
+      if (normRedux.includes("gift")) return "Snacks & Drinks";
+      if (normRedux.includes("groc")) return "Grocery & Kitchen";
+    }
+
     return "Grocery & Kitchen";
-  }, [params.category, params.title, params.subCategory]);
+  }, [params.category, params.title, params.subCategory, reduxCategory]);
 
   // 2. Resolve initial subcategory selection
   const initialSubcategory = useMemo(() => {
@@ -364,6 +426,7 @@ export default function CategoryExpandScreen() {
       const normTarget = normalize(target);
       if (!normTarget) continue;
 
+      // Direct exact or partial string matching
       const match = validSubs.find(
         (s) =>
           normalize(s) === normTarget ||
@@ -371,6 +434,84 @@ export default function CategoryExpandScreen() {
           normTarget.includes(normalize(s))
       );
       if (match) return match;
+
+      // Domain semantic subcategory mapping
+      if (normTarget.includes("skin") || normTarget.includes("face") || normTarget.includes("lotion") || normTarget.includes("cream")) {
+        const sub = validSubs.find((s) => s.includes("Skin"));
+        if (sub) return sub;
+      }
+      if (normTarget.includes("bath") || normTarget.includes("wash") || normTarget.includes("oral") || normTarget.includes("toothpaste") || normTarget.includes("perfume") || normTarget.includes("fragrance")) {
+        const sub = validSubs.find((s) => s.includes("Bath"));
+        if (sub) return sub;
+      }
+      if (normTarget.includes("makeup") || normTarget.includes("cosmetic") || normTarget.includes("blush") || normTarget.includes("lipstick")) {
+        const sub = validSubs.find((s) => s.includes("Beauty") || s.includes("Cosmetics"));
+        if (sub) return sub;
+      }
+      if (normTarget.includes("hair") || normTarget.includes("shampoo")) {
+        const sub = validSubs.find((s) => s.includes("Hair"));
+        if (sub) return sub;
+      }
+      if (normTarget.includes("baby") || normTarget.includes("diaper") || normTarget.includes("kid") || normTarget.includes("toy")) {
+        const sub = validSubs.find((s) => s.includes("Baby"));
+        if (sub) return sub;
+      }
+      if (normTarget.includes("pen") || normTarget.includes("pencil") || normTarget.includes("writing")) {
+        const sub = validSubs.find((s) => s.includes("Writing"));
+        if (sub) return sub;
+      }
+      if (normTarget.includes("school") || normTarget.includes("bag") || normTarget.includes("bottle")) {
+        const sub = validSubs.find((s) => s.includes("School"));
+        if (sub) return sub;
+      }
+      if (normTarget.includes("office") || normTarget.includes("paper") || normTarget.includes("notebook") || normTarget.includes("file")) {
+        const sub = validSubs.find((s) => s.includes("Office"));
+        if (sub) return sub;
+      }
+      if (normTarget.includes("art") || normTarget.includes("craft") || normTarget.includes("color")) {
+        const sub = validSubs.find((s) => s.includes("Art"));
+        if (sub) return sub;
+      }
+      if (normTarget.includes("noodle") || normTarget.includes("maggi") || normTarget.includes("waiwai") || normTarget.includes("pasta") || normTarget.includes("instant")) {
+        const sub = validSubs.find((s) => s.includes("Instant"));
+        if (sub) return sub;
+      }
+      if (normTarget.includes("choc") || normTarget.includes("sweet") || normTarget.includes("candy")) {
+        const sub = validSubs.find((s) => s.includes("Sweet"));
+        if (sub) return sub;
+      }
+      if (normTarget.includes("juice") || normTarget.includes("drink")) {
+        const sub = validSubs.find((s) => s.includes("Drink") || s.includes("Juice"));
+        if (sub) return sub;
+      }
+      if (normTarget.includes("tea") || normTarget.includes("coffee")) {
+        const sub = validSubs.find((s) => s.includes("Tea"));
+        if (sub) return sub;
+      }
+      if (normTarget.includes("chip") || normTarget.includes("namkeen")) {
+        const sub = validSubs.find((s) => s.includes("Chip"));
+        if (sub) return sub;
+      }
+      if (normTarget.includes("oil") || normTarget.includes("ghee") || normTarget.includes("masala")) {
+        const sub = validSubs.find((s) => s.includes("Oil"));
+        if (sub) return sub;
+      }
+      if (normTarget.includes("rice") || normTarget.includes("atta") || normTarget.includes("dal")) {
+        const sub = validSubs.find((s) => s.includes("Atta") || s.includes("Rice"));
+        if (sub) return sub;
+      }
+      if (normTarget.includes("dairy") || normTarget.includes("milk") || normTarget.includes("butter") || normTarget.includes("paneer") || normTarget.includes("cheese")) {
+        const sub = validSubs.find((s) => s.includes("Dairy"));
+        if (sub) return sub;
+      }
+      if (normTarget.includes("meat") || normTarget.includes("chicken") || normTarget.includes("fish")) {
+        const sub = validSubs.find((s) => s.includes("Chicken") || s.includes("Meat"));
+        if (sub) return sub;
+      }
+      if (normTarget.includes("veg") || normTarget.includes("fruit")) {
+        const sub = validSubs.find((s) => s.includes("Vegetable"));
+        if (sub) return sub;
+      }
 
       // Check partial token matches
       const tokenMatch = validSubs.find((s) => {

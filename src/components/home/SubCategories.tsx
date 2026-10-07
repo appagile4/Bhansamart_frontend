@@ -1,7 +1,9 @@
+import { useAppSelector } from "@/store/hooks";
 import { moderateScale, scale, useTheme } from "@/theme";
 import { Image } from "expo-image";
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import {
+  Animated,
   Dimensions,
   StyleSheet,
   Text,
@@ -664,8 +666,81 @@ export default function GrocerySubCategories({
   sections,
   onItemPress,
 }: GrocerySubCategoriesProps) {
+  const { publicProducts, publicLoading } = useAppSelector(
+    (state) => state.product
+  );
+
+  const pulseAnim = useRef(new Animated.Value(0.35)).current;
+
+  useEffect(() => {
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 0.85,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0.35,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pulseLoop.start();
+    return () => pulseLoop.stop();
+  }, [pulseAnim]);
+
   const displaySections =
     sections || CATALOG_CATEGORY_MAP[category.toLowerCase()] || GROCERY_SECTIONS;
+
+  if (publicLoading && (!publicProducts || publicProducts.length === 0)) {
+    return (
+      <View style={styles.container}>
+        {[1, 2].map((sec) => (
+          <View key={`sub-skel-sec-${sec}`} style={styles.sectionContainer}>
+            <Animated.View
+              style={[
+                styles.skeletonBlock,
+                {
+                  width: scale(140),
+                  height: scale(16),
+                  borderRadius: scale(4),
+                  marginBottom: moderateScale(10),
+                  opacity: pulseAnim,
+                },
+              ]}
+            />
+            <View style={styles.itemsRow}>
+              {[1, 2, 3].map((item) => (
+                <View key={`sub-skel-item-${sec}-${item}`} style={styles.itemWrapper}>
+                  <Animated.View
+                    style={[
+                      styles.cardBox,
+                      styles.skeletonBlock,
+                      { opacity: pulseAnim },
+                    ]}
+                  />
+                  <Animated.View
+                    style={[
+                      styles.skeletonBlock,
+                      {
+                        width: "70%",
+                        height: scale(10),
+                        marginTop: scale(6),
+                        borderRadius: scale(3),
+                        opacity: pulseAnim,
+                      },
+                    ]}
+                  />
+                </View>
+              ))}
+            </View>
+          </View>
+        ))}
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -751,6 +826,9 @@ const styles = StyleSheet.create({
     color: "#475569",
     textAlign: "center",
     lineHeight: moderateScale(16),
+  },
+  skeletonBlock: {
+    backgroundColor: "#E2E8F0",
   },
 });
 

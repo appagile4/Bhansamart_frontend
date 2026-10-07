@@ -1,6 +1,9 @@
+import { useAppSelector } from "@/store/hooks";
 import { moderateScale, scale } from "@/theme";
 import { Image } from "expo-image";
+import React, { useEffect, useRef } from "react";
 import {
+  Animated,
   ScrollView,
   StyleSheet,
   Text,
@@ -75,7 +78,7 @@ const KIDS_ITEMS: FeaturedBrandItem[] = [
     title: "Backpacks",
     tag: "Featured",
     bgColor: "#F59E0B",
-    imageSource: require("@/assets/images/Home/kids-playmat-shoes.png"),
+    imageSource: require("@/assets/images/Home/pink-cartoon-backpack.png"),
     category: "kids-backpacks",
   },
   {
@@ -83,15 +86,15 @@ const KIDS_ITEMS: FeaturedBrandItem[] = [
     title: "Soft Toys",
     tag: "Featured",
     bgColor: "#EC4899",
-    imageSource: require("@/assets/images/Home/kids-playmat-shoes.png"),
+    imageSource: require("@/assets/images/Home/plush-bunny-toy.png"),
     category: "soft-toys",
   },
   {
     id: "k-feat-4",
-    title: "Outfits",
+    title: "Baby Wear",
     tag: "Featured",
     bgColor: "#3B82F6",
-    imageSource: require("@/assets/images/Home/kids-playmat-shoes.png"),
+    imageSource: require("@/assets/images/Home/baby-winter-hooded-onesie.png"),
     category: "kids-outfits",
   },
   {
@@ -99,7 +102,7 @@ const KIDS_ITEMS: FeaturedBrandItem[] = [
     title: "Wooden Toys",
     tag: "Featured",
     bgColor: "#8B5CF6",
-    imageSource: require("@/assets/images/Home/kids-playmat-shoes.png"),
+    imageSource: require("@/assets/images/Home/wooden-toy-train.png"),
     category: "educational-toys",
   },
 ];
@@ -113,15 +116,15 @@ const GIFTING_ITEMS: FeaturedBrandItem[] = [
     title: "Sweet Treats",
     tag: "Featured",
     bgColor: "#C2410C",
-    imageSource: require("@/assets/images/Home/craft-stationery-flatlay.jpg"),
-    category: "chocolate-gifts",
+    imageSource: require("@/assets/images/Home/prod-munch.png"),
+    category: "sweet-treats",
   },
   {
     id: "gift-feat-2",
     title: "KitKat Gift",
     tag: "Featured",
     bgColor: "#DC2626",
-    imageSource: require("@/assets/images/Home/craft-stationery-flatlay.jpg"),
+    imageSource: require("@/assets/images/Home/prod-kitkat.png"),
     category: "sweet-treats",
   },
   {
@@ -129,16 +132,24 @@ const GIFTING_ITEMS: FeaturedBrandItem[] = [
     title: "Dairy Milk",
     tag: "Featured",
     bgColor: "#4C1D95",
-    imageSource: require("@/assets/images/Home/craft-stationery-flatlay.jpg"),
+    imageSource: require("@/assets/images/Home/prod-dairymilk.png"),
     category: "premium-chocolates",
   },
   {
     id: "gift-feat-4",
-    title: "Gift Combos",
+    title: "Care Hampers",
     tag: "Featured",
     bgColor: "#EA580C",
-    imageSource: require("@/assets/images/Home/craft-stationery-flatlay.jpg"),
+    imageSource: require("@/assets/images/Home/gift-basket-care.png"),
     category: "gift-combos",
+  },
+  {
+    id: "gift-feat-5",
+    title: "Celebration",
+    tag: "Featured",
+    bgColor: "#D97706",
+    imageSource: require("@/assets/images/Home/gift-flower-bouquet.png"),
+    category: "gift-flowers",
   },
 ];
 
@@ -151,32 +162,40 @@ const STATIONERY_ITEMS: FeaturedBrandItem[] = [
     title: "School Bags",
     tag: "Featured",
     bgColor: "#2563EB",
-    imageSource: require("@/assets/images/Home/black-ballpoint-pens.jpg"),
+    imageSource: require("@/assets/images/Home/printed-school-backpack.png"),
     category: "school-backpacks",
   },
   {
     id: "stat-feat-2",
-    title: "Stationery Sets",
+    title: "Notebooks",
     tag: "Featured",
     bgColor: "#10B981",
-    imageSource: require("@/assets/images/Home/black-ballpoint-pens.jpg"),
-    category: "stationery-kits",
+    imageSource: require("@/assets/images/Home/notebooks-sticky-notes.png"),
+    category: "paper-notebooks",
   },
   {
     id: "stat-feat-3",
     title: "Water Bottles",
     tag: "Featured",
     bgColor: "#06B6D4",
-    imageSource: require("@/assets/images/Home/black-ballpoint-pens.jpg"),
+    imageSource: require("@/assets/images/Home/kids-water-bottle-sipper.png"),
     category: "water-bottles",
   },
   {
     id: "stat-feat-4",
-    title: "Art & Craft",
+    title: "Color Pencils",
     tag: "Featured",
     bgColor: "#F97316",
-    imageSource: require("@/assets/images/Home/black-ballpoint-pens.jpg"),
+    imageSource: require("@/assets/images/Home/colored-pencils-row.png"),
     category: "art-craft",
+  },
+  {
+    id: "stat-feat-5",
+    title: "Writing Pens",
+    tag: "Featured",
+    bgColor: "#4F46E5",
+    imageSource: require("@/assets/images/Home/executive-fountain-pen.png"),
+    category: "pens-writing",
   },
 ];
 
@@ -189,23 +208,23 @@ const BEAUTY_ITEMS: FeaturedBrandItem[] = [
     title: "Skincare",
     tag: "Featured",
     bgColor: "#DB2777",
-    imageSource: require("@/assets/images/Home/beauty-cosmetics-flatlay.jpg"),
+    imageSource: require("@/assets/images/Home/skincare-cream-jars-bottles.png"),
     category: "skin-care",
   },
   {
     id: "beauty-feat-2",
-    title: "Hair Care",
+    title: "Bath & Wash",
     tag: "Featured",
     bgColor: "#7C3AED",
-    imageSource: require("@/assets/images/Home/beauty-cosmetics-flatlay.jpg"),
-    category: "hair-care",
+    imageSource: require("@/assets/images/Home/himalaya-baby-wash.png"),
+    category: "bath-body",
   },
   {
     id: "beauty-feat-3",
     title: "Oral Care",
     tag: "Featured",
     bgColor: "#0284C7",
-    imageSource: require("@/assets/images/Home/beauty-cosmetics-flatlay.jpg"),
+    imageSource: require("@/assets/images/Home/toothpaste-colgate.png"),
     category: "oral-care",
   },
   {
@@ -213,8 +232,16 @@ const BEAUTY_ITEMS: FeaturedBrandItem[] = [
     title: "Fragrance",
     tag: "Featured",
     bgColor: "#E11D48",
-    imageSource: require("@/assets/images/Home/beauty-cosmetics-flatlay.jpg"),
+    imageSource: require("@/assets/images/Home/luxury-purple-perfume.png"),
     category: "fragrance",
+  },
+  {
+    id: "beauty-feat-5",
+    title: "Makeup",
+    tag: "Featured",
+    bgColor: "#EC4899",
+    imageSource: require("@/assets/images/Home/makeup-blush-compact.png"),
+    category: "makeup",
   },
 ];
 
@@ -296,9 +323,60 @@ export default function FeaturedBrands({
   items,
   onItemPress,
 }: FeaturedBrandsProps) {
+  const { publicProducts, publicLoading } = useAppSelector(
+    (state) => state.product
+  );
+
+  const pulseAnim = useRef(new Animated.Value(0.35)).current;
+
+  useEffect(() => {
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 0.85,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0.35,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pulseLoop.start();
+    return () => pulseLoop.stop();
+  }, [pulseAnim]);
+
   // Resolve items by explicitly passed items or category lookup
   const displayItems =
     items || CATEGORY_MAP[category.toLowerCase()] || GROCERY_ITEMS;
+
+  if (publicLoading && (!publicProducts || publicProducts.length === 0)) {
+    return (
+      <View style={styles.container}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {[1, 2, 3, 4].map((i) => (
+            <Animated.View
+              key={`feat-skel-${i}`}
+              style={[
+                styles.cardContainer,
+                {
+                  backgroundColor: "#E2E8F0",
+                  borderRadius: scale(16),
+                  opacity: pulseAnim,
+                },
+              ]}
+            />
+          ))}
+        </ScrollView>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
