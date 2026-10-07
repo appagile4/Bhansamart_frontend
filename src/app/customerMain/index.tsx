@@ -19,7 +19,8 @@ import {
   TopDeals,
 } from "@/components/home";
 import { useCart } from "@/context/cart-context";
-import { useAppSelector } from "@/store/hooks";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { fetchPublicProducts } from "@/store/slices/productSlice";
 import { moderateScale, scale, useTheme } from "@/theme";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -28,10 +29,15 @@ import { ScrollView, StyleSheet, View } from "react-native";
 
 export default function HomeScreen() {
   const theme = useTheme();
+  const dispatch = useAppDispatch();
   const { addToCart } = useCart();
   const { isAuthenticated, isInitialized } = useAppSelector(
     (state) => state.auth,
   );
+
+  useEffect(() => {
+    dispatch(fetchPublicProducts());
+  }, [dispatch]);
 
   useEffect(() => {
     if (isInitialized && !isAuthenticated) {

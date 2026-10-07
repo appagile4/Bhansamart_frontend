@@ -4,7 +4,7 @@ import { useCart } from "@/context/cart-context";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   fetchProductById,
-  fetchPublicProducts,
+  fetchRelatedProducts,
   ProductItem,
 } from "@/store/slices/productSlice";
 import { recordProductViewApi } from "@/store/services/productService";
@@ -62,7 +62,7 @@ export default function ProductDetailScreen() {
   const [isSellerModalVisible, setIsSellerModalVisible] = useState(false);
 
   // Redux state
-  const { currentProduct, publicProducts, loading } = useAppSelector(
+  const { currentProduct, relatedProducts, loading } = useAppSelector(
     (state) => state.product
   );
 
@@ -74,13 +74,13 @@ export default function ProductDetailScreen() {
     }
   }, [params.id, dispatch]);
 
-  // 2. Fetch related public products for Similar Products / People Also Bought
+  // 2. Fetch related products for Similar Products / People Also Bought
   useEffect(() => {
     const cat = currentProduct?.category || params.category;
     const subCat = currentProduct?.subCategory || params.subCategory;
     if (cat || subCat) {
       dispatch(
-        fetchPublicProducts({
+        fetchRelatedProducts({
           category: cat,
           subCategory: subCat,
           limit: 8,
@@ -173,13 +173,13 @@ export default function ProductDetailScreen() {
     };
   }, [product, productCategory, productSubCategory, ratingAvg, ratingReviewsCount]);
 
-  // 8. Similar Products from Public Catalog
+  // 8. Similar Products from Related Catalog
   const similarProducts = useMemo(() => {
-    const filtered = publicProducts.filter(
+    const filtered = relatedProducts.filter(
       (p) => (p._id || p.id) !== productId
     );
     return filtered.slice(0, 6);
-  }, [publicProducts, productId]);
+  }, [relatedProducts, productId]);
 
   const handleShare = async () => {
     try {

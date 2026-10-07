@@ -8,7 +8,7 @@ import {
 } from "@/constants/categories";
 import { useCart } from "@/context/cart-context";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { fetchPublicProducts, ProductItem } from "@/store/slices/productSlice";
+import { fetchCategoryProducts, ProductItem } from "@/store/slices/productSlice";
 import { moderateScale, scale, useTheme } from "@/theme";
 import {
   Feather,
@@ -185,8 +185,8 @@ export default function CategoryExpandScreen() {
     ];
   }, [parentCategory]);
 
-  // Redux Public Products State
-  const { publicProducts, publicLoading } = useAppSelector(
+  // Redux Category Products State (Isolated from global home store catalog)
+  const { categoryProducts, categoryLoading } = useAppSelector(
     (state) => state.product
   );
 
@@ -205,7 +205,7 @@ export default function CategoryExpandScreen() {
     }
 
     await dispatch(
-      fetchPublicProducts({
+      fetchCategoryProducts({
         category: parentCategory,
         subCategory:
           selectedSubcategory === "all" ? undefined : selectedSubcategory,
@@ -435,14 +435,14 @@ export default function CategoryExpandScreen() {
               />
             }
           >
-            {publicLoading && (!publicProducts || publicProducts.length === 0) ? (
+            {categoryLoading && (!categoryProducts || categoryProducts.length === 0) ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color="#016073" />
                 <Text style={styles.loadingText}>Fetching products...</Text>
               </View>
-            ) : publicProducts && publicProducts.length > 0 ? (
+            ) : categoryProducts && categoryProducts.length > 0 ? (
               <View style={styles.productsGrid}>
-                {publicProducts.map((product) => {
+                {categoryProducts.map((product) => {
                   const prodId = product._id || product.id || "";
                   const qty = getItemQuantity(prodId);
                   const imgUrl =

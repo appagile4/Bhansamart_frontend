@@ -71,7 +71,6 @@ export interface ProductItem {
   tags?: string[];
   status: string;
 
-
   visibility?: {
     isFeatured?: boolean;
     isBestSeller?: boolean;
@@ -108,12 +107,25 @@ interface ProductState {
   createLoading: boolean;
   error: string | null;
   successMessage: string | null;
-  // Public Catalog State for Customer
+
+  // Global Public Catalog State for Customer Home Screen
   publicProducts: ProductItem[];
   publicTotal: number;
   publicTotalPages: number;
   publicLoading: boolean;
   publicError: string | null;
+
+  // Isolated Category Catalog State for Category Expand Screen
+  categoryProducts: ProductItem[];
+  categoryTotal: number;
+  categoryTotalPages: number;
+  categoryLoading: boolean;
+  categoryError: string | null;
+
+  // Related Products State for Product Detail Screen
+  relatedProducts: ProductItem[];
+  relatedLoading: boolean;
+  relatedError: string | null;
 }
 
 const initialState: ProductState = {
@@ -126,11 +138,22 @@ const initialState: ProductState = {
   createLoading: false,
   error: null,
   successMessage: null,
+
   publicProducts: [],
   publicTotal: 0,
   publicTotalPages: 1,
   publicLoading: false,
   publicError: null,
+
+  categoryProducts: [],
+  categoryTotal: 0,
+  categoryTotalPages: 1,
+  categoryLoading: false,
+  categoryError: null,
+
+  relatedProducts: [],
+  relatedLoading: false,
+  relatedError: null,
 };
 
 // 1. Create Product Thunk
@@ -163,7 +186,7 @@ export const fetchVendorProducts = createAsyncThunk(
   }
 );
 
-// 3. Fetch Public Products Thunk (For Customer Screens)
+// 3. Fetch Global Public Products Thunk (For Customer Home Screens)
 export const fetchPublicProducts = createAsyncThunk(
   "product/fetchPublicProducts",
   async (params: GetPublicProductsParams | undefined, { rejectWithValue }) => {
@@ -178,7 +201,37 @@ export const fetchPublicProducts = createAsyncThunk(
   }
 );
 
-// 4. Fetch Single Product
+// 4. Fetch Category Products Thunk (Isolated for Category Expand Screen)
+export const fetchCategoryProducts = createAsyncThunk(
+  "product/fetchCategoryProducts",
+  async (params: GetPublicProductsParams | undefined, { rejectWithValue }) => {
+    try {
+      const response = await getAllProductsApi(params);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.message || "Failed to fetch category products."
+      );
+    }
+  }
+);
+
+// 5. Fetch Related Products Thunk (Isolated for Product Detail Screen)
+export const fetchRelatedProducts = createAsyncThunk(
+  "product/fetchRelatedProducts",
+  async (params: GetPublicProductsParams | undefined, { rejectWithValue }) => {
+    try {
+      const response = await getAllProductsApi(params);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.message || "Failed to fetch related products."
+      );
+    }
+  }
+);
+
+// 6. Fetch Single Product
 export const fetchProductById = createAsyncThunk(
   "product/fetchProductById",
   async (id: string, { rejectWithValue }) => {
@@ -193,7 +246,7 @@ export const fetchProductById = createAsyncThunk(
   }
 );
 
-// 5. Toggle Product Stock Thunk
+// 7. Toggle Product Stock Thunk
 export const toggleProductStock = createAsyncThunk(
   "product/toggleProductStock",
   async (id: string, { rejectWithValue }) => {
@@ -208,7 +261,7 @@ export const toggleProductStock = createAsyncThunk(
   }
 );
 
-// 6. Update Product Thunk
+// 8. Update Product Thunk
 export const updateProduct = createAsyncThunk(
   "product/updateProduct",
   async ({ id, data }: { id: string; data: any }, { rejectWithValue }) => {
@@ -223,7 +276,7 @@ export const updateProduct = createAsyncThunk(
   }
 );
 
-// 7. Delete Product Thunk
+// 9. Delete Product Thunk
 export const deleteProduct = createAsyncThunk(
   "product/deleteProduct",
   async (id: string, { rejectWithValue }) => {
@@ -245,6 +298,8 @@ export const productSlice = createSlice({
     clearProductError: (state) => {
       state.error = null;
       state.publicError = null;
+      state.categoryError = null;
+      state.relatedError = null;
     },
     clearProductSuccess: (state) => {
       state.successMessage = null;
@@ -298,7 +353,7 @@ export const productSlice = createSlice({
       state.error = action.payload as string;
     });
 
-    // ── FETCH PUBLIC PRODUCTS (CUSTOMER) ─────────────────────
+    // ── FETCH PUBLIC PRODUCTS (GLOBAL CUSTOMER CATALOG) ──────
     builder.addCase(fetchPublicProducts.pending, (state) => {
       state.publicLoading = true;
       state.publicError = null;
@@ -316,6 +371,44 @@ export const productSlice = createSlice({
     builder.addCase(fetchPublicProducts.rejected, (state, action) => {
       state.publicLoading = false;
       state.publicError = action.payload as string;
+    });
+
+    // ── FETCH CATEGORY PRODUCTS (ISOLATED) ───────────────────
+    builder.addCase(fetchCategoryProducts.pending, (state) => {
+      state.categoryLoading = true;
+      state.categoryError = null;
+    });
+    builder.addCase(fetchCategoryProducts.fulfilled, (state, action) => {
+      state.categoryLoading = false;
+      const fetched = action.payload?.products || [];
+      state.categoryProducts = fetched.map((p: any) => ({
+        ...p,
+        id: p._id || p.id,
+      }));
+      state.categoryTotal = action.payload?.total || fetched.length;
+      state.categoryTotalPages = action.payload?.totalPages || 1;
+    });
+    builder.addCase(fetchCategoryProducts.rejected, (state, action) => {
+      state.categoryLoading = false;
+      state.categoryError = action.payload as string;
+    });
+
+    // ── FETCH RELATED PRODUCTS (ISOLATED) ────────────────────
+    builder.addCase(fetchRelatedProducts.pending, (state) => {
+      state.relatedLoading = true;
+      state.relatedError = null;
+    });
+    builder.addCase(fetchRelatedProducts.fulfilled, (state, action) => {
+      state.relatedLoading = false;
+      const fetched = action.payload?.products || [];
+      state.relatedProducts = fetched.map((p: any) => ({
+        ...p,
+        id: p._id || p.id,
+      }));
+    });
+    builder.addCase(fetchRelatedProducts.rejected, (state, action) => {
+      state.relatedLoading = false;
+      state.relatedError = action.payload as string;
     });
 
     // ── FETCH SINGLE PRODUCT ─────────────────────────────────
@@ -359,4 +452,3 @@ export const { clearProductError, clearProductSuccess, setCurrentProduct } =
   productSlice.actions;
 
 export default productSlice.reducer;
-
