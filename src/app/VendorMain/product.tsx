@@ -8,13 +8,14 @@ import { moderateScale, scale } from "@/theme";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback, memo } from "react";
 import {
   Animated,
   Dimensions,
   FlatList,
   Modal,
   PanResponder,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -38,6 +39,215 @@ interface VendorProduct {
   stockCount: number;
   image?: string;
 }
+
+// ── Memoized List View Item Component ─────────────────────────────
+const VendorProductListItem = memo(function VendorProductListItem({
+  item,
+  onPress,
+  onToggleStock,
+}: {
+  item: VendorProduct;
+  onPress: (item: VendorProduct) => void;
+  onToggleStock: (id: string) => void;
+}) {
+  const handlePress = useCallback(() => {
+    onPress(item);
+  }, [onPress, item]);
+
+  const handleToggle = useCallback(() => {
+    onToggleStock(item.id);
+  }, [onToggleStock, item.id]);
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.88}
+      onPress={handlePress}
+      style={styles.productCardList}
+    >
+      <View style={styles.productTopRow}>
+        <View style={styles.productIconBox}>
+          {item.image ? (
+            <Image
+              source={{ uri: item.image }}
+              style={styles.cardImage}
+              contentFit="cover"
+              transition={100}
+            />
+          ) : (
+            <MaterialCommunityIcons
+              name="food-apple-outline"
+              size={scale(24)}
+              color="#016073"
+            />
+          )}
+        </View>
+
+        <View style={styles.productInfo}>
+          <Text style={styles.productName}>{item.name}</Text>
+          <Text style={styles.productCategory}>
+            {item.category} &middot; {item.unit}
+          </Text>
+
+          <View style={styles.priceRow}>
+            <Text style={styles.priceText}>NPR {item.price}</Text>
+            {item.originalPrice ? (
+              <Text style={styles.strikePrice}>NPR {item.originalPrice}</Text>
+            ) : null}
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.productBottomRow}>
+        <View style={styles.stockStatusWrap}>
+          <View
+            style={[
+              styles.stockDot,
+              { backgroundColor: item.inStock ? "#16A34A" : "#DC2626" },
+            ]}
+          />
+          <Text
+            style={[
+              styles.stockStatusText,
+              { color: item.inStock ? "#15803D" : "#991B1B" },
+            ]}
+          >
+            {item.inStock ? `In Stock (${item.stockCount})` : "Out of Stock"}
+          </Text>
+        </View>
+
+        <View style={styles.switchRow}>
+          <Text style={styles.switchLabel}>Available</Text>
+          <Switch
+            value={item.inStock}
+            onValueChange={handleToggle}
+            trackColor={{ false: "#E2E8F0", true: "#016073" }}
+            thumbColor={item.inStock ? "#F1F5F9" : "#F1F5F9"}
+          />
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+});
+
+// ── Memoized Grid View Item Component ─────────────────────────────
+const VendorProductGridItem = memo(function VendorProductGridItem({
+  item,
+  onPress,
+  onToggleStock,
+}: {
+  item: VendorProduct;
+  onPress: (item: VendorProduct) => void;
+  onToggleStock: (id: string) => void;
+}) {
+  const handlePress = useCallback(() => {
+    onPress(item);
+  }, [onPress, item]);
+
+  const handleToggle = useCallback(() => {
+    onToggleStock(item.id);
+  }, [onToggleStock, item.id]);
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.88}
+      onPress={handlePress}
+      style={styles.productCardGrid}
+    >
+      <View style={styles.gridIconBox}>
+        {item.image ? (
+          <Image
+            source={{ uri: item.image }}
+            style={styles.gridCardImage}
+            contentFit="cover"
+            transition={100}
+          />
+        ) : (
+          <MaterialCommunityIcons
+            name="food-apple-outline"
+            size={scale(32)}
+            color="#016073"
+          />
+        )}
+        <View
+          style={[
+            styles.gridStockBadge,
+            { backgroundColor: item.inStock ? "#DCFCE7" : "#FEE2E2" },
+          ]}
+        >
+          <Text
+            style={[
+              styles.gridStockBadgeText,
+              { color: item.inStock ? "#15803D" : "#991B1B" },
+            ]}
+          >
+            {item.inStock ? `${item.stockCount}` : "Out"}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.gridContent}>
+        <Text style={styles.gridTitle} numberOfLines={2}>
+          {item.name}
+        </Text>
+        <Text style={styles.gridUnit} numberOfLines={1}>
+          {item.unit}
+        </Text>
+
+        <View style={styles.gridPriceRow}>
+          <Text style={styles.gridPrice}>NPR {item.price}</Text>
+          {item.originalPrice ? (
+            <Text style={styles.gridStrikePrice}>NPR {item.originalPrice}</Text>
+          ) : null}
+        </View>
+
+        <View style={styles.gridSwitchRow}>
+          <Text
+            style={[
+              styles.gridAvailabilityText,
+              { color: item.inStock ? "#15803D" : "#94A3B8" },
+            ]}
+          >
+            {item.inStock ? "Active" : "Disabled"}
+          </Text>
+          <Switch
+            value={item.inStock}
+            onValueChange={handleToggle}
+            trackColor={{ false: "#E2E8F0", true: "#016073" }}
+            thumbColor={item.inStock ? "#86C4CB" : "#F1F5F9"}
+            style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+          />
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+});
+
+// ── Memoized Category Chip Item Component ─────────────────────────
+const VendorCategoryChipItem = memo(function VendorCategoryChipItem({
+  cat,
+  isSelected,
+  onSelect,
+}: {
+  cat: string;
+  isSelected: boolean;
+  onSelect: (cat: string) => void;
+}) {
+  return (
+    <TouchableOpacity
+      style={[styles.catChip, isSelected && styles.catChipActive]}
+      onPress={() => onSelect(cat)}
+    >
+      <Text
+        style={[
+          styles.catChipText,
+          isSelected && styles.catChipTextActive,
+        ]}
+      >
+        {cat}
+      </Text>
+    </TouchableOpacity>
+  );
+});
 
 import { CATEGORY_NAMES } from "@/constants/categories";
 
@@ -233,10 +443,6 @@ export default function VendorProductScreen() {
     setRefreshing(false);
   };
 
-  const toggleStock = (id: string) => {
-    dispatch(toggleProductStock(id));
-  };
-
   // Count active filters applied
   const activeFiltersCount = useMemo(() => {
     let count = 0;
@@ -327,155 +533,58 @@ export default function VendorProductScreen() {
     SORT_OPTIONS.find((s) => s.id === sortBy)?.label || "Default";
 
   // Handle Product Card Press
-  const handleProductPress = (item: VendorProduct) => {
-    router.push({
-      pathname: "/Screens/vendorScreens/productdetail" as any,
-      params: { id: item.id },
-    });
-  };
+  const handleProductPress = useCallback(
+    (item: VendorProduct) => {
+      router.push({
+        pathname: "/Screens/vendorScreens/productdetail" as any,
+        params: { id: item.id },
+      });
+    },
+    []
+  );
+
+  const toggleStock = useCallback(
+    (id: string) => {
+      dispatch(toggleProductStock(id));
+    },
+    [dispatch]
+  );
 
   // List View Card
-  const renderListItem = ({ item }: { item: VendorProduct }) => (
-    <TouchableOpacity
-      activeOpacity={0.88}
-      onPress={() => handleProductPress(item)}
-      style={styles.productCardList}
-    >
-      <View style={styles.productTopRow}>
-        <View style={styles.productIconBox}>
-          {item.image ? (
-            <Image
-              source={{ uri: item.image }}
-              style={styles.cardImage}
-              contentFit="cover"
-            />
-          ) : (
-            <MaterialCommunityIcons
-              name="food-apple-outline"
-              size={scale(24)}
-              color="#016073"
-            />
-          )}
-        </View>
-
-        <View style={styles.productInfo}>
-          <Text style={styles.productName}>{item.name}</Text>
-          <Text style={styles.productCategory}>
-            {item.category} &middot; {item.unit}
-          </Text>
-
-          <View style={styles.priceRow}>
-            <Text style={styles.priceText}>NPR {item.price}</Text>
-            {item.originalPrice ? (
-              <Text style={styles.strikePrice}>NPR {item.originalPrice}</Text>
-            ) : null}
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.productBottomRow}>
-        <View style={styles.stockStatusWrap}>
-          <View
-            style={[
-              styles.stockDot,
-              { backgroundColor: item.inStock ? "#16A34A" : "#DC2626" },
-            ]}
-          />
-          <Text
-            style={[
-              styles.stockStatusText,
-              { color: item.inStock ? "#15803D" : "#991B1B" },
-            ]}
-          >
-            {item.inStock ? `In Stock (${item.stockCount})` : "Out of Stock"}
-          </Text>
-        </View>
-
-        <View style={styles.switchRow}>
-          <Text style={styles.switchLabel}>Available</Text>
-          <Switch
-            value={item.inStock}
-            onValueChange={() => toggleStock(item.id)}
-            trackColor={{ false: "#E2E8F0", true: "#016073" }}
-            thumbColor={item.inStock ? "#F1F5F9" : "#F1F5F9"}
-          />
-        </View>
-      </View>
-    </TouchableOpacity>
+  const renderListItem = useCallback(
+    ({ item }: { item: VendorProduct }) => (
+      <VendorProductListItem
+        item={item}
+        onPress={handleProductPress}
+        onToggleStock={toggleStock}
+      />
+    ),
+    [handleProductPress, toggleStock]
   );
 
   // Grid View Card
-  const renderGridItem = ({ item }: { item: VendorProduct }) => (
-    <TouchableOpacity
-      activeOpacity={0.88}
-      onPress={() => handleProductPress(item)}
-      style={styles.productCardGrid}
-    >
-      <View style={styles.gridIconBox}>
-        {item.image ? (
-          <Image
-            source={{ uri: item.image }}
-            style={styles.gridCardImage}
-            contentFit="cover"
-          />
-        ) : (
-          <MaterialCommunityIcons
-            name="food-apple-outline"
-            size={scale(32)}
-            color="#016073"
-          />
-        )}
-        <View
-          style={[
-            styles.gridStockBadge,
-            { backgroundColor: item.inStock ? "#DCFCE7" : "#FEE2E2" },
-          ]}
-        >
-          <Text
-            style={[
-              styles.gridStockBadgeText,
-              { color: item.inStock ? "#15803D" : "#991B1B" },
-            ]}
-          >
-            {item.inStock ? `${item.stockCount}` : "Out"}
-          </Text>
-        </View>
-      </View>
+  const renderGridItem = useCallback(
+    ({ item }: { item: VendorProduct }) => (
+      <VendorProductGridItem
+        item={item}
+        onPress={handleProductPress}
+        onToggleStock={toggleStock}
+      />
+    ),
+    [handleProductPress, toggleStock]
+  );
 
-      <View style={styles.gridContent}>
-        <Text style={styles.gridTitle} numberOfLines={2}>
-          {item.name}
-        </Text>
-        <Text style={styles.gridUnit} numberOfLines={1}>
-          {item.unit}
-        </Text>
+  const keyExtractor = useCallback((item: VendorProduct) => item.id, []);
 
-        <View style={styles.gridPriceRow}>
-          <Text style={styles.gridPrice}>NPR {item.price}</Text>
-          {item.originalPrice ? (
-            <Text style={styles.gridStrikePrice}>NPR {item.originalPrice}</Text>
-          ) : null}
-        </View>
-
-        <View style={styles.gridSwitchRow}>
-          <Text
-            style={[
-              styles.gridAvailabilityText,
-              { color: item.inStock ? "#15803D" : "#94A3B8" },
-            ]}
-          >
-            {item.inStock ? "Active" : "Disabled"}
-          </Text>
-          <Switch
-            value={item.inStock}
-            onValueChange={() => toggleStock(item.id)}
-            trackColor={{ false: "#E2E8F0", true: "#016073" }}
-            thumbColor={item.inStock ? "#86C4CB" : "#F1F5F9"}
-            style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
-          />
-        </View>
-      </View>
-    </TouchableOpacity>
+  const renderCategoryChip = useCallback(
+    ({ item: cat }: { item: string }) => (
+      <VendorCategoryChipItem
+        cat={cat}
+        isSelected={selectedCategory === cat}
+        onSelect={setSelectedCategory}
+      />
+    ),
+    [selectedCategory]
   );
 
   return (
@@ -511,24 +620,10 @@ export default function VendorProductScreen() {
             gap: scale(8),
             paddingHorizontal: scale(16),
           }}
-          renderItem={({ item: cat }) => {
-            const isSelected = selectedCategory === cat;
-            return (
-              <TouchableOpacity
-                style={[styles.catChip, isSelected && styles.catChipActive]}
-                onPress={() => setSelectedCategory(cat)}
-              >
-                <Text
-                  style={[
-                    styles.catChipText,
-                    isSelected && styles.catChipTextActive,
-                  ]}
-                >
-                  {cat}
-                </Text>
-              </TouchableOpacity>
-            );
-          }}
+          initialNumToRender={7}
+          maxToRenderPerBatch={7}
+          windowSize={3}
+          renderItem={renderCategoryChip}
         />
       </View>
 
@@ -680,9 +775,14 @@ export default function VendorProductScreen() {
         key={viewMode === "grid" ? "grid-mode" : "list-mode"}
         numColumns={viewMode === "grid" ? 2 : 1}
         data={processedProducts}
-        keyExtractor={(item) => item.id}
+        keyExtractor={keyExtractor}
         renderItem={viewMode === "grid" ? renderGridItem : renderListItem}
         columnWrapperStyle={viewMode === "grid" ? styles.gridRow : undefined}
+        initialNumToRender={6}
+        maxToRenderPerBatch={6}
+        windowSize={3}
+        updateCellsBatchingPeriod={50}
+        removeClippedSubviews={Platform.OS === "android"}
         contentContainerStyle={[
           styles.listContent,
           viewMode === "grid" && { paddingHorizontal: scale(10) },

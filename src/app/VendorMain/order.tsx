@@ -1,9 +1,10 @@
 import VendorHeader from "@/components/VendorComponent/header";
 import { moderateScale, scale } from "@/theme";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import React, { useState } from "react";
+import React, { memo, useCallback, useMemo, useState } from "react";
 import {
   FlatList,
+  Platform,
   RefreshControl,
   StyleSheet,
   Text,
@@ -24,6 +25,119 @@ interface VendorOrder {
   time: string;
   address: string;
 }
+
+const getStatusColor = (status: VendorOrder["status"]) => {
+  switch (status) {
+    case "New":
+      return { bg: "#EFF6FF", text: "#1D4ED8", border: "#BFDBFE" };
+    case "Preparing":
+      return { bg: "#FFFBEB", text: "#B45309", border: "#FDE68A" };
+    case "Ready":
+      return { bg: "#F0FDF4", text: "#15803D", border: "#BBF7D0" };
+    case "Delivered":
+      return { bg: "#F8FAFC", text: "#475569", border: "#E2E8F0" };
+    case "Cancelled":
+      return { bg: "#FEF2F2", text: "#B91C1C", border: "#FECACA" };
+  }
+};
+
+const VendorOrderItemCard = memo(function VendorOrderItemCard({
+  item,
+  onUpdateStatus,
+}: {
+  item: VendorOrder;
+  onUpdateStatus: (id: string, newStatus: VendorOrder["status"]) => void;
+}) {
+  const statusStyle = getStatusColor(item.status);
+
+  return (
+    <View style={styles.orderCard}>
+      {/* Header */}
+      <View style={styles.cardHeader}>
+        <View>
+          <Text style={styles.orderId}>{item.orderNumber}</Text>
+          <Text style={styles.orderTime}>{item.time}</Text>
+        </View>
+        <View
+          style={[
+            styles.statusBadge,
+            { backgroundColor: statusStyle.bg, borderColor: statusStyle.border },
+          ]}
+        >
+          <Text style={[styles.statusBadgeText, { color: statusStyle.text }]}>
+            {item.status}
+          </Text>
+        </View>
+      </View>
+
+      {/* Customer & Address Details */}
+      <View style={styles.cardBody}>
+        <View style={styles.infoRow}>
+          <Ionicons name="person-outline" size={scale(14)} color="#64748B" />
+          <Text style={styles.customerName}>{item.customerName}</Text>
+          <Text style={styles.customerPhone}>({item.customerPhone})</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Ionicons name="location-outline" size={scale(14)} color="#64748B" />
+          <Text style={styles.addressText} numberOfLines={1}>
+            {item.address}
+          </Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Ionicons name="basket-outline" size={scale(14)} color="#64748B" />
+          <Text style={styles.itemsCountText}>
+            {item.itemsCount} {item.itemsCount === 1 ? "item" : "items"} &middot; Total:{" "}
+            <Text style={styles.amountText}>NPR {item.totalAmount}</Text>
+          </Text>
+        </View>
+      </View>
+
+      {/* Action Buttons */}
+      <View style={styles.cardActions}>
+        {item.status === "New" && (
+          <>
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.rejectBtn]}
+              onPress={() => onUpdateStatus(item.id, "Cancelled")}
+            >
+              <Text style={styles.rejectBtnText}>Reject</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.acceptBtn]}
+              onPress={() => onUpdateStatus(item.id, "Preparing")}
+            >
+              <Text style={styles.acceptBtnText}>Accept Order</Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {item.status === "Preparing" && (
+          <TouchableOpacity
+            style={[styles.actionBtn, styles.readyBtn]}
+            onPress={() => onUpdateStatus(item.id, "Ready")}
+          >
+            <MaterialCommunityIcons name="check-all" size={scale(16)} color="#FFFFFF" />
+            <Text style={styles.readyBtnText}>Mark Food Ready</Text>
+          </TouchableOpacity>
+        )}
+
+        {item.status === "Ready" && (
+          <View style={styles.readyNotice}>
+            <Ionicons name="bicycle" size={scale(16)} color="#008080" />
+            <Text style={styles.readyNoticeText}>Waiting for Delivery Partner</Text>
+          </View>
+        )}
+
+        {item.status === "Delivered" && (
+          <View style={styles.deliveredNotice}>
+            <Ionicons name="checkmark-circle" size={scale(16)} color="#16A34A" />
+            <Text style={styles.deliveredNoticeText}>Order Delivered Successfully</Text>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+});
 
 const SAMPLE_ORDERS: VendorOrder[] = [
   {
@@ -80,134 +194,44 @@ export default function VendorOrdersScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [orders, setOrders] = useState<VendorOrder[]>(SAMPLE_ORDERS);
 
-  const onRefresh = () => {
+  const onRefresh = useCallback(() => {
     setRefreshing(true);
     setTimeout(() => {
       setRefreshing(false);
-    }, 1000);
-  };
+    }, 800);
+  }, []);
 
-  const filteredOrders = orders.filter((order) => {
-    const matchesFilter =
-      selectedFilter === "All" || order.status === selectedFilter;
-    const matchesSearch =
-      order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.customerName.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesFilter && matchesSearch;
-  });
+  const filteredOrders = useMemo(() => {
+    return orders.filter((order) => {
+      const matchesFilter =
+        selectedFilter === "All" || order.status === selectedFilter;
+      const matchesSearch =
+        order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        order.customerName.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesFilter && matchesSearch;
+    });
+  }, [orders, selectedFilter, searchQuery]);
 
-  const getStatusColor = (status: VendorOrder["status"]) => {
-    switch (status) {
-      case "New":
-        return { bg: "#EFF6FF", text: "#1D4ED8", border: "#BFDBFE" };
-      case "Preparing":
-        return { bg: "#FFFBEB", text: "#B45309", border: "#FDE68A" };
-      case "Ready":
-        return { bg: "#F0FDF4", text: "#15803D", border: "#BBF7D0" };
-      case "Delivered":
-        return { bg: "#F8FAFC", text: "#475569", border: "#E2E8F0" };
-      case "Cancelled":
-        return { bg: "#FEF2F2", text: "#B91C1C", border: "#FECACA" };
-    }
-  };
+  const updateOrderStatus = useCallback(
+    (id: string, newStatus: VendorOrder["status"]) => {
+      setOrders((prev) =>
+        prev.map((o) => (o.id === id ? { ...o, status: newStatus } : o))
+      );
+    },
+    []
+  );
 
-  const updateOrderStatus = (id: string, newStatus: VendorOrder["status"]) => {
-    setOrders((prev) =>
-      prev.map((o) => (o.id === id ? { ...o, status: newStatus } : o))
-    );
-  };
+  const renderOrderItem = useCallback(
+    ({ item }: { item: VendorOrder }) => (
+      <VendorOrderItemCard
+        item={item}
+        onUpdateStatus={updateOrderStatus}
+      />
+    ),
+    [updateOrderStatus]
+  );
 
-  const renderOrderItem = ({ item }: { item: VendorOrder }) => {
-    const statusStyle = getStatusColor(item.status);
-
-    return (
-      <View style={styles.orderCard}>
-        {/* Header */}
-        <View style={styles.cardHeader}>
-          <View>
-            <Text style={styles.orderId}>{item.orderNumber}</Text>
-            <Text style={styles.orderTime}>{item.time}</Text>
-          </View>
-          <View
-            style={[
-              styles.statusBadge,
-              { backgroundColor: statusStyle.bg, borderColor: statusStyle.border },
-            ]}
-          >
-            <Text style={[styles.statusBadgeText, { color: statusStyle.text }]}>
-              {item.status}
-            </Text>
-          </View>
-        </View>
-
-        {/* Customer & Address Details */}
-        <View style={styles.cardBody}>
-          <View style={styles.infoRow}>
-            <Ionicons name="person-outline" size={scale(14)} color="#64748B" />
-            <Text style={styles.customerName}>{item.customerName}</Text>
-            <Text style={styles.customerPhone}>({item.customerPhone})</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Ionicons name="location-outline" size={scale(14)} color="#64748B" />
-            <Text style={styles.addressText} numberOfLines={1}>
-              {item.address}
-            </Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Ionicons name="basket-outline" size={scale(14)} color="#64748B" />
-            <Text style={styles.itemsCountText}>
-              {item.itemsCount} {item.itemsCount === 1 ? "item" : "items"} &middot; Total:{" "}
-              <Text style={styles.amountText}>NPR {item.totalAmount}</Text>
-            </Text>
-          </View>
-        </View>
-
-        {/* Action Buttons */}
-        <View style={styles.cardActions}>
-          {item.status === "New" && (
-            <>
-              <TouchableOpacity
-                style={[styles.actionBtn, styles.rejectBtn]}
-                onPress={() => updateOrderStatus(item.id, "Cancelled")}
-              >
-                <Text style={styles.rejectBtnText}>Reject</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.actionBtn, styles.acceptBtn]}
-                onPress={() => updateOrderStatus(item.id, "Preparing")}
-              >
-                <Text style={styles.acceptBtnText}>Accept Order</Text>
-              </TouchableOpacity>
-            </>
-          )}
-
-          {item.status === "Preparing" && (
-            <TouchableOpacity
-              style={[styles.actionBtn, styles.readyBtn]}
-              onPress={() => updateOrderStatus(item.id, "Ready")}
-            >
-              <MaterialCommunityIcons name="check-all" size={scale(16)} color="#FFFFFF" />
-              <Text style={styles.readyBtnText}>Mark Food Ready</Text>
-            </TouchableOpacity>
-          )}
-
-          {item.status === "Ready" && (
-            <View style={styles.readyNotice}>
-              <Ionicons name="bicycle" size={scale(16)} color="#008080" />
-              <Text style={styles.readyNoticeText}>Waiting for Delivery Partner</Text>
-            </View>
-          )}
-
-          {item.status === "Delivered" && (
-            <View style={styles.deliveredNotice}>
-              <Ionicons name="checkmark-circle" size={scale(16)} color="#16A34A" />
-              <Text style={styles.deliveredNoticeText}>Order Delivered Successfully</Text>
-            </View>
-          )}
-        </View>
-      </View>
-    );
-  };
+  const keyExtractor = useCallback((item: VendorOrder) => item.id, []);
 
   return (
     <SafeAreaView style={styles.root} edges={["top"]}>
@@ -265,8 +289,13 @@ export default function VendorOrdersScreen() {
       {/* Orders List */}
       <FlatList
         data={filteredOrders}
-        keyExtractor={(item) => item.id}
+        keyExtractor={keyExtractor}
         renderItem={renderOrderItem}
+        initialNumToRender={6}
+        maxToRenderPerBatch={6}
+        windowSize={5}
+        updateCellsBatchingPeriod={50}
+        removeClippedSubviews={Platform.OS === "android"}
         contentContainerStyle={styles.listContent}
         refreshControl={
           <RefreshControl

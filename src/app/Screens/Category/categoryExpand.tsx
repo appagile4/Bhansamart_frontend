@@ -17,10 +17,11 @@ import {
 } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   Dimensions,
   RefreshControl,
   ScrollView,
@@ -32,6 +33,104 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
+
+function CategoryProductSkeleton({ animOpacity }: { animOpacity: Animated.Value }) {
+  return (
+    <View style={styles.productCard}>
+      {/* Image Skeleton */}
+      <Animated.View
+        style={[
+          styles.cardImageBox,
+          styles.skeletonBlock,
+          { opacity: animOpacity },
+        ]}
+      />
+      {/* Weight pill skeleton */}
+      <Animated.View
+        style={[
+          styles.skeletonBlock,
+          {
+            width: scale(45),
+            height: scale(14),
+            borderRadius: scale(4),
+            marginBottom: scale(5),
+            opacity: animOpacity,
+          },
+        ]}
+      />
+      {/* Title skeleton lines */}
+      <Animated.View
+        style={[
+          styles.skeletonBlock,
+          {
+            width: "90%",
+            height: scale(13),
+            marginBottom: scale(4),
+            borderRadius: scale(3),
+            opacity: animOpacity,
+          },
+        ]}
+      />
+      <Animated.View
+        style={[
+          styles.skeletonBlock,
+          {
+            width: "60%",
+            height: scale(13),
+            marginBottom: scale(6),
+            borderRadius: scale(3),
+            opacity: animOpacity,
+          },
+        ]}
+      />
+      {/* Rating row skeleton */}
+      <Animated.View
+        style={[
+          styles.skeletonBlock,
+          {
+            width: scale(70),
+            height: scale(12),
+            marginBottom: scale(6),
+            borderRadius: scale(3),
+            opacity: animOpacity,
+          },
+        ]}
+      />
+      {/* Price and Add button row skeleton */}
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginTop: scale(2),
+        }}
+      >
+        <Animated.View
+          style={[
+            styles.skeletonBlock,
+            {
+              width: scale(55),
+              height: scale(16),
+              borderRadius: scale(3),
+              opacity: animOpacity,
+            },
+          ]}
+        />
+        <Animated.View
+          style={[
+            styles.skeletonBlock,
+            {
+              width: scale(48),
+              height: scale(22),
+              borderRadius: scale(5),
+              opacity: animOpacity,
+            },
+          ]}
+        />
+      </View>
+    </View>
+  );
+}
 
 const SUBCATEGORY_IMAGES: Record<string, string> = {
   // Grocery & Kitchen
@@ -105,55 +204,184 @@ export default function CategoryExpandScreen() {
   const dispatch = useAppDispatch();
   const { addToCart, updateQuantity, getItemQuantity } = useCart();
 
+  const pulseAnim = useRef(new Animated.Value(0.35)).current;
+
+  useEffect(() => {
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 0.9,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0.35,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pulseLoop.start();
+    return () => pulseLoop.stop();
+  }, [pulseAnim]);
+
   const params = useLocalSearchParams<{
     title?: string;
     category?: string;
     subCategory?: string;
   }>();
 
+  // Helper to normalize strings (removes hyphens, spaces, ampersands, punctuation, case)
+  const normalize = (str?: string) =>
+    (str || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
   // 1. Resolve parent category
   const parentCategory = useMemo(() => {
+    // A. Direct exact match in CATEGORY_NAMES
     if (params.category && CATEGORY_NAMES.includes(params.category)) {
       return params.category;
     }
-    const searchTarget = params.category || params.title || params.subCategory || "";
-    for (const cat of APP_CATEGORIES) {
-      if (cat.name.toLowerCase() === searchTarget.toLowerCase()) return cat.name;
+
+    // B. Check category ID match (e.g. 'snacks-drinks', 'snacks', 'grocery-kitchen', etc.)
+    if (params.category) {
+      const catById = APP_CATEGORIES.find(
+        (c) =>
+          c.id === params.category ||
+          normalize(c.id) === normalize(params.category) ||
+          normalize(c.name) === normalize(params.category)
+      );
+      if (catById) return catById.name;
+    }
+
+    // C. Search across params (category, subCategory, title) against category names and subcategories
+    const targets = [
+      params.category,
+      params.subCategory,
+      params.title,
+    ].filter(Boolean) as string[];
+
+    for (const target of targets) {
+      const normTarget = normalize(target);
+      if (!normTarget) continue;
+
+      // Check category names / IDs
+      for (const cat of APP_CATEGORIES) {
+        if (
+          normalize(cat.name) === normTarget ||
+          normalize(cat.id) === normTarget
+        ) {
+          return cat.name;
+        }
+      }
+
+      // Check subcategory names
+      for (const cat of APP_CATEGORIES) {
+        if (
+          cat.subCategories.some(
+            (s) =>
+              normalize(s) === normTarget ||
+              normalize(s).includes(normTarget) ||
+              normTarget.includes(normalize(s))
+          )
+        ) {
+          return cat.name;
+        }
+      }
+
+      // Semantic keyword domain mappings
       if (
-        cat.subCategories.some(
-          (s) => s.toLowerCase() === searchTarget.toLowerCase()
-        )
+        normTarget.includes("kid") ||
+        normTarget.includes("baby") ||
+        normTarget.includes("winter") ||
+        normTarget.includes("diaper") ||
+        normTarget.includes("toy")
       ) {
-        return cat.name;
+        return "Beauty & Personal Care";
+      }
+      if (
+        normTarget.includes("snack") ||
+        normTarget.includes("drink") ||
+        normTarget.includes("juice") ||
+        normTarget.includes("sweet") ||
+        normTarget.includes("chocolate") ||
+        normTarget.includes("biscuit") ||
+        normTarget.includes("chips") ||
+        normTarget.includes("beverage")
+      ) {
+        return "Snacks & Drinks";
+      }
+      if (
+        normTarget.includes("station") ||
+        normTarget.includes("pen") ||
+        normTarget.includes("school") ||
+        normTarget.includes("office") ||
+        normTarget.includes("book") ||
+        normTarget.includes("art") ||
+        normTarget.includes("craft")
+      ) {
+        return "School, Office & Stationery";
+      }
+      if (
+        normTarget.includes("groc") ||
+        normTarget.includes("fruit") ||
+        normTarget.includes("veg") ||
+        normTarget.includes("rice") ||
+        normTarget.includes("atta") ||
+        normTarget.includes("oil") ||
+        normTarget.includes("dairy") ||
+        normTarget.includes("meat") ||
+        normTarget.includes("pulse") ||
+        normTarget.includes("cereal")
+      ) {
+        return "Grocery & Kitchen";
       }
     }
+
     return "Grocery & Kitchen";
   }, [params.category, params.title, params.subCategory]);
 
   // 2. Resolve initial subcategory selection
   const initialSubcategory = useMemo(() => {
-    if (params.subCategory === "all") {
+    if (params.subCategory === "all" || params.category === "all") {
       return "all";
     }
     const validSubs = getSubCategoriesForCategory(parentCategory);
-    if (params.subCategory) {
+
+    const subTargets = [
+      params.subCategory,
+      params.title,
+      params.category,
+    ].filter(Boolean) as string[];
+
+    for (const target of subTargets) {
+      if (
+        target === "all" ||
+        target === parentCategory ||
+        normalize(target) === normalize(parentCategory)
+      ) {
+        continue;
+      }
+      const normTarget = normalize(target);
+      if (!normTarget) continue;
+
       const match = validSubs.find(
-        (s) => s.toLowerCase() === params.subCategory?.toLowerCase()
+        (s) =>
+          normalize(s) === normTarget ||
+          normalize(s).includes(normTarget) ||
+          normTarget.includes(normalize(s))
       );
       if (match) return match;
+
+      // Check partial token matches
+      const tokenMatch = validSubs.find((s) => {
+        const words = s.toLowerCase().split(/[\s,&]+/);
+        return words.some((w) => w.length > 2 && normTarget.includes(w));
+      });
+      if (tokenMatch) return tokenMatch;
     }
-    if (
-      params.title &&
-      params.title !== "all" &&
-      params.title !== parentCategory
-    ) {
-      const match = validSubs.find(
-        (s) => s.toLowerCase() === params.title?.toLowerCase()
-      );
-      if (match) return match;
-    }
+
     return "all";
-  }, [params.subCategory, params.title, parentCategory]);
+  }, [params.subCategory, params.title, params.category, parentCategory]);
 
   const [selectedSubcategory, setSelectedSubcategory] =
     useState<string>(initialSubcategory);
@@ -446,9 +674,13 @@ export default function CategoryExpandScreen() {
             }
           >
             {categoryLoading && (!categoryProducts || categoryProducts.length === 0) ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#016073" />
-                <Text style={styles.loadingText}>Fetching products...</Text>
+              <View style={styles.productsGrid}>
+                {[1, 2, 3, 4, 5, 6].map((item) => (
+                  <CategoryProductSkeleton
+                    key={`cat-skel-${item}`}
+                    animOpacity={pulseAnim}
+                  />
+                ))}
               </View>
             ) : categoryProducts && categoryProducts.length > 0 ? (
               <View style={styles.productsGrid}>
@@ -971,5 +1203,8 @@ const styles = StyleSheet.create({
     color: "#94A3B8",
     textAlign: "center",
     lineHeight: moderateScale(16),
+  },
+  skeletonBlock: {
+    backgroundColor: "#E2E8F0",
   },
 });

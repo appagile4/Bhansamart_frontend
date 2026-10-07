@@ -1,3 +1,7 @@
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { setSelectedCategory as setReduxCategory } from "@/store/slices/productSlice";
+import { moderateScale, scale } from "@/theme";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React from "react";
 import {
   ScrollView,
@@ -6,8 +10,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { scale, moderateScale } from "@/theme";
 
 export interface CategoryItem {
   id: string;
@@ -33,9 +35,18 @@ interface CategoryScrollerProps {
 
 export default function CategoryScroller({
   categories = CATEGORIES,
-  selectedCategory = "all",
+  selectedCategory: propSelectedCategory,
   onSelectCategory,
 }: CategoryScrollerProps) {
+  const dispatch = useAppDispatch();
+  const reduxCategory = useAppSelector((state) => state.product.selectedCategory);
+  const activeCategory = propSelectedCategory ?? reduxCategory ?? "all";
+
+  const handleSelect = (id: string) => {
+    dispatch(setReduxCategory(id));
+    onSelectCategory?.(id);
+  };
+
   return (
     <View style={styles.container}>
       <ScrollView
@@ -44,13 +55,13 @@ export default function CategoryScroller({
         contentContainerStyle={styles.scrollContent}
       >
         {categories.map((item) => {
-          const isSelected = item.id === selectedCategory;
+          const isSelected = item.id === activeCategory;
 
           return (
             <TouchableOpacity
               key={item.id}
               activeOpacity={0.75}
-              onPress={() => onSelectCategory?.(item.id)}
+              onPress={() => handleSelect(item.id)}
               style={styles.categoryItem}
             >
               {/* Golden Yellow Line-Art Icon */}

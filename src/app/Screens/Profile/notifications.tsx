@@ -6,7 +6,7 @@ import {
 } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   Alert,
   FlatList,
@@ -89,6 +89,98 @@ const INITIAL_NOTIFICATIONS: NotificationItem[] = [
   },
 ];
 
+const getIconForType = (type: NotificationItem["type"]) => {
+  switch (type) {
+    case "order":
+      return {
+        icon: <Ionicons name="cube-outline" size={scale(20)} color="#0284C7" />,
+        bg: "#E0F2FE",
+      };
+    case "offer":
+      return {
+        icon: (
+          <MaterialCommunityIcons
+            name="ticket-percent-outline"
+            size={scale(20)}
+            color="#16A34A"
+          />
+        ),
+        bg: "#DCFCE7",
+      };
+    case "reward":
+      return {
+        icon: <Ionicons name="star-outline" size={scale(20)} color="#D97706" />,
+        bg: "#FEF3C7",
+      };
+    case "system":
+    default:
+      return {
+        icon: (
+          <MaterialCommunityIcons
+            name="shield-check-outline"
+            size={scale(20)}
+            color="#7C3AED"
+          />
+        ),
+        bg: "#EDE9FE",
+      };
+  }
+};
+
+const NotificationCardItem = React.memo(function NotificationCardItem({
+  item,
+  onPress,
+}: {
+  item: NotificationItem;
+  onPress: (item: NotificationItem) => void;
+}) {
+  const iconConfig = getIconForType(item.type);
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.82}
+      onPress={() => onPress(item)}
+      style={[
+        styles.notificationCard,
+        !item.read && styles.notificationCardUnread,
+      ]}
+    >
+      {/* Left Icon Container */}
+      <View style={[styles.iconBox, { backgroundColor: iconConfig.bg }]}>
+        {iconConfig.icon}
+      </View>
+
+      {/* Content Column */}
+      <View style={styles.cardContentCol}>
+        <View style={styles.cardHeaderRow}>
+          <Text
+            style={[
+              styles.itemTitle,
+              !item.read && styles.itemTitleUnread,
+            ]}
+            numberOfLines={1}
+          >
+            {item.title}
+          </Text>
+          {!item.read && <View style={styles.unreadDot} />}
+        </View>
+
+        <Text style={styles.itemMessageText}>{item.message}</Text>
+
+        <View style={styles.footerRow}>
+          <Text style={styles.timestampText}>{item.timestamp}</Text>
+          {item.route && (
+            <View style={styles.actionPrompt}>
+              <Text style={styles.actionPromptText}>View Details</Text>
+              <Feather name="chevron-right" size={scale(13)} color="#008080" />
+            </View>
+          )}
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+});
+
 export default function NotificationsScreen() {
   const router = useRouter();
   const theme = useTheme();
@@ -111,7 +203,7 @@ export default function NotificationsScreen() {
     Alert.alert("All Read", "All notifications marked as read.");
   };
 
-  const handleNotificationPress = (item: NotificationItem) => {
+  const handleNotificationPress = useCallback((item: NotificationItem) => {
     // Mark as read
     setNotifications((prev) =>
       prev.map((n) => (n.id === item.id ? { ...n, read: true } : n))
@@ -122,93 +214,17 @@ export default function NotificationsScreen() {
     } else {
       Alert.alert(item.title, item.message);
     }
-  };
+  }, [router]);
 
-  const getIconForType = (type: NotificationItem["type"]) => {
-    switch (type) {
-      case "order":
-        return {
-          icon: <Ionicons name="cube-outline" size={scale(20)} color="#0284C7" />,
-          bg: "#E0F2FE",
-        };
-      case "offer":
-        return {
-          icon: (
-            <MaterialCommunityIcons
-              name="ticket-percent-outline"
-              size={scale(20)}
-              color="#16A34A"
-            />
-          ),
-          bg: "#DCFCE7",
-        };
-      case "reward":
-        return {
-          icon: <Ionicons name="star-outline" size={scale(20)} color="#D97706" />,
-          bg: "#FEF3C7",
-        };
-      case "system":
-      default:
-        return {
-          icon: (
-            <MaterialCommunityIcons
-              name="shield-check-outline"
-              size={scale(20)}
-              color="#7C3AED"
-            />
-          ),
-          bg: "#EDE9FE",
-        };
-    }
-  };
-
-  const renderItem = ({ item }: { item: NotificationItem }) => {
-    const iconConfig = getIconForType(item.type);
-
-    return (
-      <TouchableOpacity
-        activeOpacity={0.82}
-        onPress={() => handleNotificationPress(item)}
-        style={[
-          styles.notificationCard,
-          !item.read && styles.notificationCardUnread,
-        ]}
-      >
-        {/* Left Icon Container */}
-        <View style={[styles.iconBox, { backgroundColor: iconConfig.bg }]}>
-          {iconConfig.icon}
-        </View>
-
-        {/* Content Column */}
-        <View style={styles.cardContentCol}>
-          <View style={styles.cardHeaderRow}>
-            <Text
-              style={[
-                styles.itemTitle,
-                !item.read && styles.itemTitleUnread,
-              ]}
-              numberOfLines={1}
-            >
-              {item.title}
-            </Text>
-            {!item.read && <View style={styles.unreadDot} />}
-          </View>
-
-          <Text style={styles.itemMessageText}>{item.message}</Text>
-
-          <View style={styles.footerRow}>
-            <Text style={styles.timestampText}>{item.timestamp}</Text>
-            {item.route && (
-              <View style={styles.actionPrompt}>
-                <Text style={styles.actionPromptText}>View Details</Text>
-                <Feather name="chevron-right" size={scale(13)} color="#008080" />
-              </View>
-            )}
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
-  };
+  const renderItem = useCallback(
+    ({ item }: { item: NotificationItem }) => (
+      <NotificationCardItem
+        item={item}
+        onPress={handleNotificationPress}
+      />
+    ),
+    [handleNotificationPress]
+  );
 
   return (
     <View style={styles.root}>

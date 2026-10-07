@@ -13,10 +13,11 @@ import {
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   Dimensions,
   RefreshControl,
   ScrollView,
@@ -29,6 +30,104 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
+
+function SeeAllProductSkeleton({ animOpacity }: { animOpacity: Animated.Value }) {
+  return (
+    <View style={styles.productCard}>
+      {/* Image Skeleton */}
+      <Animated.View
+        style={[
+          styles.cardImageBox,
+          styles.skeletonBlock,
+          { opacity: animOpacity },
+        ]}
+      />
+      {/* Weight pill skeleton */}
+      <Animated.View
+        style={[
+          styles.skeletonBlock,
+          {
+            width: scale(50),
+            height: scale(14),
+            borderRadius: scale(4),
+            marginBottom: scale(6),
+            opacity: animOpacity,
+          },
+        ]}
+      />
+      {/* Title skeleton lines */}
+      <Animated.View
+        style={[
+          styles.skeletonBlock,
+          {
+            width: "90%",
+            height: scale(14),
+            marginBottom: scale(4),
+            borderRadius: scale(3),
+            opacity: animOpacity,
+          },
+        ]}
+      />
+      <Animated.View
+        style={[
+          styles.skeletonBlock,
+          {
+            width: "60%",
+            height: scale(14),
+            marginBottom: scale(6),
+            borderRadius: scale(3),
+            opacity: animOpacity,
+          },
+        ]}
+      />
+      {/* Rating row skeleton */}
+      <Animated.View
+        style={[
+          styles.skeletonBlock,
+          {
+            width: scale(75),
+            height: scale(12),
+            marginBottom: scale(8),
+            borderRadius: scale(3),
+            opacity: animOpacity,
+          },
+        ]}
+      />
+      {/* Price and Add button row skeleton */}
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginTop: scale(2),
+        }}
+      >
+        <Animated.View
+          style={[
+            styles.skeletonBlock,
+            {
+              width: scale(60),
+              height: scale(18),
+              borderRadius: scale(3),
+              opacity: animOpacity,
+            },
+          ]}
+        />
+        <Animated.View
+          style={[
+            styles.skeletonBlock,
+            {
+              width: scale(50),
+              height: scale(24),
+              borderRadius: scale(6),
+              opacity: animOpacity,
+            },
+          ]}
+        />
+      </View>
+    </View>
+  );
+}
 
 export default function SeeAllProductScreen() {
   const router = useRouter();
@@ -59,10 +158,30 @@ export default function SeeAllProductScreen() {
     inStockOnly: false,
   });
 
-  // Fetch Public Products from backend on mount
   const { publicProducts, publicLoading } = useAppSelector(
     (state) => state.product
   );
+
+  const pulseAnim = useRef(new Animated.Value(0.35)).current;
+
+  useEffect(() => {
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 0.9,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0.35,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pulseLoop.start();
+    return () => pulseLoop.stop();
+  }, [pulseAnim]);
 
   const loadProducts = useCallback(async () => {
     await dispatch(fetchPublicProducts());
@@ -108,7 +227,47 @@ export default function SeeAllProductScreen() {
       };
     });
 
-    // 1. Search Query Filter
+    // 1. Category or Specific Collection Filter
+    if (params.category && params.category !== "all") {
+      const catTarget = params.category.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const matched = list.filter((p) => {
+        const cat = (p.category || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        const sub = (p.subCategory || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        return cat.includes(catTarget) || sub.includes(catTarget);
+      });
+      if (matched.length > 0) list = matched;
+    } else if (params.filter === "sweet-tooth") {
+      const matched = list.filter((p) => {
+        const text = `${p.name} ${p.category} ${p.subCategory}`.toLowerCase();
+        return (
+          text.includes("choc") ||
+          text.includes("sweet") ||
+          text.includes("candy") ||
+          text.includes("wafer") ||
+          text.includes("kitkat") ||
+          text.includes("munch") ||
+          text.includes("gems") ||
+          text.includes("dairymilk") ||
+          text.includes("nutties")
+        );
+      });
+      if (matched.length > 0) list = matched;
+    } else if (params.filter === "instant-frozen") {
+      const matched = list.filter((p) => {
+        const text = `${p.name} ${p.category} ${p.subCategory}`.toLowerCase();
+        return (
+          text.includes("instant") ||
+          text.includes("noodle") ||
+          text.includes("maggi") ||
+          text.includes("waiwai") ||
+          text.includes("frozen") ||
+          text.includes("cereal")
+        );
+      });
+      if (matched.length > 0) list = matched;
+    }
+
+    // 2. Search Query Filter
     const query = searchQuery.trim().toLowerCase();
     if (query) {
       list = list.filter(
@@ -120,7 +279,7 @@ export default function SeeAllProductScreen() {
       );
     }
 
-    // 2. Quick Pill Filter
+    // 3. Quick Pill Filter
     if (activePill === "40_discount") {
       list = list.filter((p) => p.calculatedDiscountPct >= 40);
     } else if (activePill === "under200") {
@@ -133,7 +292,7 @@ export default function SeeAllProductScreen() {
       list = list.filter((p) => p.inStock);
     }
 
-    // 3. Modal Filters
+    // 4. Modal Filters
     if (filters.minDiscount > 0) {
       list = list.filter(
         (p) => p.calculatedDiscountPct >= filters.minDiscount
@@ -377,9 +536,13 @@ export default function SeeAllProductScreen() {
         }
       >
         {publicLoading && (!publicProducts || publicProducts.length === 0) ? (
-          <View style={styles.centerContainer}>
-            <ActivityIndicator size="large" color="#016073" />
-            <Text style={styles.loadingText}>Fetching deals...</Text>
+          <View style={styles.productsGrid}>
+            {[1, 2, 3, 4, 5, 6].map((item) => (
+              <SeeAllProductSkeleton
+                key={`see-all-skel-${item}`}
+                animOpacity={pulseAnim}
+              />
+            ))}
           </View>
         ) : filteredProducts.length > 0 ? (
           <View style={styles.productsGrid}>
@@ -862,5 +1025,8 @@ const styles = StyleSheet.create({
     color: "#94A3B8",
     textAlign: "center",
     paddingHorizontal: scale(30),
+  },
+  skeletonBlock: {
+    backgroundColor: "#E2E8F0",
   },
 });

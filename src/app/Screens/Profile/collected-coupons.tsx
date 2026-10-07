@@ -2,7 +2,7 @@ import { moderateScale, scale, useTheme } from "@/theme";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   Alert,
   FlatList,
@@ -71,40 +71,16 @@ const COUPONS_DATA: CouponItem[] = [
   },
 ];
 
-export default function CollectedCouponScreen() {
-  const router = useRouter();
-  const theme = useTheme();
-
-  const [activeTab, setActiveTab] = useState<"recently" | "expiring">("recently");
-
-  const filteredCoupons = COUPONS_DATA.filter((c) => c.type === activeTab);
-
-  const handleUseNow = (coupon: CouponItem) => {
-    Alert.alert(
-      "Coupon Applied!",
-      `Coupon "${coupon.code}" (${coupon.discount}) has been copied and selected for your next order.`,
-      [
-        {
-          text: "Go to Shop",
-          onPress: () => router.push("/customerMain/(tabs)/home" as any),
-        },
-        {
-          text: "View Cart",
-          onPress: () => router.push("/customerMain/cart" as any),
-        },
-      ]
-    );
-  };
-
-  const handleShowTerms = (coupon: CouponItem) => {
-    Alert.alert(
-      `Terms & Conditions (${coupon.code})`,
-      `${coupon.condition}\n\n${coupon.terms}\n\nValid till: ${coupon.validTill}`,
-      [{ text: "Got it", style: "default" }]
-    );
-  };
-
-  const renderCouponCard = ({ item }: { item: CouponItem }) => (
+const CouponCardItem = React.memo(function CouponCardItem({
+  item,
+  onUseNow,
+  onShowTerms,
+}: {
+  item: CouponItem;
+  onUseNow: (item: CouponItem) => void;
+  onShowTerms: (item: CouponItem) => void;
+}) {
+  return (
     <View style={styles.couponCard}>
       {/* Upper Content Box */}
       <View style={styles.cardTopContent}>
@@ -123,7 +99,7 @@ export default function CollectedCouponScreen() {
 
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={() => handleShowTerms(item)}
+            onPress={() => onShowTerms(item)}
             style={styles.tcBadge}
           >
             <Text style={styles.tcText}>T&C</Text>
@@ -148,13 +124,61 @@ export default function CollectedCouponScreen() {
       <View style={styles.cardBottomContent}>
         <TouchableOpacity
           activeOpacity={0.8}
-          onPress={() => handleUseNow(item)}
+          onPress={() => onUseNow(item)}
           style={styles.useNowButton}
         >
           <Text style={styles.useNowText}>Use Now</Text>
         </TouchableOpacity>
       </View>
     </View>
+  );
+});
+
+export default function CollectedCouponScreen() {
+  const router = useRouter();
+  const theme = useTheme();
+
+  const [activeTab, setActiveTab] = useState<"recently" | "expiring">("recently");
+
+  const filteredCoupons = useMemo(
+    () => COUPONS_DATA.filter((c) => c.type === activeTab),
+    [activeTab]
+  );
+
+  const handleUseNow = useCallback((coupon: CouponItem) => {
+    Alert.alert(
+      "Coupon Applied!",
+      `Coupon "${coupon.code}" (${coupon.discount}) has been copied and selected for your next order.`,
+      [
+        {
+          text: "Go to Shop",
+          onPress: () => router.push("/customerMain/(tabs)/home" as any),
+        },
+        {
+          text: "View Cart",
+          onPress: () => router.push("/customerMain/cart" as any),
+        },
+      ]
+    );
+  }, [router]);
+
+  const handleShowTerms = useCallback((coupon: CouponItem) => {
+    Alert.alert(
+      `Terms & Conditions (${coupon.code})`,
+      `${coupon.condition}\n\n${coupon.terms}\n\nValid till: ${coupon.validTill}`,
+      [{ text: "Got it", style: "default" }]
+    );
+  }, []);
+
+  const renderCouponCard = useCallback(
+    ({ item }: { item: CouponItem }) => (
+      <CouponCardItem
+        item={item}
+        onUseNow={handleUseNow}
+        onShowTerms={handleShowTerms}
+      />
+    ),
+    [handleUseNow, handleShowTerms]
   );
 
   return (

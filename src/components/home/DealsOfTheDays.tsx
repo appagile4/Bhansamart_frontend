@@ -262,44 +262,50 @@ export default function DealsOfTheDays({
     ];
   }, [displayProducts, publicProducts]);
 
-  const handleProductPress = (product: DealProduct) => {
-    if (onProductPress) {
-      onProductPress(product);
-    } else {
-      router.push({
-        pathname: "/Screens/Product/productdetailscreen" as any,
-        params: {
-          id: product.id,
-          name: product.name,
-          price: String(product.price),
-          originalPrice: String(product.originalPrice),
-          image:
-            typeof product.image === "object" && "uri" in product.image
-              ? (product.image as any).uri
-              : "",
-          weight: product.weight,
-          category: product.category,
-        },
-      });
-    }
-  };
+  const handleProductPress = React.useCallback(
+    (product: DealProduct) => {
+      if (onProductPress) {
+        onProductPress(product);
+      } else {
+        router.push({
+          pathname: "/Screens/Product/productdetailscreen" as any,
+          params: {
+            id: product.id,
+            name: product.name,
+            price: String(product.price),
+            originalPrice: String(product.originalPrice),
+            image:
+              typeof product.image === "object" && "uri" in product.image
+                ? (product.image as any).uri
+                : "",
+            weight: product.weight,
+            category: product.category,
+          },
+        });
+      }
+    },
+    [onProductPress, router]
+  );
 
-  const handleSeeMorePress = (product: DealProduct) => {
-    if (onSeeMorePress) {
-      onSeeMorePress(product);
-    } else {
-      router.push({
-        pathname: "/Screens/Category/categoryExpand" as any,
-        params: {
-          category: product.category || "Grocery & Kitchen",
-          subCategory: (product as any).subCategory || product.category,
-          title: product.name,
-        },
-      });
-    }
-  };
+  const handleSeeMorePress = React.useCallback(
+    (product: DealProduct) => {
+      if (onSeeMorePress) {
+        onSeeMorePress(product);
+      } else {
+        router.push({
+          pathname: "/Screens/Category/categoryExpand" as any,
+          params: {
+            category: product.category || "Grocery & Kitchen",
+            subCategory: (product as any).subCategory || product.category,
+            title: product.name,
+          },
+        });
+      }
+    },
+    [onSeeMorePress, router]
+  );
 
-  const handleSeeAllPress = () => {
+  const handleSeeAllPress = React.useCallback(() => {
     if (onSeeAllPress) {
       onSeeAllPress();
     } else {
@@ -312,7 +318,18 @@ export default function DealsOfTheDays({
         },
       });
     }
-  };
+  }, [onSeeAllPress, router]);
+
+  const renderProductItem = React.useCallback(
+    ({ item }: { item: DealProduct }) => (
+      <ProductCard
+        product={item}
+        onPress={handleProductPress}
+        onSeeMorePress={handleSeeMorePress}
+      />
+    ),
+    [handleProductPress, handleSeeMorePress]
+  );
 
   // ── 1. Skeleton Loading View when fetching from backend ──────────
   if (publicLoading && (!publicProducts || publicProducts.length === 0)) {
@@ -332,6 +349,9 @@ export default function DealsOfTheDays({
           renderItem={() => <DealCardSkeleton animOpacity={pulseAnim} />}
           horizontal
           showsHorizontalScrollIndicator={false}
+          initialNumToRender={3}
+          maxToRenderPerBatch={3}
+          windowSize={3}
           contentContainerStyle={styles.listContent}
           ItemSeparatorComponent={() => <View style={{ width: scale(12) }} />}
         />
@@ -367,15 +387,12 @@ export default function DealsOfTheDays({
       <FlatList
         data={displayProducts}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <ProductCard
-            product={item}
-            onPress={handleProductPress}
-            onSeeMorePress={handleSeeMorePress}
-          />
-        )}
+        renderItem={renderProductItem}
         horizontal
         showsHorizontalScrollIndicator={false}
+        initialNumToRender={3}
+        maxToRenderPerBatch={4}
+        windowSize={3}
         contentContainerStyle={styles.listContent}
         ItemSeparatorComponent={() => <View style={{ width: scale(12) }} />}
       />

@@ -8,7 +8,7 @@ import {
 } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import {
   ImageSourcePropType,
   StyleSheet,
@@ -43,7 +43,7 @@ export interface ProductCardProps {
   onSeeMorePress?: (product: DealProduct) => void;
 }
 
-export default function ProductCard({
+function ProductCardComponent({
   product,
   cardWidth,
   onPress,
@@ -245,12 +245,6 @@ export default function ProductCard({
           {product.originalPrice && product.originalPrice > product.price ? (
             <Text style={styles.strikePrice}>Rs. {product.originalPrice}</Text>
           ) : null}
-
-          {discountPercent > 0 && (
-            <Text style={[styles.discountHighlight, { color: primaryColor }]}>
-              {discountPercent}% OFF
-            </Text>
-          )}
         </View>
 
         {/* Unit Price / Savings Note */}
@@ -555,3 +549,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
 });
+
+const ProductCard = memo(ProductCardComponent);
+export default ProductCard;

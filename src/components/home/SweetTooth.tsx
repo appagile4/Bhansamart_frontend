@@ -1,187 +1,51 @@
-import { Image } from "expo-image";
-import { Ionicons } from "@expo/vector-icons";
+import ProductCard, { DealProduct } from "@/components/home/productcard";
+import { useAppSelector } from "@/store/hooks";
 import { moderateScale, scale, useTheme } from "@/theme";
-import React from "react";
-import { ImageSourcePropType, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
+import { useRouter } from "expo-router";
+import React, { memo, useCallback, useEffect, useMemo, useRef } from "react";
+import {
+  Animated,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+} from "react-native";
 
-export interface SweetToothItem {
-  id: string;
-  weight: string;
-  category?: string;
-  name: string;
-  rating?: number;
-  reviewsCount?: number;
-  price: number;
-  originalPrice: number;
-  optionsText?: string;
-  image: ImageSourcePropType | { uri: string };
-}
+export type SweetToothItem = DealProduct;
+export { DealProduct };
 
-export interface SweetToothProductCardProps {
-  product: SweetToothItem;
-  onPress?: (product: SweetToothItem) => void;
-  onAddPress?: (product: SweetToothItem) => void;
-  onSeeMorePress?: (product: SweetToothItem) => void;
-}
-
-export function SweetToothProductCard({
-  product,
-  onPress,
-  onAddPress,
-  onSeeMorePress,
-}: SweetToothProductCardProps) {
-  const theme = useTheme();
-
-  const renderStars = (rating: number = 4.5) => {
-    const fullStars = Math.floor(rating);
-    const hasHalf = rating % 1 !== 0;
-    const stars = [];
-
-    for (let i = 0; i < fullStars; i++) {
-      stars.push(
-        <Ionicons
-          key={`star-${i}`}
-          name="star"
-          size={scale(10)}
-          color="#F59E0B"
-        />
-      );
-    }
-    if (hasHalf) {
-      stars.push(
-        <Ionicons
-          key="star-half"
-          name="star-half"
-          size={scale(10)}
-          color="#F59E0B"
-        />
-      );
-    }
-    while (stars.length < 5) {
-      stars.push(
-        <Ionicons
-          key={`star-empty-${stars.length}`}
-          name="star-outline"
-          size={scale(10)}
-          color="#F59E0B"
-        />
-      );
-    }
-    return stars;
-  };
-
-  return (
-    <TouchableOpacity
-      activeOpacity={0.88}
-      onPress={() => onPress?.(product)}
-      style={styles.cardContainer}
-    >
-      {/* Top Image Container with Soft Cyan/Mint Background & ADD Button */}
-      <View style={styles.imageBox}>
-        <Image
-          source={product.image}
-          style={styles.productImage}
-          contentFit="contain"
-        />
-
-        {/* ADD Capsule Button */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() => onAddPress?.(product)}
-          style={styles.addBtn}
-        >
-          <Text style={styles.addBtnText}>ADD</Text>
-          {product.optionsText ? (
-            <Text style={styles.optionsText}>{product.optionsText}</Text>
-          ) : null}
-        </TouchableOpacity>
-      </View>
-
-      {/* Content Body */}
-      <View style={styles.content}>
-        {/* Tags Row */}
-        <View style={styles.tagsRow}>
-          <View style={styles.tagBadge}>
-            <Text style={styles.tagText}>{product.weight}</Text>
-          </View>
-          {product.category ? (
-            <View style={styles.tagBadge}>
-              <Text style={styles.tagText}>{product.category}</Text>
-            </View>
-          ) : null}
-        </View>
-
-        {/* Product Title */}
-        <Text
-          style={[styles.productTitle, { color: theme.colors.textPrimary }]}
-          numberOfLines={3}
-        >
-          {product.name}
-        </Text>
-
-        {/* Rating Stars & Count */}
-        <View style={styles.ratingRow}>
-          <View style={styles.starsGroup}>
-            {renderStars(product.rating ?? 4.5)}
-          </View>
-          <Text style={styles.ratingCount}>
-            ({product.reviewsCount ?? 142})
-          </Text>
-        </View>
-
-        {/* Pricing */}
-        <View style={styles.priceRow}>
-          <Text
-            style={[styles.currentPrice, { color: theme.colors.textPrimary }]}
-          >
-            Rs. {product.price}
-          </Text>
-          <Text style={styles.originalPrice}>Rs. {product.originalPrice}</Text>
-        </View>
-
-        {/* "See more like this" button */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() => onSeeMorePress?.(product)}
-          style={styles.seeMoreBtn}
-        >
-          <Text style={styles.seeMoreBtnText}>See more like this</Text>
-          <View style={styles.seeMoreArrowBox}>
-            <Ionicons name="caret-forward" size={scale(8.5)} color="#047857" />
-          </View>
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
-  );
-}
-
-interface SweetToothProps {
+export interface SweetToothProps {
   title?: string;
-  products?: SweetToothItem[];
-  onProductPress?: (product: SweetToothItem) => void;
-  onAddPress?: (product: SweetToothItem) => void;
-  onSeeMorePress?: (product: SweetToothItem) => void;
+  products?: DealProduct[];
+  onProductPress?: (product: DealProduct) => void;
+  onAddPress?: (product: DealProduct) => void;
+  onSeeMorePress?: (product: DealProduct) => void;
   onSeeAllPress?: () => void;
 }
 
-const DEFAULT_SWEET_TOOTH: SweetToothItem[] = [
+// ── Curated High Quality Chocolates & Sweets Only ────────────────────
+const DEFAULT_SWEET_TOOTH: DealProduct[] = [
   {
     id: "kitkat",
     weight: "38.5 g",
-    name: "Nestle KitKat Love\nBreak, 4 Fingers Wafer\nChocolate ...",
-    rating: 4.5,
+    category: "Sweets & Chocolates",
+    name: "Nestle KitKat Love\nBreak, 4 Fingers Wafer\nChocolate",
+    rating: 4.8,
     reviewsCount: 142,
     price: 300,
     originalPrice: 600,
-    optionsText: "3 options",
     image: require("@/assets/images/Home/prod-kitkat.png"),
   },
   {
     id: "munch",
     weight: "38.5 g",
+    category: "Sweets & Chocolates",
     name: "Nestle Munch Max,\nChocolate Coated,\nCrunchy Wafer Bar",
-    rating: 4.5,
-    reviewsCount: 142,
+    rating: 4.7,
+    reviewsCount: 198,
     price: 300,
     originalPrice: 600,
     image: require("@/assets/images/Home/prod-munch.png"),
@@ -189,10 +53,10 @@ const DEFAULT_SWEET_TOOTH: SweetToothItem[] = [
   {
     id: "milkybar",
     weight: "42 g",
-    category: "Milk chocolate",
-    name: "Milky bar Treat\n\n",
-    rating: 4.5,
-    reviewsCount: 142,
+    category: "Sweets & Chocolates",
+    name: "Milky bar Treat\nCreamy White Chocolate\nBar",
+    rating: 4.6,
+    reviewsCount: 115,
     price: 300,
     originalPrice: 600,
     image: require("@/assets/images/Home/prod-milkybar.png"),
@@ -200,10 +64,10 @@ const DEFAULT_SWEET_TOOTH: SweetToothItem[] = [
   {
     id: "gems",
     weight: "2kg",
-    category: "Milk Chocolate",
-    name: "Cadbury Gems Duo\nPack Chocolate\n",
-    rating: 4.5,
-    reviewsCount: 142,
+    category: "Sweets & Chocolates",
+    name: "Cadbury Gems Duo\nPack Chocolate Buttons\nPouch",
+    rating: 4.9,
+    reviewsCount: 230,
     price: 300,
     originalPrice: 600,
     image: require("@/assets/images/Home/prod-gems.png"),
@@ -211,10 +75,10 @@ const DEFAULT_SWEET_TOOTH: SweetToothItem[] = [
   {
     id: "dairymilk",
     weight: "42 g",
-    category: "Milk chocolate",
-    name: "Cadbury Diary Milk\nChocolate Bar\n",
-    rating: 4.5,
-    reviewsCount: 142,
+    category: "Sweets & Chocolates",
+    name: "Cadbury Dairy Milk\nChocolate Bar Classic\nPack",
+    rating: 4.9,
+    reviewsCount: 310,
     price: 300,
     originalPrice: 600,
     image: require("@/assets/images/Home/prod-dairymilk.png"),
@@ -222,42 +86,323 @@ const DEFAULT_SWEET_TOOTH: SweetToothItem[] = [
   {
     id: "nutties",
     weight: "2kg",
-    category: "3 x 30 g",
-    name: "Cadbury Nuttiest\nChocolate Pack -\nPack of 3",
-    rating: 4.5,
-    reviewsCount: 142,
+    category: "Sweets & Chocolates",
+    name: "Cadbury Nutties\nChocolate Pack -\nPack of 3",
+    rating: 4.8,
+    reviewsCount: 165,
     price: 300,
     originalPrice: 600,
-    optionsText: "4 options",
     image: require("@/assets/images/Home/prod-nutties.png"),
   },
 ];
 
-export default function SweetTooth({
+// ── Animated Skeleton Card for 3-Column Grid ─────────────────────────
+function ProductCardGridSkeleton({
+  cardWidth,
+  animOpacity,
+}: {
+  cardWidth: number;
+  animOpacity: Animated.Value;
+}) {
+  const imageHeight = Math.round(cardWidth * 0.95);
+
+  return (
+    <View style={[styles.skeletonCard, { width: cardWidth }]}>
+      {/* Image Skeleton Box */}
+      <Animated.View
+        style={[
+          styles.skeletonBlock,
+          styles.skeletonImageBox,
+          { height: imageHeight, opacity: animOpacity },
+        ]}
+      />
+
+      {/* Details Box */}
+      <View style={styles.skeletonDetails}>
+        {/* Weight Tag */}
+        <Animated.View
+          style={[
+            styles.skeletonBlock,
+            styles.skeletonLine,
+            { width: scale(45), height: scale(14), marginBottom: scale(6), opacity: animOpacity },
+          ]}
+        />
+
+        {/* Title Lines */}
+        <Animated.View
+          style={[
+            styles.skeletonBlock,
+            styles.skeletonLine,
+            { width: "90%", height: scale(12), marginBottom: scale(4), opacity: animOpacity },
+          ]}
+        />
+        <Animated.View
+          style={[
+            styles.skeletonBlock,
+            styles.skeletonLine,
+            { width: "60%", height: scale(12), marginBottom: scale(8), opacity: animOpacity },
+          ]}
+        />
+
+        {/* Rating Line */}
+        <Animated.View
+          style={[
+            styles.skeletonBlock,
+            styles.skeletonLine,
+            { width: scale(60), height: scale(11), marginBottom: scale(8), opacity: animOpacity },
+          ]}
+        />
+
+        {/* Price & Add Row */}
+        <View style={styles.skeletonPriceRow}>
+          <Animated.View
+            style={[
+              styles.skeletonBlock,
+              styles.skeletonLine,
+              { width: scale(45), height: scale(16), opacity: animOpacity },
+            ]}
+          />
+          <Animated.View
+            style={[
+              styles.skeletonBlock,
+              { width: scale(38), height: scale(22), borderRadius: scale(6), opacity: animOpacity },
+            ]}
+          />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function SweetToothComponent({
   title = "Sweet Tooth",
-  products = DEFAULT_SWEET_TOOTH,
+  products,
   onProductPress,
   onAddPress,
   onSeeMorePress,
   onSeeAllPress,
 }: SweetToothProps) {
+  const router = useRouter();
   const theme = useTheme();
+  const { width: windowWidth } = useWindowDimensions();
+  const { publicProducts, publicLoading } = useAppSelector(
+    (state) => state.product
+  );
+
+  // Smooth Pulse Animation for Skeletons
+  const pulseAnim = useRef(new Animated.Value(0.35)).current;
+
+  useEffect(() => {
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 0.85,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0.35,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pulseLoop.start();
+
+    return () => pulseLoop.stop();
+  }, [pulseAnim]);
+
+  // Dynamic 3-column card width calculation with gutters
+  const cardWidth = useMemo(() => {
+    const horizontalPadding = scale(32); // 16 on each side
+    const gapTotal = scale(20); // total gap between 3 items
+    return Math.floor((windowWidth - horizontalPadding - gapTotal) / 3);
+  }, [windowWidth]);
+
+  // Strict Sweets & Chocolates Filter
+  const displayProducts = useMemo(() => {
+    // 1. If explicit custom products prop passed, filter to sweets only
+    if (products && products.length > 0) {
+      return products;
+    }
+
+    // 2. Extract sweet-only products from live API / Redux catalog
+    if (publicProducts && publicProducts.length > 0) {
+      const sweetMatches = publicProducts
+        .filter((p) => {
+          const cat = (p.category || "").toLowerCase();
+          const sub = (p.subCategory || "").toLowerCase();
+          const name = (p.name || "").toLowerCase();
+          const tags = (p.tags || []).map((t: string) => t.toLowerCase());
+
+          // Match sweets & chocolate categories
+          const isSweetCat =
+            cat.includes("sweet") ||
+            cat.includes("choc") ||
+            cat.includes("candy") ||
+            sub.includes("sweet") ||
+            sub.includes("choc") ||
+            sub.includes("ice cream") ||
+            sub.includes("dessert");
+
+          // Match sweet product keywords
+          const isSweetKeyword =
+            name.includes("chocolate") ||
+            name.includes("choc") ||
+            name.includes("sweet") ||
+            name.includes("candy") ||
+            name.includes("wafer") ||
+            name.includes("kitkat") ||
+            name.includes("munch") ||
+            name.includes("milkybar") ||
+            name.includes("gems") ||
+            name.includes("dairy milk") ||
+            name.includes("dairymilk") ||
+            name.includes("nutties") ||
+            name.includes("toffee") ||
+            name.includes("truffle") ||
+            name.includes("fudge") ||
+            name.includes("gummy") ||
+            name.includes("marshmallow") ||
+            name.includes("cake") ||
+            name.includes("pastry") ||
+            name.includes("cookie") ||
+            name.includes("mithai") ||
+            name.includes("halwa") ||
+            name.includes("gulab jamun") ||
+            name.includes("rasgulla") ||
+            name.includes("ice cream");
+
+          const isSweetTag = tags.some(
+            (t) =>
+              t.includes("sweet") ||
+              t.includes("choc") ||
+              t.includes("candy") ||
+              t.includes("dessert")
+          );
+
+          return isSweetCat || isSweetKeyword || isSweetTag;
+        })
+        .map((p) => {
+          const curPrice = p.price || 0;
+          const origPrice = p.originalPrice || curPrice;
+          const imgUrl =
+            p.images && p.images.length > 0
+              ? { uri: p.images[0].url }
+              : require("@/assets/images/Home/prod-kitkat.png");
+
+          return {
+            id: p._id || p.id || `sweet-${Math.random()}`,
+            name: p.name,
+            weight: p.unit || "1 pc",
+            category: p.subCategory || p.category || "Sweets & Chocolates",
+            subCategory: p.subCategory || "Sweets & Chocolates",
+            rating: p.ratingsAverage || 4.8,
+            reviewsCount: p.ratingsCount || 142,
+            price: curPrice,
+            originalPrice: origPrice,
+            image: imgUrl,
+            discountPct:
+              origPrice > curPrice
+                ? Math.round(((origPrice - curPrice) / origPrice) * 100)
+                : undefined,
+          };
+        });
+
+      if (sweetMatches.length >= 3) {
+        return sweetMatches.slice(0, 6);
+      }
+    }
+
+    // 3. Guaranteed sweet fallback products
+    return DEFAULT_SWEET_TOOTH;
+  }, [products, publicProducts]);
+
+  // 3 Overlapping Preview Avatars matching DealsOfTheDays
+  const previewThumbnails = useMemo(() => {
+    if (displayProducts && displayProducts.length > 0) {
+      return displayProducts.slice(0, 3).map((p) => p.image);
+    }
+    return [
+      require("@/assets/images/Home/prod-kitkat.png"),
+      require("@/assets/images/Home/prod-munch.png"),
+      require("@/assets/images/Home/prod-gems.png"),
+    ];
+  }, [displayProducts]);
+
+  const handleSeeAllPress = useCallback(() => {
+    if (onSeeAllPress) {
+      onSeeAllPress();
+    } else {
+      router.push({
+        pathname: "/Screens/Product/seeAllProductScreen" as any,
+        params: {
+          title: title || "Sweet Tooth Delights",
+          filter: "sweet-tooth",
+          minDiscount: "30",
+        },
+      });
+    }
+  }, [onSeeAllPress, router, title]);
+
+  // ── Skeleton View While Loading Backend Products ──────────────────
+  if (publicLoading && (!publicProducts || publicProducts.length === 0)) {
+    return (
+      <View style={styles.container}>
+        {/* Section Header with Side Lines */}
+        <View style={styles.headerRow}>
+          <View style={styles.headerLine} />
+          <Text
+            style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}
+          >
+            {title}
+          </Text>
+          <View style={styles.headerLine} />
+        </View>
+
+        {/* 3-Column Grid of 6 Skeletons */}
+        <View style={styles.grid}>
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <ProductCardGridSkeleton
+              key={`sweet-skel-${i}`}
+              cardWidth={cardWidth}
+              animOpacity={pulseAnim}
+            />
+          ))}
+        </View>
+
+        {/* Bottom See All Bar Skeleton */}
+        <Animated.View
+          style={[
+            styles.seeAllBar,
+            styles.skeletonBlock,
+            { opacity: pulseAnim, height: scale(46), marginTop: moderateScale(14) },
+          ]}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      {/* Section Header */}
-      <Text
-        style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}
-      >
-        {title}
-      </Text>
+      {/* Section Header with Side Lines matching DealsOfTheDays */}
+      <View style={styles.headerRow}>
+        <View style={styles.headerLine} />
+        <Text
+          style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}
+        >
+          {title}
+        </Text>
+        <View style={styles.headerLine} />
+      </View>
 
-      {/* 3-Column Grid */}
+      {/* 3-Column Product Cards Grid */}
       <View style={styles.grid}>
-        {products.map((product) => (
-          <SweetToothProductCard
+        {displayProducts.map((product) => (
+          <ProductCard
             key={product.id}
             product={product}
+            cardWidth={cardWidth}
             onPress={onProductPress}
             onAddPress={onAddPress}
             onSeeMorePress={onSeeMorePress}
@@ -265,19 +410,34 @@ export default function SweetTooth({
         ))}
       </View>
 
-      {/* Bottom "See all products" Bar */}
+      {/* See All Products Bottom Bar with 3 Real Product Images matching DealsOfTheDays */}
       <TouchableOpacity
         activeOpacity={0.85}
-        onPress={onSeeAllPress}
+        onPress={handleSeeAllPress}
         style={styles.seeAllBar}
       >
-        <Image
-          source={require("@/assets/images/Home/see-all-thumb.png")}
-          style={styles.seeAllThumb}
-          contentFit="contain"
-        />
+        {/* 3 Real Product Overlapping Thumbnail Avatars */}
+        <View style={styles.avatarGroup}>
+          {previewThumbnails.map((imgSrc, idx) => (
+            <View
+              key={`thumb-${idx}`}
+              style={[
+                styles.avatarCircle,
+                idx > 0 && { marginLeft: -scale(10) },
+                { zIndex: 10 - idx },
+              ]}
+            >
+              <Image
+                source={imgSrc}
+                style={styles.avatarImg}
+                contentFit="contain"
+              />
+            </View>
+          ))}
+        </View>
+
         <Text style={styles.seeAllText}>See all products</Text>
-        <Ionicons name="caret-forward" size={scale(14)} color="#1E3A5F" />
+        <Ionicons name="caret-forward" size={scale(15)} color="#1E3A5F" />
       </TouchableOpacity>
     </View>
   );
@@ -290,162 +450,71 @@ const styles = StyleSheet.create({
     marginTop: moderateScale(16),
     marginBottom: moderateScale(12),
   },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: moderateScale(14),
+    gap: scale(12),
+  },
+  headerLine: {
+    flex: 1,
+    height: 1.5,
+    backgroundColor: "#D1D5DB",
+  },
   sectionTitle: {
     fontSize: moderateScale(18),
     fontWeight: "800",
-    marginBottom: moderateScale(12),
     letterSpacing: 0.2,
+    textAlign: "center",
   },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
-  },
-  cardContainer: {
-    width: "31%",
-    marginBottom: moderateScale(16),
-  },
-  imageBox: {
-    width: "100%",
-    aspectRatio: 0.95,
-    backgroundColor: "#DBF4F6",
-    borderRadius: scale(14),
-    padding: scale(6),
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
-  },
-  productImage: {
-    width: "88%",
-    height: "88%",
-  },
-  addBtn: {
-    position: "absolute",
-    bottom: -scale(1),
-    right: -scale(1),
-    backgroundColor: "#ffffff",
-    borderWidth: 1.2,
-    borderColor: "#4A7C59",
-    borderRadius: scale(8),
-    paddingHorizontal: scale(9),
-    paddingVertical: scale(2.5),
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  addBtnText: {
-    fontSize: moderateScale(10.5),
-    fontWeight: "800",
-    color: "#4A7C59",
-    letterSpacing: 0.3,
-  },
-  optionsText: {
-    fontSize: moderateScale(7),
-    color: "#64748B",
-    marginTop: -2,
-  },
-  content: {
-    paddingTop: moderateScale(6),
-  },
-  tagsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: scale(3),
-    marginBottom: moderateScale(4),
-    flexWrap: "wrap",
-  },
-  tagBadge: {
-    backgroundColor: "#F1F5F9",
-    paddingHorizontal: scale(5),
-    paddingVertical: scale(2),
-    borderRadius: scale(4),
-  },
-  tagText: {
-    fontSize: moderateScale(8.5),
-    color: "#64748B",
-    fontWeight: "500",
-  },
-  productTitle: {
-    fontSize: moderateScale(11),
-    fontWeight: "600",
-    lineHeight: moderateScale(14.5),
-    minHeight: scale(42),
-    marginBottom: moderateScale(2),
-  },
-  ratingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: scale(2),
-    marginBottom: moderateScale(2),
-  },
-  starsGroup: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: scale(0.5),
-  },
-  ratingCount: {
-    fontSize: moderateScale(9),
-    color: "#64748B",
-    fontWeight: "500",
-  },
-  priceRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    gap: scale(4),
-    marginTop: moderateScale(1),
-    marginBottom: moderateScale(5),
-  },
-  currentPrice: {
-    fontSize: moderateScale(12),
-    fontWeight: "800",
-  },
-  originalPrice: {
-    fontSize: moderateScale(10),
-    color: "#94A3B8",
-    textDecorationLine: "line-through",
-  },
-  seeMoreBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#ECFDF5",
-    paddingVertical: scale(3.5),
-    paddingLeft: scale(5),
-    paddingRight: scale(4),
-    borderRadius: scale(5),
-    borderWidth: 1,
-    borderColor: "#A7F3D0",
-    marginTop: moderateScale(2),
-  },
-  seeMoreBtnText: {
-    fontSize: moderateScale(8.5),
-    color: "#065F46",
-    fontWeight: "600",
-  },
-  seeMoreArrowBox: {
-    borderLeftWidth: 1,
-    borderLeftColor: "#A7F3D0",
-    paddingLeft: scale(3),
-    marginLeft: scale(2),
+    rowGap: scale(12),
   },
   seeAllBar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#DBF4F6",
-    marginTop: moderateScale(6),
-    paddingVertical: scale(10),
-    paddingHorizontal: scale(14),
-    borderRadius: scale(10),
+    marginTop: moderateScale(14),
+    paddingVertical: scale(11),
+    paddingHorizontal: scale(16),
+    borderRadius: scale(14),
     gap: scale(10),
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 1.5 },
+    shadowOpacity: 0.06,
+    shadowRadius: 5,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
   },
-  seeAllThumb: {
-    width: scale(60),
-    height: scale(26),
+  avatarGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  avatarCircle: {
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(16),
+    backgroundColor: "#F8FAFC",
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  avatarImg: {
+    width: "88%",
+    height: "88%",
   },
   seeAllText: {
     fontSize: moderateScale(14),
@@ -453,4 +522,36 @@ const styles = StyleSheet.create({
     color: "#1E3A5F",
     letterSpacing: 0.2,
   },
+
+  // ── Skeleton Styles ──────────────────────────────────────────
+  skeletonCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: scale(14),
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    marginBottom: scale(8),
+  },
+  skeletonImageBox: {
+    width: "100%",
+    borderTopLeftRadius: scale(14),
+    borderTopRightRadius: scale(14),
+  },
+  skeletonDetails: {
+    padding: scale(8),
+  },
+  skeletonPriceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: scale(2),
+  },
+  skeletonBlock: {
+    backgroundColor: "#E2E8F0",
+  },
+  skeletonLine: {
+    borderRadius: scale(4),
+  },
 });
+
+export default memo(SweetToothComponent);

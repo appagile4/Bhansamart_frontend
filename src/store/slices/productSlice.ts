@@ -126,6 +126,9 @@ interface ProductState {
   relatedProducts: ProductItem[];
   relatedLoading: boolean;
   relatedError: string | null;
+
+  // Active Category Selection for Customer Home Screen & Scrollers
+  selectedCategory: string;
 }
 
 const initialState: ProductState = {
@@ -154,6 +157,8 @@ const initialState: ProductState = {
   relatedProducts: [],
   relatedLoading: false,
   relatedError: null,
+
+  selectedCategory: "all",
 };
 
 // 1. Create Product Thunk
@@ -307,6 +312,9 @@ export const productSlice = createSlice({
     setCurrentProduct: (state, action: PayloadAction<ProductItem | null>) => {
       state.currentProduct = action.payload;
     },
+    setSelectedCategory: (state, action: PayloadAction<string>) => {
+      state.selectedCategory = action.payload;
+    },
   },
   extraReducers: (builder) => {
     // ── CREATE PRODUCT ───────────────────────────────────────
@@ -448,7 +456,11 @@ export const productSlice = createSlice({
   },
 });
 
-export const { clearProductError, clearProductSuccess, setCurrentProduct } =
-  productSlice.actions;
+export const {
+  clearProductError,
+  clearProductSuccess,
+  setCurrentProduct,
+  setSelectedCategory,
+} = productSlice.actions;
 
 export default productSlice.reducer;

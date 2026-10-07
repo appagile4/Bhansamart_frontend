@@ -20,7 +20,10 @@ import {
 } from "@/components/home";
 import { useCart } from "@/context/cart-context";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { fetchPublicProducts } from "@/store/slices/productSlice";
+import {
+  fetchPublicProducts,
+  setSelectedCategory,
+} from "@/store/slices/productSlice";
 import { moderateScale, scale, useTheme } from "@/theme";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -34,6 +37,9 @@ export default function HomeScreen() {
   const { isAuthenticated, isInitialized } = useAppSelector(
     (state) => state.auth,
   );
+  const selectedCategory = useAppSelector(
+    (state) => state.product.selectedCategory || "all"
+  );
 
   useEffect(() => {
     dispatch(fetchPublicProducts());
@@ -45,8 +51,6 @@ export default function HomeScreen() {
     }
   }, [isInitialized, isAuthenticated]);
 
-  // By default, category slider is on "all"
-  const [selectedCategory, setSelectedCategory] = useState("all");
   const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
   const [currentLocation, setCurrentLocation] = useState(
     "Baneshwor, Kathmandu, Bagmati, Nepal",
@@ -108,7 +112,7 @@ export default function HomeScreen() {
           location={currentLocation}
           selectedCategory={selectedCategory}
           onSelectCategory={(catId) => {
-            setSelectedCategory(catId);
+            dispatch(setSelectedCategory(catId));
           }}
           onLocationPress={() => setIsLocationModalVisible(true)}
           onStorePress={() => console.log("Store icon pressed")}
@@ -228,7 +232,7 @@ export default function HomeScreen() {
             />
             {/* 3. New Arrivals (2x3 Dual Product Green Tiles) */}
             <NewArrivals
-              category="grocery"
+              category={selectedCategory}
               onCategoryPress={(cat) =>
                 handleCategoryPress(cat.title, cat.category)
               }
@@ -245,7 +249,14 @@ export default function HomeScreen() {
               onAddPress={handleAddToCart}
               onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
               onSeeAllPress={() =>
-                handleCategoryPress("Sweet Tooth", "sweet-tooth")
+                router.push({
+                  pathname: "/Screens/Product/seeAllProductScreen" as any,
+                  params: {
+                    title: "Sweet Tooth Delights",
+                    filter: "sweet-tooth",
+                    minDiscount: "30",
+                  },
+                })
               }
             />
 
@@ -262,7 +273,14 @@ export default function HomeScreen() {
               onAddPress={handleAddToCart}
               onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
               onSeeAllPress={() =>
-                handleCategoryPress("Find Your Favorites", "favorites")
+                router.push({
+                  pathname: "/Screens/Product/seeAllProductScreen" as any,
+                  params: {
+                    title: "Find Your Favorites",
+                    filter: "favorites",
+                    minDiscount: "40",
+                  },
+                })
               }
             />
 
@@ -283,7 +301,14 @@ export default function HomeScreen() {
               onProductPress={handleProductPress}
               onAddPress={handleAddToCart}
               onSeeAllPress={() =>
-                handleCategoryPress("Instant & Frozen Food", "instant-frozen")
+                router.push({
+                  pathname: "/Screens/Product/seeAllProductScreen" as any,
+                  params: {
+                    title: "Instant & Frozen Food",
+                    filter: "instant-frozen",
+                    minDiscount: "30",
+                  },
+                })
               }
             />
 
@@ -410,7 +435,14 @@ export default function HomeScreen() {
               onAddPress={handleAddToCart}
               onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
               onSeeAllPress={() =>
-                handleCategoryPress("Sweet Tooth", "sweet-tooth")
+                router.push({
+                  pathname: "/Screens/Product/seeAllProductScreen" as any,
+                  params: {
+                    title: "Sweet Tooth Delights",
+                    filter: "sweet-tooth",
+                    minDiscount: "30",
+                  },
+                })
               }
             />
           </>
