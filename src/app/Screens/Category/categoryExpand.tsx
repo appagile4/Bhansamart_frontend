@@ -132,15 +132,25 @@ export default function CategoryExpandScreen() {
 
   // 2. Resolve initial subcategory selection
   const initialSubcategory = useMemo(() => {
-    if (params.subCategory && params.subCategory !== "all") {
-      return params.subCategory;
+    if (params.subCategory === "all") {
+      return "all";
+    }
+    const validSubs = getSubCategoriesForCategory(parentCategory);
+    if (params.subCategory) {
+      const match = validSubs.find(
+        (s) => s.toLowerCase() === params.subCategory?.toLowerCase()
+      );
+      if (match) return match;
     }
     if (
       params.title &&
-      params.title !== parentCategory &&
-      params.title !== "all"
+      params.title !== "all" &&
+      params.title !== parentCategory
     ) {
-      return params.title;
+      const match = validSubs.find(
+        (s) => s.toLowerCase() === params.title?.toLowerCase()
+      );
+      if (match) return match;
     }
     return "all";
   }, [params.subCategory, params.title, parentCategory]);

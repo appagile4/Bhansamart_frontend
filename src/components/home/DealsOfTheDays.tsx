@@ -154,11 +154,11 @@ export default function DealsOfTheDays({
       onSeeAllPress();
     } else {
       router.push({
-        pathname: "/Screens/Category/categoryExpand" as any,
+        pathname: "/Screens/Product/seeAllProductScreen" as any,
         params: {
-          category: "Grocery & Kitchen",
-          subCategory: "all",
-          title: "Deals Of The Day",
+          title: "Deals of the Day",
+          filter: "deals",
+          minDiscount: "40",
         },
       });
     }

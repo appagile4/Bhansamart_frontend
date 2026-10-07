@@ -146,7 +146,45 @@ export default function HomeScreen() {
             />
 
             {/* 4. Deals of the Day Triple Showcase Grid */}
-            <DealsOfTheDays />
+            <DealsOfTheDays
+              onProductPress={(deal) =>
+                router.push({
+                  pathname: "/Screens/Product/productdetailscreen" as any,
+                  params: {
+                    id: deal.id,
+                    name: deal.name,
+                    price: deal.price,
+                    originalPrice: deal.originalPrice,
+                    weight: deal.weight,
+                    category: deal.category,
+                    image:
+                      typeof deal.image === "object" && "uri" in deal.image
+                        ? (deal.image as any).uri
+                        : "",
+                  },
+                })
+              }
+              onSeeMorePress={(deal) =>
+                router.push({
+                  pathname: "/Screens/Category/categoryExpand" as any,
+                  params: {
+                    category: deal.category || "Grocery & Kitchen",
+                    subCategory: (deal as any).subCategory || deal.category,
+                    title: deal.name,
+                  },
+                })
+              }
+              onSeeAllPress={() =>
+                router.push({
+                  pathname: "/Screens/Product/seeAllProductScreen" as any,
+                  params: {
+                    title: "Deals of the Day",
+                    filter: "deals",
+                    minDiscount: "40",
+                  },
+                })
+              }
+            />
 
             {/* 5. Top Deals Single-Row Trending Carousel */}
             <TopDeals
