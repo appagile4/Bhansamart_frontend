@@ -147,6 +147,11 @@ export default function CategoryExpandScreen() {
 
   const [selectedSubcategory, setSelectedSubcategory] =
     useState<string>(initialSubcategory);
+
+  // Sync selected subcategory if navigation params change
+  useEffect(() => {
+    setSelectedSubcategory(initialSubcategory);
+  }, [initialSubcategory]);
   const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
   const [sortBy, setSortBy] = useState<string>("popularity");
   const [refreshing, setRefreshing] = useState(false);

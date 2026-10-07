@@ -118,12 +118,24 @@ export default function HomeScreen() {
           <>
             {/* 2. Fast Flash Sale Banner & Quick Categories */}
             <FastSales
-              onBannerPress={() => router.push("/search" as any)}
+              onBannerPress={() =>
+                router.push({
+                  pathname: "/Screens/Category/categoryExpand" as any,
+                  params: {
+                    category: "Snacks & Drinks",
+                    title: "Flash Sale",
+                  },
+                })
+              }
               onCategoryPress={(cat: any) =>
-                handleCategoryPress(
-                  typeof cat === "string" ? cat : cat.name || "Flash Sale",
-                  cat?.id,
-                )
+                router.push({
+                  pathname: "/Screens/Category/categoryExpand" as any,
+                  params: {
+                    category: cat.category || "Snacks & Drinks",
+                    subCategory: cat.subCategory || cat.name,
+                    title: cat.name || cat.title || "Flash Sale",
+                  },
+                })
               }
             />
 

@@ -1,5 +1,8 @@
-﻿import { moderateScale, scale, useTheme } from "@/theme";
+import { useAppSelector } from "@/store/hooks";
+import { moderateScale, scale, useTheme } from "@/theme";
 import { Image } from "expo-image";
+import { useRouter } from "expo-router";
+import React, { useMemo } from "react";
 import {
   ImageSourcePropType,
   StyleSheet,
@@ -11,6 +14,8 @@ import {
 export interface FlashSaleCategory {
   id: string;
   name: string;
+  category: string;
+  subCategory: string;
   discount: string;
   image?: ImageSourcePropType;
 }
@@ -24,22 +29,28 @@ export interface FastSalesProps {
   onBannerPress?: () => void;
 }
 
-const SALE_ITEMS: FlashSaleItem[] = [
+const DEFAULT_SALE_ITEMS: FlashSaleItem[] = [
   {
     id: "chips",
     name: "Chips",
+    category: "Snacks & Drinks",
+    subCategory: "Chips & Namkeen",
     discount: "10% OFF",
     image: require("@/assets/images/Home/gift-basket-care.png"),
   },
   {
     id: "beauty",
     name: "Beauty",
+    category: "Beauty & Personal Care",
+    subCategory: "Beauty & Cosmetics",
     discount: "25% OFF",
     image: require("@/assets/images/Home/desk-crayons-markers-holder.png"),
   },
   {
     id: "drinks",
     name: "Drinks & Juice",
+    category: "Snacks & Drinks",
+    subCategory: "Drinks & Juices",
     discount: "15% OFF",
     image: require("@/assets/images/Home/stationery-organizer-basket.png"),
   },
@@ -52,10 +63,78 @@ export default function FastSales({
   onBannerPress,
 }: FastSalesProps) {
   const theme = useTheme();
+  const router = useRouter();
+  const { publicProducts } = useAppSelector((state) => state.product);
+
+  // Compute live discount percentages dynamically from backend products if available
+  const saleItems = useMemo(() => {
+    return DEFAULT_SALE_ITEMS.map((item) => {
+      if (publicProducts && publicProducts.length > 0) {
+        const matchingProds = publicProducts.filter(
+          (p) =>
+            p.subCategory?.toLowerCase() === item.subCategory.toLowerCase() ||
+            p.category?.toLowerCase() === item.category.toLowerCase()
+        );
+
+        let maxDisc = 0;
+        matchingProds.forEach((p) => {
+          const cur = p.price || 0;
+          const orig =
+            p.originalPrice && p.originalPrice > cur
+              ? p.originalPrice
+              : p.discountValue && p.discountValue > 0
+              ? Math.round(cur / (1 - p.discountValue / 100))
+              : cur;
+
+          const disc =
+            orig > cur ? Math.round(((orig - cur) / orig) * 100) : 0;
+          const finalDisc = Math.max(p.discountValue || 0, disc);
+          if (finalDisc > maxDisc) maxDisc = finalDisc;
+        });
+
+        if (maxDisc > 0) {
+          return {
+            ...item,
+            discount: `${maxDisc}% OFF`,
+          };
+        }
+      }
+      return item;
+    });
+  }, [publicProducts]);
+
+  const handleBannerPress = () => {
+    if (onBannerPress) {
+      onBannerPress();
+    } else {
+      router.push({
+        pathname: "/Screens/Category/categoryExpand" as any,
+        params: {
+          category: "Snacks & Drinks",
+          subCategory: "all",
+          title: "Flash Sale",
+        },
+      });
+    }
+  };
 
   const handleItemPress = (item: FlashSaleItem) => {
-    onItemPress?.(item);
-    onCategoryPress?.(item);
+    if (onItemPress) {
+      onItemPress(item);
+    }
+    if (onCategoryPress) {
+      onCategoryPress(item);
+    }
+    if (!onItemPress && !onCategoryPress) {
+      router.push({
+        pathname: "/Screens/Category/categoryExpand" as any,
+        params: {
+          category: item.category,
+          subCategory: item.subCategory,
+          title: item.subCategory,
+        },
+      });
+    }
   };
 
   return (
@@ -63,7 +142,7 @@ export default function FastSales({
       {/* Flash Sale Header Banner Image with Centered Pill Text */}
       <TouchableOpacity
         activeOpacity={0.9}
-        onPress={onBannerPress}
+        onPress={handleBannerPress}
         style={styles.bannerHeaderContainer}
       >
         <Image
@@ -79,7 +158,7 @@ export default function FastSales({
 
       {/* 3 Categories / Basket Row */}
       <View style={styles.itemsRow}>
-        {SALE_ITEMS.map((item) => (
+        {saleItems.map((item) => (
           <TouchableOpacity
             key={item.id}
             activeOpacity={0.8}
