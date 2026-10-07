@@ -129,6 +129,181 @@ function TopDealCardSkeleton({ animOpacity }: { animOpacity: Animated.Value }) {
   );
 }
 
+// ── Curated High Quality Fallback Deals by Domain ─────────────────────
+const DEFAULT_CREAMY_DEALS: DealProduct[] = [
+  {
+    id: "swiss-cheese-1",
+    weight: "200 g",
+    category: "Dairy & Breakfast",
+    subCategory: "Cheese & Butter",
+    name: "Amul Fresh Swiss Cheese Block, Rich & Creamy",
+    rating: 4.8,
+    reviewsCount: 145,
+    price: 180,
+    originalPrice: 240,
+    discountPct: 25,
+    ordersCount: 320,
+    isVeg: true,
+    image: require("@/assets/images/Home/swiss-cheese-wedge.png"),
+  },
+  {
+    id: "saffola-butter-1",
+    weight: "500 g",
+    category: "Dairy & Breakfast",
+    subCategory: "Butter & Spreads",
+    name: "Amul Pasteurized Salted Butter Delicious Spread",
+    rating: 4.9,
+    reviewsCount: 420,
+    price: 275,
+    originalPrice: 310,
+    discountPct: 11,
+    ordersCount: 580,
+    isVeg: true,
+    image: require("@/assets/images/Home/swiss-cheese-wedge.png"),
+  },
+  {
+    id: "fresh-paneer-1",
+    weight: "200 g",
+    category: "Dairy & Breakfast",
+    subCategory: "Paneer & Curd",
+    name: "Mother Dairy Malai Fresh Paneer Cube Pack",
+    rating: 4.7,
+    reviewsCount: 198,
+    price: 95,
+    originalPrice: 120,
+    discountPct: 21,
+    ordersCount: 410,
+    isVeg: true,
+    image: require("@/assets/images/Home/swiss-cheese-wedge.png"),
+  },
+  {
+    id: "fresh-cream-1",
+    weight: "250 ml",
+    category: "Dairy & Breakfast",
+    subCategory: "Cream & Milk",
+    name: "Amul Fresh Low Fat Cream Carton Pack",
+    rating: 4.8,
+    reviewsCount: 164,
+    price: 65,
+    originalPrice: 85,
+    discountPct: 24,
+    ordersCount: 290,
+    isVeg: true,
+    image: require("@/assets/images/Home/swiss-cheese-wedge.png"),
+  },
+];
+
+const DEFAULT_GROCERY_DEALS: DealProduct[] = [
+  {
+    id: "daawat-rice-1",
+    weight: "1 kg",
+    category: "Grocery & Kitchen",
+    subCategory: "Rice & Grains",
+    name: "Daawat Traditional Basmati Rice Long Grain",
+    rating: 4.8,
+    reviewsCount: 380,
+    price: 195,
+    originalPrice: 260,
+    discountPct: 25,
+    ordersCount: 650,
+    isVeg: true,
+    image: require("@/assets/images/Home/daawat-basmati-rice.png"),
+  },
+  {
+    id: "saffola-oil-1",
+    weight: "1 L",
+    category: "Grocery & Kitchen",
+    subCategory: "Cooking Oil & Ghee",
+    name: "Saffola Gold Pro Healthy Blend Refined Cooking Oil",
+    rating: 4.9,
+    reviewsCount: 512,
+    price: 165,
+    originalPrice: 210,
+    discountPct: 21,
+    ordersCount: 780,
+    isVeg: true,
+    image: require("@/assets/images/Home/saffola-gold-oil.png"),
+  },
+  {
+    id: "fresh-cauli-1",
+    weight: "1 pc",
+    category: "Grocery & Kitchen",
+    subCategory: "Fresh Farm Veggies",
+    name: "Farm Fresh Crisp Cauliflower Handpicked",
+    rating: 4.6,
+    reviewsCount: 130,
+    price: 45,
+    originalPrice: 65,
+    discountPct: 31,
+    ordersCount: 310,
+    isVeg: true,
+    image: require("@/assets/images/Home/fresh-cauliflower.png"),
+  },
+  {
+    id: "rice-grains-1",
+    weight: "5 kg",
+    category: "Grocery & Kitchen",
+    subCategory: "Atta, Rice & Dal",
+    name: "Fortune Everyday Super Basmati Rice Value Pack",
+    rating: 4.7,
+    reviewsCount: 290,
+    price: 340,
+    originalPrice: 450,
+    discountPct: 24,
+    ordersCount: 420,
+    isVeg: true,
+    image: require("@/assets/images/Home/rice-grains-package.png"),
+  },
+];
+
+const DEFAULT_SNACK_DEALS: DealProduct[] = [
+  {
+    id: "maggi-deal-1",
+    weight: "280 g",
+    category: "Snacks & Drinks",
+    subCategory: "Noodles & Pasta",
+    name: "Maggi Masala 2-Minute Instant Noodles 4-Pack",
+    rating: 4.8,
+    reviewsCount: 450,
+    price: 55,
+    originalPrice: 60,
+    discountPct: 8,
+    ordersCount: 920,
+    isVeg: true,
+    image: require("@/assets/images/Home/product-maggi.png"),
+  },
+  {
+    id: "cornflakes-deal-1",
+    weight: "475 g",
+    category: "Snacks & Drinks",
+    subCategory: "Breakfast Cereals",
+    name: "Kellogg's Real Almond & Honey Corn Flakes Box",
+    rating: 4.7,
+    reviewsCount: 220,
+    price: 240,
+    originalPrice: 320,
+    discountPct: 25,
+    ordersCount: 340,
+    isVeg: true,
+    image: require("@/assets/images/Home/cornflakes-hero.png"),
+  },
+  {
+    id: "waiwai-deal-1",
+    weight: "350 g",
+    category: "Snacks & Drinks",
+    subCategory: "Instant Food",
+    name: "Wai Wai Quick Masala Delight Instant Noodles",
+    rating: 4.6,
+    reviewsCount: 310,
+    price: 90,
+    originalPrice: 120,
+    discountPct: 25,
+    ordersCount: 540,
+    isVeg: true,
+    image: require("@/assets/images/Home/product-waiwai.png"),
+  },
+];
+
 export default function TopDeals({
   title = "Top Deals & Trending Picks",
   category = "grocery",
@@ -176,6 +351,9 @@ export default function TopDeals({
       return items;
     }
 
+    const titleLower = (title || "").toLowerCase();
+    const catLower = (category || "").toLowerCase();
+
     // 2. Map from live MongoDB publicProducts
     if (publicProducts && publicProducts.length > 0) {
       const allDeals = publicProducts.map((p) => {
@@ -219,19 +397,191 @@ export default function TopDeals({
           discountPct,
           ordersCount,
           isVeg: true,
+          tags: p.tags || [],
         };
       });
 
-      // Filter: discount > 50% AND ordersCount > 100
+      // A. Creamy Delights specific filter (Dairy, Butter, Cheese, Milk, Paneer, Cream, Ghee, Yogurt)
+      if (titleLower.includes("creamy") || catLower.includes("creamy")) {
+        const creamyMatches = allDeals.filter((p) => {
+          const text = `${p.name} ${p.category} ${p.subCategory} ${(p.tags || []).join(" ")}`.toLowerCase();
+          return (
+            text.includes("cream") ||
+            text.includes("butter") ||
+            text.includes("cheese") ||
+            text.includes("paneer") ||
+            text.includes("milk") ||
+            text.includes("curd") ||
+            text.includes("yogurt") ||
+            text.includes("ghee") ||
+            text.includes("dairy") ||
+            text.includes("mayo") ||
+            text.includes("lassi") ||
+            text.includes("spread") ||
+            text.includes("condensed")
+          );
+        });
+
+        if (creamyMatches.length > 0) {
+          return creamyMatches.sort(
+            (a, b) => b.ordersCount - a.ordersCount || b.discountPct - a.discountPct
+          );
+        }
+        return DEFAULT_CREAMY_DEALS;
+      }
+
+      // B. Grocery & Kitchen Filter
+      if (catLower === "grocery" || catLower === "grocery-kitchen" || catLower === "groceries") {
+        const groceryMatches = allDeals.filter((p) => {
+          const text = `${p.name} ${p.category} ${p.subCategory} ${(p.tags || []).join(" ")}`.toLowerCase();
+          const isNonGrocery =
+            text.includes("stationery") ||
+            text.includes("notebook") ||
+            text.includes("pen") ||
+            text.includes("pencil") ||
+            text.includes("lipstick") ||
+            text.includes("makeup") ||
+            text.includes("skincare") ||
+            text.includes("diaper") ||
+            text.includes("toy");
+
+          const isGrocery =
+            text.includes("grocery") ||
+            text.includes("kitchen") ||
+            text.includes("food") ||
+            text.includes("dairy") ||
+            text.includes("rice") ||
+            text.includes("atta") ||
+            text.includes("flour") ||
+            text.includes("oil") ||
+            text.includes("ghee") ||
+            text.includes("dal") ||
+            text.includes("pulse") ||
+            text.includes("spice") ||
+            text.includes("masala") ||
+            text.includes("salt") ||
+            text.includes("sugar") ||
+            text.includes("tea") ||
+            text.includes("coffee") ||
+            text.includes("grain") ||
+            text.includes("staple") ||
+            text.includes("noodle") ||
+            text.includes("pasta") ||
+            text.includes("paneer") ||
+            text.includes("butter") ||
+            text.includes("cheese") ||
+            text.includes("veg") ||
+            text.includes("fruit");
+
+          return isGrocery && !isNonGrocery;
+        });
+
+        if (groceryMatches.length > 0) {
+          return groceryMatches.sort(
+            (a, b) => b.ordersCount - a.ordersCount || b.discountPct - a.discountPct
+          );
+        }
+        return DEFAULT_GROCERY_DEALS;
+      }
+
+      // C. Snacks Filter
+      if (catLower === "snacks" || catLower === "snacks-drinks") {
+        const snackMatches = allDeals.filter((p) => {
+          const text = `${p.name} ${p.category} ${p.subCategory} ${(p.tags || []).join(" ")}`.toLowerCase();
+          return (
+            text.includes("snack") ||
+            text.includes("chip") ||
+            text.includes("biscuit") ||
+            text.includes("cookie") ||
+            text.includes("namkeen") ||
+            text.includes("drink") ||
+            text.includes("juice") ||
+            text.includes("cereal") ||
+            text.includes("noodle")
+          );
+        });
+        if (snackMatches.length > 0) {
+          return snackMatches.sort(
+            (a, b) => b.ordersCount - a.ordersCount || b.discountPct - a.discountPct
+          );
+        }
+        return DEFAULT_SNACK_DEALS;
+      }
+
+      // D. Beauty Filter
+      if (catLower === "beauty" || catLower === "beauty-personal-care") {
+        const beautyMatches = allDeals.filter((p) => {
+          const text = `${p.name} ${p.category} ${p.subCategory} ${(p.tags || []).join(" ")}`.toLowerCase();
+          return (
+            text.includes("beauty") ||
+            text.includes("skin") ||
+            text.includes("care") ||
+            text.includes("hair") ||
+            text.includes("shampoo") ||
+            text.includes("lotion") ||
+            text.includes("cream") ||
+            text.includes("soap") ||
+            text.includes("wash")
+          );
+        });
+        if (beautyMatches.length > 0) {
+          return beautyMatches.sort(
+            (a, b) => b.ordersCount - a.ordersCount || b.discountPct - a.discountPct
+          );
+        }
+      }
+
+      // E. Stationery Filter
+      if (catLower === "stationery" || catLower === "office-stationery") {
+        const statMatches = allDeals.filter((p) => {
+          const text = `${p.name} ${p.category} ${p.subCategory} ${(p.tags || []).join(" ")}`.toLowerCase();
+          return (
+            text.includes("stationery") ||
+            text.includes("office") ||
+            text.includes("school") ||
+            text.includes("pen") ||
+            text.includes("pencil") ||
+            text.includes("notebook") ||
+            text.includes("paper")
+          );
+        });
+        if (statMatches.length > 0) {
+          return statMatches.sort(
+            (a, b) => b.ordersCount - a.ordersCount || b.discountPct - a.discountPct
+          );
+        }
+      }
+
+      // F. Kids Filter
+      if (catLower === "kids" || catLower === "baby-kids") {
+        const kidsMatches = allDeals.filter((p) => {
+          const text = `${p.name} ${p.category} ${p.subCategory} ${(p.tags || []).join(" ")}`.toLowerCase();
+          return (
+            text.includes("kid") ||
+            text.includes("baby") ||
+            text.includes("toy") ||
+            text.includes("diaper") ||
+            text.includes("wipe")
+          );
+        });
+        if (kidsMatches.length > 0) {
+          return kidsMatches.sort(
+            (a, b) => b.ordersCount - a.ordersCount || b.discountPct - a.discountPct
+          );
+        }
+      }
+
+      // G. Default Top Deals
       const matchedDeals = allDeals.filter(
-        (p) => p.discountPct > 50 && p.ordersCount > 100
+        (p) => p.discountPct >= 15 && p.ordersCount > 50
       );
 
       if (matchedDeals.length > 0) {
-        return matchedDeals;
+        return matchedDeals.sort(
+          (a, b) => b.ordersCount - a.ordersCount || b.discountPct - a.discountPct
+        );
       }
 
-      // Fallback: top trending products sorted by orders and discount
       return allDeals
         .sort(
           (a, b) =>
@@ -240,8 +590,19 @@ export default function TopDeals({
         .slice(0, 12);
     }
 
-    return [];
-  }, [items, publicProducts]);
+    // Fallback if no publicProducts loaded yet
+    if (titleLower.includes("creamy") || catLower.includes("creamy")) {
+      return DEFAULT_CREAMY_DEALS;
+    }
+    if (catLower === "grocery" || catLower === "grocery-kitchen") {
+      return DEFAULT_GROCERY_DEALS;
+    }
+    if (catLower === "snacks") {
+      return DEFAULT_SNACK_DEALS;
+    }
+
+    return DEFAULT_GROCERY_DEALS;
+  }, [items, publicProducts, category, title]);
 
   const allItems = displayItems;
 

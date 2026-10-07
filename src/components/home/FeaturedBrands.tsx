@@ -1,4 +1,4 @@
-﻿import { moderateScale, scale } from "@/theme";
+import { moderateScale, scale } from "@/theme";
 import { Image } from "expo-image";
 import {
   ScrollView,
@@ -240,19 +240,27 @@ const SNACKS_ITEMS: FeaturedBrandItem[] = [
   },
   {
     id: "snack-feat-3",
-    title: "Chips & Crisps",
+    title: "2PM Noodles",
     tag: "Featured",
-    bgColor: "#F97316",
-    imageSource: require("@/assets/images/Home/makeup-blush-compact.png"),
-    category: "chips-crisps",
+    bgColor: "#EA580C",
+    imageSource: require("@/assets/images/Home/product-2pm.png"),
+    category: "instant-food",
   },
   {
     id: "snack-feat-4",
     title: "Juices & Drinks",
     tag: "Featured",
     bgColor: "#16A34A",
-    imageSource: require("@/assets/images/Home/fresh-juice-splash.png"),
+    imageSource: require("@/assets/images/Home/capri-sun-orange-juice.png"),
     category: "juices-beverages",
+  },
+  {
+    id: "snack-feat-5",
+    title: "Corn Flakes",
+    tag: "Featured",
+    bgColor: "#F59E0B",
+    imageSource: require("@/assets/images/Home/cornflakes-hero.png"),
+    category: "cereals-breakfast",
   },
 ];
 

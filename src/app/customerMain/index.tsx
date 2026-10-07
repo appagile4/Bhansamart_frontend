@@ -227,7 +227,15 @@ export default function HomeScreen() {
               onProductPress={handleProductPress}
               onAddPress={handleAddToCart}
               onSeeAllPress={() =>
-                handleCategoryPress("Flash Sale", "flash-sale")
+                router.push({
+                  pathname: "/Screens/Product/seeAllProductScreen" as any,
+                  params: {
+                    title: "Flash Sale & Low Stock Deals",
+                    category: "all",
+                    filter: "flash-sale",
+                    minDiscount: "20",
+                  },
+                })
               }
             />
             {/* 3. New Arrivals (2x3 Dual Product Green Tiles) */}
@@ -336,12 +344,21 @@ export default function HomeScreen() {
 
             {/* 2. Creamy Delights for Every Bite */}
             <TopDeals
+              category="grocery"
               title="Creamy Delights for Every Bite"
               onProductPress={handleProductPress}
               onAddPress={handleAddToCart}
               onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
               onSeeAllPress={() =>
-                handleCategoryPress("Creamy Delights", "creamy-delights")
+                router.push({
+                  pathname: "/Screens/Product/seeAllProductScreen" as any,
+                  params: {
+                    title: "Creamy Delights",
+                    category: "grocery-kitchen",
+                    filter: "creamy-delights",
+                    minDiscount: "20",
+                  },
+                })
               }
             />
 
@@ -354,6 +371,7 @@ export default function HomeScreen() {
 
             {/* 4. 8-Section Comprehensive Grocery Catalog Grid */}
             <SubCategories
+              category="grocery"
               onItemPress={(section, item) =>
                 handleCategoryPress(item.title, item.id)
               }
@@ -361,6 +379,7 @@ export default function HomeScreen() {
 
             {/* 5. New Arrivals (2x3 Green Duo Category Tiles) */}
             <NewArrivals
+              category="grocery"
               onCategoryPress={(cat) =>
                 handleCategoryPress(cat.title, cat.category)
               }
@@ -368,22 +387,40 @@ export default function HomeScreen() {
 
             {/* 6. Grocery Flash Sale (Peach Alert Banner + Stock Bars) */}
             <GroceryFlashSale
+              category="grocery"
               onProductPress={handleProductPress}
               onAddPress={handleAddToCart}
               onSeeAllPress={() =>
-                handleCategoryPress("Grocery Flash Sale", "grocery-flash-sale")
+                router.push({
+                  pathname: "/Screens/Product/seeAllProductScreen" as any,
+                  params: {
+                    title: "Grocery Flash Sale",
+                    category: "grocery-kitchen",
+                    filter: "grocery-flash-sale",
+                    minDiscount: "30",
+                  },
+                })
               }
             />
 
             {/* 7. Find Your Favorites (Double-Row Deals + See all products) */}
             <TopDeals
+              category="grocery"
               title="Find Your Favorites"
               isDoubleRow={true}
               onProductPress={handleProductPress}
               onAddPress={handleAddToCart}
               onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
               onSeeAllPress={() =>
-                handleCategoryPress("Find Your Favorites", "favorites")
+                router.push({
+                  pathname: "/Screens/Product/seeAllProductScreen" as any,
+                  params: {
+                    title: "Find Your Favorites",
+                    category: "grocery-kitchen",
+                    filter: "favorites",
+                    minDiscount: "30",
+                  },
+                })
               }
             />
           </>
@@ -403,7 +440,17 @@ export default function HomeScreen() {
               onProductPress={handleProductPress}
               onAddPress={handleAddToCart}
               onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
-              onSeeAllPress={() => handleCategoryPress("Snack Deals", "snacks")}
+              onSeeAllPress={() =>
+                router.push({
+                  pathname: "/Screens/Product/seeAllProductScreen" as any,
+                  params: {
+                    title: "Top Snack Deals",
+                    category: "snacks-drinks",
+                    filter: "deals",
+                    minDiscount: "20",
+                  },
+                })
+              }
             />
 
             <SubCategories
@@ -426,7 +473,15 @@ export default function HomeScreen() {
               onProductPress={handleProductPress}
               onAddPress={handleAddToCart}
               onSeeAllPress={() =>
-                handleCategoryPress("Snacks Flash Sale", "snacks-flash-sale")
+                router.push({
+                  pathname: "/Screens/Product/seeAllProductScreen" as any,
+                  params: {
+                    title: "Snacks & Drinks Flash Sale",
+                    category: "snacks-drinks",
+                    filter: "snacks-flash-sale",
+                    minDiscount: "20",
+                  },
+                })
               }
             />
 
@@ -463,7 +518,15 @@ export default function HomeScreen() {
               onAddPress={handleAddToCart}
               onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
               onSeeAllPress={() =>
-                handleCategoryPress("Beauty Deals", "beauty")
+                router.push({
+                  pathname: "/Screens/Product/seeAllProductScreen" as any,
+                  params: {
+                    title: "Beauty & Care Deals",
+                    category: "beauty-personal-care",
+                    filter: "deals",
+                    minDiscount: "25",
+                  },
+                })
               }
             />
 
@@ -487,7 +550,15 @@ export default function HomeScreen() {
               onProductPress={handleProductPress}
               onAddPress={handleAddToCart}
               onSeeAllPress={() =>
-                handleCategoryPress("Beauty Flash Sale", "beauty-flash-sale")
+                router.push({
+                  pathname: "/Screens/Product/seeAllProductScreen" as any,
+                  params: {
+                    title: "Beauty & Care Flash Sale",
+                    category: "beauty-personal-care",
+                    filter: "beauty-flash-sale",
+                    minDiscount: "20",
+                  },
+                })
               }
             />
           </>
@@ -512,7 +583,15 @@ export default function HomeScreen() {
               onAddPress={handleAddToCart}
               onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
               onSeeAllPress={() =>
-                handleCategoryPress("Stationery Deals", "stationery")
+                router.push({
+                  pathname: "/Screens/Product/seeAllProductScreen" as any,
+                  params: {
+                    title: "Stationery Deals",
+                    category: "office-stationery",
+                    filter: "deals",
+                    minDiscount: "20",
+                  },
+                })
               }
             />
 
@@ -534,10 +613,15 @@ export default function HomeScreen() {
               onProductPress={handleProductPress}
               onAddPress={handleAddToCart}
               onSeeAllPress={() =>
-                handleCategoryPress(
-                  "Stationery Flash Sale",
-                  "stationery-flash-sale",
-                )
+                router.push({
+                  pathname: "/Screens/Product/seeAllProductScreen" as any,
+                  params: {
+                    title: "Stationery & Office Flash Sale",
+                    category: "office-stationery",
+                    filter: "stationery-flash-sale",
+                    minDiscount: "20",
+                  },
+                })
               }
             />
           </>
@@ -567,7 +651,17 @@ export default function HomeScreen() {
               onProductPress={handleProductPress}
               onAddPress={handleAddToCart}
               onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
-              onSeeAllPress={() => handleCategoryPress("Kids Deals", "kids")}
+              onSeeAllPress={() =>
+                router.push({
+                  pathname: "/Screens/Product/seeAllProductScreen" as any,
+                  params: {
+                    title: "Kids & Baby Deals",
+                    category: "kids-winter-essentials",
+                    filter: "deals",
+                    minDiscount: "20",
+                  },
+                })
+              }
             />
 
             {/* 6. Multi-Section Kids Sub-Categories Catalog (6 Sections) */}
@@ -592,7 +686,15 @@ export default function HomeScreen() {
               onProductPress={handleProductPress}
               onAddPress={handleAddToCart}
               onSeeAllPress={() =>
-                handleCategoryPress("Kids Flash Sale", "kids-flash-sale")
+                router.push({
+                  pathname: "/Screens/Product/seeAllProductScreen" as any,
+                  params: {
+                    title: "Kids & Baby Flash Sale",
+                    category: "kids-winter-essentials",
+                    filter: "kids-flash-sale",
+                    minDiscount: "20",
+                  },
+                })
               }
             />
           </>
@@ -613,7 +715,17 @@ export default function HomeScreen() {
               onProductPress={handleProductPress}
               onAddPress={handleAddToCart}
               onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
-              onSeeAllPress={() => handleCategoryPress("Gift Deals", "gifting")}
+              onSeeAllPress={() =>
+                router.push({
+                  pathname: "/Screens/Product/seeAllProductScreen" as any,
+                  params: {
+                    title: "Gift & Celebration Deals",
+                    category: "all",
+                    filter: "deals",
+                    minDiscount: "20",
+                  },
+                })
+              }
             />
             <NewArrivals
               category="gifting"
@@ -626,7 +738,15 @@ export default function HomeScreen() {
               onProductPress={handleProductPress}
               onAddPress={handleAddToCart}
               onSeeAllPress={() =>
-                handleCategoryPress("Gifting Flash Sale", "gifting-flash-sale")
+                router.push({
+                  pathname: "/Screens/Product/seeAllProductScreen" as any,
+                  params: {
+                    title: "Gifting Flash Sale",
+                    category: "all",
+                    filter: "gifting-flash-sale",
+                    minDiscount: "20",
+                  },
+                })
               }
             />
             <SubCategories

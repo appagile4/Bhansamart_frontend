@@ -33,6 +33,8 @@ export interface DealProduct {
   discountPct?: number;
   isVeg?: boolean;
   unitPriceText?: string;
+  ordersCount?: number;
+  tags?: string[];
 }
 
 export interface ProductCardProps {

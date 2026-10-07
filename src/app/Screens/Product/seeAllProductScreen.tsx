@@ -233,7 +233,31 @@ export default function SeeAllProductScreen() {
       const matched = list.filter((p) => {
         const cat = (p.category || "").toLowerCase().replace(/[^a-z0-9]/g, "");
         const sub = (p.subCategory || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-        return cat.includes(catTarget) || sub.includes(catTarget);
+        const isGroceryMatch =
+          (catTarget.includes("grocery") || catTarget.includes("kitchen")) &&
+          (cat.includes("grocery") || cat.includes("kitchen") || cat.includes("dairy") || cat.includes("staple") || cat.includes("food"));
+        const isSnacksMatch =
+          (catTarget.includes("snack") || catTarget.includes("drink")) &&
+          (cat.includes("snack") || cat.includes("drink") || sub.includes("snack") || sub.includes("noodle") || sub.includes("juice") || sub.includes("cereal") || sub.includes("sweet"));
+        const isBeautyMatch =
+          (catTarget.includes("beauty") || catTarget.includes("personal") || catTarget.includes("care")) &&
+          (cat.includes("beauty") || cat.includes("care") || cat.includes("skin") || sub.includes("hair") || sub.includes("oral"));
+        const isStationeryMatch =
+          (catTarget.includes("stationery") || catTarget.includes("school") || catTarget.includes("office")) &&
+          (cat.includes("stationery") || cat.includes("office") || cat.includes("school") || sub.includes("pen") || sub.includes("paper"));
+        const isKidsMatch =
+          (catTarget.includes("kid") || catTarget.includes("baby")) &&
+          (cat.includes("kid") || cat.includes("baby") || sub.includes("toy") || sub.includes("diaper"));
+
+        return (
+          cat.includes(catTarget) ||
+          sub.includes(catTarget) ||
+          isGroceryMatch ||
+          isSnacksMatch ||
+          isBeautyMatch ||
+          isStationeryMatch ||
+          isKidsMatch
+        );
       });
       if (matched.length > 0) list = matched;
     } else if (params.filter === "sweet-tooth") {
@@ -264,6 +288,34 @@ export default function SeeAllProductScreen() {
           text.includes("cereal")
         );
       });
+      if (matched.length > 0) list = matched;
+    } else if (params.filter === "creamy-delights") {
+      const matched = list.filter((p) => {
+        const text = `${p.name} ${p.category} ${p.subCategory} ${(p.tags || []).join(" ")}`.toLowerCase();
+        return (
+          text.includes("cream") ||
+          text.includes("butter") ||
+          text.includes("cheese") ||
+          text.includes("paneer") ||
+          text.includes("milk") ||
+          text.includes("curd") ||
+          text.includes("yogurt") ||
+          text.includes("ghee") ||
+          text.includes("dairy") ||
+          text.includes("mayo")
+        );
+      });
+      if (matched.length > 0) list = matched;
+    } else if (params.filter?.includes("flash") || params.filter === "flash-sale") {
+      let matched = list;
+      if (params.category && params.category !== "all") {
+        const catTarget = params.category.toLowerCase().replace(/[^a-z0-9]/g, "");
+        matched = list.filter((p) => {
+          const cat = (p.category || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+          const sub = (p.subCategory || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+          return cat.includes(catTarget) || sub.includes(catTarget);
+        });
+      }
       if (matched.length > 0) list = matched;
     }
 

@@ -1,7 +1,9 @@
+import { useCart } from "@/context/cart-context";
 import { useAppSelector } from "@/store/hooks";
 import { moderateScale, scale } from "@/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import { useRouter } from "expo-router";
 import { useEffect, useMemo, useRef } from "react";
 import {
   Animated,
@@ -182,6 +184,267 @@ const KIDS_ROW2: FlashSaleProduct[] = [
   },
 ];
 
+const SNACKS_ROW1: FlashSaleProduct[] = [
+  {
+    id: "flash-sn-maggi",
+    name: "Maggi 2-Minute Special Masala Noodles",
+    weightTag: "70g",
+    categoryTag: "Noodles",
+    image: require("@/assets/images/Home/product-maggi.png"),
+    stockLeftText: "Only 3 left in stock !",
+    stockProgress: 0.2,
+    rating: 4.9,
+    ratingCount: 540,
+    price: 95,
+    originalPrice: 120,
+    optionsText: "2 options",
+  },
+  {
+    id: "flash-sn-capri",
+    name: "Capri-Sun Orange Refreshing Juice Pouch",
+    weightTag: "200ml",
+    categoryTag: "Beverages",
+    image: require("@/assets/images/Home/capri-sun-orange-juice.png"),
+    stockLeftText: "Few pieces left !",
+    stockProgress: 0.3,
+    rating: 4.8,
+    ratingCount: 220,
+    price: 85,
+    originalPrice: 110,
+    optionsText: "3 options",
+  },
+  {
+    id: "flash-sn-2pm",
+    name: "2PM Spicy Masala Ready Noodles",
+    weightTag: "100g",
+    categoryTag: "Instant Noodles",
+    image: require("@/assets/images/Home/product-2pm.png"),
+    stockLeftText: "Only 2 left !",
+    stockProgress: 0.15,
+    rating: 4.7,
+    ratingCount: 180,
+    price: 130,
+    originalPrice: 160,
+  },
+];
+
+const SNACKS_ROW2: FlashSaleProduct[] = [
+  {
+    id: "flash-sn-cornflakes",
+    name: "Kellogg's Real Honey Almond Flakes",
+    weightTag: "475g",
+    categoryTag: "Cereals",
+    image: require("@/assets/images/Home/cornflakes-hero.png"),
+    stockLeftText: "Only 5 left !",
+    stockProgress: 0.35,
+    rating: 4.8,
+    ratingCount: 310,
+    price: 340,
+    originalPrice: 420,
+    optionsText: "2 options",
+  },
+  {
+    id: "flash-sn-waiwai",
+    name: "Wai Wai Quick Roasted Chicken Noodles",
+    weightTag: "75g",
+    categoryTag: "Instant Noodles",
+    image: require("@/assets/images/Home/product-waiwai.png"),
+    stockLeftText: "Few pieces left !",
+    stockProgress: 0.25,
+    rating: 4.7,
+    ratingCount: 420,
+    price: 145,
+    originalPrice: 175,
+  },
+  {
+    id: "flash-sn-slice",
+    name: "Slice Thick Delicious Mango Juice",
+    weightTag: "250ml",
+    categoryTag: "Drinks",
+    image: require("@/assets/images/Home/slice-mango-juice.png"),
+    stockLeftText: "Only 4 left !",
+    stockProgress: 0.22,
+    rating: 4.8,
+    ratingCount: 290,
+    price: 70,
+    originalPrice: 90,
+  },
+];
+
+const BEAUTY_ROW1: FlashSaleProduct[] = [
+  {
+    id: "flash-b-wash",
+    name: "Himalaya Purifying Gentle Face Wash",
+    weightTag: "150ml",
+    categoryTag: "Skin Care",
+    image: require("@/assets/images/Home/himalaya-baby-wash.png"),
+    stockLeftText: "Only 3 left !",
+    stockProgress: 0.2,
+    rating: 4.8,
+    ratingCount: 320,
+    price: 190,
+    originalPrice: 240,
+  },
+  {
+    id: "flash-b-cream",
+    name: "Nivea Soft Light Moisturizing Cream",
+    weightTag: "100ml",
+    categoryTag: "Face Care",
+    image: require("@/assets/images/Home/skincare-cream-jars-bottles.png"),
+    stockLeftText: "Few pieces left !",
+    stockProgress: 0.3,
+    rating: 4.9,
+    ratingCount: 410,
+    price: 260,
+    originalPrice: 320,
+  },
+];
+
+const BEAUTY_ROW2: FlashSaleProduct[] = [
+  {
+    id: "flash-b-perfume",
+    name: "Luxury Purple Eau De Perfume Spray",
+    weightTag: "50ml",
+    categoryTag: "Fragrance",
+    image: require("@/assets/images/Home/luxury-purple-perfume.png"),
+    stockLeftText: "Only 2 left in stock !",
+    stockProgress: 0.15,
+    rating: 4.9,
+    ratingCount: 180,
+    price: 890,
+    originalPrice: 1250,
+  },
+  {
+    id: "flash-b-paste",
+    name: "Colgate Total Advanced Oral Toothpaste",
+    weightTag: "120g",
+    categoryTag: "Oral Care",
+    image: require("@/assets/images/Home/toothpaste-colgate.png"),
+    stockLeftText: "Only 4 left !",
+    stockProgress: 0.25,
+    rating: 4.7,
+    ratingCount: 250,
+    price: 110,
+    originalPrice: 140,
+  },
+];
+
+const STATIONERY_ROW1: FlashSaleProduct[] = [
+  {
+    id: "flash-st-pens",
+    name: "Executive Black Ballpoint Pens Set",
+    weightTag: "5 Pcs",
+    categoryTag: "Writing",
+    image: require("@/assets/images/Home/black-ballpoint-pens.jpg"),
+    stockLeftText: "Only 3 left in stock !",
+    stockProgress: 0.2,
+    rating: 4.8,
+    ratingCount: 190,
+    price: 120,
+    originalPrice: 160,
+  },
+  {
+    id: "flash-st-paper",
+    name: "Double A Premium A4 White Paper Ream",
+    weightTag: "500 Sheets",
+    categoryTag: "Paper",
+    image: require("@/assets/images/Home/double-a-paper-reams.png"),
+    stockLeftText: "Few pieces left !",
+    stockProgress: 0.3,
+    rating: 4.9,
+    ratingCount: 340,
+    price: 420,
+    originalPrice: 550,
+  },
+];
+
+const STATIONERY_ROW2: FlashSaleProduct[] = [
+  {
+    id: "flash-st-pencils",
+    name: "Classic Colored Drawing Pencils Set",
+    weightTag: "24 Shades",
+    categoryTag: "Art & Craft",
+    image: require("@/assets/images/Home/colored-pencils-row.png"),
+    stockLeftText: "Only 2 left !",
+    stockProgress: 0.15,
+    rating: 4.7,
+    ratingCount: 160,
+    price: 240,
+    originalPrice: 320,
+  },
+  {
+    id: "flash-st-notes",
+    name: "Classmate Spiral Bound Ruled Notebook",
+    weightTag: "160 Pages",
+    categoryTag: "Notebooks",
+    image: require("@/assets/images/Home/notebooks-sticky-notes.png"),
+    stockLeftText: "Only 5 left !",
+    stockProgress: 0.35,
+    rating: 4.8,
+    ratingCount: 280,
+    price: 95,
+    originalPrice: 130,
+  },
+];
+
+const GIFTING_ROW1: FlashSaleProduct[] = [
+  {
+    id: "flash-gf-kitkat",
+    name: "Nestle KitKat Love Break Chocolate Pack",
+    weightTag: "150g",
+    categoryTag: "Chocolates",
+    image: require("@/assets/images/Home/prod-kitkat.png"),
+    stockLeftText: "Only 3 left !",
+    stockProgress: 0.2,
+    rating: 4.9,
+    ratingCount: 380,
+    price: 220,
+    originalPrice: 280,
+  },
+  {
+    id: "flash-gf-silk",
+    name: "Cadbury Dairy Milk Silk Chocolate Bar",
+    weightTag: "150g",
+    categoryTag: "Sweets",
+    image: require("@/assets/images/Home/prod-dairymilk.png"),
+    stockLeftText: "Only 2 left in stock !",
+    stockProgress: 0.15,
+    rating: 4.9,
+    ratingCount: 460,
+    price: 260,
+    originalPrice: 320,
+  },
+];
+
+const GIFTING_ROW2: FlashSaleProduct[] = [
+  {
+    id: "flash-gf-bouquet",
+    name: "Fresh Festive Celebration Flower Bouquet",
+    weightTag: "1 Bouquet",
+    categoryTag: "Gifts",
+    image: require("@/assets/images/Home/gift-flower-bouquet.png"),
+    stockLeftText: "Few pieces left !",
+    stockProgress: 0.3,
+    rating: 4.8,
+    ratingCount: 190,
+    price: 750,
+    originalPrice: 999,
+  },
+  {
+    id: "flash-gf-hamper",
+    name: "Deluxe Care & Spa Gift Celebration Hamper",
+    weightTag: "1 Box",
+    categoryTag: "Gift Sets",
+    image: require("@/assets/images/Home/gift-basket-care.png"),
+    stockLeftText: "Only 2 left !",
+    stockProgress: 0.15,
+    rating: 4.9,
+    ratingCount: 140,
+    price: 1250,
+    originalPrice: 1650,
+  },
+];
+
 const FLASH_CATEGORY_MAP: Record<
   string,
   {
@@ -219,26 +482,38 @@ const FLASH_CATEGORY_MAP: Record<
     title: "Beauty & Care Flash Sale",
     subtitle:
       "Unbeatable flash discounts on skincare & cosmetics with low stock.",
-    row1: GROCERY_ROW1,
-    row2: GROCERY_ROW2,
+    row1: BEAUTY_ROW1,
+    row2: BEAUTY_ROW2,
   },
   snacks: {
     title: "Snacks & Drinks Flash Sale",
     subtitle: "Snack more, spend less! Lightning deals on limited snack items.",
-    row1: GROCERY_ROW1,
-    row2: GROCERY_ROW2,
+    row1: SNACKS_ROW1,
+    row2: SNACKS_ROW2,
   },
   gifting: {
     title: "Gifting & Celebration Flash Sale",
     subtitle: "Grab sweet treats & gift hampers before they sell out.",
-    row1: GROCERY_ROW1,
-    row2: GROCERY_ROW2,
+    row1: GIFTING_ROW1,
+    row2: GIFTING_ROW2,
+  },
+  gifts: {
+    title: "Gifting & Celebration Flash Sale",
+    subtitle: "Grab sweet treats & gift hampers before they sell out.",
+    row1: GIFTING_ROW1,
+    row2: GIFTING_ROW2,
   },
   stationery: {
     title: "Stationery & Office Flash Sale",
     subtitle: "Exclusive limited-time discounts on school & desk essentials.",
-    row1: GROCERY_ROW1,
-    row2: GROCERY_ROW2,
+    row1: STATIONERY_ROW1,
+    row2: STATIONERY_ROW2,
+  },
+  school: {
+    title: "Stationery & Office Flash Sale",
+    subtitle: "Exclusive limited-time discounts on school & desk essentials.",
+    row1: STATIONERY_ROW1,
+    row2: STATIONERY_ROW2,
   },
 };
 
@@ -405,6 +680,8 @@ export default function GroceryFlashSale({
   onAddPress,
   onSeeAllPress,
 }: GroceryFlashSaleProps) {
+  const router = useRouter();
+  const { addToCart } = useCart();
   const { publicProducts, publicLoading } = useAppSelector(
     (state) => state.product,
   );
@@ -456,6 +733,89 @@ export default function GroceryFlashSale({
             const prodCat = (p.category || "").toLowerCase();
             const prodSub = (p.subCategory || "").toLowerCase();
             const prodName = (p.name || "").toLowerCase();
+            const prodTags = (p.tags || []).join(" ").toLowerCase();
+            const text = `${prodName} ${prodCat} ${prodSub} ${prodTags}`;
+
+            if (normalizedCat === "snacks" || normalizedCat === "snacks-drinks") {
+              return (
+                text.includes("snack") ||
+                text.includes("chip") ||
+                text.includes("biscuit") ||
+                text.includes("cookie") ||
+                text.includes("namkeen") ||
+                text.includes("noodle") ||
+                text.includes("maggi") ||
+                text.includes("waiwai") ||
+                text.includes("2pm") ||
+                text.includes("drink") ||
+                text.includes("juice") ||
+                text.includes("beverage") ||
+                text.includes("cereal") ||
+                text.includes("chocolate")
+              );
+            }
+
+            if (normalizedCat === "grocery" || normalizedCat === "grocery-kitchen") {
+              return (
+                text.includes("grocery") ||
+                text.includes("kitchen") ||
+                text.includes("rice") ||
+                text.includes("atta") ||
+                text.includes("flour") ||
+                text.includes("oil") ||
+                text.includes("ghee") ||
+                text.includes("dal") ||
+                text.includes("spice") ||
+                text.includes("masala") ||
+                text.includes("dairy") ||
+                text.includes("paneer") ||
+                text.includes("cheese") ||
+                text.includes("butter") ||
+                text.includes("staple")
+              );
+            }
+
+            if (normalizedCat === "beauty" || normalizedCat === "beauty-personal-care") {
+              return (
+                text.includes("beauty") ||
+                text.includes("skin") ||
+                text.includes("care") ||
+                text.includes("hair") ||
+                text.includes("shampoo") ||
+                text.includes("lotion") ||
+                text.includes("cream") ||
+                text.includes("soap") ||
+                text.includes("wash") ||
+                text.includes("makeup") ||
+                text.includes("fragrance")
+              );
+            }
+
+            if (normalizedCat === "stationery" || normalizedCat === "office-stationery") {
+              return (
+                text.includes("stationery") ||
+                text.includes("office") ||
+                text.includes("school") ||
+                text.includes("pen") ||
+                text.includes("pencil") ||
+                text.includes("notebook") ||
+                text.includes("paper") ||
+                text.includes("book") ||
+                text.includes("bag")
+              );
+            }
+
+            if (normalizedCat === "kids" || normalizedCat === "baby") {
+              return (
+                text.includes("kid") ||
+                text.includes("baby") ||
+                text.includes("toy") ||
+                text.includes("diaper") ||
+                text.includes("wipe") ||
+                text.includes("shoe") ||
+                text.includes("onesie")
+              );
+            }
 
             return (
               prodCat.includes(normalizedCat) ||
@@ -548,11 +908,82 @@ export default function GroceryFlashSale({
       };
     }, [publicProducts, category, row1Data, row2Data, title, subtitle]);
 
+  // Extract up to 3 real live thumbnails for the bottom "See all products" banner
+  const previewThumbnails = useMemo(() => {
+    const combined = [...displayRow1, ...displayRow2];
+    if (combined.length > 0) {
+      return combined.slice(0, 3).map((p) => p.image);
+    }
+    return [
+      require("@/assets/images/Home/capri-sun-orange-juice.png"),
+      require("@/assets/images/Home/product-maggi.png"),
+      require("@/assets/images/Home/product-2pm.png"),
+    ];
+  }, [displayRow1, displayRow2]);
+
+  const handleProductPress = (item: FlashSaleProduct) => {
+    if (onProductPress) {
+      onProductPress(item);
+    } else {
+      router.push({
+        pathname: "/Screens/Product/productdetailscreen" as any,
+        params: {
+          id: item.id,
+          name: item.name,
+          weight: item.weightTag,
+          price: String(item.price),
+          originalPrice: String(item.originalPrice || item.price),
+          category: item.categoryTag,
+          image:
+            typeof item.image === "object" && "uri" in item.image
+              ? (item.image as any).uri
+              : "",
+        },
+      });
+    }
+  };
+
+  const handleAddPress = (item: FlashSaleProduct) => {
+    if (onAddPress) {
+      onAddPress(item);
+    } else {
+      const imgUrl =
+        typeof item.image === "object" && item.image && "uri" in item.image
+          ? item.image.uri
+          : "";
+      addToCart({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        originalPrice: item.originalPrice,
+        imageUrl: imgUrl,
+        weight: item.weightTag,
+      });
+    }
+  };
+
+  const handleSeeAllPress = () => {
+    if (onSeeAllPress) {
+      onSeeAllPress();
+    } else {
+      const normalizedCat = (category || "all").toLowerCase().trim();
+      router.push({
+        pathname: "/Screens/Product/seeAllProductScreen" as any,
+        params: {
+          title: displayTitle || "Flash Sale & Low Stock Deals",
+          category: normalizedCat === "all" ? "all" : normalizedCat,
+          filter: "flash-sale",
+          minDiscount: "20",
+        },
+      });
+    }
+  };
+
   const renderProductCard = (item: FlashSaleProduct) => (
     <TouchableOpacity
       key={item.id}
       activeOpacity={0.9}
-      onPress={() => onProductPress?.(item)}
+      onPress={() => handleProductPress(item)}
       style={styles.card}
     >
       {/* Product Image Container with Custom SVG Path Background */}
@@ -581,7 +1012,7 @@ export default function GroceryFlashSale({
         {/* Custom SVG Path ADD Button in the Matching Cutout */}
         <TouchableOpacity
           activeOpacity={0.82}
-          onPress={() => onAddPress?.(item)}
+          onPress={() => handleAddPress(item)}
           style={styles.svgAddButtonWrapper}
         >
           <Svg
@@ -767,17 +1198,32 @@ export default function GroceryFlashSale({
           {displayRow2.map(renderProductCard)}
         </ScrollView>
 
-        {/* Bottom See All Banner (White Container) */}
+        {/* Bottom See All Banner with 3 Overlapping Preview Avatars matching Deals of the Day */}
         <TouchableOpacity
           activeOpacity={0.88}
-          onPress={onSeeAllPress}
+          onPress={handleSeeAllPress}
           style={styles.seeAllBanner}
         >
-          <Image
-            source={require("@/assets/images/Home/see-all-thumb.png")}
-            style={styles.seeAllThumbImage}
-            contentFit="contain"
-          />
+          {/* 3 Real Live Product Overlapping Thumbnail Avatars */}
+          <View style={styles.avatarGroup}>
+            {previewThumbnails.map((imgSrc, idx) => (
+              <View
+                key={`flash-thumb-${idx}`}
+                style={[
+                  styles.avatarCircle,
+                  idx > 0 && { marginLeft: -scale(10) },
+                  { zIndex: 10 - idx },
+                ]}
+              >
+                <Image
+                  source={imgSrc}
+                  style={styles.avatarImg}
+                  contentFit="contain"
+                />
+              </View>
+            ))}
+          </View>
+
           <Text style={styles.seeAllBannerText}>See all products</Text>
           <Ionicons
             name="caret-forward"
@@ -952,32 +1398,54 @@ const styles = StyleSheet.create({
   },
   seeAllBanner: {
     backgroundColor: "#FFFFFF",
-    borderRadius: scale(12),
+    borderRadius: scale(14),
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: scale(10),
     paddingHorizontal: scale(16),
     marginTop: moderateScale(18),
+    gap: scale(10),
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 1.5 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: "#F2D8CB",
   },
-  seeAllThumbImage: {
-    width: scale(60),
+  avatarGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  avatarCircle: {
+    width: scale(32),
     height: scale(32),
-    marginRight: scale(10),
+    borderRadius: scale(16),
+    backgroundColor: "#FFFFFF",
+    borderWidth: 2,
+    borderColor: "#FCEEE7",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  avatarImg: {
+    width: "88%",
+    height: "88%",
   },
   seeAllBannerText: {
-    fontSize: moderateScale(15),
-    fontWeight: "800",
-    color: "#284860",
-    letterSpacing: -0.2,
+    fontSize: moderateScale(14),
+    fontWeight: "700",
+    color: "#1E3A5F",
+    letterSpacing: 0.2,
   },
   seeAllArrow: {
-    marginLeft: scale(4),
+    marginLeft: scale(2),
   },
 
   // ── Skeleton Styles ──────────────────────────────────────────
