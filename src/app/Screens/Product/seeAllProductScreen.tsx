@@ -238,7 +238,7 @@ export default function SeeAllProductScreen() {
           (cat.includes("grocery") || cat.includes("kitchen") || cat.includes("dairy") || cat.includes("staple") || cat.includes("food"));
         const isSnacksMatch =
           (catTarget.includes("snack") || catTarget.includes("drink")) &&
-          (cat.includes("snack") || cat.includes("drink") || sub.includes("snack") || sub.includes("noodle") || sub.includes("juice") || sub.includes("cereal") || sub.includes("sweet"));
+          (cat.includes("snack") || cat.includes("drink") || sub.includes("snack") || sub.includes("chip") || sub.includes("nacho") || sub.includes("popcorn") || sub.includes("namkeen") || sub.includes("biscuit") || sub.includes("cookie") || sub.includes("wafer") || sub.includes("choc") || sub.includes("candy") || sub.includes("toffee") || sub.includes("dry") || sub.includes("nut") || sub.includes("bar") || sub.includes("noodle") || sub.includes("juice") || sub.includes("ice") || sub.includes("cereal") || sub.includes("sweet"));
         const isBeautyMatch =
           (catTarget.includes("beauty") || catTarget.includes("personal") || catTarget.includes("care")) &&
           (cat.includes("beauty") || cat.includes("care") || cat.includes("skin") || sub.includes("hair") || sub.includes("oral"));

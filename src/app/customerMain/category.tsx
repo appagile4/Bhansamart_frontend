@@ -84,52 +84,52 @@ const ALL_CATEGORY_SECTIONS: SectionCategoryData[] = [
     title: "Snacks & Drinks",
     items: [
       {
-        id: "chips-namkeen",
-        name: "Chips &\nNamkeen",
+        id: "chips-nachos-popcorn",
+        name: "Chips, Nachos\n& Popcorn",
         imageUrl:
           "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=300&q=80",
       },
       {
-        id: "sweets-chocolates",
-        name: "Sweets &\nChocolates",
+        id: "namkeen-roasted-snacks",
+        name: "Namkeen &\nRoasted",
+        imageUrl:
+          "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=300&q=80",
+      },
+      {
+        id: "biscuits-cookies-wafers",
+        name: "Biscuits &\nCookies",
+        imageUrl:
+          "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=300&q=80",
+      },
+      {
+        id: "chocolates-candies-toffees",
+        name: "Chocolates &\nCandies",
         imageUrl:
           "https://images.unsplash.com/photo-1549007994-cb92caebd54b?w=300&q=80",
       },
       {
-        id: "drinks-juices",
-        name: "Drinks &\nJuices",
+        id: "dryfruits-nuts-seeds",
+        name: "Dry Fruits &\nNuts",
+        imageUrl:
+          "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=300&q=80",
+      },
+      {
+        id: "snackbars-healthy-bites",
+        name: "Snack Bars &\nHealthy Bites",
+        imageUrl:
+          "https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?w=300&q=80",
+      },
+      {
+        id: "instant-noodles-pasta",
+        name: "Instant Noodles\n& Pasta",
+        imageUrl:
+          "https://images.unsplash.com/photo-1612927601601-6638404737ce?w=300&q=80",
+      },
+      {
+        id: "cold-drinks-icecream",
+        name: "Cold Drinks\n& Ice Cream",
         imageUrl:
           "https://images.unsplash.com/photo-1613478223719-2ab802602423?w=300&q=80",
-      },
-      {
-        id: "tea-coffee-milk",
-        name: "Tea, Coffee &\nMilk Drinks",
-        imageUrl:
-          "https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=300&q=80",
-      },
-      {
-        id: "instant-food",
-        name: "Instant Food",
-        imageUrl:
-          "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=300&q=80",
-      },
-      {
-        id: "sauce-spreads",
-        name: "Sauce &\nSpreads",
-        imageUrl:
-          "https://images.unsplash.com/photo-1528751014936-863e6e7a319c?w=300&q=80",
-      },
-      {
-        id: "paan-corner",
-        name: "Paan corner",
-        imageUrl:
-          "https://images.unsplash.com/photo-1564834744159-ff0ea41ba4b9?w=300&q=80",
-      },
-      {
-        id: "ice-cream-more",
-        name: "Ice Cream &\nMore",
-        imageUrl:
-          "https://images.unsplash.com/photo-1501443762994-82bd5dace89a?w=300&q=80",
       },
     ],
   },

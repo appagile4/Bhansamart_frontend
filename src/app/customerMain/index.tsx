@@ -462,7 +462,9 @@ export default function HomeScreen() {
               }
             />
             <SnacksDrinks
-              onItemPress={(item) => handleCategoryPress(item.name, item.id)}
+              onItemPress={(item) =>
+                handleCategoryPress(item.name, item.subCategory)
+              }
             />
             <NewArrivals
               category="snacks"

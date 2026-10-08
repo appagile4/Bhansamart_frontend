@@ -152,22 +152,22 @@ const SUBCATEGORY_IMAGES: Record<string, string> = {
     "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=300&q=80",
 
   // Snacks & Drinks
-  "Chips & Namkeen":
+  "Chips, Nachos & Popcorn":
     "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=300&q=80",
-  "Sweets & Chocolates":
+  "Namkeen & Roasted Snacks":
+    "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=300&q=80",
+  "Biscuits, Cookies & Wafers":
+    "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=300&q=80",
+  "Chocolates, Candies & Toffees":
     "https://images.unsplash.com/photo-1549007994-cb92caebd54b?w=300&q=80",
-  "Drinks & Juices":
+  "Dry Fruits, Nuts & Seeds":
+    "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=300&q=80",
+  "Snack Bars & Healthy Bites":
+    "https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?w=300&q=80",
+  "Instant Noodles & Pasta":
+    "https://images.unsplash.com/photo-1612927601601-6638404737ce?w=300&q=80",
+  "Cold Drinks, Juices & Ice Cream":
     "https://images.unsplash.com/photo-1613478223719-2ab802602423?w=300&q=80",
-  "Tea, Coffee & Milk Drinks":
-    "https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=300&q=80",
-  "Instant Food":
-    "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=300&q=80",
-  "Sauce & Spreads":
-    "https://images.unsplash.com/photo-1528751014936-863e6e7a319c?w=300&q=80",
-  "Paan Corner":
-    "https://images.unsplash.com/photo-1564834744159-ff0ea41ba4b9?w=300&q=80",
-  "Ice Cream & More":
-    "https://images.unsplash.com/photo-1501443762994-82bd5dace89a?w=300&q=80",
 
   // Beauty & Personal Care
   "Bath & Body":
@@ -572,6 +572,47 @@ export default function CategoryExpandScreen() {
         }
         if (normTarget.includes("printer") || normTarget.includes("paper") || normTarget.includes("copier") || normTarget.includes("double a") || normTarget.includes("a4") || normTarget.includes("sticky") || normTarget.includes("label") || normTarget.includes("sticker")) {
           const sub = validSubs.find((s) => s.includes("Printer"));
+          if (sub) return sub;
+        }
+      }
+
+      // Snacks & Drinks domain subcategory mappings
+      if (
+        parentCategory === "Snacks & Drinks" ||
+        normTarget.includes("snack") ||
+        normTarget.includes("drink") ||
+        normTarget.includes("munch")
+      ) {
+        if (normTarget.includes("chip") || normTarget.includes("nacho") || normTarget.includes("popcorn") || normTarget.includes("crisp") || normTarget.includes("salted")) {
+          const sub = validSubs.find((s) => s.includes("Chips"));
+          if (sub) return sub;
+        }
+        if (normTarget.includes("namkeen") || normTarget.includes("bhujia") || normTarget.includes("sev") || normTarget.includes("makhana") || normTarget.includes("roast") || normTarget.includes("mixture")) {
+          const sub = validSubs.find((s) => s.includes("Namkeen"));
+          if (sub) return sub;
+        }
+        if (normTarget.includes("biscuit") || normTarget.includes("cookie") || normTarget.includes("cracker") || normTarget.includes("bakery") || normTarget.includes("wafer")) {
+          const sub = validSubs.find((s) => s.includes("Biscuits"));
+          if (sub) return sub;
+        }
+        if (normTarget.includes("choco") || normTarget.includes("candy") || normTarget.includes("toffee") || normTarget.includes("eclair") || normTarget.includes("caramel") || normTarget.includes("gems")) {
+          const sub = validSubs.find((s) => s.includes("Chocolates"));
+          if (sub) return sub;
+        }
+        if (normTarget.includes("dry") || normTarget.includes("fruit") || normTarget.includes("almond") || normTarget.includes("cashew") || normTarget.includes("nut") || normTarget.includes("seed")) {
+          const sub = validSubs.find((s) => s.includes("Dry Fruits"));
+          if (sub) return sub;
+        }
+        if (normTarget.includes("bar") || normTarget.includes("granola") || normTarget.includes("protein") || normTarget.includes("energy") || normTarget.includes("healthy")) {
+          const sub = validSubs.find((s) => s.includes("Snack Bars"));
+          if (sub) return sub;
+        }
+        if (normTarget.includes("noodle") || normTarget.includes("maggi") || normTarget.includes("waiwai") || normTarget.includes("pasta") || normTarget.includes("macaroni") || normTarget.includes("instant")) {
+          const sub = validSubs.find((s) => s.includes("Instant Noodles"));
+          if (sub) return sub;
+        }
+        if (normTarget.includes("drink") || normTarget.includes("juice") || normTarget.includes("ice") || normTarget.includes("cream") || normTarget.includes("soda") || normTarget.includes("beverage")) {
+          const sub = validSubs.find((s) => s.includes("Cold Drinks"));
           if (sub) return sub;
         }
       }
