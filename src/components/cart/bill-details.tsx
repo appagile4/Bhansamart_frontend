@@ -1,13 +1,7 @@
 import { moderateScale, scale, useTheme } from "@/theme";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import React from "react";
-import {
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 interface BillDetailsSectionProps {
   itemsTotal: number;
@@ -53,8 +47,12 @@ export default function BillDetailsSection({
             <Ionicons name="heart" size={scale(16)} color="#EF4444" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.tipTitle}>Say thanks to your Delivery Hero</Text>
-            <Text style={styles.tipSubtitle}>100% of this tip goes directly to your rider</Text>
+            <Text style={styles.tipTitle}>
+              Say thanks to your Delivery Hero
+            </Text>
+            <Text style={styles.tipSubtitle}>
+              100% of this tip goes directly to your rider
+            </Text>
           </View>
         </View>
 
@@ -66,10 +64,7 @@ export default function BillDetailsSection({
                 key={tip}
                 activeOpacity={0.75}
                 onPress={() => onSelectTip?.(tip)}
-                style={[
-                  styles.tipChip,
-                  isSelected && styles.tipChipActive,
-                ]}
+                style={[styles.tipChip, isSelected && styles.tipChipActive]}
               >
                 <Text
                   style={[
@@ -97,13 +92,17 @@ export default function BillDetailsSection({
               <Text style={styles.rowLabel}>Items total</Text>
               {savedOnItems > 0 && (
                 <View style={styles.savedBadge}>
-                  <Text style={styles.savedBadgeText}>Saved Rs.{savedOnItems}</Text>
+                  <Text style={styles.savedBadgeText}>
+                    Saved Rs.{savedOnItems}
+                  </Text>
                 </View>
               )}
             </View>
             <View style={styles.rowRight}>
               {originalTotal > itemsTotal && (
-                <Text style={styles.strikethroughPrice}>Rs.{originalTotal}</Text>
+                <Text style={styles.strikethroughPrice}>
+                  Rs.{originalTotal}
+                </Text>
               )}
               <Text style={styles.rowValue}>Rs.{itemsTotal}</Text>
             </View>
@@ -134,7 +133,11 @@ export default function BillDetailsSection({
           {riderTip > 0 && (
             <View style={styles.row}>
               <View style={styles.rowLeft}>
-                <Ionicons name="heart-outline" size={scale(15)} color="#EF4444" />
+                <Ionicons
+                  name="heart-outline"
+                  size={scale(15)}
+                  color="#EF4444"
+                />
                 <Text style={styles.rowLabel}>Delivery tip</Text>
               </View>
               <Text style={styles.rowValue}>Rs.{riderTip}</Text>
@@ -146,7 +149,12 @@ export default function BillDetailsSection({
             <View style={styles.row}>
               <View style={styles.rowLeft}>
                 <Feather name="tag" size={scale(15)} color="#16A34A" />
-                <Text style={[styles.rowLabel, { color: "#16A34A", fontWeight: "700" }]}>
+                <Text
+                  style={[
+                    styles.rowLabel,
+                    { color: "#16A34A", fontWeight: "700" },
+                  ]}
+                >
                   Coupon discount ({appliedCouponCode})
                 </Text>
               </View>
@@ -165,13 +173,22 @@ export default function BillDetailsSection({
             >
               <View style={styles.rowLeft}>
                 <Feather name="percent" size={scale(15)} color="#008080" />
-                <Text style={[styles.rowLabel, { color: "#008080", fontWeight: "600" }]}>
+                <Text
+                  style={[
+                    styles.rowLabel,
+                    { color: "#008080", fontWeight: "600" },
+                  ]}
+                >
                   Apply discount coupon
                 </Text>
               </View>
               <View style={styles.couponRight}>
                 <Text style={styles.couponText}>Select</Text>
-                <Feather name="chevron-right" size={scale(15)} color="#008080" />
+                <Feather
+                  name="chevron-right"
+                  size={scale(15)}
+                  color="#008080"
+                />
               </View>
             </TouchableOpacity>
           )}
@@ -212,11 +229,18 @@ export default function BillDetailsSection({
 
       {/* 3. Safety & Cancellation Note */}
       <View style={styles.policyCard}>
-        <MaterialCommunityIcons name="shield-check-outline" size={scale(18)} color="#0F766E" />
+        <MaterialCommunityIcons
+          name="shield-check-outline"
+          size={scale(18)}
+          color="#0F766E"
+        />
         <View style={{ flex: 1 }}>
-          <Text style={styles.policyTitle}>Cancellation & Quality Guarantee</Text>
+          <Text style={styles.policyTitle}>
+            Cancellation & Quality Guarantee
+          </Text>
           <Text style={styles.policyText}>
-            Orders cannot be cancelled once packed. 100% replacement / instant refund guaranteed if quality is not met.
+            Orders cannot be cancelled once packed. 100% replacement / instant
+            refund guaranteed if quality is not met.
           </Text>
         </View>
       </View>

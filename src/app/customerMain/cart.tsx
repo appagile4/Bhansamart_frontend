@@ -238,14 +238,19 @@ export default function CartScreen() {
     setSavedItems([]);
   };
 
-  const handleAddToCartFromRecommended = (prod: RecommendedProduct) => {
+  const handleAddToCartFromRecommended = (prod: any) => {
+    const rawImage =
+      typeof prod.image === "object" && prod.image?.uri
+        ? prod.image.uri
+        : prod.imageUrl || prod.image;
+
     addToCart({
       id: prod.id,
       name: prod.name,
       price: prod.price,
       originalPrice: prod.originalPrice,
-      imageUrl: prod.imageUrl,
-      weight: prod.tags?.[0],
+      imageUrl: typeof rawImage === "string" ? rawImage : undefined,
+      weight: prod.weight || prod.tags?.[0],
     });
   };
 
