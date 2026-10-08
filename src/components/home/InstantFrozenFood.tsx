@@ -305,7 +305,7 @@ function InstantFrozenFoodComponent({
           };
         });
 
-      if (instantMatches.length >= 3) {
+      if (instantMatches.length > 0) {
         return instantMatches.slice(0, 6);
       }
     }

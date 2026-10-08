@@ -837,8 +837,11 @@ export default function GroceryFlashSale({
           });
         }
 
-        if (filteredProducts.length > 0) {
-          const mappedList: FlashSaleProduct[] = filteredProducts.map((p) => {
+        const targetProducts =
+          filteredProducts.length > 0 ? filteredProducts : publicProducts;
+
+        if (targetProducts.length > 0) {
+          const mappedList: FlashSaleProduct[] = targetProducts.map((p) => {
             const curPrice = p.price || 0;
             const origPrice =
               p.originalPrice && p.originalPrice > curPrice

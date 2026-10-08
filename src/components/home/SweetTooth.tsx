@@ -309,7 +309,7 @@ function SweetToothComponent({
           };
         });
 
-      if (sweetMatches.length >= 3) {
+      if (sweetMatches.length > 0) {
         return sweetMatches.slice(0, 6);
       }
     }

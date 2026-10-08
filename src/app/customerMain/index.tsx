@@ -46,7 +46,15 @@ export default function HomeScreen() {
   const { activeDisplayLocation } = useAppSelector((state) => state.address);
 
   useEffect(() => {
-    dispatch(fetchPublicProducts());
+    dispatch(
+      fetchPublicProducts({
+        category: selectedCategory === "all" ? undefined : selectedCategory,
+        limit: 50,
+      })
+    );
+  }, [dispatch, selectedCategory]);
+
+  useEffect(() => {
     dispatch(fetchAddresses());
   }, [dispatch]);
 

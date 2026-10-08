@@ -26,6 +26,35 @@ interface DealsOfTheDaysProps {
   onSeeAllPress?: () => void;
 }
 
+const DEFAULT_DEALS_FALLBACK: DealProduct[] = [
+  {
+    id: "dod-1",
+    weight: "280 g",
+    category: "Grocery & Kitchen",
+    name: "Maggi Masala 2-Minute Instant Noodles",
+    rating: 4.8,
+    reviewsCount: 450,
+    price: 120,
+    originalPrice: 140,
+    priceDropText: "14% OFF",
+    image: { uri: "https://images.unsplash.com/photo-1612927601601-6638404737ce?w=400&q=80" },
+    discountPct: 14,
+  },
+  {
+    id: "dod-2",
+    weight: "350 g",
+    category: "Snacks & Drinks",
+    name: "Wai Wai Quick Masala Instant Noodles",
+    rating: 4.7,
+    reviewsCount: 310,
+    price: 100,
+    originalPrice: 120,
+    priceDropText: "17% OFF",
+    image: { uri: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400&q=80" },
+    discountPct: 17,
+  },
+];
+
 // ── Animated Skeleton Card Component ─────────────────────────────
 function DealCardSkeleton({ animOpacity }: { animOpacity: Animated.Value }) {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
@@ -229,16 +258,11 @@ export default function DealsOfTheDays({
       // Filter products with >= 40% discount
       const dealsOver40 = allDeals.filter((item) => item.discountPct >= 40);
 
-      // If >= 40% discount products exist, show them; otherwise fallback to top discounted products
-      if (dealsOver40.length > 0) {
-        return dealsOver40;
-      }
-
       // Sort by highest discount
-      return allDeals.sort((a, b) => b.discountPct - a.discountPct).slice(0, 10);
+      return allDeals.sort((a, b) => (b.discountPct || 0) - (a.discountPct || 0)).slice(0, 10);
     }
 
-    return [];
+    return DEFAULT_DEALS_FALLBACK;
   }, [products, publicProducts]);
 
   // Extract first 3 real product images for the bottom "See all products" bar
