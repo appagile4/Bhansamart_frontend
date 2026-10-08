@@ -1,37 +1,236 @@
-import { Image } from "expo-image";
 import { moderateScale, scale, useTheme } from "@/theme";
-import {
-  Feather,
-  Ionicons,
-  MaterialCommunityIcons,
-} from "@expo/vector-icons";
-import { router } from "expo-router";
+import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import * as Location from "expo-location";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useRef, useState } from "react";
-import { Alert, Animated, Dimensions, KeyboardAvoidingView, Modal, PanResponder, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Dimensions,
+  KeyboardAvoidingView,
+  Modal,
+  PanResponder,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import MapView, { PROVIDER_DEFAULT, Region } from "react-native-maps";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { addAddress, editAddress } from "@/store/slices/addressSlice";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
+// Default initial coordinates (Kathmandu center)
+const DEFAULT_COORDS = {
+  latitude: 27.6915,
+  longitude: 85.342,
+  latitudeDelta: 0.008,
+  longitudeDelta: 0.008,
+};
+
 export default function AddAddressScreen() {
+  const router = useRouter();
+  const dispatch = useAppDispatch();
   const theme = useTheme();
+  const { user } = useAppSelector((state) => state.auth);
+
+  const params = useLocalSearchParams<{
+    id?: string;
+    type?: "Home" | "Work" | "Other";
+    houseNo?: string;
+    landmark?: string;
+    phone?: string;
+    addressLine?: string;
+    area?: string;
+    city?: string;
+  }>();
+
+  const isEditing = Boolean(params.id);
+
+  // Map state
+  const mapRef = useRef<MapView>(null);
+  const [region, setRegion] = useState<Region>(DEFAULT_COORDS);
+  const [hasLocationPermission, setHasLocationPermission] = useState<
+    boolean | null
+  >(null);
+  const [isLocating, setIsLocating] = useState(false);
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const debounceTimerRef = useRef<any>(null);
 
   // Selected address state
-  const [currentArea, setCurrentArea] = useState("Baneshwor chok");
-  const [currentCity, setCurrentCity] = useState("Baneshwor, kathmandu");
+  const [currentArea, setCurrentArea] = useState(
+    params.area || "Baneshwor Chok",
+  );
+  const [currentCity, setCurrentCity] = useState(
+    params.city || "Baneshwor, Kathmandu",
+  );
   const [searchQuery, setSearchQuery] = useState("");
 
   // Bottom Sheet Modal State
-  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(isEditing);
   const [addressType, setAddressType] = useState<"Home" | "Work" | "Other">(
-    "Home"
+    params.type || "Home",
   );
-  const [houseNo, setHouseNo] = useState("");
-  const [landmark, setLandmark] = useState("");
-  const [phone, setPhone] = useState("9868686868");
+  const [houseNo, setHouseNo] = useState(params.houseNo || "");
+  const [landmark, setLandmark] = useState(params.landmark || "");
+  const [phone, setPhone] = useState<string>(params.phone || user?.phone || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (params.addressLine && !params.houseNo) {
+      setHouseNo(params.addressLine);
+    }
+  }, [params.addressLine, params.houseNo]);
+
+  // Request initial GPS position on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const { status } = await Location.getForegroundPermissionsAsync();
+        if (status === "granted") {
+          setHasLocationPermission(true);
+          const loc = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          const userRegion = {
+            latitude: loc.coords.latitude,
+            longitude: loc.coords.longitude,
+            latitudeDelta: 0.006,
+            longitudeDelta: 0.006,
+          };
+          setRegion(userRegion);
+          mapRef.current?.animateToRegion(userRegion, 800);
+          reverseGeocodeCoords(loc.coords.latitude, loc.coords.longitude);
+        } else {
+          setHasLocationPermission(false);
+        }
+      } catch {
+        setHasLocationPermission(false);
+      }
+    })();
+  }, []);
+
+  // Reverse Geocoding helper
+  const reverseGeocodeCoords = async (lat: number, lng: number) => {
+    try {
+      setIsGeocoding(true);
+      const results = await Location.reverseGeocodeAsync({
+        latitude: lat,
+        longitude: lng,
+      });
+
+      if (results && results.length > 0) {
+        const item = results[0];
+        const areaName =
+          item.name ||
+          item.street ||
+          item.district ||
+          item.subregion ||
+          "Selected Location";
+        const cityName = [
+          item.city || item.subregion || "Kathmandu",
+          item.country || "Nepal",
+        ]
+          .filter(Boolean)
+          .join(", ");
+
+        setCurrentArea(areaName);
+        setCurrentCity(cityName);
+      }
+    } catch (e) {
+      console.log("Reverse geocode error:", e);
+    } finally {
+      setIsGeocoding(false);
+    }
+  };
+
+  // Region change debounced handler
+  const handleRegionChangeComplete = (newRegion: Region) => {
+    setRegion(newRegion);
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      reverseGeocodeCoords(newRegion.latitude, newRegion.longitude);
+    }, 450);
+  };
+
+  // GPS Current Location Handler
+  const handleUseCurrentLocation = async () => {
+    try {
+      setIsLocating(true);
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        setHasLocationPermission(false);
+        Alert.alert(
+          "Location Permission",
+          "Please enable location permission to fetch your current GPS position.",
+        );
+        return;
+      }
+
+      setHasLocationPermission(true);
+      const loc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+
+      const userRegion = {
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude,
+        latitudeDelta: 0.005,
+        longitudeDelta: 0.005,
+      };
+
+      setRegion(userRegion);
+      mapRef.current?.animateToRegion(userRegion, 800);
+      await reverseGeocodeCoords(loc.coords.latitude, loc.coords.longitude);
+    } catch (err) {
+      console.log("GPS Location error:", err);
+      Alert.alert("Location", "Could not fetch current GPS coordinates.");
+    } finally {
+      setIsLocating(false);
+    }
+  };
+
+  // Search location handler
+  const handleSearchLocation = async () => {
+    if (!searchQuery.trim()) return;
+    try {
+      setIsGeocoding(true);
+      const results = await Location.geocodeAsync(searchQuery.trim());
+      if (results && results.length > 0) {
+        const first = results[0];
+        const searchRegion = {
+          latitude: first.latitude,
+          longitude: first.longitude,
+          latitudeDelta: 0.006,
+          longitudeDelta: 0.006,
+        };
+        setRegion(searchRegion);
+        mapRef.current?.animateToRegion(searchRegion, 800);
+        await reverseGeocodeCoords(first.latitude, first.longitude);
+      } else {
+        Alert.alert("Not Found", `No locations found for "${searchQuery}"`);
+      }
+    } catch (err) {
+      console.log("Search error:", err);
+    } finally {
+      setIsGeocoding(false);
+    }
+  };
 
   // Pan Responder for Gesture Drag-to-Close
-  const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+  const translateY = useRef(
+    new Animated.Value(isEditing ? 0 : SCREEN_HEIGHT),
+  ).current;
 
   const openBottomSheet = () => {
     setIsModalVisible(true);
@@ -72,29 +271,97 @@ export default function AddAddressScreen() {
           }).start();
         }
       },
-    })
+    }),
   ).current;
 
-  const handleSaveAddress = () => {
-    if (!houseNo) {
+  const handleSaveAddress = async () => {
+    if (!houseNo.trim()) {
       Alert.alert("Required", "Please enter flat / house / building details");
       return;
     }
-    Alert.alert("Success", "Address saved successfully!", [
-      {
-        text: "OK",
-        onPress: () => {
-          closeBottomSheet();
-          router.back();
-        },
-      },
-    ]);
+
+    if (!phone.trim()) {
+      Alert.alert("Required", "Please enter a contact phone number");
+      return;
+    }
+
+    setIsSaving(true);
+    const constructedAddressLine = [
+      houseNo.trim(),
+      landmark.trim(),
+      currentArea.trim(),
+      currentCity.trim(),
+    ]
+      .filter(Boolean)
+      .join(", ");
+
+    try {
+      if (isEditing && params.id) {
+        await dispatch(
+          editAddress({
+            id: params.id,
+            payload: {
+              type: addressType,
+              houseNo: houseNo.trim(),
+              landmark: landmark.trim(),
+              phone: phone.trim(),
+              city: currentCity.trim(),
+              addressLine: constructedAddressLine,
+            },
+          }),
+        ).unwrap();
+        Alert.alert("Success", "Address updated successfully!", [
+          {
+            text: "OK",
+            onPress: () => {
+              closeBottomSheet();
+              router.back();
+            },
+          },
+        ]);
+      } else {
+        await dispatch(
+          addAddress({
+            type: addressType,
+            houseNo: houseNo.trim(),
+            landmark: landmark.trim(),
+            phone: phone.trim(),
+            city: currentCity.trim(),
+            addressLine: constructedAddressLine,
+            isDefault: true,
+          }),
+        ).unwrap();
+        Alert.alert("Success", "Address saved to address book!", [
+          {
+            text: "OK",
+            onPress: () => {
+              closeBottomSheet();
+              router.back();
+            },
+          },
+        ]);
+      }
+    } catch (err: any) {
+      Alert.alert(
+        "Notice",
+        "Address saved locally. Will sync with server when online.",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              closeBottomSheet();
+              router.back();
+            },
+          },
+        ],
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: "#ffffff" }]}
-    >
+    <SafeAreaView style={[styles.container, { backgroundColor: "#ffffff" }]}>
       <StatusBar style="dark" />
 
       {/* Top Navbar Header */}
@@ -106,78 +373,109 @@ export default function AddAddressScreen() {
         >
           <Feather name="arrow-left" size={scale(24)} color="#1E293B" />
         </TouchableOpacity>
-        <Text style={styles.navTitle}>Add address</Text>
+        <Text style={styles.navTitle}>
+          {isEditing ? "Edit Address" : "Add Address"}
+        </Text>
       </View>
 
       {/* Search Input Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchBox}>
-          <Feather name="search" size={scale(18)} color="#64748B" />
+          <TouchableOpacity onPress={handleSearchLocation} activeOpacity={0.7}>
+            <Feather name="search" size={scale(18)} color="#64748B" />
+          </TouchableOpacity>
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholder="Search for a new area, street name..."
+            onSubmitEditing={handleSearchLocation}
+            returnKeyType="search"
+            placeholder="Search for area, street, landmark..."
             placeholderTextColor="#94A3B8"
             style={styles.searchInput}
           />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity
+              onPress={() => setSearchQuery("")}
+              style={{ padding: scale(2) }}
+            >
+              <Feather name="x" size={scale(16)} color="#94A3B8" />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
       {/* Location Disabled Alert Bar */}
-      <View style={styles.locationAlertBar}>
-        <View style={styles.locationAlertLeft}>
-          <MaterialCommunityIcons
-            name="map-marker-off-outline"
-            size={scale(24)}
-            color="#1E293B"
-          />
-          <View style={styles.locationAlertTextCol}>
-            <Text style={styles.locationAlertTitle}>
-              Device Location not enabled
-            </Text>
-            <Text style={styles.locationAlertSubtitle}>
-              Enable for a better delivery exprience
-            </Text>
+      {hasLocationPermission === false && (
+        <View style={styles.locationAlertBar}>
+          <View style={styles.locationAlertLeft}>
+            <MaterialCommunityIcons
+              name="map-marker-off-outline"
+              size={scale(24)}
+              color="#1E293B"
+            />
+            <View style={styles.locationAlertTextCol}>
+              <Text style={styles.locationAlertTitle}>
+                Device Location not enabled
+              </Text>
+              <Text style={styles.locationAlertSubtitle}>
+                Enable for precise delivery address
+              </Text>
+            </View>
           </View>
-        </View>
 
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() => Alert.alert("Location", "Requesting device GPS...")}
-          style={styles.enableBtn}
-        >
-          <Text style={styles.enableBtnText}>Enable</Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={handleUseCurrentLocation}
+            style={styles.enableBtn}
+          >
+            <Text style={styles.enableBtnText}>Enable</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Interactive Map View Area */}
       <View style={styles.mapContainer}>
-        <Image
-          source={require("@/assets/images/Home/ktm-map.png")}
-          style={styles.mapImage}
-          contentFit="contain"
+        <MapView
+          ref={mapRef}
+          provider={PROVIDER_DEFAULT}
+          style={StyleSheet.absoluteFill}
+          initialRegion={region}
+          onRegionChangeComplete={handleRegionChangeComplete}
+          showsUserLocation={true}
+          showsMyLocationButton={false}
+          showsCompass={false}
         />
 
-        {/* Centered Location Pin on Map */}
+        {/* Floating Center Pin with Delivery Tooltip */}
         <View style={styles.centerPinWrapper} pointerEvents="none">
-          <Ionicons name="location" size={scale(36)} color="#003844" />
+          <View style={styles.pinTooltip}>
+            <Text style={styles.pinTooltipText}>
+              {isGeocoding ? "Locating..." : "Deliver here"}
+            </Text>
+          </View>
+          <Ionicons name="location" size={scale(40)} color="#008080" />
+          <View style={styles.pinShadow} />
         </View>
 
         {/* "Use current location" Capsule Floating Button */}
         <TouchableOpacity
           activeOpacity={0.85}
-          onPress={() => {
-            setCurrentArea("Baneshwor chok");
-            setCurrentCity("Baneshwor, kathmandu");
-          }}
+          onPress={handleUseCurrentLocation}
+          disabled={isLocating}
           style={styles.currentLocationBtn}
         >
-          <MaterialCommunityIcons
-            name="crosshairs-gps"
-            size={scale(18)}
-            color="#2D6A4F"
-          />
-          <Text style={styles.currentLocationText}>Use current location</Text>
+          {isLocating ? (
+            <ActivityIndicator size="small" color="#2D6A4F" />
+          ) : (
+            <MaterialCommunityIcons
+              name="crosshairs-gps"
+              size={scale(18)}
+              color="#2D6A4F"
+            />
+          )}
+          <Text style={styles.currentLocationText}>
+            {isLocating ? "Finding GPS..." : "Use current location"}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -188,11 +486,19 @@ export default function AddAddressScreen() {
         {/* Selected Location Pill */}
         <View style={styles.locationCard}>
           <View style={styles.locationPinBox}>
-            <Ionicons name="location-outline" size={scale(22)} color="#1E293B" />
+            <Ionicons
+              name="location-outline"
+              size={scale(22)}
+              color="#008080"
+            />
           </View>
           <View style={styles.locationTexts}>
-            <Text style={styles.areaTitle}>{currentArea}</Text>
-            <Text style={styles.citySubtitle}>{currentCity}</Text>
+            <Text style={styles.areaTitle} numberOfLines={1}>
+              {currentArea}
+            </Text>
+            <Text style={styles.citySubtitle} numberOfLines={1}>
+              {currentCity}
+            </Text>
           </View>
           <TouchableOpacity
             activeOpacity={0.7}
@@ -209,7 +515,9 @@ export default function AddAddressScreen() {
           onPress={openBottomSheet}
           style={styles.addDetailsBtn}
         >
-          <Text style={styles.addDetailsBtnText}>Add more address details</Text>
+          <Text style={styles.addDetailsBtnText}>
+            {isEditing ? "Edit address details" : "Add more address details"}
+          </Text>
           <Ionicons name="caret-forward" size={scale(14)} color="#ffffff" />
         </TouchableOpacity>
       </View>
@@ -221,7 +529,11 @@ export default function AddAddressScreen() {
         animationType="fade"
         onRequestClose={closeBottomSheet}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? scale(-60) : 0}
+          style={styles.modalOverlay}
+        >
           {/* Backdrop Tap to Close */}
           <TouchableOpacity
             activeOpacity={1}
@@ -241,108 +553,113 @@ export default function AddAddressScreen() {
               <View style={styles.dragPill} />
             </View>
 
-            <KeyboardAvoidingView
-              behavior={Platform.OS === "ios" ? "padding" : "height"}
-              style={{ flex: 1 }}
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+              contentContainerStyle={styles.sheetScrollContent}
             >
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.sheetScrollContent}
-              >
-                {/* Modal Title */}
-                <View style={styles.sheetHeader}>
-                  <Text style={styles.sheetTitle}>Enter Address Details</Text>
+              {/* Modal Title */}
+              <View style={styles.sheetHeader}>
+                <Text style={styles.sheetTitle}>
+                  {isEditing ? "Edit Address Details" : "Enter Address Details"}
+                </Text>
+                <TouchableOpacity
+                  onPress={closeBottomSheet}
+                  style={styles.sheetCloseBtn}
+                >
+                  <Feather name="x" size={scale(20)} color="#64748B" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Selected Location Pill in Sheet */}
+              <View style={styles.sheetLocationPreview}>
+                <Ionicons name="location" size={scale(18)} color="#2D6A4F" />
+                <View style={{ flex: 1, marginLeft: scale(8) }}>
+                  <Text style={styles.sheetAreaText}>{currentArea}</Text>
+                  <Text style={styles.sheetCityText}>{currentCity}</Text>
+                </View>
+              </View>
+
+              {/* Address Type Selector (Home, Work, Other) */}
+              <Text style={styles.inputLabel}>Save address as</Text>
+              <View style={styles.typeSelectorRow}>
+                {(["Home", "Work", "Other"] as const).map((type) => (
                   <TouchableOpacity
-                    onPress={closeBottomSheet}
-                    style={styles.sheetCloseBtn}
+                    key={type}
+                    activeOpacity={0.8}
+                    onPress={() => setAddressType(type)}
+                    style={[
+                      styles.typeBadge,
+                      addressType === type && styles.typeBadgeActive,
+                    ]}
                   >
-                    <Feather name="x" size={scale(20)} color="#64748B" />
-                  </TouchableOpacity>
-                </View>
-
-                {/* Selected Location Pill in Sheet */}
-                <View style={styles.sheetLocationPreview}>
-                  <Ionicons
-                    name="location"
-                    size={scale(18)}
-                    color="#2D6A4F"
-                  />
-                  <View style={{ flex: 1, marginLeft: scale(8) }}>
-                    <Text style={styles.sheetAreaText}>{currentArea}</Text>
-                    <Text style={styles.sheetCityText}>{currentCity}</Text>
-                  </View>
-                </View>
-
-                {/* Address Type Selector (Home, Work, Other) */}
-                <Text style={styles.inputLabel}>Save address as</Text>
-                <View style={styles.typeSelectorRow}>
-                  {(["Home", "Work", "Other"] as const).map((type) => (
-                    <TouchableOpacity
-                      key={type}
-                      activeOpacity={0.8}
-                      onPress={() => setAddressType(type)}
+                    <Text
                       style={[
-                        styles.typeBadge,
-                        addressType === type && styles.typeBadgeActive,
+                        styles.typeBadgeText,
+                        addressType === type && styles.typeBadgeTextActive,
                       ]}
                     >
-                      <Text
-                        style={[
-                          styles.typeBadgeText,
-                          addressType === type && styles.typeBadgeTextActive,
-                        ]}
-                      >
-                        {type}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
+                      {type}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
 
-                {/* Flat / Building Input */}
-                <Text style={styles.inputLabel}>
-                  House / Flat / Floor / Building Name *
-                </Text>
-                <TextInput
-                  value={houseNo}
-                  onChangeText={setHouseNo}
-                  placeholder="e.g. Floor 5, Sunrise Apartment"
-                  placeholderTextColor="#94A3B8"
-                  style={styles.sheetInput}
-                />
+              {/* Flat / Building Input */}
+              <Text style={styles.inputLabel}>
+                House / Flat / Floor / Building Name *
+              </Text>
+              <TextInput
+                value={houseNo}
+                onChangeText={setHouseNo}
+                placeholder="e.g. Floor 5, Sunrise Apartment"
+                placeholderTextColor="#94A3B8"
+                returnKeyType="next"
+                style={styles.sheetInput}
+              />
 
-                {/* Landmark Input */}
-                <Text style={styles.inputLabel}>Nearby Landmark (Optional)</Text>
-                <TextInput
-                  value={landmark}
-                  onChangeText={setLandmark}
-                  placeholder="e.g. Near Big Mart / Main Chowk"
-                  placeholderTextColor="#94A3B8"
-                  style={styles.sheetInput}
-                />
+              {/* Landmark Input */}
+              <Text style={styles.inputLabel}>Nearby Landmark (Optional)</Text>
+              <TextInput
+                value={landmark}
+                onChangeText={setLandmark}
+                placeholder="e.g. Near Big Mart / Main Chowk"
+                placeholderTextColor="#94A3B8"
+                returnKeyType="next"
+                style={styles.sheetInput}
+              />
 
-                {/* Phone Number */}
-                <Text style={styles.inputLabel}>Contact Phone Number *</Text>
-                <TextInput
-                  value={phone}
-                  onChangeText={setPhone}
-                  keyboardType="phone-pad"
-                  placeholder="e.g. 9868686868"
-                  placeholderTextColor="#94A3B8"
-                  style={styles.sheetInput}
-                />
+              {/* Phone Number */}
+              <Text style={styles.inputLabel}>Contact Phone Number *</Text>
+              <TextInput
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+                placeholder="e.g. 9868686868"
+                placeholderTextColor="#94A3B8"
+                returnKeyType="done"
+                style={styles.sheetInput}
+              />
 
-                {/* Save Address Button */}
-                <TouchableOpacity
-                  activeOpacity={0.9}
-                  onPress={handleSaveAddress}
-                  style={styles.sheetSaveBtn}
-                >
-                  <Text style={styles.sheetSaveBtnText}>Save Address</Text>
-                </TouchableOpacity>
-              </ScrollView>
-            </KeyboardAvoidingView>
+              {/* Save Address Button */}
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={handleSaveAddress}
+                disabled={isSaving}
+                style={[styles.sheetSaveBtn, isSaving && { opacity: 0.7 }]}
+              >
+                {isSaving ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.sheetSaveBtnText}>
+                    {isEditing ? "Update Address" : "Save Address"}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
           </Animated.View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
@@ -436,14 +753,32 @@ const styles = StyleSheet.create({
     position: "relative",
     backgroundColor: "#E2E8F0",
   },
-  mapImage: {
-    width: "100%",
-    height: "100%",
-  },
   centerPinWrapper: {
     position: "absolute",
-    top: "40%",
-    left: "46%",
+    top: "50%",
+    left: "50%",
+    alignItems: "center",
+    justifyContent: "center",
+    transform: [{ translateX: -scale(40) }, { translateY: -scale(52) }],
+  },
+  pinTooltip: {
+    backgroundColor: "#0F172A",
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(4),
+    borderRadius: scale(6),
+    marginBottom: scale(2),
+  },
+  pinTooltipText: {
+    color: "#FFFFFF",
+    fontSize: moderateScale(10.5),
+    fontWeight: "700",
+  },
+  pinShadow: {
+    width: scale(12),
+    height: scale(4),
+    borderRadius: scale(2),
+    backgroundColor: "rgba(0, 0, 0, 0.25)",
+    marginTop: -scale(4),
   },
   currentLocationBtn: {
     position: "absolute",
@@ -540,7 +875,6 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     letterSpacing: 0.2,
   },
-  // Full screen bottom sheet modal styles
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.45)",

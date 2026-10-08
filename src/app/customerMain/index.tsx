@@ -22,6 +22,7 @@ import {
 } from "@/components/home";
 import { useCart } from "@/context/cart-context";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { fetchAddresses } from "@/store/slices/addressSlice";
 import {
   fetchPublicProducts,
   setSelectedCategory,
@@ -36,15 +37,17 @@ export default function HomeScreen() {
   const theme = useTheme();
   const dispatch = useAppDispatch();
   const { addToCart } = useCart();
-  const { isAuthenticated, isInitialized } = useAppSelector(
+  const { user, isAuthenticated, isInitialized } = useAppSelector(
     (state) => state.auth,
   );
   const selectedCategory = useAppSelector(
-    (state) => state.product.selectedCategory || "all"
+    (state) => state.product.selectedCategory || "all",
   );
+  const { activeDisplayLocation } = useAppSelector((state) => state.address);
 
   useEffect(() => {
     dispatch(fetchPublicProducts());
+    dispatch(fetchAddresses());
   }, [dispatch]);
 
   useEffect(() => {
@@ -54,9 +57,9 @@ export default function HomeScreen() {
   }, [isInitialized, isAuthenticated]);
 
   const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
-  const [currentLocation, setCurrentLocation] = useState(
-    "Baneshwor, Kathmandu, Bagmati, Nepal",
-  );
+
+  const displayLocation =
+    activeDisplayLocation || "Baneshwor, Kathmandu, Bagmati, Nepal";
 
   const handleCategoryPress = (categoryName: string, categoryId?: string) => {
     router.push({
@@ -110,8 +113,8 @@ export default function HomeScreen() {
 
         {/* Top Header with Gradient, Store Location, SearchBar & Category Scroller */}
         <Header
-          storeName="Bhansa Mart"
-          location={currentLocation}
+          storeName="Delivery Address"
+          location={displayLocation}
           selectedCategory={selectedCategory}
           onSelectCategory={(catId) => {
             dispatch(setSelectedCategory(catId));
@@ -855,9 +858,6 @@ export default function HomeScreen() {
       <SelectLocationModal
         visible={isLocationModalVisible}
         onClose={() => setIsLocationModalVisible(false)}
-        onSelectLocation={(loc) => {
-          setCurrentLocation(`${loc.title}, ${loc.address}`);
-        }}
       />
     </View>
   );

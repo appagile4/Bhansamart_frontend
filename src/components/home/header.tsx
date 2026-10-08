@@ -1,4 +1,4 @@
-﻿import { moderateScale, scale } from "@/theme";
+import { moderateScale, scale } from "@/theme";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -22,8 +22,8 @@ interface HeaderProps {
 }
 
 export default function Header({
-  storeName = "Bhansa Mart",
-  location = "Baneshwor, Kathmandu, Bagmati, Nepal",
+  storeName = "Delivery Address",
+  location = "",
   selectedCategory = "all",
   onSelectCategory,
   onLocationPress,
@@ -76,6 +76,12 @@ export default function Header({
               onPress={onLocationPress}
               style={styles.locationButton}
             >
+              <Ionicons
+                name="location-sharp"
+                size={scale(14)}
+                color="#38BDF8"
+                style={{ marginRight: scale(4) }}
+              />
               <Text numberOfLines={1} style={styles.locationText}>
                 {location}
               </Text>
@@ -277,4 +283,3 @@ const styles = StyleSheet.create({
     opacity: 0.1,
   },
 });
-

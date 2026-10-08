@@ -1,6 +1,7 @@
 import { Image } from "expo-image";
 import { FloatingCartBar } from "@/components/cart";
 import { SelectLocationModal } from "@/components/home";
+import { useAppSelector } from "@/store/hooks";
 import { moderateScale, scale, useTheme } from "@/theme";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -385,9 +386,9 @@ export default function CategoryScreen() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
-  const [currentLocation, setCurrentLocation] = useState(
-    "Baneshwor, Kathmandu, Bagmati, Nepal",
-  );
+  const { activeDisplayLocation } = useAppSelector((state) => state.address);
+  const currentLocation =
+    activeDisplayLocation || "Baneshwor, Kathmandu, Bagmati, Nepal";
 
   // Filter sections and their category items according to the in-page search query
   const filteredSections = useMemo(() => {
@@ -461,7 +462,7 @@ export default function CategoryScreen() {
           <View style={styles.headerTopRow}>
             {/* Store & Location */}
             <View style={styles.locationContainer}>
-              <Text style={styles.storeName}>Bhansa Mart</Text>
+              <Text style={styles.storeName}>Delivery Address</Text>
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => setIsLocationModalVisible(true)}
@@ -570,9 +571,6 @@ export default function CategoryScreen() {
       <SelectLocationModal
         visible={isLocationModalVisible}
         onClose={() => setIsLocationModalVisible(false)}
-        onSelectLocation={(loc) =>
-          setCurrentLocation(`${loc.title}, ${loc.address}`)
-        }
       />
     </View>
   );

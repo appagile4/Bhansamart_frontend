@@ -1,8 +1,17 @@
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
+  fetchAddresses,
+  setSelectedAddress,
+} from "@/store/slices/addressSlice";
+import { SavedAddress } from "@/store/services/addressService";
 import { moderateScale, scale, useTheme } from "@/theme";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import * as Location from "expo-location";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Dimensions,
   Modal,
   Platform,
@@ -30,24 +39,6 @@ interface SelectLocationModalProps {
   onEnableLocation?: () => void;
 }
 
-const DEFAULT_RECENT_LOCATIONS: LocationItem[] = [
-  {
-    id: "loc-1",
-    title: "Baneshwor",
-    address: "Kathmandu, Bagmati, Nepal",
-  },
-  {
-    id: "loc-2",
-    title: "Koteshwor",
-    address: "Kathmandu, Bagmati, Nepal",
-  },
-  {
-    id: "loc-3",
-    title: "Pulchowk",
-    address: "Lalitpur, Bagmati, Nepal",
-  },
-];
-
 export default function SelectLocationModal({
   visible,
   onClose,
@@ -55,34 +46,144 @@ export default function SelectLocationModal({
   onEnableLocation,
 }: SelectLocationModalProps) {
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const theme = useTheme();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isLocationEnabled, setIsLocationEnabled] = useState(false);
 
-  const filteredLocations = DEFAULT_RECENT_LOCATIONS.filter(
-    (loc) =>
-      loc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      loc.address.toLowerCase().includes(searchQuery.toLowerCase()),
+  const { addresses, selectedAddress, loading } = useAppSelector(
+    (state) => state.address
   );
 
-  const handleEnableLocation = () => {
-    setIsLocationEnabled(true);
-    onEnableLocation?.();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isLocationEnabled, setIsLocationEnabled] = useState<boolean | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
+
+  useEffect(() => {
+    if (visible) {
+      dispatch(fetchAddresses());
+      Location.getForegroundPermissionsAsync().then(({ status }) => {
+        setIsLocationEnabled(status === "granted");
+      });
+    }
+  }, [visible, dispatch]);
+
+  const handleEnableLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === "granted") {
+        setIsLocationEnabled(true);
+        handleUseCurrentLocation();
+      } else {
+        setIsLocationEnabled(false);
+      }
+    } catch {
+      setIsLocationEnabled(false);
+    }
   };
 
-  const handleUseCurrentLocation = () => {
-    const currentLoc: LocationItem = {
-      id: "loc-current",
-      title: "Current Location",
-      address: "Baneshwor, Kathmandu, Bagmati, Nepal",
-    };
-    onSelectLocation?.(currentLoc);
-    onClose();
+  const handleUseCurrentLocation = async () => {
+    try {
+      setIsLocating(true);
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        setIsLocationEnabled(false);
+        Alert.alert(
+          "Permission Denied",
+          "Please enable location permission in settings."
+        );
+        return;
+      }
+      setIsLocationEnabled(true);
+      const loc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+      const results = await Location.reverseGeocodeAsync({
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude,
+      });
+
+      let area = "Current Location";
+      let fullAddress = "Kathmandu, Bagmati, Nepal";
+
+      if (results && results.length > 0) {
+        const item = results[0];
+        area = item.name || item.street || item.district || item.subregion || "Current Location";
+        fullAddress = [
+          item.city || item.subregion || "Kathmandu",
+          item.country || "Nepal",
+        ]
+          .filter(Boolean)
+          .join(", ");
+      }
+
+      const formattedLocation = `${area}, ${fullAddress}`;
+
+      dispatch(
+        setSelectedAddress({
+          id: "current-location",
+          type: "Other",
+          addressLine: formattedLocation,
+          phone: "",
+        })
+      );
+
+      const currentLocItem: LocationItem = {
+        id: "loc-current",
+        title: area,
+        address: formattedLocation,
+      };
+
+      onSelectLocation?.(currentLocItem);
+      onClose();
+    } catch (e) {
+      console.log("Current location error:", e);
+      Alert.alert("Location", "Could not fetch current GPS coordinates.");
+    } finally {
+      setIsLocating(false);
+    }
   };
 
   const handleAddNewAddress = () => {
     onClose();
     router.push("/Screens/Profile/add-address" as any);
+  };
+
+  const handleSelectSavedAddress = (addr: SavedAddress) => {
+    dispatch(setSelectedAddress(addr));
+    onSelectLocation?.({
+      id: addr.id || addr._id || "",
+      title: addr.type,
+      address: addr.addressLine,
+    });
+    onClose();
+  };
+
+  const filteredAddresses = addresses.filter(
+    (addr) =>
+      addr.addressLine.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      addr.type.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const getAddressIcon = (type: string) => {
+    switch (type) {
+      case "Work":
+        return <Feather name="briefcase" size={scale(18)} color="#0284C7" />;
+      case "Other":
+        return <Feather name="map-pin" size={scale(18)} color="#7C3AED" />;
+      default:
+        return <Feather name="home" size={scale(18)} color="#2D6A4F" />;
+    }
+  };
+
+  const getAddressBg = (type: string) => {
+    switch (type) {
+      case "Work":
+        return "#E0F2FE";
+      case "Other":
+        return "#EDE9FE";
+      default:
+        return "#F4FBEA";
+    }
   };
 
   return (
@@ -110,9 +211,8 @@ export default function SelectLocationModal({
             keyboardShouldPersistTaps="handled"
           >
             {/* 1. Device Location Not Enabled Notice Banner */}
-            {!isLocationEnabled && (
+            {isLocationEnabled === false && (
               <View style={styles.noticeBanner}>
-                {/* Slashed Location Pin Icon */}
                 <View style={styles.noticeIconWrap}>
                   <MaterialCommunityIcons
                     name="map-marker-off-outline"
@@ -121,17 +221,15 @@ export default function SelectLocationModal({
                   />
                 </View>
 
-                {/* Text Description */}
                 <View style={styles.noticeTextGroup}>
                   <Text style={styles.noticeTitle}>
                     Device Location not enabled
                   </Text>
                   <Text style={styles.noticeSubtitle}>
-                    Enable for a better delivery exprience
+                    Enable for precise delivery address
                   </Text>
                 </View>
 
-                {/* Enable Green Pill Button */}
                 <TouchableOpacity
                   activeOpacity={0.85}
                   onPress={handleEnableLocation}
@@ -143,14 +241,24 @@ export default function SelectLocationModal({
             )}
 
             {/* 2. Select Location Header */}
-            <Text style={styles.mainTitle}>Select Location</Text>
+            <View style={styles.headerRow}>
+              <Text style={styles.mainTitle}>Select Delivery Location</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  onClose();
+                  router.push("/Screens/Profile/address" as any);
+                }}
+              >
+                <Text style={styles.manageLinkText}>Manage</Text>
+              </TouchableOpacity>
+            </View>
 
             {/* 3. Search Bar Input */}
             <View style={styles.searchBarContainer}>
               <Feather name="search" size={scale(18)} color="#64748B" />
               <TextInput
                 style={styles.searchInput}
-                placeholder="Search for area, street name...."
+                placeholder="Search area, landmark, saved address..."
                 placeholderTextColor="#94A3B8"
                 value={searchQuery}
                 onChangeText={setSearchQuery}
@@ -176,15 +284,22 @@ export default function SelectLocationModal({
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={handleUseCurrentLocation}
+                disabled={isLocating}
                 style={styles.actionRow}
               >
                 <View style={styles.actionLeft}>
-                  <MaterialCommunityIcons
-                    name="crosshairs-gps"
-                    size={scale(20)}
-                    color="#265935"
-                  />
-                  <Text style={styles.actionText}>Use current location</Text>
+                  {isLocating ? (
+                    <ActivityIndicator size="small" color="#265935" />
+                  ) : (
+                    <MaterialCommunityIcons
+                      name="crosshairs-gps"
+                      size={scale(20)}
+                      color="#265935"
+                    />
+                  )}
+                  <Text style={styles.actionText}>
+                    {isLocating ? "Fetching GPS location..." : "Use current location"}
+                  </Text>
                 </View>
                 <Feather
                   name="chevron-right"
@@ -204,7 +319,7 @@ export default function SelectLocationModal({
               >
                 <View style={styles.actionLeft}>
                   <Feather name="plus" size={scale(20)} color="#265935" />
-                  <Text style={styles.actionText}>Add New address</Text>
+                  <Text style={styles.actionText}>Add new address</Text>
                 </View>
                 <Feather
                   name="chevron-right"
@@ -214,47 +329,77 @@ export default function SelectLocationModal({
               </TouchableOpacity>
             </View>
 
-            {/* 5. Recently Searched Locations Section */}
-            <Text style={styles.recentSectionTitle}>
-              Recently Searched Locations
-            </Text>
+            {/* 5. Saved Addresses Section */}
+            <Text style={styles.recentSectionTitle}>Your Saved Addresses</Text>
 
-            {/* Location Cards */}
-            {filteredLocations.map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                activeOpacity={0.75}
-                onPress={() => {
-                  onSelectLocation?.(item);
-                  onClose();
-                }}
-                style={styles.locationCard}
-              >
-                {/* Location Icon Badge */}
-                <View style={styles.locationIconBadge}>
-                  <Ionicons
-                    name="location-sharp"
-                    size={scale(20)}
-                    color="#265935"
-                  />
-                </View>
+            {loading && addresses.length === 0 ? (
+              <View style={{ paddingVertical: scale(20), alignItems: "center" }}>
+                <ActivityIndicator size="small" color="#008080" />
+              </View>
+            ) : filteredAddresses.length > 0 ? (
+              filteredAddresses.map((item) => {
+                const isSelected =
+                  selectedAddress?.id === item.id ||
+                  selectedAddress?._id === item.id ||
+                  (selectedAddress?.id && selectedAddress?.id === item._id);
 
-                {/* Location Text Group */}
-                <View style={styles.locationTextGroup}>
-                  <Text style={styles.locationName}>{item.title}</Text>
-                  <Text style={styles.locationAddress} numberOfLines={1}>
-                    {item.address}
-                  </Text>
-                </View>
+                return (
+                  <TouchableOpacity
+                    key={item.id || item._id}
+                    activeOpacity={0.75}
+                    onPress={() => handleSelectSavedAddress(item)}
+                    style={[
+                      styles.locationCard,
+                      isSelected && styles.locationCardSelected,
+                    ]}
+                  >
+                    {/* Location Icon Badge */}
+                    <View
+                      style={[
+                        styles.locationIconBadge,
+                        { backgroundColor: getAddressBg(item.type) },
+                      ]}
+                    >
+                      {getAddressIcon(item.type)}
+                    </View>
 
-                {/* Chevron */}
-                <Feather
-                  name="chevron-right"
-                  size={scale(18)}
-                  color="#64748B"
-                />
-              </TouchableOpacity>
-            ))}
+                    {/* Location Text Group */}
+                    <View style={styles.locationTextGroup}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: scale(6) }}>
+                        <Text style={styles.locationName}>{item.type}</Text>
+                        {item.isDefault && (
+                          <View style={styles.defaultPill}>
+                            <Text style={styles.defaultPillText}>DEFAULT</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={styles.locationAddress} numberOfLines={2}>
+                        {item.addressLine}
+                      </Text>
+                    </View>
+
+                    {/* Checkmark or Chevron */}
+                    {isSelected ? (
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={scale(22)}
+                        color="#008080"
+                      />
+                    ) : (
+                      <Feather
+                        name="chevron-right"
+                        size={scale(18)}
+                        color="#64748B"
+                      />
+                    )}
+                  </TouchableOpacity>
+                );
+              })
+            ) : (
+              <View style={styles.noSavedBox}>
+                <Text style={styles.noSavedText}>No saved addresses found</Text>
+              </View>
+            )}
           </ScrollView>
         </View>
       </View>
@@ -330,7 +475,7 @@ const styles = StyleSheet.create({
     fontWeight: "400",
   },
   enableButton: {
-    backgroundColor: "#265935",
+    backgroundColor: "#008080",
     paddingHorizontal: scale(14),
     paddingVertical: scale(6),
     borderRadius: scale(8),
@@ -341,12 +486,22 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(12.5),
     fontWeight: "700",
   },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: scale(12),
+  },
   mainTitle: {
-    fontSize: moderateScale(18),
+    fontSize: moderateScale(17),
     fontWeight: "800",
     color: "#0F172A",
-    marginBottom: scale(12),
     letterSpacing: -0.3,
+  },
+  manageLinkText: {
+    fontSize: moderateScale(13),
+    fontWeight: "700",
+    color: "#008080",
   },
   searchBarContainer: {
     backgroundColor: "#FFFFFF",
@@ -389,7 +544,7 @@ const styles = StyleSheet.create({
   actionText: {
     fontSize: moderateScale(14),
     fontWeight: "700",
-    color: "#265935",
+    color: "#2D6A4F",
   },
   actionDivider: {
     height: 1,
@@ -397,26 +552,29 @@ const styles = StyleSheet.create({
     marginLeft: scale(44),
   },
   recentSectionTitle: {
-    fontSize: moderateScale(12.5),
-    fontWeight: "600",
-    color: "#64748B",
+    fontSize: moderateScale(13),
+    fontWeight: "700",
+    color: "#475569",
     marginBottom: scale(10),
   },
   locationCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: scale(12),
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: "#E2E8F0",
     padding: scale(12),
     flexDirection: "row",
     alignItems: "center",
     marginBottom: scale(10),
   },
+  locationCardSelected: {
+    borderColor: "#008080",
+    backgroundColor: "#FAFFFD",
+  },
   locationIconBadge: {
-    width: scale(42),
-    height: scale(42),
+    width: scale(40),
+    height: scale(40),
     borderRadius: scale(10),
-    backgroundColor: "#EBF3EE",
     alignItems: "center",
     justifyContent: "center",
     marginRight: scale(12),
@@ -425,14 +583,34 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   locationName: {
-    fontSize: moderateScale(14.5),
+    fontSize: moderateScale(14),
     fontWeight: "700",
     color: "#0F172A",
     marginBottom: scale(2),
   },
+  defaultPill: {
+    backgroundColor: "#DCFCE7",
+    paddingHorizontal: scale(5),
+    paddingVertical: scale(1),
+    borderRadius: scale(4),
+  },
+  defaultPillText: {
+    fontSize: moderateScale(9),
+    fontWeight: "800",
+    color: "#15803D",
+  },
   locationAddress: {
     fontSize: moderateScale(12),
     color: "#64748B",
-    fontWeight: "400",
+    lineHeight: moderateScale(16),
+  },
+  noSavedBox: {
+    paddingVertical: scale(20),
+    alignItems: "center",
+  },
+  noSavedText: {
+    fontSize: moderateScale(13),
+    color: "#94A3B8",
+    fontWeight: "500",
   },
 });

@@ -15,6 +15,7 @@ export interface UserProfile {
   _id: string;
   name: string;
   email: string;
+  phone?: string;
   address?: string;
   avatar?: string;
   dateOfBirth?: string;

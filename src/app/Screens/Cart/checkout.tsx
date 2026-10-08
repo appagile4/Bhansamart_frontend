@@ -1,75 +1,54 @@
 import { Image } from "expo-image";
+import { useCart } from "@/context/cart-context";
 import { moderateScale, scale, useTheme } from "@/theme";
 import {
   Feather,
   Ionicons,
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useAppSelector } from "@/store/hooks";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-
-interface CheckoutItem {
-  id: string;
-  name: string;
-  packInfo: string;
-  price: number;
-  originalPrice: number;
-  imageUrl: string;
-}
-
-const CHECKOUT_ITEMS: CheckoutItem[] = [
-  {
-    id: "item-1",
-    name: "Lorem ipsum dolor sit aet, consectetur adi",
-    packInfo: "1 Pack(10 pieces)",
-    price: 400,
-    originalPrice: 500,
-    imageUrl:
-      "https://images.unsplash.com/photo-1527153857715-3908f2ae5e81?w=200&q=80",
-  },
-  {
-    id: "item-2",
-    name: "Lorem ipsum dolor sit at, consectetur adip elit. ctet ur adip elit",
-    packInfo: "1 * 20 packs",
-    price: 400,
-    originalPrice: 500,
-    imageUrl:
-      "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=200&q=80",
-  },
-  {
-    id: "item-3",
-    name: "Lorem ipsum dolor sit aet, consectetur adi",
-    packInfo: "1 * 20 packs",
-    price: 400,
-    originalPrice: 500,
-    imageUrl:
-      "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&q=80",
-  },
-  {
-    id: "item-4",
-    name: "Lorem ipsum dolor sit at, consectetur adip elit. ctet ur adip elit",
-    packInfo: "1 Pack(10 pieces)",
-    price: 400,
-    originalPrice: 500,
-    imageUrl:
-      "https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?w=200&q=80",
-  },
-];
 
 export default function CheckoutScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const theme = useTheme();
+  const params = useLocalSearchParams<{
+    paymentMethod?: string;
+    deliveryAddress?: string;
+  }>();
 
-  const [orderId] = useState("ODR999999999");
+  const { activeDisplayLocation, selectedAddress } = useAppSelector(
+    (state) => state.address
+  );
+
+  const {
+    cartItems,
+    totalCount,
+    totalPrice: itemsTotal,
+    totalOriginalPrice: originalTotal,
+    totalSavings,
+    clearCart,
+  } = useCart();
+
+  const [orderId] = useState(`BM${Date.now().toString().slice(-8)}`);
   const [copied, setCopied] = useState(false);
   const [deliveryAddress, setDeliveryAddress] = useState(
-    "Floor 5, Building name, land mark, Baneshwor, kathmandu"
+    params.deliveryAddress ||
+      activeDisplayLocation ||
+      selectedAddress?.addressLine ||
+      "Floor 5, Building name, land mark, Baneshwor, Kathmandu"
   );
-  const [paymentMethod, setPaymentMethod] = useState("Cash on delivery");
+  const [paymentMethod, setPaymentMethod] = useState(
+    params.paymentMethod || "Cash on delivery"
+  );
+
+  const handlingCharge = cartItems.length > 0 ? 30 : 0;
+  const grandTotal = itemsTotal + handlingCharge;
 
   const handleCopyOrderId = () => {
     setCopied(true);
@@ -78,13 +57,14 @@ export default function CheckoutScreen() {
   };
 
   const handleConfirmOrder = () => {
+    clearCart();
     Alert.alert(
       "Order Confirmed!",
-      `Your order ${orderId} has been placed successfully for Rs.800. It will arrive within 24 hours.`,
+      `Your order ${orderId} has been placed successfully for Rs.${grandTotal}. It will arrive within 24 hours.`,
       [
         {
-          text: "View Orders",
-          onPress: () => router.replace("/customerMain" as any),
+          text: "Back to Home",
+          onPress: () => router.replace("/customerMain/home" as any),
         },
       ]
     );
@@ -108,14 +88,14 @@ export default function CheckoutScreen() {
 
         {/* Title and Subtitle Block */}
         <View style={styles.titleSection}>
-          <Text style={styles.checkoutTitle}>checkout</Text>
-          <Text style={styles.arrivingSubtext}>Arriving within 24 hr</Text>
+          <Text style={styles.checkoutTitle}>Checkout</Text>
+          <Text style={styles.arrivingSubtext}>Arriving in 10-15 mins</Text>
         </View>
 
-        {/* 4 items in this order header */}
+        {/* items in this order header */}
         <View style={styles.itemsHeader}>
           <Text style={styles.itemsHeaderText}>
-            {CHECKOUT_ITEMS.length} items in this order
+            {totalCount} {totalCount === 1 ? "item" : "items"} in this order
           </Text>
         </View>
         <View style={styles.headerDivider} />
@@ -129,18 +109,22 @@ export default function CheckoutScreen() {
         >
           {/* Ordered Items List */}
           <View style={styles.itemsList}>
-            {CHECKOUT_ITEMS.map((item, index) => (
+            {cartItems.map((item, index) => (
               <View
-                key={item.id}
+                key={item.id + index}
                 style={[
                   styles.itemRow,
-                  index < CHECKOUT_ITEMS.length - 1 && styles.itemDivider,
+                  index < cartItems.length - 1 && styles.itemDivider,
                 ]}
               >
                 {/* Thumbnail */}
                 <View style={styles.imageBox}>
                   <Image
-                    source={{ uri: item.imageUrl }}
+                    source={{
+                      uri:
+                        item.imageUrl ||
+                        "https://images.unsplash.com/photo-1542838132-92c53300491e?w=200&q=80",
+                    }}
                     style={styles.productImage}
                     contentFit="contain"
                   />
@@ -151,15 +135,21 @@ export default function CheckoutScreen() {
                   <Text style={styles.itemName} numberOfLines={2}>
                     {item.name}
                   </Text>
-                  <Text style={styles.packInfo}>{item.packInfo}</Text>
+                  <Text style={styles.packInfo}>
+                    {item.weight || "1 unit"} • Qty: {item.quantity}
+                  </Text>
                 </View>
 
                 {/* Pricing on Right */}
                 <View style={styles.itemPriceCol}>
-                  <Text style={styles.strikethroughPrice}>
-                    Rs.{item.originalPrice}
+                  {item.originalPrice && item.originalPrice > item.price ? (
+                    <Text style={styles.strikethroughPrice}>
+                      Rs.{item.originalPrice * item.quantity}
+                    </Text>
+                  ) : null}
+                  <Text style={styles.finalPrice}>
+                    Rs.{item.price * item.quantity}
                   </Text>
-                  <Text style={styles.finalPrice}>Rs.{item.price}</Text>
                 </View>
               </View>
             ))}
@@ -173,32 +163,29 @@ export default function CheckoutScreen() {
             <View style={styles.billRows}>
               <View style={styles.billRow}>
                 <Text style={styles.billLabel}>MRP</Text>
-                <Text style={styles.billValue}>Rs.1000</Text>
+                <Text style={styles.billValue}>Rs.{originalTotal || itemsTotal}</Text>
               </View>
 
-              <View style={styles.billRow}>
-                <Text style={styles.billLabel}>Product discount</Text>
-                <Text style={styles.discountValue}>-250</Text>
-              </View>
+              {totalSavings > 0 ? (
+                <View style={styles.billRow}>
+                  <Text style={styles.billLabel}>Product discount</Text>
+                  <Text style={styles.discountValue}>-Rs.{totalSavings}</Text>
+                </View>
+              ) : null}
 
               <View style={styles.billRow}>
                 <Text style={styles.billLabel}>Item total</Text>
-                <Text style={styles.billValue}>Rs.750</Text>
+                <Text style={styles.billValue}>Rs.{itemsTotal}</Text>
               </View>
 
               <View style={styles.billRow}>
-                <Text style={styles.billLabel}>Handeling charge</Text>
-                <Text style={styles.billValue}>Rs.50</Text>
+                <Text style={styles.billLabel}>Handling charge</Text>
+                <Text style={styles.billValue}>Rs.{handlingCharge}</Text>
               </View>
 
               <View style={styles.billRow}>
                 <Text style={styles.billLabel}>Delivery charge</Text>
-                <Text style={styles.freeValue}>free</Text>
-              </View>
-
-              <View style={styles.billRow}>
-                <Text style={styles.billLabel}>Coupon code</Text>
-                <Text style={styles.discountValue}>-250</Text>
+                <Text style={styles.freeValue}>FREE</Text>
               </View>
             </View>
 
@@ -207,7 +194,7 @@ export default function CheckoutScreen() {
             {/* Bill Total Row */}
             <View style={styles.billTotalRow}>
               <Text style={styles.billTotalLabel}>Bill total</Text>
-              <Text style={styles.billTotalValue}>Rs.800</Text>
+              <Text style={styles.billTotalValue}>Rs.{grandTotal}</Text>
             </View>
           </View>
 

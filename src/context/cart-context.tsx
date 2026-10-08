@@ -1,18 +1,24 @@
-import React, { createContext, useContext, useState, useMemo } from "react";
+import React, { createContext, useContext, useEffect, useCallback } from "react";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
+  addToCart as addToCartThunk,
+  addToCartLocal,
+  CartItem,
+  clearCart as clearCartThunk,
+  clearCartLocal,
+  fetchCart,
+  loadCartFromStorage,
+  removeFromCart as removeFromCartThunk,
+  removeFromCartLocal,
+  updateCartQuantity as updateCartQuantityThunk,
+  updateQuantityLocal,
+} from "@/store/slices/cartSlice";
 
-export interface CartItem {
-  id: string;
-  name: string;
-  price: number;
-  originalPrice?: number;
-  quantity: number;
-  imageUrl?: string;
-  weight?: string;
-}
+export type { CartItem };
 
 interface CartContextType {
   cartItems: CartItem[];
-  addToCart: (product: Omit<CartItem, "quantity">) => void;
+  addToCart: (product: Omit<CartItem, "quantity"> & { quantity?: number }) => void;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, delta: number) => void;
   getItemQuantity: (productId: string) => number;
@@ -26,79 +32,68 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [cartItems, setCartItems] = useState<CartItem[]>([
-    {
-      id: "demo-p1",
-      name: "Maggi Masala - 2 Minutes Instant Noodles",
-      price: 300,
-      originalPrice: 400,
-      quantity: 1,
-      imageUrl:
-        "https://images.unsplash.com/photo-1612927601601-6638404737ce?w=300&q=80",
-      weight: "1kg",
+  const dispatch = useAppDispatch();
+  const {
+    items: cartItems,
+    totalCount,
+    totalPrice,
+    totalOriginalPrice,
+    totalSavings,
+    initialized,
+  } = useAppSelector((state) => state.cart);
+
+  useEffect(() => {
+    if (!initialized) {
+      dispatch(loadCartFromStorage());
+    }
+    dispatch(fetchCart());
+  }, [dispatch, initialized]);
+
+  const addToCart = useCallback(
+    (product: Omit<CartItem, "quantity"> & { quantity?: number }) => {
+      dispatch(addToCartLocal(product));
+      dispatch(addToCartThunk(product));
     },
-  ]);
+    [dispatch]
+  );
 
-  const addToCart = (product: Omit<CartItem, "quantity">) => {
-    setCartItems((prev) => {
-      const existing = prev.find((item) => item.id === product.id);
-      if (existing) {
-        return prev.map((item) =>
-          item.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        );
-      }
-      return [...prev, { ...product, quantity: 1 }];
-    });
-  };
+  const removeFromCart = useCallback(
+    (productId: string) => {
+      const pId = String(productId).trim();
+      dispatch(removeFromCartLocal(pId));
+      dispatch(removeFromCartThunk(pId));
+    },
+    [dispatch]
+  );
 
-  const removeFromCart = (productId: string) => {
-    setCartItems((prev) => prev.filter((item) => item.id !== productId));
-  };
+  const updateQuantity = useCallback(
+    (productId: string, delta: number) => {
+      const pId = String(productId).trim();
+      dispatch(updateQuantityLocal({ productId: pId, delta }));
+      dispatch(updateCartQuantityThunk({ productId: pId, delta }));
+    },
+    [dispatch]
+  );
 
-  const updateQuantity = (productId: string, delta: number) => {
-    setCartItems((prev) => {
-      return prev
-        .map((item) => {
-          if (item.id === productId) {
-            const newQty = item.quantity + delta;
-            return newQty > 0 ? { ...item, quantity: newQty } : null;
-          }
-          return item;
-        })
-        .filter(Boolean) as CartItem[];
-    });
-  };
+  const getItemQuantity = useCallback(
+    (productId: string): number => {
+      const targetId = String(productId).trim();
+      if (!targetId) return 0;
+      const found = cartItems.find(
+        (item) =>
+          String(item.id).trim() === targetId ||
+          String((item as any).productId || "").trim() === targetId ||
+          String((item as any)._id || "").trim() === targetId
+      );
+      return found ? found.quantity : 0;
+    },
+    [cartItems]
+  );
 
-  const getItemQuantity = (productId: string): number => {
-    const found = cartItems.find((item) => item.id === productId);
-    return found ? found.quantity : 0;
-  };
-
-  const clearCart = () => {
-    setCartItems([]);
-  };
-
-  const totalCount = useMemo(() => {
-    return cartItems.reduce((sum, item) => sum + item.quantity, 0);
-  }, [cartItems]);
-
-  const totalPrice = useMemo(() => {
-    return cartItems.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0
-    );
-  }, [cartItems]);
-
-  const totalOriginalPrice = useMemo(() => {
-    return cartItems.reduce(
-      (sum, item) => sum + (item.originalPrice || item.price) * item.quantity,
-      0
-    );
-  }, [cartItems]);
-
-  const totalSavings = Math.max(0, totalOriginalPrice - totalPrice);
+  const clearCart = useCallback(() => {
+    dispatch(clearCartLocal());
+    dispatch(clearCartThunk());
+  }, [dispatch]);
 
   return (
     <CartContext.Provider

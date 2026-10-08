@@ -9,8 +9,9 @@ import {
   YouMightLikeSection,
 } from "@/components/cart";
 import { useCart } from "@/context/cart-context";
+import { useAppSelector } from "@/store/hooks";
 import { moderateScale, scale, useTheme } from "@/theme";
-import { Feather, Ionicons } from "@expo/vector-icons";
+import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -26,27 +27,44 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-// Sample initial data for Saved Items
-const INITIAL_SAVED_ITEMS: SavedCartItem[] = [
+// Available Payment Options
+const PAYMENT_OPTIONS = [
   {
-    id: "saved-1",
-    name: "Dabur Honey 100% Pure & Natural",
-    packInfo: "500g Jar",
-    price: 320,
-    originalPrice: 380,
-    imageUrl:
-      "https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=200&q=80",
+    id: "cod",
+    name: "Cash on delivery",
+    subtitle: "Pay with cash or QR at your doorstep",
+    iconName: "cash-multiple",
+    iconColor: "#16A34A",
+    iconBg: "#DCFCE7",
   },
   {
-    id: "saved-2",
-    name: "Tata Salt Vacuum Evaporated Iodized",
-    packInfo: "1kg Pack",
-    price: 35,
-    originalPrice: 40,
-    imageUrl:
-      "https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?w=200&q=80",
+    id: "esewa",
+    name: "eSewa",
+    subtitle: "Instant & secure digital wallet",
+    iconName: "wallet-outline",
+    iconColor: "#059669",
+    iconBg: "#D1FAE5",
+  },
+  {
+    id: "khalti",
+    name: "Khalti",
+    subtitle: "Pay seamlessly with Khalti",
+    iconName: "wallet-outline",
+    iconColor: "#7C3AED",
+    iconBg: "#EDE9FE",
+  },
+  {
+    id: "card",
+    name: "Credit / Debit Card",
+    subtitle: "Visa, MasterCard & Bank Cards",
+    iconName: "credit-card-outline",
+    iconColor: "#0284C7",
+    iconBg: "#E0F2FE",
   },
 ];
+
+// Initial data for Saved Items
+const INITIAL_SAVED_ITEMS: SavedCartItem[] = [];
 
 // Recommended items
 const RECOMMENDED_PRODUCTS: RecommendedProduct[] = [
@@ -117,6 +135,10 @@ export default function CartScreen() {
     totalSavings: savedOnItems,
   } = useCart();
 
+  const { activeDisplayLocation, selectedAddress } = useAppSelector(
+    (state) => state.address,
+  );
+
   const [savedItems, setSavedItems] =
     useState<SavedCartItem[]>(INITIAL_SAVED_ITEMS);
   const [isGiftPackaging, setIsGiftPackaging] = useState(false);
@@ -125,10 +147,11 @@ export default function CartScreen() {
   );
   const [riderTip, setRiderTip] = useState(0);
 
-  // Delivery Address & Payment state
-  const [deliveryAddress, setDeliveryAddress] = useState(
-    "Home • Kathmandu, Ward 4",
-  );
+  // Delivery Address from Redux & Payment state
+  const deliveryAddress =
+    activeDisplayLocation ||
+    selectedAddress?.addressLine ||
+    "Home • Kathmandu, Ward 4";
   const [paymentMethod, setPaymentMethod] = useState("Cash on delivery");
 
   // Coupon calculations
@@ -273,13 +296,6 @@ export default function CartScreen() {
         <SafeAreaView edges={["top"]} style={styles.safeAreaHeader}>
           <View style={styles.header}>
             <View style={styles.headerLeft}>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => router.back()}
-                style={styles.backButton}
-              >
-                <Feather name="arrow-left" size={scale(20)} color="#FFFFFF" />
-              </TouchableOpacity>
               <View>
                 <Text style={styles.headerTitle}>Your Cart</Text>
                 <Text style={styles.headerSubtitle}>
@@ -299,18 +315,6 @@ export default function CartScreen() {
                   <Text style={styles.clearBtnText}>Clear</Text>
                 </TouchableOpacity>
               )}
-
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={handleShare}
-                style={styles.shareButton}
-              >
-                <Ionicons
-                  name="share-social-outline"
-                  size={scale(17)}
-                  color="#FFFFFF"
-                />
-              </TouchableOpacity>
             </View>
           </View>
         </SafeAreaView>
@@ -332,7 +336,7 @@ export default function CartScreen() {
 
             <TouchableOpacity
               activeOpacity={0.85}
-              onPress={() => router.push("/" as any)}
+              onPress={() => router.push("/customerMain/home" as any)}
               style={styles.shopNowBtnWrapper}
             >
               <LinearGradient
@@ -369,9 +373,7 @@ export default function CartScreen() {
 
               <TouchableOpacity
                 activeOpacity={0.7}
-                onPress={() =>
-                  router.push("/Screens/Profile/deliveryaddress" as any)
-                }
+                onPress={() => router.push("/Screens/Profile/address" as any)}
               >
                 <Text style={styles.changeAddressText}>Change</Text>
               </TouchableOpacity>
@@ -414,10 +416,107 @@ export default function CartScreen() {
             <YouMightLikeSection
               products={RECOMMENDED_PRODUCTS}
               onAddToCart={handleAddToCartFromRecommended}
-              onSeeAllPress={() => router.push("/categoryExpand" as any)}
+              onSeeAllPress={() =>
+                router.push("/Screens/Category/categoryExpand" as any)
+              }
             />
 
-            {/* 5. Bill details */}
+            {/* 5. Payment Method Selection Section */}
+            {cartItems.length > 0 && (
+              <View style={styles.paymentSectionCard}>
+                <View style={styles.paymentHeaderRow}>
+                  <View style={styles.paymentHeaderLeft}>
+                    <View style={styles.paymentHeaderIconBox}>
+                      <MaterialCommunityIcons
+                        name="credit-card-outline"
+                        size={scale(18)}
+                        color="#008080"
+                      />
+                    </View>
+                    <View>
+                      <Text style={styles.paymentSectionTitle}>
+                        Payment Method
+                      </Text>
+                      <Text style={styles.paymentSectionSubtitle}>
+                        Select your preferred payment option
+                      </Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() =>
+                      router.push("/Screens/Profile/paymentsetting" as any)
+                    }
+                  >
+                    <Text style={styles.managePaymentText}>Manage</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.paymentOptionsList}>
+                  {PAYMENT_OPTIONS.map((option) => {
+                    const isSelected = paymentMethod === option.name;
+                    return (
+                      <TouchableOpacity
+                        key={option.id}
+                        activeOpacity={0.75}
+                        onPress={() => setPaymentMethod(option.name)}
+                        style={[
+                          styles.paymentOptionItem,
+                          isSelected && styles.paymentOptionItemSelected,
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.paymentOptionIconBox,
+                            { backgroundColor: option.iconBg },
+                          ]}
+                        >
+                          <MaterialCommunityIcons
+                            name={option.iconName as any}
+                            size={scale(19)}
+                            color={option.iconColor}
+                          />
+                        </View>
+
+                        <View style={styles.paymentOptionInfo}>
+                          <View style={styles.paymentOptionTitleRow}>
+                            <Text
+                              style={[
+                                styles.paymentOptionTitle,
+                                isSelected && styles.paymentOptionTitleSelected,
+                              ]}
+                            >
+                              {option.name}
+                            </Text>
+                            {option.id === "cod" && (
+                              <View style={styles.popularBadge}>
+                                <Text style={styles.popularBadgeText}>
+                                  POPULAR
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                          <Text style={styles.paymentOptionSub}>
+                            {option.subtitle}
+                          </Text>
+                        </View>
+
+                        <View
+                          style={[
+                            styles.radioCircle,
+                            isSelected && styles.radioCircleSelected,
+                          ]}
+                        >
+                          {isSelected && <View style={styles.radioInner} />}
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+
+            {/* 6. Bill details */}
             {cartItems.length > 0 && (
               <BillDetailsSection
                 itemsTotal={itemsTotal}
@@ -445,16 +544,14 @@ export default function CartScreen() {
           <BottomCheckoutBar
             totalCount={totalCount}
             totalPrice={grandTotal}
-            paymentMethod={paymentMethod}
-            deliveryAddress={deliveryAddress}
-            onSelectPaymentMethod={() =>
-              router.push("/Screens/Profile/paymentsetting" as any)
-            }
-            onSelectAddress={() =>
-              router.push("/Screens/Profile/deliveryaddress" as any)
-            }
             onCheckout={() => {
-              router.push("/Screens/Cart/checkout" as any);
+              router.push({
+                pathname: "/Screens/Cart/checkout" as any,
+                params: {
+                  paymentMethod,
+                  deliveryAddress,
+                },
+              });
             }}
           />
         )}
@@ -627,5 +724,136 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(14),
     fontWeight: "700",
     color: "#FFFFFF",
+  },
+  // Payment Section Styles
+  paymentSectionCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: scale(14),
+    padding: scale(14),
+    marginBottom: moderateScale(12),
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#64748B",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  paymentHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: moderateScale(12),
+    paddingBottom: moderateScale(10),
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+  },
+  paymentHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(10),
+    flex: 1,
+  },
+  paymentHeaderIconBox: {
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(8),
+    backgroundColor: "#F0FDFA",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#CCFBF1",
+  },
+  paymentSectionTitle: {
+    fontSize: moderateScale(14),
+    fontWeight: "800",
+    color: "#0F172A",
+  },
+  paymentSectionSubtitle: {
+    fontSize: moderateScale(11),
+    color: "#64748B",
+    marginTop: scale(1),
+  },
+  managePaymentText: {
+    fontSize: moderateScale(12),
+    fontWeight: "700",
+    color: "#008080",
+  },
+  paymentOptionsList: {
+    gap: scale(8),
+  },
+  paymentOptionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: scale(10),
+    borderRadius: scale(10),
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1.5,
+    borderColor: "#E2E8F0",
+  },
+  paymentOptionItemSelected: {
+    backgroundColor: "#F0FDFA",
+    borderColor: "#008080",
+  },
+  paymentOptionIconBox: {
+    width: scale(36),
+    height: scale(36),
+    borderRadius: scale(8),
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: scale(10),
+  },
+  paymentOptionInfo: {
+    flex: 1,
+  },
+  paymentOptionTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(6),
+  },
+  paymentOptionTitle: {
+    fontSize: moderateScale(13),
+    fontWeight: "700",
+    color: "#334155",
+  },
+  paymentOptionTitleSelected: {
+    color: "#0F172A",
+    fontWeight: "800",
+  },
+  popularBadge: {
+    backgroundColor: "#DCFCE7",
+    paddingHorizontal: scale(5),
+    paddingVertical: scale(2),
+    borderRadius: scale(4),
+  },
+  popularBadgeText: {
+    fontSize: moderateScale(9),
+    fontWeight: "800",
+    color: "#15803D",
+    letterSpacing: 0.3,
+  },
+  paymentOptionSub: {
+    fontSize: moderateScale(11),
+    color: "#64748B",
+    marginTop: scale(2),
+  },
+  radioCircle: {
+    width: scale(18),
+    height: scale(18),
+    borderRadius: scale(9),
+    borderWidth: 2,
+    borderColor: "#CBD5E1",
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: scale(8),
+  },
+  radioCircleSelected: {
+    borderColor: "#008080",
+  },
+  radioInner: {
+    width: scale(9),
+    height: scale(9),
+    borderRadius: scale(4.5),
+    backgroundColor: "#008080",
   },
 });
