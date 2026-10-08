@@ -247,6 +247,7 @@ export default function OrderAgainScreen() {
           reviewsCount: prod.ratingsCount || 250,
           ordersCount: prod.ordersCount || 1000,
           image: pImg,
+          images: prod.images,
           tags: prod.tags && prod.tags.length > 0 ? prod.tags : ["Top Sale"],
         };
       });

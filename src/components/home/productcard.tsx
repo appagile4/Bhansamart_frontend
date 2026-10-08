@@ -32,6 +32,8 @@ export interface DealProduct {
   originalPrice: number;
   priceDropText?: string;
   image: ImageSourcePropType;
+  images?: any[];
+  imageCount?: number;
   discountPct?: number;
   isVeg?: boolean;
   unitPriceText?: string;
@@ -119,6 +121,17 @@ function ProductCardComponent({
               100,
           )
         : 0;
+
+  // Count total product images for pagination dots
+  const imagesCount = useMemo(() => {
+    if (Array.isArray(product.images)) {
+      return product.images.length;
+    }
+    if (typeof product.imageCount === "number") {
+      return product.imageCount;
+    }
+    return 1;
+  }, [product.images, product.imageCount]);
 
   // Derive subcategory / flavor or weight string
   const subtitleText = [
@@ -408,12 +421,17 @@ function ProductCardComponent({
           />
         </TouchableOpacity>
 
-        {/* Bottom-Right Dot Pagination Indicator */}
-        <View style={styles.dotsIndicator}>
-          <View style={[styles.dot, styles.activeDot]} />
-          <View style={styles.dot} />
-          <View style={styles.dot} />
-        </View>
+        {/* Bottom-Right Dot Pagination Indicator (Only shown when product has more than 1 image) */}
+        {imagesCount > 1 && (
+          <View style={styles.dotsIndicator}>
+            {Array.from({ length: Math.min(imagesCount, 4) }).map((_, idx) => (
+              <View
+                key={idx}
+                style={[styles.dot, idx === 0 && styles.activeDot]}
+              />
+            ))}
+          </View>
+        )}
       </View>
 
       {/* 2. Product Details Body */}

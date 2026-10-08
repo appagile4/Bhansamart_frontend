@@ -29,6 +29,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -911,6 +912,10 @@ export default function CategoryExpandScreen() {
   const [sortBy, setSortBy] = useState<string>("popularity");
   const [refreshing, setRefreshing] = useState(false);
 
+  // In-Screen Dropdown Search Bar State
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
   const [filters, setFilters] = useState<FilterState>({
     sortBy: "popularity",
     priceRange: "all",
@@ -1076,6 +1081,19 @@ export default function CategoryExpandScreen() {
     [updateQuantity]
   );
 
+  // Filter products by in-screen search query
+  const displayedProducts = useMemo(() => {
+    if (!searchQuery.trim()) return categoryProducts;
+    const q = searchQuery.trim().toLowerCase();
+    return (categoryProducts || []).filter((p) => {
+      const nameMatch = p.name?.toLowerCase().includes(q);
+      const brandMatch = p.brand?.toLowerCase().includes(q);
+      const subCatMatch = p.subCategory?.toLowerCase().includes(q);
+      const tagMatch = p.tags?.some((t) => t.toLowerCase().includes(q));
+      return Boolean(nameMatch || brandMatch || subCatMatch || tagMatch);
+    });
+  }, [categoryProducts, searchQuery]);
+
   const keyExtractor = useCallback(
     (item: ProductItem) => item._id || item.id || "",
     []
@@ -1122,6 +1140,17 @@ export default function CategoryExpandScreen() {
         </View>
       );
     }
+    if (searchQuery.trim()) {
+      return (
+        <View style={styles.emptyContainer}>
+          <Feather name="search" size={scale(44)} color="#94A3B8" />
+          <Text style={styles.emptyTitle}>No Matching Products</Text>
+          <Text style={styles.emptySubtitle}>
+            No products found matching "{searchQuery.trim()}" in this category.
+          </Text>
+        </View>
+      );
+    }
     return (
       <View style={styles.emptyContainer}>
         <Feather name="inbox" size={scale(44)} color="#94A3B8" />
@@ -1131,7 +1160,7 @@ export default function CategoryExpandScreen() {
         </Text>
       </View>
     );
-  }, [categoryLoading, categoryProducts, pulseAnim]);
+  }, [categoryLoading, categoryProducts, pulseAnim, searchQuery]);
 
   const handleSortPress = useCallback(() => {
     Alert.alert("Sort Products", "Choose sorting option", [
@@ -1198,12 +1227,62 @@ export default function CategoryExpandScreen() {
 
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={() => router.push("/search" as any)}
-            style={styles.navIconBtn}
+            onPress={() => {
+              setIsSearchOpen((prev) => {
+                const nextState = !prev;
+                if (!nextState) setSearchQuery("");
+                return nextState;
+              });
+            }}
+            style={[
+              styles.navIconBtn,
+              isSearchOpen && styles.navIconBtnActive,
+            ]}
           >
-            <Feather name="search" size={scale(20)} color="#1E293B" />
+            <Feather
+              name={isSearchOpen ? "x" : "search"}
+              size={scale(20)}
+              color={isSearchOpen ? "#016073" : "#1E293B"}
+            />
           </TouchableOpacity>
         </View>
+
+        {/* Dropdown In-Screen Search Bar */}
+        {isSearchOpen && (
+          <View style={styles.dropdownSearchContainer}>
+            <View style={styles.dropdownSearchInputWrapper}>
+              <Feather
+                name="search"
+                size={scale(16)}
+                color="#64748B"
+                style={styles.dropdownSearchIcon}
+              />
+              <TextInput
+                style={styles.dropdownSearchInput}
+                placeholder={`Search in ${
+                  selectedSubcategory !== "all"
+                    ? selectedSubcategory
+                    : parentCategory
+                }...`}
+                placeholderTextColor="#94A3B8"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                returnKeyType="search"
+                autoFocus={true}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => setSearchQuery("")}
+                  style={styles.clearSearchBtn}
+                >
+                  <Feather name="x" size={scale(15)} color="#94A3B8" />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
+
         <View style={styles.headerDivider} />
       </SafeAreaView>
 
@@ -1307,7 +1386,7 @@ export default function CategoryExpandScreen() {
 
           {/* Virtualized Product Grid List */}
           <FlatList
-            data={categoryProducts}
+            data={displayedProducts}
             keyExtractor={keyExtractor}
             renderItem={renderItem}
             numColumns={2}
@@ -1380,6 +1459,36 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: scale(18),
     backgroundColor: "#F8FAFC",
+  },
+  navIconBtnActive: {
+    backgroundColor: "#E0F2FE",
+  },
+  dropdownSearchContainer: {
+    paddingHorizontal: scale(14),
+    paddingBottom: scale(10),
+    paddingTop: scale(2),
+  },
+  dropdownSearchInputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F1F5F9",
+    borderRadius: scale(12),
+    paddingHorizontal: scale(10),
+    height: scale(40),
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  dropdownSearchIcon: {
+    marginRight: scale(6),
+  },
+  dropdownSearchInput: {
+    flex: 1,
+    fontSize: moderateScale(13),
+    color: "#0F172A",
+    paddingVertical: 0,
+  },
+  clearSearchBtn: {
+    padding: scale(4),
   },
   titleColumn: {
     flex: 1,
