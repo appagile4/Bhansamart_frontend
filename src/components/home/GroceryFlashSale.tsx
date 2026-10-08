@@ -736,7 +736,10 @@ export default function GroceryFlashSale({
             const prodTags = (p.tags || []).join(" ").toLowerCase();
             const text = `${prodName} ${prodCat} ${prodSub} ${prodTags}`;
 
-            if (normalizedCat === "snacks" || normalizedCat === "snacks-drinks") {
+            if (
+              normalizedCat === "snacks" ||
+              normalizedCat === "snacks-drinks"
+            ) {
               return (
                 text.includes("snack") ||
                 text.includes("chip") ||
@@ -755,7 +758,10 @@ export default function GroceryFlashSale({
               );
             }
 
-            if (normalizedCat === "grocery" || normalizedCat === "grocery-kitchen") {
+            if (
+              normalizedCat === "grocery" ||
+              normalizedCat === "grocery-kitchen"
+            ) {
               return (
                 text.includes("grocery") ||
                 text.includes("kitchen") ||
@@ -775,7 +781,10 @@ export default function GroceryFlashSale({
               );
             }
 
-            if (normalizedCat === "beauty" || normalizedCat === "beauty-personal-care") {
+            if (
+              normalizedCat === "beauty" ||
+              normalizedCat === "beauty-personal-care"
+            ) {
               return (
                 text.includes("beauty") ||
                 text.includes("skin") ||
@@ -791,7 +800,10 @@ export default function GroceryFlashSale({
               );
             }
 
-            if (normalizedCat === "stationery" || normalizedCat === "office-stationery") {
+            if (
+              normalizedCat === "stationery" ||
+              normalizedCat === "office-stationery"
+            ) {
               return (
                 text.includes("stationery") ||
                 text.includes("office") ||
@@ -1285,13 +1297,13 @@ const styles = StyleSheet.create({
     height: "68%",
     alignItems: "center",
     justifyContent: "center",
-    marginTop: scale(-8),
+    marginTop: scale(-28),
     marginRight: scale(-4),
     zIndex: 2,
   },
   productImage: {
-    width: "90%",
-    height: "90%",
+    width: "100%",
+    height: "80%",
   },
   svgAddButtonWrapper: {
     position: "absolute",
