@@ -6,7 +6,7 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { Alert, Dimensions, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -23,6 +23,40 @@ export interface SectionCategoryData {
   title: string;
   items: CategoryCardData[];
 }
+
+const CategoryGridCardItem = memo(function CategoryGridCardItem({
+  item,
+  sectionTitle,
+  onPress,
+}: {
+  item: CategoryCardData;
+  sectionTitle: string;
+  onPress: (item: CategoryCardData, sectionTitle: string) => void;
+}) {
+  const handlePress = useCallback(() => {
+    onPress(item, sectionTitle);
+  }, [onPress, item, sectionTitle]);
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.82}
+      onPress={handlePress}
+      style={styles.cardWrapper}
+    >
+      <View style={styles.imageBox}>
+        <Image
+          source={{ uri: item.imageUrl }}
+          style={styles.categoryImage}
+          contentFit="contain"
+          transition={100}
+        />
+      </View>
+      <Text numberOfLines={2} style={styles.categoryNameText}>
+        {item.name}
+      </Text>
+    </TouchableOpacity>
+  );
+});
 
 const ALL_CATEGORY_SECTIONS: SectionCategoryData[] = [
   {
@@ -380,16 +414,19 @@ export default function CategoryScreen() {
     }).filter((section) => section.items.length > 0);
   }, [searchQuery]);
 
-  const handleCategoryPress = (item: CategoryCardData, sectionTitle: string) => {
-    router.push({
-      pathname: "/Screens/Category/categoryExpand" as any,
-      params: {
-        category: sectionTitle,
-        subCategory: item.name.replace("\n", " "),
-        title: item.name.replace("\n", " "),
-      },
-    });
-  };
+  const handleCategoryPress = useCallback(
+    (item: CategoryCardData, sectionTitle: string) => {
+      router.push({
+        pathname: "/Screens/Category/categoryExpand" as any,
+        params: {
+          category: sectionTitle,
+          subCategory: item.name.replace("\n", " "),
+          title: item.name.replace("\n", " "),
+        },
+      });
+    },
+    [router]
+  );
 
   const handleVoiceSearch = () => {
     Alert.alert(
@@ -507,26 +544,12 @@ export default function CategoryScreen() {
               {/* 4-Column Subcategory Grid */}
               <View style={styles.categoryGrid}>
                 {section.items.map((item) => (
-                  <TouchableOpacity
+                  <CategoryGridCardItem
                     key={item.id}
-                    activeOpacity={0.82}
-                    onPress={() => handleCategoryPress(item, section.title)}
-                    style={styles.cardWrapper}
-                  >
-                    {/* Soft Cyan/Mint Image Box */}
-                    <View style={styles.imageBox}>
-                      <Image
-                        source={{ uri: item.imageUrl }}
-                        style={styles.categoryImage}
-                        contentFit="contain"
-                      />
-                    </View>
-
-                    {/* Category Label */}
-                    <Text numberOfLines={2} style={styles.categoryNameText}>
-                      {item.name}
-                    </Text>
-                  </TouchableOpacity>
+                    item={item}
+                    sectionTitle={section.title}
+                    onPress={handleCategoryPress}
+                  />
                 ))}
               </View>
             </View>

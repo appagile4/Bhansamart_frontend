@@ -112,14 +112,20 @@ interface ProductState {
   publicProducts: ProductItem[];
   publicTotal: number;
   publicTotalPages: number;
+  publicCurrentPage: number;
+  publicHasMore: boolean;
   publicLoading: boolean;
+  publicLoadingMore: boolean;
   publicError: string | null;
 
   // Isolated Category Catalog State for Category Expand Screen
   categoryProducts: ProductItem[];
   categoryTotal: number;
   categoryTotalPages: number;
+  categoryCurrentPage: number;
+  categoryHasMore: boolean;
   categoryLoading: boolean;
+  categoryLoadingMore: boolean;
   categoryError: string | null;
 
   // Related Products State for Product Detail Screen
@@ -145,13 +151,19 @@ const initialState: ProductState = {
   publicProducts: [],
   publicTotal: 0,
   publicTotalPages: 1,
+  publicCurrentPage: 1,
+  publicHasMore: true,
   publicLoading: false,
+  publicLoadingMore: false,
   publicError: null,
 
   categoryProducts: [],
   categoryTotal: 0,
   categoryTotalPages: 1,
+  categoryCurrentPage: 1,
+  categoryHasMore: true,
   categoryLoading: false,
+  categoryLoadingMore: false,
   categoryError: null,
 
   relatedProducts: [],
@@ -362,42 +374,88 @@ export const productSlice = createSlice({
     });
 
     // ── FETCH PUBLIC PRODUCTS (GLOBAL CUSTOMER CATALOG) ──────
-    builder.addCase(fetchPublicProducts.pending, (state) => {
-      state.publicLoading = true;
+    builder.addCase(fetchPublicProducts.pending, (state, action) => {
+      const page = action.meta.arg?.page || 1;
+      if (page > 1) {
+        state.publicLoadingMore = true;
+      } else {
+        state.publicLoading = true;
+      }
       state.publicError = null;
     });
     builder.addCase(fetchPublicProducts.fulfilled, (state, action) => {
       state.publicLoading = false;
+      state.publicLoadingMore = false;
+      const page = action.meta.arg?.page || 1;
       const fetched = action.payload?.products || [];
-      state.publicProducts = fetched.map((p: any) => ({
+      const mapped = fetched.map((p: any) => ({
         ...p,
         id: p._id || p.id,
       }));
-      state.publicTotal = action.payload?.total || fetched.length;
+
+      if (page > 1) {
+        // Deduplicate before appending
+        const existingIds = new Set(state.publicProducts.map((p) => p._id || p.id));
+        const newItems = mapped.filter((p: any) => !existingIds.has(p._id || p.id));
+        state.publicProducts = [...state.publicProducts, ...newItems];
+      } else {
+        state.publicProducts = mapped;
+      }
+
+      state.publicTotal = action.payload?.total != null ? action.payload.total : state.publicProducts.length;
       state.publicTotalPages = action.payload?.totalPages || 1;
+      state.publicCurrentPage = action.payload?.currentPage || page;
+      state.publicHasMore =
+        action.payload?.hasMore !== undefined
+          ? action.payload.hasMore
+          : state.publicCurrentPage < state.publicTotalPages;
     });
     builder.addCase(fetchPublicProducts.rejected, (state, action) => {
       state.publicLoading = false;
+      state.publicLoadingMore = false;
       state.publicError = action.payload as string;
     });
 
     // ── FETCH CATEGORY PRODUCTS (ISOLATED) ───────────────────
-    builder.addCase(fetchCategoryProducts.pending, (state) => {
-      state.categoryLoading = true;
+    builder.addCase(fetchCategoryProducts.pending, (state, action) => {
+      const page = action.meta.arg?.page || 1;
+      if (page > 1) {
+        state.categoryLoadingMore = true;
+      } else {
+        state.categoryLoading = true;
+      }
       state.categoryError = null;
     });
     builder.addCase(fetchCategoryProducts.fulfilled, (state, action) => {
       state.categoryLoading = false;
+      state.categoryLoadingMore = false;
+      const page = action.meta.arg?.page || 1;
       const fetched = action.payload?.products || [];
-      state.categoryProducts = fetched.map((p: any) => ({
+      const mapped = fetched.map((p: any) => ({
         ...p,
         id: p._id || p.id,
       }));
-      state.categoryTotal = action.payload?.total || fetched.length;
+
+      if (page > 1) {
+        // Deduplicate before appending
+        const existingIds = new Set(state.categoryProducts.map((p) => p._id || p.id));
+        const newItems = mapped.filter((p: any) => !existingIds.has(p._id || p.id));
+        state.categoryProducts = [...state.categoryProducts, ...newItems];
+      } else {
+        state.categoryProducts = mapped;
+      }
+
+      state.categoryTotal = action.payload?.total != null ? action.payload.total : state.categoryProducts.length;
       state.categoryTotalPages = action.payload?.totalPages || 1;
+      state.categoryCurrentPage = action.payload?.currentPage || page;
+      state.categoryHasMore =
+        action.payload?.hasMore !== undefined
+          ? action.payload.hasMore
+          : state.categoryCurrentPage < state.categoryTotalPages;
     });
     builder.addCase(fetchCategoryProducts.rejected, (state, action) => {
       state.categoryLoading = false;
+      state.categoryLoadingMore = false;
       state.categoryError = action.payload as string;
     });
 

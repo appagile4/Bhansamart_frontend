@@ -108,6 +108,199 @@ function ProductCardComponent({
       ? `Save Rs. ${product.originalPrice - product.price}`
       : undefined);
 
+  // Check whether product is a food item
+  const isFoodItem = useMemo(() => {
+    if (typeof product.isVeg === "boolean") {
+      return true;
+    }
+
+    const cat = (product.category || "").toLowerCase();
+    const sub = (product.subCategory || "").toLowerCase();
+    const name = (product.name || "").toLowerCase();
+
+    // Explicit non-food categories / keywords
+    const nonFoodKeywords = [
+      "beauty",
+      "personal-care",
+      "personal care",
+      "skin",
+      "hair",
+      "cosmetic",
+      "fragrance",
+      "perfume",
+      "deodorant",
+      "hygiene",
+      "sanitary",
+      "pharma",
+      "wellness",
+      "stationery",
+      "office",
+      "school",
+      "pen",
+      "notebook",
+      "baby care",
+      "baby-care",
+      "baby bath",
+      "baby-bath",
+      "baby clothing",
+      "baby-clothing",
+      "baby accessories",
+      "baby-accessories",
+      "diaper",
+      "pants",
+      "wipes",
+      "electronic",
+      "appliance",
+      "kitchenware",
+      "utensil",
+      "cleaner",
+      "detergent",
+      "cleaning",
+      "pooja",
+      "toy",
+      "game",
+      "fashion",
+      "clothing",
+      "apparel",
+      "gifting",
+    ];
+
+    const isExplicitNonFood =
+      nonFoodKeywords.some(
+        (kw) =>
+          (cat.includes(kw) || sub.includes(kw)) &&
+          !sub.includes("baby-food") &&
+          !sub.includes("baby food")
+      ) &&
+      !cat.includes("grocery") &&
+      !cat.includes("snack");
+
+    if (isExplicitNonFood) {
+      return false;
+    }
+
+    // Food categories / keywords
+    const foodKeywords = [
+      "grocery",
+      "groceries",
+      "snack",
+      "drink",
+      "beverage",
+      "veg",
+      "fruit",
+      "atta",
+      "rice",
+      "dal",
+      "oil",
+      "ghee",
+      "masala",
+      "spice",
+      "dairy",
+      "milk",
+      "butter",
+      "cheese",
+      "paneer",
+      "curd",
+      "yogurt",
+      "bread",
+      "egg",
+      "bakery",
+      "biscuit",
+      "cookie",
+      "cake",
+      "toast",
+      "rusk",
+      "sweet",
+      "mithai",
+      "chocolate",
+      "candy",
+      "toffee",
+      "namkeen",
+      "chip",
+      "nacho",
+      "popcorn",
+      "dry fruit",
+      "dry-fruit",
+      "dryfruit",
+      "nut",
+      "seed",
+      "almond",
+      "cashew",
+      "cereal",
+      "oat",
+      "muesli",
+      "cornflake",
+      "noodle",
+      "pasta",
+      "maggi",
+      "sauce",
+      "ketchup",
+      "jam",
+      "spread",
+      "honey",
+      "pickle",
+      "chutney",
+      "tea",
+      "coffee",
+      "juice",
+      "squash",
+      "syrup",
+      "soda",
+      "cola",
+      "ice cream",
+      "icecream",
+      "frozen",
+      "chicken",
+      "meat",
+      "fish",
+      "seafood",
+      "mutton",
+      "pork",
+      "beef",
+      "prawn",
+      "baby food",
+      "baby-food",
+      "instant food",
+      "instant-food",
+      "ready to eat",
+      "flour",
+      "sugar",
+      "salt",
+      "grain",
+      "pulse",
+    ];
+
+    return foodKeywords.some(
+      (kw) => cat.includes(kw) || sub.includes(kw) || name.includes(kw)
+    );
+  }, [product.isVeg, product.category, product.subCategory, product.name]);
+
+  // Determine Vegetarian vs Non-Vegetarian
+  const isVegetarian = useMemo(() => {
+    if (product.isVeg === false) return false;
+    if (product.isVeg === true) return true;
+
+    const combined = `${product.name || ""} ${product.subCategory || ""} ${product.category || ""}`.toLowerCase();
+    const nonVegKeywords = [
+      "chicken",
+      "meat",
+      "fish",
+      "egg",
+      "mutton",
+      "pork",
+      "beef",
+      "seafood",
+      "prawn",
+      "crab",
+      "bacon",
+      "sausage",
+      "non-veg",
+      "nonveg",
+    ];
+
+    return !nonVegKeywords.some((kw) => combined.includes(kw));
+  }, [product.isVeg, product.name, product.subCategory, product.category]);
+
   const handlePress = () => {
     if (onPress) {
       onPress(product);
@@ -223,20 +416,34 @@ function ProductCardComponent({
             </Text>
           </View>
 
-          {/* Vegetarian Badge */}
-          <View
-            style={[styles.vegBadge, { backgroundColor: `${primaryColor}15` }]}
-          >
-            <MaterialCommunityIcons
-              name="leaf"
-              size={scale(9.5)}
-              color={primaryColor}
-              style={{ marginRight: scale(1.5) }}
-            />
-            <Text style={[styles.vegBadgeText, { color: primaryColor }]}>
-              Veg
-            </Text>
-          </View>
+          {/* Dietary Badge (Only shown for food items) */}
+          {isFoodItem && (
+            <View
+              style={[
+                styles.vegBadge,
+                {
+                  backgroundColor: isVegetarian
+                    ? "rgba(22, 163, 74, 0.12)"
+                    : "rgba(220, 38, 38, 0.12)",
+                },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name={isVegetarian ? "leaf" : "circle"}
+                size={isVegetarian ? scale(9.5) : scale(6.5)}
+                color={isVegetarian ? "#16A34A" : "#DC2626"}
+                style={{ marginRight: scale(2) }}
+              />
+              <Text
+                style={[
+                  styles.vegBadgeText,
+                  { color: isVegetarian ? "#16A34A" : "#DC2626" },
+                ]}
+              >
+                {isVegetarian ? "Veg" : "Non-Veg"}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Pricing Row */}

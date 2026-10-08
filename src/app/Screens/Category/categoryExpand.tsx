@@ -17,12 +17,14 @@ import {
 } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Animated,
   Dimensions,
+  FlatList,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -33,6 +35,166 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
+
+interface CategoryExpandProductCardProps {
+  product: ProductItem;
+  quantity: number;
+  onPress: (product: ProductItem) => void;
+  onAddToCart: (product: ProductItem, imgUrl: string) => void;
+  onUpdateQuantity: (id: string, delta: number) => void;
+}
+
+const CategoryExpandProductCard = memo(function CategoryExpandProductCard({
+  product,
+  quantity,
+  onPress,
+  onAddToCart,
+  onUpdateQuantity,
+}: CategoryExpandProductCardProps) {
+  const prodId = product._id || product.id || "";
+  const imgUrl =
+    product.images && product.images.length > 0
+      ? product.images[0].url
+      : "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=400&q=80";
+
+  const discountPercent =
+    product.originalPrice && product.originalPrice > product.price
+      ? Math.round(
+          ((product.originalPrice - product.price) / product.originalPrice) * 100
+        )
+      : 0;
+
+  const handlePress = useCallback(() => {
+    onPress(product);
+  }, [onPress, product]);
+
+  const handleAdd = useCallback(() => {
+    onAddToCart(product, imgUrl);
+  }, [onAddToCart, product, imgUrl]);
+
+  const handleMinus = useCallback(() => {
+    onUpdateQuantity(prodId, -1);
+  }, [onUpdateQuantity, prodId]);
+
+  const handlePlus = useCallback(() => {
+    onUpdateQuantity(prodId, 1);
+  }, [onUpdateQuantity, prodId]);
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.88}
+      onPress={handlePress}
+      style={styles.productCard}
+    >
+      {/* Image Box */}
+      <View style={styles.cardImageBox}>
+        <Image
+          source={{ uri: imgUrl }}
+          style={styles.productImg}
+          contentFit="contain"
+          transition={100}
+        />
+
+        {/* Discount Badge */}
+        {discountPercent > 0 && (
+          <View style={styles.discountBadge}>
+            <Text style={styles.discountBadgeText}>
+              {discountPercent}% OFF
+            </Text>
+          </View>
+        )}
+
+        {/* Out of Stock Overlay / Badge */}
+        {!product.inStock && (
+          <View style={styles.outOfStockBadge}>
+            <Text style={styles.outOfStockText}>
+              OUT OF STOCK
+            </Text>
+          </View>
+        )}
+
+        {/* ADD / Quantity Counter Overlay */}
+        {product.inStock &&
+          (quantity === 0 ? (
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={handleAdd}
+              style={styles.addBtnOverlay}
+            >
+              <Text style={styles.addBtnText}>ADD</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.counterOverlay}>
+              <TouchableOpacity
+                onPress={handleMinus}
+                style={styles.counterActionBtn}
+              >
+                <Feather
+                  name="minus"
+                  size={scale(11)}
+                  color="#016073"
+                />
+              </TouchableOpacity>
+              <Text style={styles.counterQtyText}>{quantity}</Text>
+              <TouchableOpacity
+                onPress={handlePlus}
+                style={styles.counterActionBtn}
+              >
+                <Feather
+                  name="plus"
+                  size={scale(11)}
+                  color="#016073"
+                />
+              </TouchableOpacity>
+            </View>
+          ))}
+      </View>
+
+      {/* Weight Tag */}
+      <View style={styles.weightTagPill}>
+        <Text style={styles.weightTagText}>
+          {product.unit || "1 pc"}
+        </Text>
+      </View>
+
+      {/* Product Name */}
+      <Text numberOfLines={2} style={styles.productNameText}>
+        {product.name}
+      </Text>
+
+      {/* Star Rating */}
+      <View style={styles.starRatingRow}>
+        <View style={styles.starsGroup}>
+          <FontAwesome
+            name="star"
+            size={scale(9.5)}
+            color="#EAB308"
+            style={{ marginRight: scale(2) }}
+          />
+          <Text style={styles.ratingScoreText}>
+            {(product.ratingsAverage || 4.5).toFixed(1)}
+          </Text>
+        </View>
+        <Text style={styles.reviewsCountText}>
+          ({product.ratingsCount || 12})
+        </Text>
+      </View>
+
+      {/* Pricing Row */}
+      <View style={styles.pricingRow}>
+        <Text style={styles.currentPriceText}>
+          Rs. {product.price}
+        </Text>
+        {product.originalPrice &&
+        product.originalPrice > product.price ? (
+          <Text style={styles.mrpText}>
+            Rs. {product.originalPrice}
+          </Text>
+        ) : null}
+      </View>
+    </TouchableOpacity>
+  );
+});
 
 function CategoryProductSkeleton({ animOpacity }: { animOpacity: Animated.Value }) {
   return (
@@ -779,48 +941,97 @@ export default function CategoryExpandScreen() {
   }, [parentCategory]);
 
   // Redux Category Products State (Isolated from global home store catalog)
-  const { categoryProducts, categoryLoading } = useAppSelector(
-    (state) => state.product
-  );
+  const {
+    categoryProducts,
+    categoryLoading,
+    categoryLoadingMore,
+    categoryHasMore,
+    categoryCurrentPage,
+  } = useAppSelector((state) => state.product);
 
   // 4. Fetch Products from Redux / Backend API
-  const loadProducts = useCallback(async () => {
-    let minPrice: number | undefined;
-    let maxPrice: number | undefined;
+  const loadProducts = useCallback(
+    async (page = 1) => {
+      let minPrice: number | undefined;
+      let maxPrice: number | undefined;
 
-    if (filters.priceRange === "under200") {
-      maxPrice = 200;
-    } else if (filters.priceRange === "200to500") {
-      minPrice = 200;
-      maxPrice = 500;
-    } else if (filters.priceRange === "above500") {
-      minPrice = 500;
-    }
+      if (filters.priceRange === "under200") {
+        maxPrice = 200;
+      } else if (filters.priceRange === "200to500") {
+        minPrice = 200;
+        maxPrice = 500;
+      } else if (filters.priceRange === "above500") {
+        minPrice = 500;
+      }
 
-    await dispatch(
-      fetchCategoryProducts({
-        category: parentCategory,
-        subCategory:
-          selectedSubcategory === "all" ? undefined : selectedSubcategory,
-        sortBy: (filters.sortBy as any) || (sortBy as any) || "popularity",
-        minPrice,
-        maxPrice,
-        inStockOnly: filters.inStockOnly,
-      })
-    );
-  }, [dispatch, parentCategory, selectedSubcategory, filters, sortBy]);
+      await dispatch(
+        fetchCategoryProducts({
+          category: parentCategory,
+          subCategory:
+            selectedSubcategory === "all" ? undefined : selectedSubcategory,
+          sortBy: (filters.sortBy as any) || (sortBy as any) || "popularity",
+          minPrice,
+          maxPrice,
+          inStockOnly: filters.inStockOnly,
+          page,
+          limit: 20,
+        })
+      );
+    },
+    [dispatch, parentCategory, selectedSubcategory, filters, sortBy]
+  );
 
   useEffect(() => {
-    loadProducts();
+    loadProducts(1);
   }, [loadProducts]);
 
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadProducts();
+    await loadProducts(1);
     setRefreshing(false);
-  };
+  }, [loadProducts]);
 
-  const handleProductPress = (prod: ProductItem) => {
+  const handleEndReached = useCallback(() => {
+    if (!categoryLoading && !categoryLoadingMore && categoryHasMore) {
+      let minPrice: number | undefined;
+      let maxPrice: number | undefined;
+
+      if (filters.priceRange === "under200") {
+        maxPrice = 200;
+      } else if (filters.priceRange === "200to500") {
+        minPrice = 200;
+        maxPrice = 500;
+      } else if (filters.priceRange === "above500") {
+        minPrice = 500;
+      }
+
+      dispatch(
+        fetchCategoryProducts({
+          category: parentCategory,
+          subCategory:
+            selectedSubcategory === "all" ? undefined : selectedSubcategory,
+          sortBy: (filters.sortBy as any) || (sortBy as any) || "popularity",
+          minPrice,
+          maxPrice,
+          inStockOnly: filters.inStockOnly,
+          page: (categoryCurrentPage || 1) + 1,
+          limit: 20,
+        })
+      );
+    }
+  }, [
+    dispatch,
+    categoryLoading,
+    categoryLoadingMore,
+    categoryHasMore,
+    categoryCurrentPage,
+    parentCategory,
+    selectedSubcategory,
+    filters,
+    sortBy,
+  ]);
+
+  const handleProductPress = useCallback((prod: ProductItem) => {
     const prodId = prod._id || prod.id || "";
     const imgUrl =
       prod.images && prod.images.length > 0 ? prod.images[0].url : "";
@@ -841,9 +1052,88 @@ export default function CategoryExpandScreen() {
         subCategory: prod.subCategory || "",
       },
     });
-  };
+  }, [router]);
 
-  const handleSortPress = () => {
+  const handleAddToCart = useCallback(
+    (product: ProductItem, imgUrl: string) => {
+      const prodId = product._id || product.id || "";
+      addToCart({
+        id: prodId,
+        name: product.name,
+        price: product.price,
+        originalPrice: product.originalPrice || product.price,
+        imageUrl: imgUrl,
+        weight: product.unit || "1 pc",
+      });
+    },
+    [addToCart]
+  );
+
+  const handleUpdateQuantity = useCallback(
+    (id: string, delta: number) => {
+      updateQuantity(id, delta);
+    },
+    [updateQuantity]
+  );
+
+  const keyExtractor = useCallback(
+    (item: ProductItem) => item._id || item.id || "",
+    []
+  );
+
+  const renderItem = useCallback(
+    ({ item }: { item: ProductItem }) => {
+      const prodId = item._id || item.id || "";
+      const qty = getItemQuantity(prodId);
+      return (
+        <CategoryExpandProductCard
+          product={item}
+          quantity={qty}
+          onPress={handleProductPress}
+          onAddToCart={handleAddToCart}
+          onUpdateQuantity={handleUpdateQuantity}
+        />
+      );
+    },
+    [getItemQuantity, handleProductPress, handleAddToCart, handleUpdateQuantity]
+  );
+
+  const renderFooter = useCallback(() => {
+    if (categoryLoadingMore) {
+      return (
+        <View style={{ paddingVertical: scale(16), alignItems: "center" }}>
+          <ActivityIndicator size="small" color="#016073" />
+        </View>
+      );
+    }
+    return <View style={{ height: scale(40) }} />;
+  }, [categoryLoadingMore]);
+
+  const renderEmpty = useCallback(() => {
+    if (categoryLoading && (!categoryProducts || categoryProducts.length === 0)) {
+      return (
+        <View style={styles.productsGrid}>
+          {[1, 2, 3, 4, 5, 6].map((item) => (
+            <CategoryProductSkeleton
+              key={`cat-skel-${item}`}
+              animOpacity={pulseAnim}
+            />
+          ))}
+        </View>
+      );
+    }
+    return (
+      <View style={styles.emptyContainer}>
+        <Feather name="inbox" size={scale(44)} color="#94A3B8" />
+        <Text style={styles.emptyTitle}>No Products Found</Text>
+        <Text style={styles.emptySubtitle}>
+          No items match this category or filter right now. Check back soon!
+        </Text>
+      </View>
+    );
+  }, [categoryLoading, categoryProducts, pulseAnim]);
+
+  const handleSortPress = useCallback(() => {
     Alert.alert("Sort Products", "Choose sorting option", [
       {
         text: "Popularity",
@@ -875,7 +1165,7 @@ export default function CategoryExpandScreen() {
       },
       { text: "Cancel", style: "cancel" },
     ]);
-  };
+  }, []);
 
   return (
     <View style={styles.root}>
@@ -1015,10 +1305,24 @@ export default function CategoryExpandScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Product Grid List */}
-          <ScrollView
+          {/* Virtualized Product Grid List */}
+          <FlatList
+            data={categoryProducts}
+            keyExtractor={keyExtractor}
+            renderItem={renderItem}
+            numColumns={2}
+            columnWrapperStyle={styles.columnWrapper}
+            initialNumToRender={6}
+            maxToRenderPerBatch={6}
+            windowSize={4}
+            updateCellsBatchingPeriod={50}
+            removeClippedSubviews={Platform.OS === "android"}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.gridScrollContent}
+            onEndReached={handleEndReached}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={renderFooter}
+            ListEmptyComponent={renderEmpty}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
@@ -1027,172 +1331,7 @@ export default function CategoryExpandScreen() {
                 tintColor="#016073"
               />
             }
-          >
-            {categoryLoading && (!categoryProducts || categoryProducts.length === 0) ? (
-              <View style={styles.productsGrid}>
-                {[1, 2, 3, 4, 5, 6].map((item) => (
-                  <CategoryProductSkeleton
-                    key={`cat-skel-${item}`}
-                    animOpacity={pulseAnim}
-                  />
-                ))}
-              </View>
-            ) : categoryProducts && categoryProducts.length > 0 ? (
-              <View style={styles.productsGrid}>
-                {categoryProducts.map((product) => {
-                  const prodId = product._id || product.id || "";
-                  const qty = getItemQuantity(prodId);
-                  const imgUrl =
-                    product.images && product.images.length > 0
-                      ? product.images[0].url
-                      : "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=400&q=80";
-
-                  const discountPercent =
-                    product.originalPrice && product.originalPrice > product.price
-                      ? Math.round(
-                          ((product.originalPrice - product.price) /
-                            product.originalPrice) *
-                            100
-                        )
-                      : 0;
-
-                  return (
-                    <TouchableOpacity
-                      key={prodId}
-                      activeOpacity={0.88}
-                      onPress={() => handleProductPress(product)}
-                      style={styles.productCard}
-                    >
-                      {/* Image Box */}
-                      <View style={styles.cardImageBox}>
-                        <Image
-                          source={{ uri: imgUrl }}
-                          style={styles.productImg}
-                          contentFit="contain"
-                        />
-
-                        {/* Discount Badge */}
-                        {discountPercent > 0 && (
-                          <View style={styles.discountBadge}>
-                            <Text style={styles.discountBadgeText}>
-                              {discountPercent}% OFF
-                            </Text>
-                          </View>
-                        )}
-
-                        {/* Out of Stock Overlay / Badge */}
-                        {!product.inStock && (
-                          <View style={styles.outOfStockBadge}>
-                            <Text style={styles.outOfStockText}>
-                              OUT OF STOCK
-                            </Text>
-                          </View>
-                        )}
-
-                        {/* ADD / Quantity Counter Overlay */}
-                        {product.inStock &&
-                          (qty === 0 ? (
-                            <TouchableOpacity
-                              activeOpacity={0.85}
-                              onPress={() =>
-                                addToCart({
-                                  id: prodId,
-                                  name: product.name,
-                                  price: product.price,
-                                  originalPrice:
-                                    product.originalPrice || product.price,
-                                  imageUrl: imgUrl,
-                                  weight: product.unit || "1 pc",
-                                })
-                              }
-                              style={styles.addBtnOverlay}
-                            >
-                              <Text style={styles.addBtnText}>ADD</Text>
-                            </TouchableOpacity>
-                          ) : (
-                            <View style={styles.counterOverlay}>
-                              <TouchableOpacity
-                                onPress={() => updateQuantity(prodId, -1)}
-                                style={styles.counterActionBtn}
-                              >
-                                <Feather
-                                  name="minus"
-                                  size={scale(11)}
-                                  color="#016073"
-                                />
-                              </TouchableOpacity>
-                              <Text style={styles.counterQtyText}>{qty}</Text>
-                              <TouchableOpacity
-                                onPress={() => updateQuantity(prodId, 1)}
-                                style={styles.counterActionBtn}
-                              >
-                                <Feather
-                                  name="plus"
-                                  size={scale(11)}
-                                  color="#016073"
-                                />
-                              </TouchableOpacity>
-                            </View>
-                          ))}
-                      </View>
-
-                      {/* Weight Tag */}
-                      <View style={styles.weightTagPill}>
-                        <Text style={styles.weightTagText}>
-                          {product.unit || "1 pc"}
-                        </Text>
-                      </View>
-
-                      {/* Product Name */}
-                      <Text numberOfLines={2} style={styles.productNameText}>
-                        {product.name}
-                      </Text>
-
-                      {/* Star Rating */}
-                      <View style={styles.starRatingRow}>
-                        <View style={styles.starsGroup}>
-                          <FontAwesome
-                            name="star"
-                            size={scale(9.5)}
-                            color="#EAB308"
-                            style={{ marginRight: scale(2) }}
-                          />
-                          <Text style={styles.ratingScoreText}>
-                            {(product.ratingsAverage || 4.5).toFixed(1)}
-                          </Text>
-                        </View>
-                        <Text style={styles.reviewsCountText}>
-                          ({product.ratingsCount || 12})
-                        </Text>
-                      </View>
-
-                      {/* Pricing Row */}
-                      <View style={styles.pricingRow}>
-                        <Text style={styles.currentPriceText}>
-                          Rs. {product.price}
-                        </Text>
-                        {product.originalPrice &&
-                        product.originalPrice > product.price ? (
-                          <Text style={styles.mrpText}>
-                            Rs. {product.originalPrice}
-                          </Text>
-                        ) : null}
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            ) : (
-              <View style={styles.emptyContainer}>
-                <Feather name="inbox" size={scale(44)} color="#94A3B8" />
-                <Text style={styles.emptyTitle}>No Products Found</Text>
-                <Text style={styles.emptySubtitle}>
-                  No items match this category or filter right now. Check back
-                  soon!
-                </Text>
-              </View>
-            )}
-          </ScrollView>
+          />
         </View>
       </View>
 
@@ -1364,6 +1503,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(10),
     paddingTop: scale(10),
     paddingBottom: scale(140),
+  },
+  columnWrapper: {
+    justifyContent: "space-between",
+    marginBottom: scale(14),
   },
   productsGrid: {
     flexDirection: "row",

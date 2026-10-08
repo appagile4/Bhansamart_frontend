@@ -2,7 +2,7 @@ import { Image } from "expo-image";
 import { moderateScale, scale, useTheme } from "@/theme";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { memo, useCallback, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export interface CategoryProduct {
@@ -25,7 +25,7 @@ interface CategoryProductCardProps {
   onAddToCart?: (product: CategoryProduct) => void;
 }
 
-export default function CategoryProductCard({
+function CategoryProductCardComponent({
   product,
   onAddToCart,
 }: CategoryProductCardProps) {
@@ -33,11 +33,14 @@ export default function CategoryProductCard({
   const theme = useTheme();
   const [quantity, setQuantity] = useState(0);
 
-  const discountPercent = Math.round(
-    ((product.originalPrice - product.price) / product.originalPrice) * 100
-  );
+  const discountPercent =
+    product.originalPrice && product.originalPrice > product.price
+      ? Math.round(
+          ((product.originalPrice - product.price) / product.originalPrice) * 100
+        )
+      : 0;
 
-  const handlePress = () => {
+  const handlePress = useCallback(() => {
     router.push({
       pathname: "/Screens/Product/productdetailscreen" as any,
       params: {
@@ -48,18 +51,21 @@ export default function CategoryProductCard({
         image: product.imageUrl,
       },
     });
-  };
+  }, [router, product]);
 
-  const handleIncrement = (e: any) => {
-    e.stopPropagation?.();
-    setQuantity((q) => q + 1);
-    onAddToCart?.(product);
-  };
+  const handleIncrement = useCallback(
+    (e: any) => {
+      e.stopPropagation?.();
+      setQuantity((q) => q + 1);
+      onAddToCart?.(product);
+    },
+    [onAddToCart, product]
+  );
 
-  const handleDecrement = (e: any) => {
+  const handleDecrement = useCallback((e: any) => {
     e.stopPropagation?.();
     setQuantity((q) => Math.max(0, q - 1));
-  };
+  }, []);
 
   return (
     <TouchableOpacity
@@ -278,3 +284,6 @@ const styles = StyleSheet.create({
     textDecorationLine: "line-through",
   },
 });
+
+const CategoryProductCard = memo(CategoryProductCardComponent);
+export default CategoryProductCard;

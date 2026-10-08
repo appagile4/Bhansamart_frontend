@@ -13,12 +13,14 @@ import {
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Animated,
   Dimensions,
+  FlatList,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -30,6 +32,159 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
+
+interface SeeAllProductCardProps {
+  product: ProductItem & { calculatedOrigPrice?: number; calculatedDiscountPct?: number };
+  quantity: number;
+  onPress: (product: ProductItem) => void;
+  onAddToCart: (product: ProductItem, imgUrl: string) => void;
+  onUpdateQuantity: (id: string, delta: number) => void;
+}
+
+const SeeAllProductCard = memo(function SeeAllProductCard({
+  product,
+  quantity,
+  onPress,
+  onAddToCart,
+  onUpdateQuantity,
+}: SeeAllProductCardProps) {
+  const prodId = product._id || product.id || "";
+  const imgUrl =
+    product.images && product.images.length > 0
+      ? product.images[0].url
+      : "https://images.unsplash.com/photo-1542838132-92c53300491e?w=500&q=80";
+
+  const discountPercent = product.calculatedDiscountPct || 0;
+
+  const handlePress = useCallback(() => {
+    onPress(product);
+  }, [onPress, product]);
+
+  const handleAdd = useCallback(() => {
+    onAddToCart(product, imgUrl);
+  }, [onAddToCart, product, imgUrl]);
+
+  const handleMinus = useCallback(() => {
+    onUpdateQuantity(prodId, -1);
+  }, [onUpdateQuantity, prodId]);
+
+  const handlePlus = useCallback(() => {
+    onUpdateQuantity(prodId, 1);
+  }, [onUpdateQuantity, prodId]);
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.88}
+      onPress={handlePress}
+      style={styles.productCard}
+    >
+      {/* Image Box */}
+      <View style={styles.cardImageBox}>
+        <Image
+          source={{ uri: imgUrl }}
+          style={styles.productImg}
+          contentFit="contain"
+          transition={100}
+        />
+
+        {/* Discount Badge */}
+        {discountPercent > 0 && (
+          <View style={styles.discountBadge}>
+            <Text style={styles.discountBadgeText}>
+              {discountPercent}% OFF
+            </Text>
+          </View>
+        )}
+
+        {/* Out of Stock Overlay */}
+        {!product.inStock && (
+          <View style={styles.outOfStockBadge}>
+            <Text style={styles.outOfStockText}>OUT OF STOCK</Text>
+          </View>
+        )}
+
+        {/* ADD / Quantity Counter Overlay */}
+        {product.inStock &&
+          (quantity === 0 ? (
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={handleAdd}
+              style={styles.addBtnOverlay}
+            >
+              <Text style={styles.addBtnText}>ADD</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.counterOverlay}>
+              <TouchableOpacity
+                onPress={handleMinus}
+                style={styles.counterActionBtn}
+              >
+                <Feather
+                  name="minus"
+                  size={scale(11)}
+                  color="#016073"
+                />
+              </TouchableOpacity>
+              <Text style={styles.counterQtyText}>{quantity}</Text>
+              <TouchableOpacity
+                onPress={handlePlus}
+                style={styles.counterActionBtn}
+              >
+                <Feather
+                  name="plus"
+                  size={scale(11)}
+                  color="#016073"
+                />
+              </TouchableOpacity>
+            </View>
+          ))}
+      </View>
+
+      {/* Weight Tag */}
+      <View style={styles.weightTagPill}>
+        <Text style={styles.weightTagText}>
+          {product.unit || "1 pc"}
+        </Text>
+      </View>
+
+      {/* Product Name */}
+      <Text numberOfLines={2} style={styles.productNameText}>
+        {product.name}
+      </Text>
+
+      {/* Star Rating */}
+      <View style={styles.starRatingRow}>
+        <View style={styles.starsGroup}>
+          <FontAwesome
+            name="star"
+            size={scale(9.5)}
+            color="#EAB308"
+            style={{ marginRight: scale(2) }}
+          />
+          <Text style={styles.ratingScoreText}>
+            {(product.ratingsAverage || 4.5).toFixed(1)}
+          </Text>
+        </View>
+        <Text style={styles.reviewsCountText}>
+          ({product.ratingsCount || 24})
+        </Text>
+      </View>
+
+      {/* Pricing Row */}
+      <View style={styles.pricingRow}>
+        <Text style={styles.currentPriceText}>
+          Rs. {product.price}
+        </Text>
+        {product.originalPrice &&
+        product.originalPrice > product.price ? (
+          <Text style={styles.mrpText}>
+            Rs. {product.originalPrice}
+          </Text>
+        ) : null}
+      </View>
+    </TouchableOpacity>
+  );
+});
 
 function SeeAllProductSkeleton({ animOpacity }: { animOpacity: Animated.Value }) {
   return (
@@ -158,9 +313,13 @@ export default function SeeAllProductScreen() {
     inStockOnly: false,
   });
 
-  const { publicProducts, publicLoading } = useAppSelector(
-    (state) => state.product
-  );
+  const {
+    publicProducts,
+    publicLoading,
+    publicLoadingMore,
+    publicHasMore,
+    publicCurrentPage,
+  } = useAppSelector((state) => state.product);
 
   const pulseAnim = useRef(new Animated.Value(0.35)).current;
 
@@ -183,19 +342,53 @@ export default function SeeAllProductScreen() {
     return () => pulseLoop.stop();
   }, [pulseAnim]);
 
-  const loadProducts = useCallback(async () => {
-    await dispatch(fetchPublicProducts());
-  }, [dispatch]);
+  const loadProducts = useCallback(
+    async (page = 1) => {
+      await dispatch(
+        fetchPublicProducts({
+          page,
+          limit: 20,
+          category:
+            params.category && params.category !== "all"
+              ? params.category
+              : undefined,
+        })
+      );
+    },
+    [dispatch, params.category]
+  );
 
   useEffect(() => {
-    loadProducts();
+    loadProducts(1);
   }, [loadProducts]);
 
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadProducts();
+    await loadProducts(1);
     setRefreshing(false);
-  };
+  }, [loadProducts]);
+
+  const handleEndReached = useCallback(() => {
+    if (!publicLoading && !publicLoadingMore && publicHasMore) {
+      dispatch(
+        fetchPublicProducts({
+          page: (publicCurrentPage || 1) + 1,
+          limit: 20,
+          category:
+            params.category && params.category !== "all"
+              ? params.category
+              : undefined,
+        })
+      );
+    }
+  }, [
+    dispatch,
+    publicLoading,
+    publicLoadingMore,
+    publicHasMore,
+    publicCurrentPage,
+    params.category,
+  ]);
 
   // Filtered & Sorted Product List
   const filteredProducts = useMemo(() => {
@@ -370,7 +563,7 @@ export default function SeeAllProductScreen() {
       );
     }
 
-    // 4. Sorting
+    // 5. Sorting
     const activeSort = filters.sortBy || sortBy;
     if (activeSort === "price_asc") {
       list.sort((a, b) => a.price - b.price);
@@ -387,9 +580,9 @@ export default function SeeAllProductScreen() {
     }
 
     return list;
-  }, [publicProducts, searchQuery, activePill, filters, sortBy]);
+  }, [publicProducts, searchQuery, activePill, filters, sortBy, params.category, params.filter]);
 
-  const handleProductPress = (prod: ProductItem) => {
+  const handleProductPress = useCallback((prod: ProductItem) => {
     const prodId = prod._id || prod.id || "";
     const imgUrl =
       prod.images && prod.images.length > 0 ? prod.images[0].url : "";
@@ -410,9 +603,95 @@ export default function SeeAllProductScreen() {
         subCategory: prod.subCategory || "",
       },
     });
-  };
+  }, [router]);
 
-  const handleSortPress = () => {
+  const handleAddToCart = useCallback(
+    (product: ProductItem, imgUrl: string) => {
+      const prodId = product._id || product.id || "";
+      addToCart({
+        id: prodId,
+        name: product.name,
+        price: product.price,
+        originalPrice: product.originalPrice || product.price,
+        imageUrl: imgUrl,
+        weight: product.unit || "1 pc",
+      });
+    },
+    [addToCart]
+  );
+
+  const handleUpdateQuantity = useCallback(
+    (id: string, delta: number) => {
+      updateQuantity(id, delta);
+    },
+    [updateQuantity]
+  );
+
+  const keyExtractor = useCallback(
+    (item: ProductItem) => item._id || item.id || "",
+    []
+  );
+
+  const renderItem = useCallback(
+    ({
+      item,
+    }: {
+      item: ProductItem & {
+        calculatedOrigPrice?: number;
+        calculatedDiscountPct?: number;
+      };
+    }) => {
+      const prodId = item._id || item.id || "";
+      const qty = getItemQuantity(prodId);
+      return (
+        <SeeAllProductCard
+          product={item}
+          quantity={qty}
+          onPress={handleProductPress}
+          onAddToCart={handleAddToCart}
+          onUpdateQuantity={handleUpdateQuantity}
+        />
+      );
+    },
+    [getItemQuantity, handleProductPress, handleAddToCart, handleUpdateQuantity]
+  );
+
+  const renderFooter = useCallback(() => {
+    if (publicLoadingMore) {
+      return (
+        <View style={{ paddingVertical: scale(20), alignItems: "center" }}>
+          <ActivityIndicator size="small" color="#016073" />
+        </View>
+      );
+    }
+    return <View style={{ height: scale(40) }} />;
+  }, [publicLoadingMore]);
+
+  const renderEmpty = useCallback(() => {
+    if (publicLoading && (!publicProducts || publicProducts.length === 0)) {
+      return (
+        <View style={styles.productsGrid}>
+          {[1, 2, 3, 4, 5, 6].map((item) => (
+            <SeeAllProductSkeleton
+              key={`see-all-skel-${item}`}
+              animOpacity={pulseAnim}
+            />
+          ))}
+        </View>
+      );
+    }
+    return (
+      <View style={styles.centerContainer}>
+        <Feather name="inbox" size={scale(48)} color="#CBD5E1" />
+        <Text style={styles.emptyTitle}>No matching products</Text>
+        <Text style={styles.emptySubtitle}>
+          Try adjusting your search query or removing filter constraints.
+        </Text>
+      </View>
+    );
+  }, [publicLoading, publicProducts, pulseAnim]);
+
+  const handleSortPress = useCallback(() => {
     Alert.alert("Sort Products", "Choose sorting criteria", [
       {
         text: "Discount: High to Low",
@@ -436,7 +715,7 @@ export default function SeeAllProductScreen() {
       },
       { text: "Cancel", style: "cancel" },
     ]);
-  };
+  }, []);
 
   return (
     <View style={styles.root}>
@@ -578,10 +857,24 @@ export default function SeeAllProductScreen() {
         </View>
       </SafeAreaView>
 
-      {/* Products Grid */}
-      <ScrollView
+      {/* High-Performance Virtualized Products Grid */}
+      <FlatList
+        data={filteredProducts}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+        numColumns={2}
+        columnWrapperStyle={styles.columnWrapper}
+        initialNumToRender={6}
+        maxToRenderPerBatch={8}
+        windowSize={5}
+        updateCellsBatchingPeriod={50}
+        removeClippedSubviews={Platform.OS === "android"}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.gridScrollContent}
+        onEndReached={handleEndReached}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={renderFooter}
+        ListEmptyComponent={renderEmpty}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -590,162 +883,7 @@ export default function SeeAllProductScreen() {
             tintColor="#016073"
           />
         }
-      >
-        {publicLoading && (!publicProducts || publicProducts.length === 0) ? (
-          <View style={styles.productsGrid}>
-            {[1, 2, 3, 4, 5, 6].map((item) => (
-              <SeeAllProductSkeleton
-                key={`see-all-skel-${item}`}
-                animOpacity={pulseAnim}
-              />
-            ))}
-          </View>
-        ) : filteredProducts.length > 0 ? (
-          <View style={styles.productsGrid}>
-            {filteredProducts.map((product) => {
-              const prodId = product._id || product.id || "";
-              const qty = getItemQuantity(prodId);
-              const imgUrl =
-                product.images && product.images.length > 0
-                  ? product.images[0].url
-                  : "https://images.unsplash.com/photo-1542838132-92c53300491e?w=500&q=80";
-
-              const discountPercent = product.calculatedDiscountPct || 0;
-
-              return (
-                <TouchableOpacity
-                  key={prodId}
-                  activeOpacity={0.88}
-                  onPress={() => handleProductPress(product)}
-                  style={styles.productCard}
-                >
-                  {/* Image Box */}
-                  <View style={styles.cardImageBox}>
-                    <Image
-                      source={{ uri: imgUrl }}
-                      style={styles.productImg}
-                      contentFit="contain"
-                    />
-
-                    {/* Discount Badge */}
-                    {discountPercent > 0 && (
-                      <View style={styles.discountBadge}>
-                        <Text style={styles.discountBadgeText}>
-                          {discountPercent}% OFF
-                        </Text>
-                      </View>
-                    )}
-
-                    {/* Out of Stock Overlay */}
-                    {!product.inStock && (
-                      <View style={styles.outOfStockBadge}>
-                        <Text style={styles.outOfStockText}>OUT OF STOCK</Text>
-                      </View>
-                    )}
-
-                    {/* ADD / Quantity Counter Overlay */}
-                    {product.inStock &&
-                      (qty === 0 ? (
-                        <TouchableOpacity
-                          activeOpacity={0.85}
-                          onPress={() =>
-                            addToCart({
-                              id: prodId,
-                              name: product.name,
-                              price: product.price,
-                              originalPrice:
-                                product.originalPrice || product.price,
-                              imageUrl: imgUrl,
-                              weight: product.unit || "1 pc",
-                            })
-                          }
-                          style={styles.addBtnOverlay}
-                        >
-                          <Text style={styles.addBtnText}>ADD</Text>
-                        </TouchableOpacity>
-                      ) : (
-                        <View style={styles.counterOverlay}>
-                          <TouchableOpacity
-                            onPress={() => updateQuantity(prodId, -1)}
-                            style={styles.counterActionBtn}
-                          >
-                            <Feather
-                              name="minus"
-                              size={scale(11)}
-                              color="#016073"
-                            />
-                          </TouchableOpacity>
-                          <Text style={styles.counterQtyText}>{qty}</Text>
-                          <TouchableOpacity
-                            onPress={() => updateQuantity(prodId, 1)}
-                            style={styles.counterActionBtn}
-                          >
-                            <Feather
-                              name="plus"
-                              size={scale(11)}
-                              color="#016073"
-                            />
-                          </TouchableOpacity>
-                        </View>
-                      ))}
-                  </View>
-
-                  {/* Weight Tag */}
-                  <View style={styles.weightTagPill}>
-                    <Text style={styles.weightTagText}>
-                      {product.unit || "1 pc"}
-                    </Text>
-                  </View>
-
-                  {/* Product Name */}
-                  <Text numberOfLines={2} style={styles.productNameText}>
-                    {product.name}
-                  </Text>
-
-                  {/* Star Rating */}
-                  <View style={styles.starRatingRow}>
-                    <View style={styles.starsGroup}>
-                      <FontAwesome
-                        name="star"
-                        size={scale(9.5)}
-                        color="#EAB308"
-                        style={{ marginRight: scale(2) }}
-                      />
-                      <Text style={styles.ratingScoreText}>
-                        {(product.ratingsAverage || 4.5).toFixed(1)}
-                      </Text>
-                    </View>
-                    <Text style={styles.reviewsCountText}>
-                      ({product.ratingsCount || 24})
-                    </Text>
-                  </View>
-
-                  {/* Pricing Row */}
-                  <View style={styles.pricingRow}>
-                    <Text style={styles.currentPriceText}>
-                      Rs. {product.price}
-                    </Text>
-                    {product.originalPrice &&
-                    product.originalPrice > product.price ? (
-                      <Text style={styles.mrpText}>
-                        Rs. {product.originalPrice}
-                      </Text>
-                    ) : null}
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        ) : (
-          <View style={styles.centerContainer}>
-            <Feather name="inbox" size={scale(48)} color="#CBD5E1" />
-            <Text style={styles.emptyTitle}>No matching products</Text>
-            <Text style={styles.emptySubtitle}>
-              Try adjusting your search query or removing filter constraints.
-            </Text>
-          </View>
-        )}
-      </ScrollView>
+      />
 
       {/* Filter Bottom Sheet Modal */}
       <FilterModal
@@ -897,6 +1035,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(14),
     paddingTop: scale(14),
     paddingBottom: scale(160),
+  },
+  columnWrapper: {
+    justifyContent: "space-between",
+    marginBottom: scale(14),
   },
   productsGrid: {
     flexDirection: "row",
