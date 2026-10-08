@@ -7,6 +7,7 @@ import {
   fetchRelatedProducts,
   ProductItem,
 } from "@/store/slices/productSlice";
+import { toggleWishlist } from "@/store/slices/wishlistSlice";
 import { recordProductViewApi } from "@/store/services/productService";
 import { moderateScale, scale, useTheme } from "@/theme";
 import {
@@ -223,6 +224,30 @@ export default function ProductDetailScreen() {
     });
   };
 
+  const isWishlisted = useAppSelector((state) =>
+    state.wishlist.items.some(
+      (item) => String(item.productId) === String(productId)
+    )
+  );
+
+  const handleToggleWishlist = () => {
+    dispatch(
+      toggleWishlist({
+        id: productId,
+        name: productName,
+        price: productPrice,
+        originalPrice: productOriginalPrice,
+        image: heroImages[0] || "",
+        imageUrl: heroImages[0] || "",
+        weight: productWeight,
+        category: productCategory,
+        subCategory: productSubCategory,
+        rating: ratingAvg,
+        reviewsCount: ratingReviewsCount,
+      })
+    );
+  };
+
   return (
     <View style={styles.root}>
       <StatusBar style="dark" />
@@ -239,8 +264,23 @@ export default function ProductDetailScreen() {
             <Feather name="chevron-down" size={scale(24)} color="#1E293B" />
           </TouchableOpacity>
 
-          {/* Share Button */}
+          {/* Wishlist & Share Buttons */}
           <View style={styles.rightNavBtns}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={handleToggleWishlist}
+              style={[
+                styles.iconCircleBtn,
+                isWishlisted && { backgroundColor: "#FFF1F2" },
+              ]}
+            >
+              <Ionicons
+                name={isWishlisted ? "heart" : "heart-outline"}
+                size={scale(19)}
+                color={isWishlisted ? "#DC2626" : "#1E293B"}
+              />
+            </TouchableOpacity>
+
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={handleShare}

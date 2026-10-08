@@ -44,6 +44,8 @@ export default function ProfileScreen() {
   const theme = useTheme();
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
+  const wishlistItems = useAppSelector((state) => state.wishlist.items);
+  const wishlistCount = wishlistItems.length;
 
   const handleLogout = () => {
     Alert.alert(
@@ -93,6 +95,20 @@ export default function ProfileScreen() {
           iconBg: "#E0F2FE",
           label: "My profile",
           onPress: () => router.push("/Screens/Profile/myprofile" as any),
+        },
+        {
+          id: "wishlist",
+          icon: (color) => (
+            <Ionicons name="heart-outline" size={scale(19)} color={color} />
+          ),
+          iconBg: "#FCE7F3",
+          label: "My Wishlist",
+          badge:
+            wishlistCount > 0
+              ? `${wishlistCount} ${wishlistCount === 1 ? "Item" : "Items"}`
+              : undefined,
+          badgeColor: "#DB2777",
+          onPress: () => router.push("/Screens/Profile/wishlist" as any),
         },
         {
           id: "orders",

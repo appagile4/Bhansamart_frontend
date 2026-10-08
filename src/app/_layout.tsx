@@ -3,6 +3,10 @@ import store from "@/store";
 import { useAppDispatch } from "@/store/hooks";
 import { initializeAuth } from "@/store/slices/authSlice";
 import { initializeVendorAuth } from "@/store/slices/vendorAuthSlice";
+import {
+  fetchWishlist,
+  loadWishlistFromStorage,
+} from "@/store/slices/wishlistSlice";
 import { Stack } from "expo-router";
 import { useEffect } from "react";
 import { Provider } from "react-redux";
@@ -14,6 +18,8 @@ function AppContent() {
     // Attempt automatic session restoration on boot for customer & vendor
     dispatch(initializeAuth());
     dispatch(initializeVendorAuth());
+    dispatch(loadWishlistFromStorage());
+    dispatch(fetchWishlist());
   }, [dispatch]);
 
   return (

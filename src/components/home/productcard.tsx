@@ -1,4 +1,6 @@
 import { useCart } from "@/context/cart-context";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { toggleWishlist } from "@/store/slices/wishlistSlice";
 import { moderateScale, scale, useTheme } from "@/theme";
 import {
   Feather,
@@ -8,7 +10,7 @@ import {
 } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { memo, useMemo, useState } from "react";
+import { memo, useMemo } from "react";
 import {
   ImageSourcePropType,
   StyleSheet,
@@ -56,8 +58,33 @@ function ProductCardComponent({
   const theme = useTheme();
   const primaryColor = theme.colors.primary || "#004d5d";
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const dispatch = useAppDispatch();
   const { addToCart, updateQuantity, getItemQuantity } = useCart();
-  const [isWishlisted, setIsWishlisted] = useState(false);
+  const targetProductId = String(
+    product.id || (product as any)._id || (product as any).productId || ""
+  ).trim();
+
+  const isWishlisted = useAppSelector((state) =>
+    state.wishlist.items.some((item) => {
+      const savedId = String(
+        item.productId || (item as any).id || (item as any)._id || ""
+      ).trim();
+      return (
+        (savedId.length > 0 && savedId === targetProductId) ||
+        (item.name && product.name && item.name === product.name)
+      );
+    })
+  );
+
+  const handleToggleWishlist = () => {
+    dispatch(
+      toggleWishlist({
+        ...product,
+        id: targetProductId,
+        productId: targetProductId,
+      })
+    );
+  };
 
   const qty = getItemQuantity(product.id);
 
@@ -368,13 +395,16 @@ function ProductCardComponent({
         {/* Top-Right Heart / Wishlist Button */}
         <TouchableOpacity
           activeOpacity={0.8}
-          onPress={() => setIsWishlisted(!isWishlisted)}
-          style={styles.wishlistBtn}
+          onPress={handleToggleWishlist}
+          style={[
+            styles.wishlistBtn,
+            isWishlisted && { backgroundColor: "#FFF1F2" },
+          ]}
         >
           <Ionicons
             name={isWishlisted ? "heart" : "heart-outline"}
             size={scale(13)}
-            color={isWishlisted ? "#DC2626" : "#1E293B"}
+            color={isWishlisted ? "#DC2626" : "#64748B"}
           />
         </TouchableOpacity>
 

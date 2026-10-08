@@ -1,4 +1,6 @@
 import { Image } from "expo-image";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { toggleWishlist } from "@/store/slices/wishlistSlice";
 import { moderateScale, scale, useTheme } from "@/theme";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -31,7 +33,46 @@ function CategoryProductCardComponent({
 }: CategoryProductCardProps) {
   const router = useRouter();
   const theme = useTheme();
+  const dispatch = useAppDispatch();
   const [quantity, setQuantity] = useState(0);
+
+  const targetProductId = String(
+    product.id || (product as any)._id || (product as any).productId || ""
+  ).trim();
+
+  const isWishlisted = useAppSelector((state) =>
+    state.wishlist.items.some((item) => {
+      const savedId = String(
+        item.productId || (item as any).id || (item as any)._id || ""
+      ).trim();
+      return (
+        (savedId.length > 0 && savedId === targetProductId) ||
+        (item.name && product.name && item.name === product.name)
+      );
+    })
+  );
+
+  const handleToggleWishlist = useCallback(
+    (e: any) => {
+      e.stopPropagation?.();
+      dispatch(
+        toggleWishlist({
+          id: targetProductId,
+          productId: targetProductId,
+          name: product.name,
+          price: product.price,
+          originalPrice: product.originalPrice,
+          imageUrl: product.imageUrl,
+          weight: product.weight,
+          category: product.category,
+          subCategory: product.subcategory,
+          rating: product.rating,
+          reviewsCount: product.reviewsCount,
+        })
+      );
+    },
+    [dispatch, targetProductId, product]
+  );
 
   const discountPercent =
     product.originalPrice && product.originalPrice > product.price
@@ -44,14 +85,17 @@ function CategoryProductCardComponent({
     router.push({
       pathname: "/Screens/Product/productdetailscreen" as any,
       params: {
+        id: targetProductId,
         name: product.name,
         weight: product.weight,
         price: product.price,
         originalPrice: product.originalPrice,
         image: product.imageUrl,
+        category: product.category,
+        subCategory: product.subcategory,
       },
     });
-  }, [router, product]);
+  }, [router, product, targetProductId]);
 
   const handleIncrement = useCallback(
     (e: any) => {
@@ -80,6 +124,22 @@ function CategoryProductCardComponent({
           style={styles.productImg}
           contentFit="contain"
         />
+
+        {/* Wishlist Heart Button */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={handleToggleWishlist}
+          style={[
+            styles.wishlistBtn,
+            isWishlisted && { backgroundColor: "#FFF1F2" },
+          ]}
+        >
+          <Ionicons
+            name={isWishlisted ? "heart" : "heart-outline"}
+            size={scale(13)}
+            color={isWishlisted ? "#DC2626" : "#64748B"}
+          />
+        </TouchableOpacity>
 
         {/* Discount Badge */}
         {discountPercent > 0 && (
@@ -193,6 +253,23 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(8.5),
     fontWeight: "800",
     color: "#16A34A",
+  },
+  wishlistBtn: {
+    position: "absolute",
+    top: scale(6),
+    right: scale(6),
+    width: scale(24),
+    height: scale(24),
+    borderRadius: scale(12),
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+    zIndex: 5,
   },
   addBtn: {
     position: "absolute",
