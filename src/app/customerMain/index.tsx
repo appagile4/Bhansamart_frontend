@@ -30,21 +30,27 @@ import {
 import { moderateScale, scale, useTheme } from "@/theme";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 
 export default function HomeScreen() {
   const theme = useTheme();
   const dispatch = useAppDispatch();
   const { addToCart } = useCart();
-  const { user, isAuthenticated, isInitialized } = useAppSelector(
-    (state) => state.auth,
-  );
-  const selectedCategory = useAppSelector(
-    (state) => state.product.selectedCategory || "all",
-  );
-  const { activeDisplayLocation } = useAppSelector((state) => state.address);
 
+  // Fine-grained selectors to prevent re-renders on unrelated slice updates
+  const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
+  const isInitialized = useAppSelector((state) => state.auth.isInitialized);
+  const selectedCategory = useAppSelector(
+    (state) => state.product?.selectedCategory || "all"
+  );
+  const activeDisplayLocation = useAppSelector(
+    (state) => state.address?.activeDisplayLocation
+  );
+
+  const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
+
+  // ── Data Fetching Effects ──────────────────────────────────────────
   useEffect(() => {
     dispatch(
       fetchPublicProducts({
@@ -64,22 +70,64 @@ export default function HomeScreen() {
     }
   }, [isInitialized, isAuthenticated]);
 
-  const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
+  // ── Memoized Values ─────────────────────────────────────────────────
+  const displayLocation = useMemo(
+    () => activeDisplayLocation || "Baneshwor, Kathmandu, Bagmati, Nepal",
+    [activeDisplayLocation]
+  );
 
-  const displayLocation =
-    activeDisplayLocation || "Baneshwor, Kathmandu, Bagmati, Nepal";
+  const containerStyle = useMemo(
+    () => [styles.container, { backgroundColor: theme.colors.background }],
+    [theme.colors.background]
+  );
 
-  const handleCategoryPress = (categoryName: string, categoryId?: string) => {
-    router.push({
-      pathname: "/Screens/Category/categoryExpand" as any,
-      params: {
-        title: categoryName.replace("\n", " "),
-        category: categoryId || categoryName.toLowerCase().replace(/\s+/g, "-"),
-      },
-    });
-  };
+  // ── Memoized Navigation & Action Callbacks ──────────────────────────
+  const handleSelectCategory = useCallback(
+    (catId: string) => {
+      dispatch(setSelectedCategory(catId));
+    },
+    [dispatch]
+  );
 
-  const handleProductPress = (prod: any) => {
+  const handleOpenLocationModal = useCallback(() => {
+    setIsLocationModalVisible(true);
+  }, []);
+
+  const handleCloseLocationModal = useCallback(() => {
+    setIsLocationModalVisible(false);
+  }, []);
+
+  const handleProfilePress = useCallback(() => {
+    router.push("/Screens/Profile/profile" as any);
+  }, []);
+
+  const handleSearchPress = useCallback(() => {
+    router.push("/search" as any);
+  }, []);
+
+  const handleVoicePress = useCallback(() => {
+    router.push("/search" as any);
+  }, []);
+
+  const handleStorePress = useCallback(() => {
+    console.log("Store icon pressed");
+  }, []);
+
+  const handleCategoryPress = useCallback(
+    (categoryName: string, categoryId?: string) => {
+      router.push({
+        pathname: "/Screens/Category/categoryExpand" as any,
+        params: {
+          title: categoryName.replace("\n", " "),
+          category:
+            categoryId || categoryName.toLowerCase().replace(/\s+/g, "-"),
+        },
+      });
+    },
+    []
+  );
+
+  const handleProductPress = useCallback((prod: any) => {
     router.push({
       pathname: "/Screens/Product/productdetailscreen" as any,
       params: {
@@ -91,114 +139,112 @@ export default function HomeScreen() {
         weight: prod.weight || prod.volume || "1 unit",
       },
     });
-  };
+  }, []);
 
-  const handleAddToCart = (prod: any) => {
-    addToCart({
-      id: prod.id || `item-${Date.now()}`,
-      name: prod.name || prod.title || "Product",
-      price:
-        typeof prod.price === "number" ? prod.price : Number(prod.price) || 100,
-      originalPrice: prod.originalPrice
-        ? Number(prod.originalPrice)
-        : undefined,
-      imageUrl: prod.imageUrl || prod.image || "",
-      weight: prod.weight || prod.volume || "1 unit",
+  const handleDealsOfTheDaysProductPress = useCallback((deal: any) => {
+    router.push({
+      pathname: "/Screens/Product/productdetailscreen" as any,
+      params: {
+        id: deal.id,
+        name: deal.name,
+        price: deal.price,
+        originalPrice: deal.originalPrice,
+        weight: deal.weight,
+        category: deal.category,
+        image:
+          typeof deal.image === "object" && "uri" in deal.image
+            ? (deal.image as any).uri
+            : "",
+      },
     });
-  };
+  }, []);
 
-  return (
-    <View
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
-    >
-      <FloatingCartBar />
-      {/* Scrollable Home Screen Body */}
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        <StatusBar style="dark" />
+  const handleAddToCart = useCallback(
+    (prod: any) => {
+      addToCart({
+        id: prod.id || `item-${Date.now()}`,
+        name: prod.name || prod.title || "Product",
+        price:
+          typeof prod.price === "number"
+            ? prod.price
+            : Number(prod.price) || 100,
+        originalPrice: prod.originalPrice
+          ? Number(prod.originalPrice)
+          : undefined,
+        imageUrl: prod.imageUrl || prod.image || "",
+        weight: prod.weight || prod.volume || "1 unit",
+      });
+    },
+    [addToCart]
+  );
 
-        {/* Top Header with Gradient, Store Location, SearchBar & Category Scroller */}
-        <Header
-          storeName="Delivery Address"
-          location={displayLocation}
-          selectedCategory={selectedCategory}
-          onSelectCategory={(catId) => {
-            dispatch(setSelectedCategory(catId));
-          }}
-          onLocationPress={() => setIsLocationModalVisible(true)}
-          onStorePress={() => console.log("Store icon pressed")}
-          onProfilePress={() => router.push("/Screens/Profile/profile" as any)}
-          onSearchPress={() => router.push("/search" as any)}
-          onVoicePress={() => router.push("/search" as any)}
-        />
+  const handleNavigateCategoryExpand = useCallback(
+    (params: { category: string; subCategory?: string; title?: string }) => {
+      router.push({
+        pathname: "/Screens/Category/categoryExpand" as any,
+        params,
+      });
+    },
+    []
+  );
 
-        {/* ======================================================== */}
-        {/* 1. BY DEFAULT & WHEN CATEGORY SLIDER IS ON "ALL"        */}
-        {/* ======================================================== */}
-        {selectedCategory === "all" && (
+  const handleNavigateSeeAll = useCallback(
+    (params: {
+      title: string;
+      filter?: string;
+      category?: string;
+      minDiscount?: string;
+    }) => {
+      router.push({
+        pathname: "/Screens/Product/seeAllProductScreen" as any,
+        params,
+      });
+    },
+    []
+  );
+
+  const handlePromoPress = useCallback((promo: any) => {
+    console.log("Promo clicked:", promo.title);
+  }, []);
+
+  // ── Memoized Category-Specific Views ─────────────────────────────────
+  const categoryContent = useMemo(() => {
+    switch (selectedCategory) {
+      case "all":
+        return (
           <>
             {/* 2. Fast Flash Sale Banner & Quick Categories */}
             <FastSales
               onBannerPress={() =>
-                router.push({
-                  pathname: "/Screens/Category/categoryExpand" as any,
-                  params: {
-                    category: "Snacks & Drinks",
-                    title: "Flash Sale",
-                  },
+                handleNavigateCategoryExpand({
+                  category: "Snacks & Drinks",
+                  title: "Flash Sale",
                 })
               }
               onCategoryPress={(cat: any) =>
-                router.push({
-                  pathname: "/Screens/Category/categoryExpand" as any,
-                  params: {
-                    category: cat.category || "Snacks & Drinks",
-                    subCategory: cat.subCategory || cat.name,
-                    title: cat.name || cat.title || "Flash Sale",
-                  },
+                handleNavigateCategoryExpand({
+                  category: cat.category || "Snacks & Drinks",
+                  subCategory: cat.subCategory || cat.name,
+                  title: cat.name || cat.title || "Flash Sale",
                 })
               }
             />
 
             {/* 4. Deals of the Day Triple Showcase Grid */}
             <DealsOfTheDays
-              onProductPress={(deal) =>
-                router.push({
-                  pathname: "/Screens/Product/productdetailscreen" as any,
-                  params: {
-                    id: deal.id,
-                    name: deal.name,
-                    price: deal.price,
-                    originalPrice: deal.originalPrice,
-                    weight: deal.weight,
-                    category: deal.category,
-                    image:
-                      typeof deal.image === "object" && "uri" in deal.image
-                        ? (deal.image as any).uri
-                        : "",
-                  },
-                })
-              }
-              onSeeMorePress={(deal) =>
-                router.push({
-                  pathname: "/Screens/Category/categoryExpand" as any,
-                  params: {
-                    category: deal.category || "Grocery & Kitchen",
-                    subCategory: (deal as any).subCategory || deal.category,
-                    title: deal.name,
-                  },
+              onProductPress={handleDealsOfTheDaysProductPress}
+              onSeeMorePress={(deal: any) =>
+                handleNavigateCategoryExpand({
+                  category: deal.category || "Grocery & Kitchen",
+                  subCategory: deal.subCategory || deal.category,
+                  title: deal.name,
                 })
               }
               onSeeAllPress={() =>
-                router.push({
-                  pathname: "/Screens/Product/seeAllProductScreen" as any,
-                  params: {
-                    title: "Deals of the Day",
-                    filter: "deals",
-                    minDiscount: "40",
-                  },
+                handleNavigateSeeAll({
+                  title: "Deals of the Day",
+                  filter: "deals",
+                  minDiscount: "40",
                 })
               }
             />
@@ -211,23 +257,16 @@ export default function HomeScreen() {
               onAddPress={handleAddToCart}
               onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
               onSeeAllPress={() =>
-                router.push({
-                  pathname: "/Screens/Product/seeAllProductScreen" as any,
-                  params: {
-                    title: "Top Deals & Trending Picks",
-                    filter: "trending",
-                    minDiscount: "50",
-                  },
+                handleNavigateSeeAll({
+                  title: "Top Deals & Trending Picks",
+                  filter: "trending",
+                  minDiscount: "50",
                 })
               }
             />
 
             {/* 6. Fluid Curved Promo Banner Carousel */}
-            <CurvedPromoScroller
-              onPromoPress={(promo) =>
-                console.log("Promo clicked:", promo.title)
-              }
-            />
+            <CurvedPromoScroller onPromoPress={handlePromoPress} />
 
             {/* 7. Grocery & Kitchen Category Grid */}
             <GroceryKitchen
@@ -240,17 +279,15 @@ export default function HomeScreen() {
               onProductPress={handleProductPress}
               onAddPress={handleAddToCart}
               onSeeAllPress={() =>
-                router.push({
-                  pathname: "/Screens/Product/seeAllProductScreen" as any,
-                  params: {
-                    title: "Flash Sale & Low Stock Deals",
-                    category: "all",
-                    filter: "flash-sale",
-                    minDiscount: "20",
-                  },
+                handleNavigateSeeAll({
+                  title: "Flash Sale & Low Stock Deals",
+                  category: "all",
+                  filter: "flash-sale",
+                  minDiscount: "20",
                 })
               }
             />
+
             {/* 3. New Arrivals (2x3 Dual Product Green Tiles) */}
             <NewArrivals
               category={selectedCategory}
@@ -270,13 +307,10 @@ export default function HomeScreen() {
               onAddPress={handleAddToCart}
               onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
               onSeeAllPress={() =>
-                router.push({
-                  pathname: "/Screens/Product/seeAllProductScreen" as any,
-                  params: {
-                    title: "Sweet Tooth Delights",
-                    filter: "sweet-tooth",
-                    minDiscount: "30",
-                  },
+                handleNavigateSeeAll({
+                  title: "Sweet Tooth Delights",
+                  filter: "sweet-tooth",
+                  minDiscount: "30",
                 })
               }
             />
@@ -294,13 +328,10 @@ export default function HomeScreen() {
               onAddPress={handleAddToCart}
               onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
               onSeeAllPress={() =>
-                router.push({
-                  pathname: "/Screens/Product/seeAllProductScreen" as any,
-                  params: {
-                    title: "Find Your Favorites",
-                    filter: "favorites",
-                    minDiscount: "40",
-                  },
+                handleNavigateSeeAll({
+                  title: "Find Your Favorites",
+                  filter: "favorites",
+                  minDiscount: "40",
                 })
               }
             />
@@ -322,13 +353,10 @@ export default function HomeScreen() {
               onProductPress={handleProductPress}
               onAddPress={handleAddToCart}
               onSeeAllPress={() =>
-                router.push({
-                  pathname: "/Screens/Product/seeAllProductScreen" as any,
-                  params: {
-                    title: "Instant & Frozen Food",
-                    filter: "instant-frozen",
-                    minDiscount: "30",
-                  },
+                handleNavigateSeeAll({
+                  title: "Instant & Frozen Food",
+                  filter: "instant-frozen",
+                  minDiscount: "30",
                 })
               }
             />
@@ -341,12 +369,10 @@ export default function HomeScreen() {
               }
             />
           </>
-        )}
+        );
 
-        {/* ======================================================== */}
-        {/* 2. SPECIFIC CATEGORY FILTER VIEWS                        */}
-        {/* ======================================================== */}
-        {selectedCategory === "grocery" && (
+      case "grocery":
+        return (
           <>
             {/* 1. Featured Brands Carousel */}
             <FeaturedBrands
@@ -363,24 +389,17 @@ export default function HomeScreen() {
               onAddPress={handleAddToCart}
               onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
               onSeeAllPress={() =>
-                router.push({
-                  pathname: "/Screens/Product/seeAllProductScreen" as any,
-                  params: {
-                    title: "Creamy Delights",
-                    category: "grocery-kitchen",
-                    filter: "creamy-delights",
-                    minDiscount: "20",
-                  },
+                handleNavigateSeeAll({
+                  title: "Creamy Delights",
+                  category: "grocery-kitchen",
+                  filter: "creamy-delights",
+                  minDiscount: "20",
                 })
               }
             />
 
             {/* 3. Curved Promo Banner Carousel */}
-            <CurvedPromoScroller
-              onPromoPress={(promo) =>
-                console.log("Promo clicked:", promo.title)
-              }
-            />
+            <CurvedPromoScroller onPromoPress={handlePromoPress} />
 
             {/* 4. 8-Section Comprehensive Grocery Catalog Grid */}
             <SubCategories
@@ -404,14 +423,11 @@ export default function HomeScreen() {
               onProductPress={handleProductPress}
               onAddPress={handleAddToCart}
               onSeeAllPress={() =>
-                router.push({
-                  pathname: "/Screens/Product/seeAllProductScreen" as any,
-                  params: {
-                    title: "Grocery Flash Sale",
-                    category: "grocery-kitchen",
-                    filter: "grocery-flash-sale",
-                    minDiscount: "30",
-                  },
+                handleNavigateSeeAll({
+                  title: "Grocery Flash Sale",
+                  category: "grocery-kitchen",
+                  filter: "grocery-flash-sale",
+                  minDiscount: "30",
                 })
               }
             />
@@ -425,21 +441,19 @@ export default function HomeScreen() {
               onAddPress={handleAddToCart}
               onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
               onSeeAllPress={() =>
-                router.push({
-                  pathname: "/Screens/Product/seeAllProductScreen" as any,
-                  params: {
-                    title: "Find Your Favorites",
-                    category: "grocery-kitchen",
-                    filter: "favorites",
-                    minDiscount: "30",
-                  },
+                handleNavigateSeeAll({
+                  title: "Find Your Favorites",
+                  category: "grocery-kitchen",
+                  filter: "favorites",
+                  minDiscount: "30",
                 })
               }
             />
           </>
-        )}
+        );
 
-        {selectedCategory === "snacks" && (
+      case "snacks":
+        return (
           <>
             <FeaturedBrands
               category="snacks"
@@ -454,18 +468,14 @@ export default function HomeScreen() {
               onAddPress={handleAddToCart}
               onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
               onSeeAllPress={() =>
-                router.push({
-                  pathname: "/Screens/Product/seeAllProductScreen" as any,
-                  params: {
-                    title: "Top Snack Deals",
-                    category: "snacks-drinks",
-                    filter: "deals",
-                    minDiscount: "20",
-                  },
+                handleNavigateSeeAll({
+                  title: "Top Snack Deals",
+                  category: "snacks-drinks",
+                  filter: "deals",
+                  minDiscount: "20",
                 })
               }
             />
-
             <SubCategories
               category="snacks"
               onItemPress={(section, item) =>
@@ -488,37 +498,31 @@ export default function HomeScreen() {
               onProductPress={handleProductPress}
               onAddPress={handleAddToCart}
               onSeeAllPress={() =>
-                router.push({
-                  pathname: "/Screens/Product/seeAllProductScreen" as any,
-                  params: {
-                    title: "Snacks & Drinks Flash Sale",
-                    category: "snacks-drinks",
-                    filter: "snacks-flash-sale",
-                    minDiscount: "20",
-                  },
+                handleNavigateSeeAll({
+                  title: "Snacks & Drinks Flash Sale",
+                  category: "snacks-drinks",
+                  filter: "snacks-flash-sale",
+                  minDiscount: "20",
                 })
               }
             />
-
             <SweetTooth
               onProductPress={handleProductPress}
               onAddPress={handleAddToCart}
               onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
               onSeeAllPress={() =>
-                router.push({
-                  pathname: "/Screens/Product/seeAllProductScreen" as any,
-                  params: {
-                    title: "Sweet Tooth Delights",
-                    filter: "sweet-tooth",
-                    minDiscount: "30",
-                  },
+                handleNavigateSeeAll({
+                  title: "Sweet Tooth Delights",
+                  filter: "sweet-tooth",
+                  minDiscount: "30",
                 })
               }
             />
           </>
-        )}
+        );
 
-        {selectedCategory === "beauty" && (
+      case "beauty":
+        return (
           <>
             <FeaturedBrands
               category="beauty"
@@ -533,18 +537,14 @@ export default function HomeScreen() {
               onAddPress={handleAddToCart}
               onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
               onSeeAllPress={() =>
-                router.push({
-                  pathname: "/Screens/Product/seeAllProductScreen" as any,
-                  params: {
-                    title: "Beauty & Care Deals",
-                    category: "beauty-personal-care",
-                    filter: "deals",
-                    minDiscount: "25",
-                  },
+                handleNavigateSeeAll({
+                  title: "Beauty & Care Deals",
+                  category: "beauty-personal-care",
+                  filter: "deals",
+                  minDiscount: "25",
                 })
               }
             />
-
             <SubCategories
               category="beauty"
               onItemPress={(section, item) =>
@@ -560,13 +560,10 @@ export default function HomeScreen() {
                 handleCategoryPress(cat.title, cat.category)
               }
               onSeeAllPress={() =>
-                router.push({
-                  pathname: "/Screens/Product/seeAllProductScreen" as any,
-                  params: {
-                    title: "Beauty New Arrivals",
-                    category: "beauty-personal-care",
-                    filter: "new_arrival",
-                  },
+                handleNavigateSeeAll({
+                  title: "Beauty New Arrivals",
+                  category: "beauty-personal-care",
+                  filter: "new_arrival",
                 })
               }
             />
@@ -575,23 +572,20 @@ export default function HomeScreen() {
               onProductPress={handleProductPress}
               onAddPress={handleAddToCart}
               onSeeAllPress={() =>
-                router.push({
-                  pathname: "/Screens/Product/seeAllProductScreen" as any,
-                  params: {
-                    title: "Beauty & Care Flash Sale",
-                    category: "beauty-personal-care",
-                    filter: "beauty-flash-sale",
-                    minDiscount: "20",
-                  },
+                handleNavigateSeeAll({
+                  title: "Beauty & Care Flash Sale",
+                  category: "beauty-personal-care",
+                  filter: "beauty-flash-sale",
+                  minDiscount: "20",
                 })
               }
             />
           </>
-        )}
+        );
 
-        {selectedCategory === "stationery" && (
+      case "stationery":
+        return (
           <>
-            {/* Featured Stationery Brands */}
             <FeaturedBrands
               category="stationery"
               onItemPress={(item) =>
@@ -610,38 +604,30 @@ export default function HomeScreen() {
               onAddPress={handleAddToCart}
               onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
               onSeeAllPress={() =>
-                router.push({
-                  pathname: "/Screens/Product/seeAllProductScreen" as any,
-                  params: {
-                    title: "Stationery Deals",
-                    category: "office-stationery",
-                    filter: "deals",
-                    minDiscount: "20",
-                  },
+                handleNavigateSeeAll({
+                  title: "Stationery Deals",
+                  category: "office-stationery",
+                  filter: "deals",
+                  minDiscount: "20",
                 })
               }
             />
-
             <SubCategories
               category="stationery"
               onItemPress={(section, item) =>
                 handleCategoryPress(item.title, item.id)
               }
             />
-
             <NewArrivals
               category="stationery"
               onCategoryPress={(cat) =>
                 handleCategoryPress(cat.title, cat.category)
               }
               onSeeAllPress={() =>
-                router.push({
-                  pathname: "/Screens/Product/seeAllProductScreen" as any,
-                  params: {
-                    title: "Stationery New Arrivals",
-                    category: "office-stationery",
-                    filter: "new_arrival",
-                  },
+                handleNavigateSeeAll({
+                  title: "Stationery New Arrivals",
+                  category: "office-stationery",
+                  filter: "new_arrival",
                 })
               }
             />
@@ -650,45 +636,37 @@ export default function HomeScreen() {
               onProductPress={handleProductPress}
               onAddPress={handleAddToCart}
               onSeeAllPress={() =>
-                router.push({
-                  pathname: "/Screens/Product/seeAllProductScreen" as any,
-                  params: {
-                    title: "Stationery & Office Flash Sale",
-                    category: "office-stationery",
-                    filter: "stationery-flash-sale",
-                    minDiscount: "20",
-                  },
+                handleNavigateSeeAll({
+                  title: "Stationery & Office Flash Sale",
+                  category: "office-stationery",
+                  filter: "stationery-flash-sale",
+                  minDiscount: "20",
                 })
               }
             />
           </>
-        )}
+        );
 
-        {(selectedCategory === "baby" || selectedCategory === "kids") && (
+      case "baby":
+      case "kids":
+        return (
           <>
-            {/* 1. Baby Featured Brands */}
             <FeaturedBrands
               category="baby"
               onItemPress={(item) =>
                 handleCategoryPress(item.title, item.category)
               }
             />
-
-            {/* 2. Baby Essentials 7 Subcategories Grid */}
             <BabyCategories
               onItemPress={(item) =>
                 handleCategoryPress(item.name, item.subCategory)
               }
             />
-
-            {/* 3. Winter Essentials Cards */}
             <KidsWinterEssentials
               onItemPress={(item) =>
                 handleCategoryPress(item.title, item.category)
               }
             />
-
-            {/* 4. Baby Top Deals */}
             <TopDeals
               category="baby"
               title="Top Baby Deals"
@@ -696,82 +674,63 @@ export default function HomeScreen() {
               onAddPress={handleAddToCart}
               onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
               onSeeAllPress={() =>
-                router.push({
-                  pathname: "/Screens/Product/seeAllProductScreen" as any,
-                  params: {
-                    title: "Baby Deals & Picks",
-                    category: "baby",
-                    filter: "deals",
-                    minDiscount: "20",
-                  },
+                handleNavigateSeeAll({
+                  title: "Baby Deals & Picks",
+                  category: "baby",
+                  filter: "deals",
+                  minDiscount: "20",
                 })
               }
             />
-
-            {/* 5. Baby Subcategories Catalog (7 Sections) */}
             <SubCategories
               category="baby"
               onItemPress={(section, item) =>
                 handleCategoryPress(item.title, item.id)
               }
             />
-
-            {/* 6. Baby New Arrivals (Duo Cards) */}
             <NewArrivals
               category="baby"
               onCategoryPress={(cat) =>
                 handleCategoryPress(cat.title, cat.category)
               }
               onSeeAllPress={() =>
-                router.push({
-                  pathname: "/Screens/Product/seeAllProductScreen" as any,
-                  params: {
-                    title: "Baby New Arrivals",
-                    category: "baby",
-                    filter: "new_arrival",
-                  },
+                handleNavigateSeeAll({
+                  title: "Baby New Arrivals",
+                  category: "baby",
+                  filter: "new_arrival",
                 })
               }
             />
-
-            {/* 7. Baby Flash Sale */}
             <GroceryFlashSale
               category="baby"
               onProductPress={handleProductPress}
               onAddPress={handleAddToCart}
               onSeeAllPress={() =>
-                router.push({
-                  pathname: "/Screens/Product/seeAllProductScreen" as any,
-                  params: {
-                    title: "Baby Flash Sale",
-                    category: "baby",
-                    filter: "baby-flash-sale",
-                    minDiscount: "20",
-                  },
+                handleNavigateSeeAll({
+                  title: "Baby Flash Sale",
+                  category: "baby",
+                  filter: "baby-flash-sale",
+                  minDiscount: "20",
                 })
               }
             />
           </>
-        )}
+        );
 
-        {selectedCategory === "gifting" && (
+      case "gifting":
+        return (
           <>
-            {/* 1. Featured Gifting Brands */}
             <FeaturedBrands
               category="gifting"
               onItemPress={(item) =>
                 handleCategoryPress(item.title, item.category)
               }
             />
-
-            {/* 2. Gifting 8 Subcategories Grid */}
             <GiftingCategories
               onItemPress={(item) =>
                 handleCategoryPress(item.name, item.subCategory)
               }
             />
-
-            {/* 3. Top Gifting Deals */}
             <TopDeals
               category="gifting"
               title="Delightful Gift Deals"
@@ -779,93 +738,109 @@ export default function HomeScreen() {
               onAddPress={handleAddToCart}
               onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
               onSeeAllPress={() =>
-                router.push({
-                  pathname: "/Screens/Product/seeAllProductScreen" as any,
-                  params: {
-                    title: "Gift & Celebration Deals",
-                    category: "gifting",
-                    filter: "deals",
-                    minDiscount: "20",
-                  },
+                handleNavigateSeeAll({
+                  title: "Gift & Celebration Deals",
+                  category: "gifting",
+                  filter: "deals",
+                  minDiscount: "20",
                 })
               }
             />
-
-            {/* 4. Gifting Subcategories Catalog (8 Sections) */}
             <SubCategories
               category="gifting"
               onItemPress={(section, item) =>
                 handleCategoryPress(item.title, item.id)
               }
             />
-
-            {/* 5. Gifting New Arrivals */}
             <NewArrivals
               category="gifting"
               onCategoryPress={(cat) =>
                 handleCategoryPress(cat.title, cat.category)
               }
               onSeeAllPress={() =>
-                router.push({
-                  pathname: "/Screens/Product/seeAllProductScreen" as any,
-                  params: {
-                    title: "Gifting New Arrivals",
-                    category: "gifting",
-                    filter: "new_arrival",
-                  },
+                handleNavigateSeeAll({
+                  title: "Gifting New Arrivals",
+                  category: "gifting",
+                  filter: "new_arrival",
                 })
               }
             />
-
-            {/* 6. Gifting Flash Sale */}
             <GroceryFlashSale
               category="gifting"
               onProductPress={handleProductPress}
               onAddPress={handleAddToCart}
               onSeeAllPress={() =>
-                router.push({
-                  pathname: "/Screens/Product/seeAllProductScreen" as any,
-                  params: {
-                    title: "Gifting Flash Sale",
-                    category: "gifting",
-                    filter: "gifting-flash-sale",
-                    minDiscount: "20",
-                  },
+                handleNavigateSeeAll({
+                  title: "Gifting Flash Sale",
+                  category: "gifting",
+                  filter: "gifting-flash-sale",
+                  minDiscount: "20",
                 })
               }
             />
-
-            {/* 7. Promotional Banner & Sweet Delights */}
-            <CurvedPromoScroller
-              onPromoPress={(promo) =>
-                console.log("Promo clicked:", promo.title)
-              }
-            />
-
+            <CurvedPromoScroller onPromoPress={handlePromoPress} />
             <SweetTooth
               onProductPress={handleProductPress}
               onAddPress={handleAddToCart}
               onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
               onSeeAllPress={() =>
-                router.push({
-                  pathname: "/Screens/Product/seeAllProductScreen" as any,
-                  params: {
-                    title: "Sweet Tooth Delights",
-                    category: "gifting",
-                    filter: "sweet-tooth",
-                    minDiscount: "30",
-                  },
+                handleNavigateSeeAll({
+                  title: "Sweet Tooth Delights",
+                  category: "gifting",
+                  filter: "sweet-tooth",
+                  minDiscount: "30",
                 })
               }
             />
           </>
-        )}
+        );
+
+      default:
+        return null;
+    }
+  }, [
+    selectedCategory,
+    handleProductPress,
+    handleDealsOfTheDaysProductPress,
+    handleAddToCart,
+    handleCategoryPress,
+    handleNavigateCategoryExpand,
+    handleNavigateSeeAll,
+    handlePromoPress,
+  ]);
+
+  return (
+    <View style={containerStyle}>
+      <FloatingCartBar />
+
+      {/* Scrollable Home Screen Body */}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <StatusBar style="dark" />
+
+        {/* Top Header with Gradient, Store Location, SearchBar & Category Scroller */}
+        <Header
+          storeName="Delivery Address"
+          location={displayLocation}
+          selectedCategory={selectedCategory}
+          onSelectCategory={handleSelectCategory}
+          onLocationPress={handleOpenLocationModal}
+          onStorePress={handleStorePress}
+          onProfilePress={handleProfilePress}
+          onSearchPress={handleSearchPress}
+          onVoicePress={handleVoicePress}
+        />
+
+        {/* Dynamically Memoized Category Content */}
+        {categoryContent}
       </ScrollView>
 
       {/* Select Location Bottom Sheet Modal */}
       <SelectLocationModal
         visible={isLocationModalVisible}
-        onClose={() => setIsLocationModalVisible(false)}
+        onClose={handleCloseLocationModal}
       />
     </View>
   );
