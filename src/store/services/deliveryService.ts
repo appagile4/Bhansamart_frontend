@@ -158,6 +158,14 @@ export const deliveryService = {
     return response.data;
   },
 
+  cancelDelivery: async (orderId: string, reason: string, notes?: string) => {
+    const response = await api.post(`/delivery/assignments/${orderId}/cancel-delivery`, {
+      reason,
+      notes,
+    });
+    return response.data;
+  },
+
   // Earnings
   getEarningsSummary: async () => {
     const response = await api.get("/delivery/earnings/summary");

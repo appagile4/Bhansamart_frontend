@@ -2,6 +2,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import socketService from "@/store/services/socketService";
 import {
   acceptOfferedOrder,
+  cancelOrderDelivery,
   clearIncomingOffer,
   fetchActiveAssignment,
   fetchDeliveryProfile,
@@ -17,7 +18,7 @@ import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -32,7 +33,41 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import MapView, { Marker, Polyline, PROVIDER_DEFAULT, PROVIDER_GOOGLE } from "react-native-maps";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+const CANCELLATION_REASONS = [
+  {
+    id: "CUSTOMER_UNAVAILABLE",
+    label: "Customer Not Available / Phone Unreachable",
+    icon: "phone-off" as const,
+    description: "Door locked, or customer not answering phone after multiple calls.",
+  },
+  {
+    id: "CUSTOMER_CANCELLED",
+    label: "Customer Cancelled / Refused Delivery",
+    icon: "x-circle" as const,
+    description: "Customer explicitly refused to take delivery or cancelled on spot.",
+  },
+  {
+    id: "WRONG_PRODUCT",
+    label: "Product Wrong / Missing / Damaged",
+    icon: "alert-triangle" as const,
+    description: "Items in package do not match order, or items are leaking/damaged.",
+  },
+  {
+    id: "ADDRESS_UNREACHABLE",
+    label: "Address Incorrect / Road Inaccessible",
+    icon: "map-pin" as const,
+    description: "Could not find destination address or access route is blocked.",
+  },
+  {
+    id: "OTHER",
+    label: "Other Operational Issue",
+    icon: "info" as const,
+    description: "Vehicle breakdown, extreme weather, or emergency.",
+  },
+];
 
 export default function DeliveryDashboardScreen() {
   const router = useRouter();
@@ -55,6 +90,145 @@ export default function DeliveryDashboardScreen() {
   // Countdown timer for incoming offer
   const [timeLeft, setTimeLeft] = useState(45);
   const timerRef = useRef<any>(null);
+
+  // Google Map ref & coordinates for offer modal
+  const mapRef = useRef<MapView | null>(null);
+
+  // Delivery Cancellation / Return to Vendor Modal State
+  const [cancelModalVisible, setCancelModalVisible] = useState(false);
+  const [cancelReason, setCancelReason] = useState("CUSTOMER_UNAVAILABLE");
+  const [cancelNotes, setCancelNotes] = useState("");
+
+  // Live Navigation Google Map Modal State
+  const [navMapModal, setNavMapModal] = useState<{
+    visible: boolean;
+    targetType: "STORE" | "CUSTOMER" | null;
+    targetName: string;
+    targetAddress: string;
+    targetCoord: { latitude: number; longitude: number };
+  }>({
+    visible: false,
+    targetType: null,
+    targetName: "",
+    targetAddress: "",
+    targetCoord: { latitude: 27.7172, longitude: 85.3240 },
+  });
+  const navMapRef = useRef<MapView | null>(null);
+
+  // Delivery partner's current coordinate
+  const partnerCoord = useMemo(() => {
+    let lat = 27.7050;
+    let lng = 85.3150;
+    if (partner?.currentLocation?.coordinates && Array.isArray(partner.currentLocation.coordinates)) {
+      lng = Number(partner.currentLocation.coordinates[0]) || 85.3150;
+      lat = Number(partner.currentLocation.coordinates[1]) || 27.7050;
+    }
+    return { latitude: lat, longitude: lng };
+  }, [partner]);
+
+  // Compute bounding region for navigation modal
+  const navMapRegion = useMemo(() => {
+    const lat1 = partnerCoord.latitude;
+    const lng1 = partnerCoord.longitude;
+    const lat2 = navMapModal.targetCoord.latitude;
+    const lng2 = navMapModal.targetCoord.longitude;
+
+    const minLat = Math.min(lat1, lat2);
+    const maxLat = Math.max(lat1, lat2);
+    const minLng = Math.min(lng1, lng2);
+    const maxLng = Math.max(lng1, lng2);
+
+    return {
+      latitude: (minLat + maxLat) / 2,
+      longitude: (minLng + maxLng) / 2,
+      latitudeDelta: Math.max((maxLat - minLat) * 1.6, 0.02),
+      longitudeDelta: Math.max((maxLng - minLng) * 1.6, 0.02),
+    };
+  }, [partnerCoord, navMapModal.targetCoord]);
+
+  // Map coordinates calculation for order offer
+  const mapData = useMemo(() => {
+    if (!offeredAssignment) return null;
+
+    // Delivery boy / His location
+    let boyLat = 27.7050;
+    let boyLng = 85.3150;
+    if (offeredAssignment.partnerLocation && Array.isArray(offeredAssignment.partnerLocation)) {
+      boyLng = Number(offeredAssignment.partnerLocation[0]) || 85.3150;
+      boyLat = Number(offeredAssignment.partnerLocation[1]) || 27.7050;
+    } else if (partner?.currentLocation?.coordinates && Array.isArray(partner.currentLocation.coordinates)) {
+      boyLng = Number(partner.currentLocation.coordinates[0]) || 85.3150;
+      boyLat = Number(partner.currentLocation.coordinates[1]) || 27.7050;
+    }
+
+    // Store location
+    let storeLat = 27.7172;
+    let storeLng = 85.3240;
+    if (offeredAssignment.pickup?.coordinates && Array.isArray(offeredAssignment.pickup.coordinates)) {
+      storeLng = Number(offeredAssignment.pickup.coordinates[0]) || 85.3240;
+      storeLat = Number(offeredAssignment.pickup.coordinates[1]) || 27.7172;
+    }
+
+    // Customer / Delivery location
+    let dropLat = 27.7272;
+    let dropLng = 85.3340;
+    if (offeredAssignment.drop?.coordinates && Array.isArray(offeredAssignment.drop.coordinates)) {
+      dropLng = Number(offeredAssignment.drop.coordinates[0]) || 85.3340;
+      dropLat = Number(offeredAssignment.drop.coordinates[1]) || 27.7272;
+    }
+
+    const partnerCoord = { latitude: boyLat, longitude: boyLng };
+    const storeCoord = { latitude: storeLat, longitude: storeLng };
+    const dropCoord = { latitude: dropLat, longitude: dropLng };
+
+    // Bounding region
+    const minLat = Math.min(boyLat, storeLat, dropLat);
+    const maxLat = Math.max(boyLat, storeLat, dropLat);
+    const minLng = Math.min(boyLng, storeLng, dropLng);
+    const maxLng = Math.max(boyLng, storeLng, dropLng);
+
+    const latDelta = Math.max((maxLat - minLat) * 1.6, 0.025);
+    const lngDelta = Math.max((maxLng - minLng) * 1.6, 0.025);
+
+    const initialRegion = {
+      latitude: (minLat + maxLat) / 2,
+      longitude: (minLng + maxLng) / 2,
+      latitudeDelta: latDelta,
+      longitudeDelta: lngDelta,
+    };
+
+    return {
+      partnerCoord,
+      storeCoord,
+      dropCoord,
+      initialRegion,
+      allCoords: [partnerCoord, storeCoord, dropCoord],
+      leg1Coords: [partnerCoord, storeCoord],
+      leg2Coords: [storeCoord, dropCoord],
+    };
+  }, [offeredAssignment, partner]);
+
+  // Auto-fit map to show partner, store, and drop markers
+  const onMapReady = () => {
+    if (mapRef.current && mapData?.allCoords?.length) {
+      mapRef.current.fitToCoordinates(mapData.allCoords, {
+        edgePadding: { top: 40, right: 40, bottom: 40, left: 40 },
+        animated: true,
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (offeredAssignment && mapRef.current && mapData?.allCoords?.length) {
+      const timer = setTimeout(() => {
+        mapRef.current?.fitToCoordinates(mapData.allCoords, {
+          edgePadding: { top: 40, right: 40, bottom: 40, left: 40 },
+          animated: true,
+        });
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [offeredAssignment, mapData]);
 
   useEffect(() => {
     dispatch(fetchDeliveryProfile());
@@ -236,13 +410,104 @@ export default function DeliveryDashboardScreen() {
     }
   };
 
-  const openNavigation = (address: string) => {
-    const url = Platform.select({
-      ios: `maps:0,0?q=${encodeURIComponent(address)}`,
-      android: `geo:0,0?q=${encodeURIComponent(address)}`,
-      default: `https://maps.google.com/?q=${encodeURIComponent(address)}`,
+  const handleOpenStoreNavigation = () => {
+    if (!activeOrder) return;
+    const storeLat = Number(activeOrder.vendor?.shippingLocations?.latitude) || 27.7172;
+    const storeLng = Number(activeOrder.vendor?.shippingLocations?.longitude) || 85.3240;
+    setNavMapModal({
+      visible: true,
+      targetType: "STORE",
+      targetName: activeOrder.vendor?.name || "Grocery Store Pickup",
+      targetAddress: activeOrder.vendor?.address || "Store Warehouse",
+      targetCoord: { latitude: storeLat, longitude: storeLng },
     });
-    if (url) Linking.openURL(url);
+  };
+
+  const handleOpenCustomerNavigation = () => {
+    if (!activeOrder) return;
+    const dropLat = Number(activeOrder.deliveryLocation?.coordinates?.[1]) || 27.7272;
+    const dropLng = Number(activeOrder.deliveryLocation?.coordinates?.[0]) || 85.3340;
+    setNavMapModal({
+      visible: true,
+      targetType: "CUSTOMER",
+      targetName: activeOrder.customerName || "Customer Delivery",
+      targetAddress: activeOrder.deliveryAddress?.addressLine || "Delivery Destination",
+      targetCoord: { latitude: dropLat, longitude: dropLng },
+    });
+  };
+
+  const handleOpenExternalNavigation = (address: string, coord?: { latitude: number; longitude: number }) => {
+    let url = "";
+    if (coord && coord.latitude && coord.longitude) {
+      url = Platform.select({
+        ios: `maps:0,0?q=${coord.latitude},${coord.longitude}`,
+        android: `google.navigation:q=${coord.latitude},${coord.longitude}`,
+        default: `https://www.google.com/maps/dir/?api=1&destination=${coord.latitude},${coord.longitude}`,
+      }) || `https://www.google.com/maps/dir/?api=1&destination=${coord.latitude},${coord.longitude}`;
+    } else {
+      url = Platform.select({
+        ios: `maps:0,0?q=${encodeURIComponent(address)}`,
+        android: `geo:0,0?q=${encodeURIComponent(address)}`,
+        default: `https://maps.google.com/?q=${encodeURIComponent(address)}`,
+      }) || `https://maps.google.com/?q=${encodeURIComponent(address)}`;
+    }
+    Linking.openURL(url).catch(() => {
+      Alert.alert("Navigation", "Could not open map app on this device.");
+    });
+  };
+
+  const openNavigation = (address: string) => {
+    handleOpenExternalNavigation(address);
+  };
+
+  const handleConfirmCancelDelivery = async () => {
+    if (!activeOrder) return;
+
+    const currentAttempt = (activeOrder.deliveryCancellationCount || 0) + 1;
+    const isPermanent = currentAttempt >= 3;
+
+    Alert.alert(
+      isPermanent ? "Permanent Order Cancellation" : "Return Order to Store?",
+      isPermanent
+        ? "This is the 3rd failed delivery attempt. The order will be PERMANENTLY CANCELLED in the system, returned to vendor inventory, and customer will be refunded/notified."
+        : `This will mark cancellation attempt ${currentAttempt} of 3. You will return the package back to the store. The system will then dispatch the order to the next nearest delivery partner.`,
+      [
+        { text: "Dismiss", style: "cancel" },
+        {
+          text: isPermanent ? "Confirm Permanent Cancel" : "Return & Re-Dispatch",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const res = await dispatch(
+                cancelOrderDelivery({
+                  orderId: activeOrder._id,
+                  reason: cancelReason,
+                  notes: cancelNotes.trim(),
+                })
+              ).unwrap();
+
+              setCancelModalVisible(false);
+              setCancelNotes("");
+              dispatch(fetchActiveAssignment());
+
+              if (res.orderCancelled) {
+                Alert.alert(
+                  "Order Cancelled",
+                  `Maximum 3 delivery attempts reached. Order #${activeOrder.orderNumber} is now permanently cancelled. Please return items to the store.`
+                );
+              } else {
+                Alert.alert(
+                  "Delivery Returned",
+                  `Package marked returned to vendor (Attempt ${res.deliveryCancellationCount} of 3). System is dispatching to the next nearest partner.`
+                );
+              }
+            } catch (err: any) {
+              Alert.alert("Action Failed", err || "Failed to cancel delivery.");
+            }
+          },
+        },
+      ]
+    );
   };
 
   const dialPhone = (phone: string) => {
@@ -402,7 +667,7 @@ export default function DeliveryDashboardScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.actionCircleBtn}
-                  onPress={() => openNavigation(activeOrder.vendor?.address)}
+                  onPress={handleOpenStoreNavigation}
                 >
                   <Feather name="navigation" size={scale(16)} color="#0F766E" />
                 </TouchableOpacity>
@@ -484,9 +749,7 @@ export default function DeliveryDashboardScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.actionCircleBtn}
-                  onPress={() =>
-                    openNavigation(activeOrder.deliveryAddress?.addressLine)
-                  }
+                  onPress={handleOpenCustomerNavigation}
                 >
                   <Feather name="navigation" size={scale(16)} color="#2563EB" />
                 </TouchableOpacity>
@@ -540,6 +803,25 @@ export default function DeliveryDashboardScreen() {
                 )}
               </View>
             ) : null}
+
+            {/* Delivery Cancellation / Return Package to Store Action */}
+            <TouchableOpacity
+              style={styles.cancelDeliveryActionBtn}
+              onPress={() => setCancelModalVisible(true)}
+              activeOpacity={0.8}
+            >
+              <Feather name="alert-triangle" size={scale(14)} color="#DC2626" />
+              <Text style={styles.cancelDeliveryActionText}>
+                Cancel Delivery / Return to Store
+              </Text>
+              {(activeOrder.deliveryCancellationCount || 0) > 0 && (
+                <View style={styles.attemptsWarningBadge}>
+                  <Text style={styles.attemptsWarningText}>
+                    Attempt {activeOrder.deliveryCancellationCount}/3
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
           </View>
         ) : (
           /* Idle / Radar Card when no active orders */
@@ -598,11 +880,100 @@ export default function DeliveryDashboardScreen() {
               Order #{offeredAssignment?.orderNumber} • {offeredAssignment?.itemsCount || 1} Item(s)
             </Text>
 
-            {/* Pickup */}
+            {/* Interactive Live Route Map (Store, Partner Location & Delivery Location) */}
+            {mapData && (
+              <View style={styles.offerMapContainer}>
+                <MapView
+                  ref={mapRef}
+                  style={styles.offerMapView}
+                  provider={Platform.OS === "android" ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}
+                  initialRegion={mapData.initialRegion}
+                  onMapReady={onMapReady}
+                  showsCompass={false}
+                  toolbarEnabled={false}
+                  rotateEnabled={false}
+                >
+                  {/* Partner Current Location Marker */}
+                  <Marker
+                    coordinate={mapData.partnerCoord}
+                    title="My Location"
+                    description="Your current position"
+                  >
+                    <View style={styles.partnerMarkerPin}>
+                      <Text style={styles.markerEmoji}>🛵</Text>
+                    </View>
+                  </Marker>
+
+                  {/* Store Pickup Location Marker */}
+                  <Marker
+                    coordinate={mapData.storeCoord}
+                    title={offeredAssignment?.pickup?.storeName || "Store Pickup"}
+                    description={offeredAssignment?.pickup?.address || "Pickup warehouse"}
+                  >
+                    <View style={styles.storeMarkerPin}>
+                      <Text style={styles.markerEmoji}>🏬</Text>
+                    </View>
+                  </Marker>
+
+                  {/* Customer Drop Location Marker */}
+                  <Marker
+                    coordinate={mapData.dropCoord}
+                    title={offeredAssignment?.drop?.customerName || "Customer Drop"}
+                    description={offeredAssignment?.drop?.address || "Delivery destination"}
+                  >
+                    <View style={styles.customerMarkerPin}>
+                      <Text style={styles.markerEmoji}>🏠</Text>
+                    </View>
+                  </Marker>
+
+                  {/* Line 1: Partner -> Store Pickup (dashed teal) */}
+                  <Polyline
+                    coordinates={mapData.leg1Coords}
+                    strokeColor="#0F766E"
+                    strokeWidth={3}
+                    lineDashPattern={[6, 4]}
+                  />
+
+                  {/* Line 2: Store -> Customer Drop (solid blue) */}
+                  <Polyline
+                    coordinates={mapData.leg2Coords}
+                    strokeColor="#2563EB"
+                    strokeWidth={3.5}
+                  />
+                </MapView>
+
+                {/* Floating Way Route Legend Overlay */}
+                <View style={styles.mapRouteOverlay}>
+                  <View style={styles.mapRouteStep}>
+                    <Text style={styles.mapRouteIcon}>🛵</Text>
+                    <Text style={styles.mapRouteStepText}>You</Text>
+                  </View>
+                  <Feather name="arrow-right" size={scale(12)} color="#0F766E" />
+                  <View style={styles.mapRouteStep}>
+                    <Text style={styles.mapRouteIcon}>🏬</Text>
+                    <Text style={styles.mapRouteStepText}>Store</Text>
+                  </View>
+                  <Feather name="arrow-right" size={scale(12)} color="#2563EB" />
+                  <View style={styles.mapRouteStep}>
+                    <Text style={styles.mapRouteIcon}>🏠</Text>
+                    <Text style={styles.mapRouteStepText}>Drop</Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* Pickup Details */}
             <View style={styles.offerLocationRow}>
               <View style={styles.offerDotStore} />
               <View style={{ flex: 1, marginLeft: scale(10) }}>
-                <Text style={styles.offerLocationLabel}>PICKUP</Text>
+                <View style={styles.locationTitleRow}>
+                  <Text style={styles.offerLocationLabel}>PICKUP FROM</Text>
+                  {offeredAssignment?.pickup?.distanceKm ? (
+                    <Text style={styles.distanceBadgeText}>
+                      ~{offeredAssignment.pickup.distanceKm} km away
+                    </Text>
+                  ) : null}
+                </View>
                 <Text style={styles.offerLocationName}>
                   {offeredAssignment?.pickup?.storeName || "Store"}
                 </Text>
@@ -612,11 +983,11 @@ export default function DeliveryDashboardScreen() {
               </View>
             </View>
 
-            {/* Drop */}
+            {/* Drop Details */}
             <View style={styles.offerLocationRow}>
               <View style={styles.offerDotCustomer} />
               <View style={{ flex: 1, marginLeft: scale(10) }}>
-                <Text style={styles.offerLocationLabel}>DELIVERY TO</Text>
+                <Text style={styles.offerLocationLabel}>DELIVER TO</Text>
                 <Text style={styles.offerLocationName}>
                   {offeredAssignment?.drop?.customerName || "Customer"}
                 </Text>
@@ -641,6 +1012,242 @@ export default function DeliveryDashboardScreen() {
                 activeOpacity={0.85}
               >
                 <Text style={styles.acceptBtnText}>Accept Order</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── LIVE NAVIGATION GOOGLE MAP MODAL ──────────── */}
+      <Modal
+        visible={navMapModal.visible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setNavMapModal((prev) => ({ ...prev, visible: false }))}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.navMapCard}>
+            {/* Modal Header */}
+            <View style={styles.navMapHeaderRow}>
+              <View style={{ flex: 1 }}>
+                <View style={styles.navMapTypeBadge}>
+                  <Text style={styles.navMapTypeBadgeText}>
+                    {navMapModal.targetType === "STORE"
+                      ? "🏬 PICKUP NAVIGATION"
+                      : "🏠 CUSTOMER DROP NAVIGATION"}
+                  </Text>
+                </View>
+                <Text style={styles.navMapTitle}>{navMapModal.targetName}</Text>
+                <Text style={styles.navMapAddress} numberOfLines={1}>
+                  {navMapModal.targetAddress}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.navMapCloseBtn}
+                onPress={() => setNavMapModal((prev) => ({ ...prev, visible: false }))}
+              >
+                <Ionicons name="close" size={scale(20)} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Embedded Live Route Map */}
+            <View style={styles.navMapContainer}>
+              <MapView
+                ref={navMapRef}
+                style={styles.navMapView}
+                provider={Platform.OS === "android" ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}
+                initialRegion={navMapRegion}
+                showsCompass={true}
+              >
+                {/* Rider Current Location */}
+                <Marker
+                  coordinate={partnerCoord}
+                  title="My Location"
+                  description="Your current position"
+                >
+                  <View style={styles.partnerMarkerPin}>
+                    <Text style={styles.markerEmoji}>🛵</Text>
+                  </View>
+                </Marker>
+
+                {/* Target Destination */}
+                <Marker
+                  coordinate={navMapModal.targetCoord}
+                  title={navMapModal.targetName}
+                  description={navMapModal.targetAddress}
+                >
+                  <View
+                    style={
+                      navMapModal.targetType === "STORE"
+                        ? styles.storeMarkerPin
+                        : styles.customerMarkerPin
+                    }
+                  >
+                    <Text style={styles.markerEmoji}>
+                      {navMapModal.targetType === "STORE" ? "🏬" : "🏠"}
+                    </Text>
+                  </View>
+                </Marker>
+
+                {/* Connecting Route Way */}
+                <Polyline
+                  coordinates={[partnerCoord, navMapModal.targetCoord]}
+                  strokeColor={navMapModal.targetType === "STORE" ? "#0F766E" : "#2563EB"}
+                  strokeWidth={4}
+                  lineDashPattern={[6, 4]}
+                />
+              </MapView>
+
+              {/* Waypoint pill overlay */}
+              <View style={styles.navMapRoutePill}>
+                <Text style={styles.navMapRoutePillText}>
+                  🛵 You ➔ {navMapModal.targetType === "STORE" ? "🏬 Store" : "🏠 Customer"}
+                </Text>
+              </View>
+            </View>
+
+            {/* Action Buttons */}
+            <View style={styles.navMapActionRow}>
+              <TouchableOpacity
+                style={styles.navMapExternalBtn}
+                onPress={() =>
+                  handleOpenExternalNavigation(
+                    navMapModal.targetAddress,
+                    navMapModal.targetCoord
+                  )
+                }
+                activeOpacity={0.85}
+              >
+                <MaterialCommunityIcons name="google-maps" size={scale(18)} color="#FFFFFF" />
+                <Text style={styles.navMapExternalBtnText}>Open Turn-by-Turn GPS</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── DELIVERY CANCELLATION / RETURN TO STORE MODAL ──────────── */}
+      <Modal
+        visible={cancelModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setCancelModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.cancelModalCard}>
+            {/* Header */}
+            <View style={styles.cancelModalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.cancelModalTitle}>Cancel Delivery & Return</Text>
+                <Text style={styles.cancelModalSubtitle}>
+                  Order #{activeOrder?.orderNumber} • Select valid cancellation reason
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.cancelModalCloseBtn}
+                onPress={() => setCancelModalVisible(false)}
+              >
+                <Ionicons name="close" size={scale(20)} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Attempt notice box */}
+            <View style={styles.attemptNoticeBox}>
+              <Ionicons name="information-circle" size={scale(18)} color="#D97706" />
+              <View style={{ flex: 1, marginLeft: scale(8) }}>
+                <Text style={styles.attemptNoticeTitle}>
+                  Delivery Cancellation Attempt {((activeOrder?.deliveryCancellationCount || 0) + 1)} of 3
+                </Text>
+                <Text style={styles.attemptNoticeDesc}>
+                  {((activeOrder?.deliveryCancellationCount || 0) + 1) >= 3
+                    ? "Warning: Reaching 3 failed delivery cancellations will PERMANENTLY cancel this order in the system."
+                    : "You will return the package back to the store. The system will then dispatch the order to the next nearest delivery partner."}
+                </Text>
+              </View>
+            </View>
+
+            {/* Reasons List */}
+            <ScrollView style={styles.reasonsList} showsVerticalScrollIndicator={false}>
+              {CANCELLATION_REASONS.map((reason) => {
+                const isSelected = cancelReason === reason.id;
+                return (
+                  <TouchableOpacity
+                    key={reason.id}
+                    style={[
+                      styles.reasonOptionCard,
+                      isSelected && styles.reasonOptionCardSelected,
+                    ]}
+                    onPress={() => setCancelReason(reason.id)}
+                    activeOpacity={0.8}
+                  >
+                    <View
+                      style={[
+                        styles.reasonRadioCircle,
+                        isSelected && styles.reasonRadioCircleSelected,
+                      ]}
+                    >
+                      {isSelected && <View style={styles.reasonRadioInner} />}
+                    </View>
+                    <View style={{ flex: 1, marginLeft: scale(10) }}>
+                      <Text
+                        style={[
+                          styles.reasonLabel,
+                          isSelected && styles.reasonLabelSelected,
+                        ]}
+                      >
+                        {reason.label}
+                      </Text>
+                      <Text style={styles.reasonDescription}>
+                        {reason.description}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+
+              {/* Optional notes */}
+              <View style={styles.notesContainer}>
+                <Text style={styles.notesLabel}>Additional Notes (Optional):</Text>
+                <TextInput
+                  style={styles.notesInput}
+                  placeholder="e.g. Called customer 4 times, no response..."
+                  placeholderTextColor="#94A3B8"
+                  value={cancelNotes}
+                  onChangeText={setCancelNotes}
+                  multiline
+                  numberOfLines={2}
+                />
+              </View>
+            </ScrollView>
+
+            {/* Confirm Actions */}
+            <View style={styles.cancelModalActionsRow}>
+              <TouchableOpacity
+                style={styles.cancelModalDismissBtn}
+                onPress={() => setCancelModalVisible(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.cancelModalDismissText}>Go Back</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.cancelModalConfirmBtn,
+                  actionLoading && { opacity: 0.6 },
+                ]}
+                onPress={handleConfirmCancelDelivery}
+                disabled={actionLoading}
+                activeOpacity={0.85}
+              >
+                {actionLoading ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.cancelModalConfirmText}>
+                    {((activeOrder?.deliveryCancellationCount || 0) + 1) >= 3
+                      ? "Confirm Permanent Cancel"
+                      : "Return to Store & Re-Dispatch"}
+                  </Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -1029,6 +1636,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: moderateScale(12),
   },
+  locationTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  distanceBadgeText: {
+    fontSize: moderateScale(10),
+    fontWeight: "700",
+    color: "#0F766E",
+  },
   offerDotStore: {
     width: scale(12),
     height: scale(12),
@@ -1054,6 +1671,99 @@ const styles = StyleSheet.create({
   offerLocationAddress: {
     fontSize: moderateScale(11),
     color: "#64748B",
+  },
+  offerMapContainer: {
+    width: "100%",
+    height: scale(190),
+    borderRadius: scale(14),
+    overflow: "hidden",
+    marginVertical: moderateScale(12),
+    position: "relative",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  offerMapView: {
+    width: "100%",
+    height: "100%",
+  },
+  partnerMarkerPin: {
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(16),
+    backgroundColor: "#0F766E",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+  },
+  storeMarkerPin: {
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(16),
+    backgroundColor: "#D97706",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+  },
+  customerMarkerPin: {
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(16),
+    backgroundColor: "#2563EB",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+  },
+  markerEmoji: {
+    fontSize: moderateScale(14),
+  },
+  mapRouteOverlay: {
+    position: "absolute",
+    top: moderateScale(8),
+    left: scale(8),
+    right: scale(8),
+    backgroundColor: "rgba(255, 255, 255, 0.94)",
+    borderRadius: scale(8),
+    paddingVertical: moderateScale(5),
+    paddingHorizontal: scale(10),
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+  },
+  mapRouteStep: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(4),
+  },
+  mapRouteIcon: {
+    fontSize: moderateScale(12),
+  },
+  mapRouteStepText: {
+    fontSize: moderateScale(11),
+    fontWeight: "700",
+    color: "#1E293B",
   },
   modalButtonsRow: {
     flexDirection: "row",
@@ -1081,6 +1791,276 @@ const styles = StyleSheet.create({
   },
   acceptBtnText: {
     fontSize: moderateScale(14),
+    fontWeight: "800",
+    color: "#FFFFFF",
+  },
+  cancelDeliveryActionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    borderRadius: scale(10),
+    paddingVertical: moderateScale(10),
+    paddingHorizontal: scale(14),
+    marginTop: moderateScale(14),
+    gap: scale(6),
+  },
+  cancelDeliveryActionText: {
+    fontSize: moderateScale(12.5),
+    fontWeight: "700",
+    color: "#DC2626",
+  },
+  attemptsWarningBadge: {
+    backgroundColor: "#FEE2E2",
+    borderRadius: scale(10),
+    paddingHorizontal: scale(6),
+    paddingVertical: moderateScale(2),
+    marginLeft: scale(4),
+  },
+  attemptsWarningText: {
+    fontSize: moderateScale(10),
+    fontWeight: "800",
+    color: "#991B1B",
+  },
+  navMapCard: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: scale(24),
+    borderTopRightRadius: scale(24),
+    padding: scale(18),
+    paddingBottom: moderateScale(28),
+    maxHeight: "92%",
+  },
+  navMapHeaderRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    marginBottom: moderateScale(12),
+  },
+  navMapTypeBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: "#F0FDFA",
+    borderWidth: 1,
+    borderColor: "#CCFBF1",
+    paddingHorizontal: scale(8),
+    paddingVertical: moderateScale(3),
+    borderRadius: scale(6),
+    marginBottom: moderateScale(4),
+  },
+  navMapTypeBadgeText: {
+    fontSize: moderateScale(10),
+    fontWeight: "800",
+    color: "#0F766E",
+  },
+  navMapTitle: {
+    fontSize: moderateScale(16),
+    fontWeight: "800",
+    color: "#0F172A",
+  },
+  navMapAddress: {
+    fontSize: moderateScale(12),
+    color: "#64748B",
+    marginTop: moderateScale(2),
+  },
+  navMapCloseBtn: {
+    padding: scale(6),
+    borderRadius: scale(20),
+    backgroundColor: "#F1F5F9",
+  },
+  navMapContainer: {
+    width: "100%",
+    height: scale(240),
+    borderRadius: scale(14),
+    overflow: "hidden",
+    position: "relative",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    marginBottom: moderateScale(14),
+  },
+  navMapView: {
+    width: "100%",
+    height: "100%",
+  },
+  navMapRoutePill: {
+    position: "absolute",
+    bottom: moderateScale(10),
+    alignSelf: "center",
+    backgroundColor: "rgba(15, 23, 42, 0.85)",
+    paddingHorizontal: scale(14),
+    paddingVertical: moderateScale(6),
+    borderRadius: scale(20),
+  },
+  navMapRoutePillText: {
+    fontSize: moderateScale(11),
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  navMapActionRow: {
+    flexDirection: "row",
+    gap: scale(10),
+  },
+  navMapExternalBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#0F766E",
+    paddingVertical: moderateScale(12),
+    borderRadius: scale(10),
+    gap: scale(6),
+  },
+  navMapExternalBtnText: {
+    fontSize: moderateScale(13),
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  cancelModalCard: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: scale(24),
+    borderTopRightRadius: scale(24),
+    padding: scale(18),
+    paddingBottom: moderateScale(28),
+    maxHeight: "92%",
+  },
+  cancelModalHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    marginBottom: moderateScale(12),
+  },
+  cancelModalTitle: {
+    fontSize: moderateScale(17),
+    fontWeight: "800",
+    color: "#0F172A",
+  },
+  cancelModalSubtitle: {
+    fontSize: moderateScale(11.5),
+    color: "#64748B",
+    marginTop: moderateScale(2),
+  },
+  cancelModalCloseBtn: {
+    padding: scale(6),
+    borderRadius: scale(20),
+    backgroundColor: "#F1F5F9",
+  },
+  attemptNoticeBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    backgroundColor: "#FFFBEB",
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+    borderRadius: scale(10),
+    padding: scale(10),
+    marginBottom: moderateScale(12),
+  },
+  attemptNoticeTitle: {
+    fontSize: moderateScale(12),
+    fontWeight: "800",
+    color: "#B45309",
+  },
+  attemptNoticeDesc: {
+    fontSize: moderateScale(11),
+    color: "#92400E",
+    marginTop: moderateScale(2),
+    lineHeight: moderateScale(15),
+  },
+  reasonsList: {
+    maxHeight: scale(260),
+    marginBottom: moderateScale(10),
+  },
+  reasonOptionCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1.5,
+    borderColor: "#E2E8F0",
+    borderRadius: scale(10),
+    padding: scale(12),
+    marginBottom: moderateScale(8),
+  },
+  reasonOptionCardSelected: {
+    backgroundColor: "#FEF2F2",
+    borderColor: "#EF4444",
+  },
+  reasonRadioCircle: {
+    width: scale(18),
+    height: scale(18),
+    borderRadius: scale(9),
+    borderWidth: 2,
+    borderColor: "#94A3B8",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reasonRadioCircleSelected: {
+    borderColor: "#EF4444",
+  },
+  reasonRadioInner: {
+    width: scale(10),
+    height: scale(10),
+    borderRadius: scale(5),
+    backgroundColor: "#EF4444",
+  },
+  reasonLabel: {
+    fontSize: moderateScale(12.5),
+    fontWeight: "700",
+    color: "#1E293B",
+  },
+  reasonLabelSelected: {
+    color: "#DC2626",
+  },
+  reasonDescription: {
+    fontSize: moderateScale(11),
+    color: "#64748B",
+    marginTop: moderateScale(2),
+  },
+  notesContainer: {
+    marginTop: moderateScale(6),
+    marginBottom: moderateScale(10),
+  },
+  notesLabel: {
+    fontSize: moderateScale(11.5),
+    fontWeight: "700",
+    color: "#475569",
+    marginBottom: moderateScale(4),
+  },
+  notesInput: {
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    borderRadius: scale(8),
+    padding: scale(10),
+    fontSize: moderateScale(12),
+    color: "#0F172A",
+    minHeight: scale(45),
+    textAlignVertical: "top",
+  },
+  cancelModalActionsRow: {
+    flexDirection: "row",
+    gap: scale(10),
+    marginTop: moderateScale(10),
+  },
+  cancelModalDismissBtn: {
+    flex: 1,
+    backgroundColor: "#F1F5F9",
+    paddingVertical: moderateScale(12),
+    borderRadius: scale(10),
+    alignItems: "center",
+  },
+  cancelModalDismissText: {
+    fontSize: moderateScale(13),
+    fontWeight: "700",
+    color: "#64748B",
+  },
+  cancelModalConfirmBtn: {
+    flex: 2,
+    backgroundColor: "#DC2626",
+    paddingVertical: moderateScale(12),
+    borderRadius: scale(10),
+    alignItems: "center",
+  },
+  cancelModalConfirmText: {
+    fontSize: moderateScale(13),
     fontWeight: "800",
     color: "#FFFFFF",
   },

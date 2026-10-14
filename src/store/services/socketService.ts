@@ -300,6 +300,10 @@ class SocketService {
       this.socket?.off("delivery:partner:assigned", wrappedHandler);
     };
   }
+
+  public getSocket(): Socket | null {
+    return this.socket;
+  }
 }
 
 export const socketService = new SocketService();

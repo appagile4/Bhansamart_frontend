@@ -234,6 +234,21 @@ export const verifyOrderDeliveryOtp = createAsyncThunk(
   }
 );
 
+export const cancelOrderDelivery = createAsyncThunk(
+  "delivery/cancelOrderDelivery",
+  async (
+    { orderId, reason, notes }: { orderId: string; reason: string; notes?: string },
+    { rejectWithValue }
+  ) => {
+    try {
+      const res = await deliveryService.cancelDelivery(orderId, reason, notes);
+      return res;
+    } catch (error: any) {
+      return rejectWithValue(error.message || "Failed to cancel delivery");
+    }
+  }
+);
+
 export const fetchEarningsSummary = createAsyncThunk(
   "delivery/fetchEarnings",
   async (_, { rejectWithValue }) => {
@@ -465,6 +480,22 @@ export const deliverySlice = createSlice({
         state.earnings.wallet.currentBalance = action.payload.walletBalance;
       })
       .addCase(verifyOrderDeliveryOtp.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload as string;
+      });
+
+    // cancelOrderDelivery
+    builder
+      .addCase(cancelOrderDelivery.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(cancelOrderDelivery.fulfilled, (state) => {
+        state.actionLoading = false;
+        state.activeOrder = null;
+        state.availability = "ONLINE";
+      })
+      .addCase(cancelOrderDelivery.rejected, (state, action) => {
         state.actionLoading = false;
         state.error = action.payload as string;
       });
