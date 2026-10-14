@@ -33,7 +33,7 @@ export default function VendorHeader({
   showMenu = true,
   showNotification = true,
   showProfile = true,
-  unreadCount = 2,
+  unreadCount: customUnreadCount,
   onPressMenu,
   onPressNotification,
   onPressProfile,
@@ -45,7 +45,11 @@ export default function VendorHeader({
   const { vendorUser, vendorDetails } = useAppSelector(
     (state) => state.vendorAuth,
   );
+  const financeUnreadCount = useAppSelector(
+    (state) => state.vendorFinance?.unreadCount ?? 0
+  );
 
+  const unreadCount = customUnreadCount !== undefined ? customUnreadCount : financeUnreadCount;
   const [menuVisible, setMenuVisible] = useState(false);
 
   const defaultTitle =
@@ -82,6 +86,8 @@ export default function VendorHeader({
   const handleNotificationPress = () => {
     if (onPressNotification) {
       onPressNotification();
+    } else {
+      router.push("/Screens/vendorScreens/notifications" as any);
     }
   };
 
@@ -144,7 +150,7 @@ export default function VendorHeader({
             >
               <Feather name="bell" size={scale(19)} color="#016073" />
               {unreadCount > 0 && (
-                <View style={styles.badge}>
+                <View style={styles.badge} pointerEvents="none">
                   <Text style={styles.badgeText}>
                     {unreadCount > 9 ? "9+" : unreadCount}
                   </Text>

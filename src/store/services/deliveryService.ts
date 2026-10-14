@@ -151,9 +151,10 @@ export const deliveryService = {
     return response.data;
   },
 
-  verifyDeliveryOtp: async (orderId: string, otp: string) => {
+  verifyDeliveryOtp: async (orderId: string, otp: string, paymentMode?: string) => {
     const response = await api.post(`/delivery/assignments/${orderId}/verify-delivery-otp`, {
       otp,
+      paymentMode,
     });
     return response.data;
   },
@@ -169,6 +170,11 @@ export const deliveryService = {
   // Earnings
   getEarningsSummary: async () => {
     const response = await api.get("/delivery/earnings/summary");
+    return response.data;
+  },
+
+  getCodCustodySummary: async () => {
+    const response = await api.get("/delivery/earnings/cod-custody");
     return response.data;
   },
 };

@@ -15,6 +15,7 @@ import {
 } from "@/store/slices/deliverySlice";
 import { moderateScale, scale } from "@/theme";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -86,6 +87,9 @@ export default function DeliveryDashboardScreen() {
   // OTP inputs
   const [pickupOtpInput, setPickupOtpInput] = useState("");
   const [deliveryOtpInput, setDeliveryOtpInput] = useState("");
+
+  // Payment mode for COD delivery at customer location: "CASH" (physical) or "DIRECT_QR" (vendor store QR)
+  const [selectedPaymentMode, setSelectedPaymentMode] = useState<"CASH" | "DIRECT_QR">("CASH");
 
   // Countdown timer for incoming offer
   const [timeLeft, setTimeLeft] = useState(45);
@@ -395,15 +399,31 @@ export default function DeliveryDashboardScreen() {
       Alert.alert("Required", "Please enter the Delivery OTP provided by the customer.");
       return;
     }
+
+    const isCod = activeOrder.paymentMethod === "Cash on delivery";
+    const paymentMode = isCod ? selectedPaymentMode : undefined;
+
     try {
       const res = await dispatch(
-        verifyOrderDeliveryOtp({ orderId: activeOrder._id, otp: deliveryOtpInput.trim() })
+        verifyOrderDeliveryOtp({
+          orderId: activeOrder._id,
+          otp: deliveryOtpInput.trim(),
+          paymentMode,
+        })
       ).unwrap();
       setDeliveryOtpInput("");
       dispatch(fetchActiveAssignment());
+
+      const paymentMsg =
+        paymentMode === "DIRECT_QR"
+          ? `Online payment of ₹${activeOrder.totalAmount} was paid directly to the Store QR.`
+          : isCod
+          ? `Collected ₹${activeOrder.totalAmount} physical cash (custody).`
+          : "Prepaid order delivered.";
+
       Alert.alert(
         "Order Delivered!",
-        `Congratulations! Delivery completed successfully.\nEarnings credited: ₹${res.earnings?.totalEarnings || 60}`
+        `Congratulations! Delivery completed successfully.\n${paymentMsg}\nEarnings credited to your wallet: ₹${res.earnings?.totalEarnings || 60}`
       );
     } catch (err: any) {
       Alert.alert("Verification Failed", err || "Invalid Delivery OTP. Check with the customer.");
@@ -590,6 +610,32 @@ export default function DeliveryDashboardScreen() {
           </TouchableOpacity>
         )}
 
+        {/* COD Cash in Hand Alert Banner */}
+        {Number(partner?.codCashInCustody || 0) > 0 && (
+          <TouchableOpacity
+            style={styles.codAlertBanner}
+            onPress={() => router.push("/DeliveryMain/wallet" as any)}
+            activeOpacity={0.85}
+          >
+            <View style={styles.codAlertIconBox}>
+              <MaterialCommunityIcons
+                name="hand-coin"
+                size={scale(20)}
+                color="#D97706"
+              />
+            </View>
+            <View style={{ flex: 1, marginLeft: scale(10) }}>
+              <Text style={styles.codAlertTitle}>
+                ₹{Number(partner?.codCashInCustody || 0).toFixed(2)} COD Cash in Hand
+              </Text>
+              <Text style={styles.codAlertSub}>
+                Cash collected from customers. Tap to view vendor store breakdown & submit cash.
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={scale(18)} color="#92400E" />
+          </TouchableOpacity>
+        )}
+
         {/* ── ACTIVE ORDER CARD ────────────────────────────────────────── */}
         {activeOrder ? (
           <View style={styles.activeOrderCard}>
@@ -770,6 +816,168 @@ export default function DeliveryDashboardScreen() {
                   </TouchableOpacity>
                 ) : (
                   <View style={styles.otpVerifyContainer}>
+                    {/* COD Payment Method Selector & Store QR Display */}
+                    {activeOrder.paymentMethod === "Cash on delivery" ? (
+                      <View style={styles.paymentMethodSelectionBox}>
+                        <Text style={styles.paymentSelectionTitle}>
+                          Payment Collection Option:
+                        </Text>
+                        <View style={styles.paymentToggleRow}>
+                          {/* Option 1: Cash */}
+                          <TouchableOpacity
+                            activeOpacity={0.8}
+                            onPress={() => setSelectedPaymentMode("CASH")}
+                            style={[
+                              styles.paymentOptionBtn,
+                              selectedPaymentMode === "CASH" && styles.paymentOptionBtnActiveCash,
+                            ]}
+                          >
+                            <MaterialCommunityIcons
+                              name="cash-multiple"
+                              size={scale(18)}
+                              color={selectedPaymentMode === "CASH" ? "#15803D" : "#64748B"}
+                            />
+                            <View style={{ marginLeft: scale(6), flex: 1 }}>
+                              <Text
+                                style={[
+                                  styles.paymentOptionBtnText,
+                                  selectedPaymentMode === "CASH" && styles.paymentOptionBtnTextActiveCash,
+                                ]}
+                              >
+                                1. Cash Payment
+                              </Text>
+                              <Text style={styles.paymentOptionSubText}>
+                                Collect ₹{activeOrder.totalAmount}
+                              </Text>
+                            </View>
+                            {selectedPaymentMode === "CASH" && (
+                              <Ionicons name="checkmark-circle" size={scale(16)} color="#15803D" />
+                            )}
+                          </TouchableOpacity>
+
+                          {/* Option 2: Online Payment / Vendor Store QR */}
+                          <TouchableOpacity
+                            activeOpacity={0.8}
+                            onPress={() => setSelectedPaymentMode("DIRECT_QR")}
+                            style={[
+                              styles.paymentOptionBtn,
+                              selectedPaymentMode === "DIRECT_QR" && styles.paymentOptionBtnActiveQr,
+                            ]}
+                          >
+                            <MaterialCommunityIcons
+                              name="qrcode-scan"
+                              size={scale(18)}
+                              color={selectedPaymentMode === "DIRECT_QR" ? "#0F766E" : "#64748B"}
+                            />
+                            <View style={{ marginLeft: scale(6), flex: 1 }}>
+                              <Text
+                                style={[
+                                  styles.paymentOptionBtnText,
+                                  selectedPaymentMode === "DIRECT_QR" && styles.paymentOptionBtnTextActiveQr,
+                                ]}
+                              >
+                                2. Online (Store QR)
+                              </Text>
+                              <Text style={styles.paymentOptionSubText}>
+                                Direct to Vendor
+                              </Text>
+                            </View>
+                            {selectedPaymentMode === "DIRECT_QR" && (
+                              <Ionicons name="checkmark-circle" size={scale(16)} color="#0F766E" />
+                            )}
+                          </TouchableOpacity>
+                        </View>
+
+                        {/* Detail Card based on selected option */}
+                        {selectedPaymentMode === "CASH" ? (
+                          <View style={styles.cashNoticeBox}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: scale(6) }}>
+                              <Feather name="dollar-sign" size={scale(15)} color="#15803D" />
+                              <Text style={styles.cashNoticeTitle}>
+                                Physical Cash Collection: ₹{activeOrder.totalAmount}
+                              </Text>
+                            </View>
+                            <Text style={styles.cashNoticeText}>
+                              Collect physical cash from the customer. You must submit this collected cash at the vendor store counter.
+                            </Text>
+                          </View>
+                        ) : (
+                          <View style={styles.qrDisplayCard}>
+                            <View style={styles.qrHeaderRow}>
+                              <MaterialCommunityIcons name="storefront-outline" size={scale(16)} color="#0F766E" />
+                              <Text style={styles.qrStoreTitle} numberOfLines={1}>
+                                {activeOrder.vendor?.name || "Store"} Payment QR
+                              </Text>
+                            </View>
+                            <Text style={styles.qrExplainer}>
+                              Customer scans this QR code to pay directly to the vendor's bank/UPI account. This will not be added to rider cash custody or vendor app wallet.
+                            </Text>
+
+                            {/* QR Code Preview Box */}
+                            <View style={styles.qrImageContainer}>
+                              {activeOrder.vendor?.paymentSettings?.qrCodeUrl ? (
+                                <Image
+                                  source={{ uri: activeOrder.vendor.paymentSettings.qrCodeUrl }}
+                                  style={styles.qrCodeImage}
+                                  contentFit="contain"
+                                />
+                              ) : activeOrder.vendor?.paymentSettings?.upiId ? (
+                                <Image
+                                  source={{
+                                    uri: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
+                                      `upi://pay?pa=${activeOrder.vendor.paymentSettings.upiId}&pn=${encodeURIComponent(
+                                        activeOrder.vendor?.paymentSettings?.accountName ||
+                                          activeOrder.vendor?.name ||
+                                          "Store"
+                                      )}&am=${activeOrder.totalAmount}&cu=INR`
+                                    )}`,
+                                  }}
+                                  style={styles.qrCodeImage}
+                                  contentFit="contain"
+                                />
+                              ) : (
+                                <View style={styles.qrPlaceholderBox}>
+                                  <MaterialCommunityIcons name="qrcode" size={scale(50)} color="#94A3B8" />
+                                  <Text style={styles.qrPlaceholderText}>
+                                    No QR/UPI uploaded by store. Please collect cash.
+                                  </Text>
+                                </View>
+                              )}
+                            </View>
+
+                            {/* Store UPI & Account Details */}
+                            {activeOrder.vendor?.paymentSettings?.upiId ? (
+                              <View style={styles.upiDetailsPill}>
+                                <Text style={styles.upiPillLabel}>Store UPI:</Text>
+                                <Text style={styles.upiPillValue} numberOfLines={1}>
+                                  {activeOrder.vendor.paymentSettings.upiId}
+                                </Text>
+                              </View>
+                            ) : null}
+
+                            <View style={styles.qrAmountRow}>
+                              <Text style={styles.qrAmountLabel}>Total Bill Amount:</Text>
+                              <Text style={styles.qrAmountValue}>₹{activeOrder.totalAmount}</Text>
+                            </View>
+
+                            <Text style={styles.qrVerifyNotice}>
+                              ⚠️ Verify the payment success message on customer's screen before entering the Delivery OTP.
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    ) : (
+                      <View style={styles.prepaidNoticeBox}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: scale(6) }}>
+                          <Ionicons name="checkmark-done-circle" size={scale(16)} color="#15803D" />
+                          <Text style={styles.prepaidNoticeTitle}>Prepaid Online Order</Text>
+                        </View>
+                        <Text style={styles.prepaidNoticeText}>
+                          This order was already paid online by the customer. No cash collection required.
+                        </Text>
+                      </View>
+                    )}
+
                     <Text style={styles.otpPromptTitle}>
                       Enter 4-Digit Delivery OTP from Customer:
                     </Text>
@@ -1348,6 +1556,34 @@ const styles = StyleSheet.create({
     color: "#92400E",
   },
   alertBannerSub: {
+    fontSize: moderateScale(11),
+    color: "#B45309",
+    marginTop: moderateScale(2),
+  },
+  codAlertBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FEF3C7",
+    borderWidth: 1.5,
+    borderColor: "#FCD34D",
+    borderRadius: scale(12),
+    padding: scale(12),
+    marginBottom: moderateScale(16),
+  },
+  codAlertIconBox: {
+    width: scale(36),
+    height: scale(36),
+    borderRadius: scale(18),
+    backgroundColor: "#FDE68A",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  codAlertTitle: {
+    fontSize: moderateScale(13),
+    fontWeight: "800",
+    color: "#92400E",
+  },
+  codAlertSub: {
     fontSize: moderateScale(11),
     color: "#B45309",
     marginTop: moderateScale(2),
@@ -2063,5 +2299,189 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(13),
     fontWeight: "800",
     color: "#FFFFFF",
+  },
+  paymentMethodSelectionBox: {
+    marginBottom: moderateScale(12),
+  },
+  paymentSelectionTitle: {
+    fontSize: moderateScale(11.5),
+    fontWeight: "800",
+    color: "#0F766E",
+    marginBottom: moderateScale(8),
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  paymentToggleRow: {
+    flexDirection: "row",
+    gap: scale(8),
+    marginBottom: moderateScale(10),
+  },
+  paymentOptionBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    paddingVertical: moderateScale(10),
+    paddingHorizontal: scale(10),
+    borderRadius: scale(10),
+    borderWidth: 1.5,
+    borderColor: "#E2E8F0",
+  },
+  paymentOptionBtnActiveCash: {
+    backgroundColor: "#F0FDF4",
+    borderColor: "#16A34A",
+  },
+  paymentOptionBtnActiveQr: {
+    backgroundColor: "#E6F4F6",
+    borderColor: "#016073",
+  },
+  paymentOptionBtnText: {
+    fontSize: moderateScale(11.5),
+    fontWeight: "700",
+    color: "#475569",
+  },
+  paymentOptionBtnTextActiveCash: {
+    color: "#15803D",
+  },
+  paymentOptionBtnTextActiveQr: {
+    color: "#016073",
+  },
+  paymentOptionSubText: {
+    fontSize: moderateScale(10),
+    color: "#64748B",
+    marginTop: scale(1),
+  },
+  cashNoticeBox: {
+    backgroundColor: "#F0FDF4",
+    borderRadius: scale(10),
+    padding: scale(10),
+    borderWidth: 1,
+    borderColor: "#BBF7D0",
+    marginBottom: moderateScale(10),
+  },
+  cashNoticeTitle: {
+    fontSize: moderateScale(12),
+    fontWeight: "800",
+    color: "#15803D",
+  },
+  cashNoticeText: {
+    fontSize: moderateScale(11),
+    color: "#166534",
+    marginTop: scale(3),
+    lineHeight: scale(15),
+  },
+  qrDisplayCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: scale(12),
+    padding: scale(12),
+    borderWidth: 1.5,
+    borderColor: "#016073",
+    alignItems: "center",
+    marginBottom: moderateScale(10),
+  },
+  qrHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(6),
+  },
+  qrStoreTitle: {
+    fontSize: moderateScale(13),
+    fontWeight: "800",
+    color: "#016073",
+  },
+  qrExplainer: {
+    fontSize: moderateScale(10.5),
+    color: "#475569",
+    textAlign: "center",
+    marginTop: scale(4),
+    marginBottom: scale(8),
+    lineHeight: scale(14),
+  },
+  qrImageContainer: {
+    width: scale(160),
+    height: scale(160),
+    backgroundColor: "#F8FAFC",
+    borderRadius: scale(10),
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    marginVertical: scale(4),
+  },
+  qrCodeImage: {
+    width: "100%",
+    height: "100%",
+  },
+  qrPlaceholderBox: {
+    alignItems: "center",
+    paddingHorizontal: scale(10),
+  },
+  qrPlaceholderText: {
+    fontSize: moderateScale(10),
+    color: "#94A3B8",
+    textAlign: "center",
+    marginTop: scale(4),
+  },
+  upiDetailsPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(4),
+    backgroundColor: "#F1F5F9",
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(4),
+    borderRadius: scale(12),
+    marginTop: scale(8),
+  },
+  upiPillLabel: {
+    fontSize: moderateScale(10.5),
+    fontWeight: "700",
+    color: "#475569",
+  },
+  upiPillValue: {
+    fontSize: moderateScale(11),
+    fontWeight: "800",
+    color: "#0F172A",
+  },
+  qrAmountRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(6),
+    marginTop: scale(8),
+  },
+  qrAmountLabel: {
+    fontSize: moderateScale(12),
+    color: "#475569",
+    fontWeight: "600",
+  },
+  qrAmountValue: {
+    fontSize: moderateScale(14),
+    fontWeight: "800",
+    color: "#0F766E",
+  },
+  qrVerifyNotice: {
+    fontSize: moderateScale(10),
+    color: "#D97706",
+    fontWeight: "600",
+    marginTop: scale(8),
+    textAlign: "center",
+  },
+  prepaidNoticeBox: {
+    backgroundColor: "#F0FDF4",
+    borderRadius: scale(10),
+    padding: scale(10),
+    borderWidth: 1,
+    borderColor: "#BBF7D0",
+    marginBottom: moderateScale(10),
+  },
+  prepaidNoticeTitle: {
+    fontSize: moderateScale(12),
+    fontWeight: "800",
+    color: "#15803D",
+  },
+  prepaidNoticeText: {
+    fontSize: moderateScale(11),
+    color: "#166534",
+    marginTop: scale(2),
   },
 });

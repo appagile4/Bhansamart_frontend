@@ -79,10 +79,23 @@ const MAIN_MENU_ITEMS: MenuItem[] = [
   },
   {
     id: "transactions",
-    title: "Transaction",
+    title: "Transactions & Wallet",
     iconName: "dollar-sign",
     iconType: "feather",
     route: "/VendorMain/transaction",
+    hasDropdown: true,
+    subItems: [
+      { id: "all_txns", title: "Transaction History", route: "/VendorMain/transaction" },
+      { id: "cod_handover", title: "COD Cash Handover", route: "/Screens/vendorScreens/cod-handover" },
+      { id: "payment_qr", title: "Payment QR & UPI", route: "/Screens/vendorScreens/payment-qr" },
+    ],
+  },
+  {
+    id: "notifications",
+    title: "Notifications",
+    iconName: "bell",
+    iconType: "feather",
+    route: "/Screens/vendorScreens/notifications",
   },
   {
     id: "delivery",

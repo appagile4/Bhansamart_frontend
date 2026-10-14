@@ -22,6 +22,26 @@ export interface DeliveryState {
     week: { earnings: number; deliveriesCount: number };
     transactions: any[];
   };
+  codCustody: {
+    currentCashInCustody: number;
+    totalCashCollected: number;
+    totalCashSubmitted: number;
+    vendorBreakdown: {
+      vendorId: string;
+      storeName: string;
+      storePhone: string;
+      storeAddress: string;
+      city: string;
+      totalCollected: number;
+      totalSubmitted: number;
+      pendingHandover: number;
+      pendingOrdersCount: number;
+      submittedOrdersCount: number;
+      orders: any[];
+    }[];
+    handovers: any[];
+    loading: boolean;
+  };
   securityDeposit: {
     status: "PENDING" | "PAID" | "REFUND_REQUESTED" | "REFUNDED";
     paidAmount: number;
@@ -52,6 +72,14 @@ const initialState: DeliveryState = {
     today: { earnings: 0, deliveriesCount: 0 },
     week: { earnings: 0, deliveriesCount: 0 },
     transactions: [],
+  },
+  codCustody: {
+    currentCashInCustody: 0,
+    totalCashCollected: 0,
+    totalCashSubmitted: 0,
+    vendorBreakdown: [],
+    handovers: [],
+    loading: false,
   },
   securityDeposit: {
     status: "PENDING",
@@ -224,9 +252,16 @@ export const markOrderArrivedCustomer = createAsyncThunk(
 
 export const verifyOrderDeliveryOtp = createAsyncThunk(
   "delivery/verifyDeliveryOtp",
-  async ({ orderId, otp }: { orderId: string; otp: string }, { rejectWithValue }) => {
+  async (
+    {
+      orderId,
+      otp,
+      paymentMode,
+    }: { orderId: string; otp: string; paymentMode?: string },
+    { rejectWithValue }
+  ) => {
     try {
-      const res = await deliveryService.verifyDeliveryOtp(orderId, otp);
+      const res = await deliveryService.verifyDeliveryOtp(orderId, otp, paymentMode);
       return res;
     } catch (error: any) {
       return rejectWithValue(error.message || "Invalid Delivery OTP");
@@ -257,6 +292,18 @@ export const fetchEarningsSummary = createAsyncThunk(
       return res;
     } catch (error: any) {
       return rejectWithValue(error.message || "Failed to fetch earnings");
+    }
+  }
+);
+
+export const fetchCodCustodySummary = createAsyncThunk(
+  "delivery/fetchCodCustodySummary",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await deliveryService.getCodCustodySummary();
+      return res.data;
+    } catch (error: any) {
+      return rejectWithValue(error.message || "Failed to fetch COD custody details");
     }
   }
 );
@@ -508,7 +555,27 @@ export const deliverySlice = createSlice({
         week: action.payload.week || { earnings: 0, deliveriesCount: 0 },
         transactions: action.payload.transactions || [],
       };
+      if (action.payload.codCashInCustody !== undefined) {
+        state.codCustody.currentCashInCustody = action.payload.codCashInCustody;
+      }
     });
+
+    // fetchCodCustodySummary
+    builder
+      .addCase(fetchCodCustodySummary.pending, (state) => {
+        state.codCustody.loading = true;
+      })
+      .addCase(fetchCodCustodySummary.fulfilled, (state, action) => {
+        state.codCustody.loading = false;
+        state.codCustody.currentCashInCustody = action.payload?.currentCashInCustody || 0;
+        state.codCustody.totalCashCollected = action.payload?.totalCashCollected || 0;
+        state.codCustody.totalCashSubmitted = action.payload?.totalCashSubmitted || 0;
+        state.codCustody.vendorBreakdown = action.payload?.vendorBreakdown || [];
+        state.codCustody.handovers = action.payload?.handovers || [];
+      })
+      .addCase(fetchCodCustodySummary.rejected, (state) => {
+        state.codCustody.loading = false;
+      });
 
     // fetchDepositStatus
     builder.addCase(fetchDepositStatus.fulfilled, (state, action) => {

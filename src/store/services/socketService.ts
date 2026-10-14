@@ -60,6 +60,15 @@ class SocketService {
         return null;
       }
 
+      if (roleStr === "vendor") {
+        // Clear old customer-specific order subscriptions when switching to vendor
+        Array.from(this.activeSubscriptions).forEach((room) => {
+          if (room.startsWith("order:")) {
+            this.activeSubscriptions.delete(room);
+          }
+        });
+      }
+
       const socketUrl = getSocketUrl();
       console.log(`[SocketService] Connecting to ${socketUrl} (Role: ${roleStr})`);
 
@@ -193,6 +202,49 @@ class SocketService {
     return () => {
       this.socket?.off("customer:order:status_updated", wrappedHandler);
       this.socket?.off("vendor:order:status_updated", wrappedHandler);
+    };
+  }
+
+  /**
+   * Register listener for real-time Vendor Notifications
+   */
+  public onVendorNotification(handler: (notif: any) => void): () => void {
+    const wrappedHandler = (notif: any) => {
+      console.log(`[SocketService] Received vendor:notification:`, notif?.title);
+      handler(notif);
+    };
+
+    this.socket?.on("vendor:notification", wrappedHandler);
+    return () => {
+      this.socket?.off("vendor:notification", wrappedHandler);
+    };
+  }
+
+  /**
+   * Register listener for real-time COD custody updates
+   */
+  public onVendorCodUpdate(handler: (data: any) => void): () => void {
+    const wrappedHandler = (data: any) => {
+      handler(data);
+    };
+
+    this.socket?.on("vendor:cod:update", wrappedHandler);
+    return () => {
+      this.socket?.off("vendor:cod:update", wrappedHandler);
+    };
+  }
+
+  /**
+   * Register listener for real-time Vendor Wallet balance updates
+   */
+  public onVendorWalletUpdate(handler: (data: any) => void): () => void {
+    const wrappedHandler = (data: any) => {
+      handler(data);
+    };
+
+    this.socket?.on("vendor:wallet:update", wrappedHandler);
+    return () => {
+      this.socket?.off("vendor:wallet:update", wrappedHandler);
     };
   }
 
