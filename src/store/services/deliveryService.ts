@@ -1,0 +1,168 @@
+import api from "./api";
+
+export interface DeliveryRegisterPayload {
+  name: string;
+  email: string;
+  phone: string;
+  password: string;
+  dateOfBirth?: string;
+  serviceCity?: string;
+  serviceArea?: string;
+  vehicleDetails?: {
+    vehicleType: string;
+    registrationNumber?: string;
+    licenseNumber?: string;
+  };
+  bankDetails?: {
+    accountHolderName?: string;
+    accountNumber?: string;
+    ifscCode?: string;
+    bankName?: string;
+    upiId?: string;
+  };
+}
+
+export interface DeliveryLoginPayload {
+  email?: string;
+  phone?: string;
+  password: string;
+}
+
+export interface DocumentUploadPayload {
+  documentType: "panCard" | "aadhaarCard" | "drivingLicense" | "vehicleRc";
+  documentNumber?: string;
+  frontUrl?: string;
+  backUrl?: string;
+  expiryDate?: string;
+}
+
+export const deliveryService = {
+  // Auth
+  register: async (data: DeliveryRegisterPayload) => {
+    const response = await api.post("/delivery/auth/register", data);
+    return response.data;
+  },
+
+  login: async (data: DeliveryLoginPayload) => {
+    const response = await api.post("/delivery/auth/login", data);
+    return response.data;
+  },
+
+  getMe: async () => {
+    const response = await api.get("/delivery/auth/me");
+    return response.data;
+  },
+
+  updateProfile: async (data: any) => {
+    const response = await api.put("/delivery/auth/me", data);
+    return response.data;
+  },
+
+  // Documents
+  uploadDocument: async (data: DocumentUploadPayload) => {
+    const response = await api.post("/delivery/documents/upload", data);
+    return response.data;
+  },
+
+  getDocumentStatus: async () => {
+    const response = await api.get("/delivery/documents/status");
+    return response.data;
+  },
+
+  // Security Deposit
+  initiateDeposit: async (gateway: string = "MockGateway") => {
+    const response = await api.post("/delivery/deposit/initiate", { gateway });
+    return response.data;
+  },
+
+  simulateDepositWebhook: async (transactionId: string) => {
+    const response = await api.post("/delivery/deposit/webhook", {
+      transactionId,
+      status: "PAID",
+    });
+    return response.data;
+  },
+
+  getDepositStatus: async () => {
+    const response = await api.get("/delivery/deposit/status");
+    return response.data;
+  },
+
+  requestDepositRefund: async (refundReason: string) => {
+    const response = await api.post("/delivery/deposit/refund-request", {
+      refundReason,
+    });
+    return response.data;
+  },
+
+  // Availability & GPS
+  toggleAvailability: async (status?: "ONLINE" | "OFFLINE") => {
+    const response = await api.patch("/delivery/availability/toggle", { status });
+    return response.data;
+  },
+
+  getAvailabilityStatus: async () => {
+    const response = await api.get("/delivery/availability/status");
+    return response.data;
+  },
+
+  updateLocation: async (data: {
+    latitude: number;
+    longitude: number;
+    heading?: number;
+    speed?: number;
+  }) => {
+    const response = await api.post("/delivery/location/update", data);
+    return response.data;
+  },
+
+  // Assignments & Orders
+  getActiveAssignment: async () => {
+    const response = await api.get("/delivery/assignments/active");
+    return response.data;
+  },
+
+  acceptAssignment: async (assignmentId: string) => {
+    const response = await api.post(`/delivery/assignments/${assignmentId}/accept`);
+    return response.data;
+  },
+
+  rejectAssignment: async (assignmentId: string, reason?: string) => {
+    const response = await api.post(`/delivery/assignments/${assignmentId}/reject`, {
+      reason,
+    });
+    return response.data;
+  },
+
+  markArrivedStore: async (orderId: string) => {
+    const response = await api.post(`/delivery/assignments/${orderId}/arrived-store`);
+    return response.data;
+  },
+
+  verifyPickupOtp: async (orderId: string, otp: string) => {
+    const response = await api.post(`/delivery/assignments/${orderId}/verify-pickup-otp`, {
+      otp,
+    });
+    return response.data;
+  },
+
+  markArrivedCustomer: async (orderId: string) => {
+    const response = await api.post(`/delivery/assignments/${orderId}/arrived-customer`);
+    return response.data;
+  },
+
+  verifyDeliveryOtp: async (orderId: string, otp: string) => {
+    const response = await api.post(`/delivery/assignments/${orderId}/verify-delivery-otp`, {
+      otp,
+    });
+    return response.data;
+  },
+
+  // Earnings
+  getEarningsSummary: async () => {
+    const response = await api.get("/delivery/earnings/summary");
+    return response.data;
+  },
+};
+
+export default deliveryService;

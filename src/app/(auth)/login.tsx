@@ -295,6 +295,35 @@ export default function LoginScreen() {
                 <Text style={styles.signUpLink}>Sign up</Text>
               </TouchableOpacity>
             </View>
+
+            {/* Delivery Partner Portal Link */}
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => router.push("/(auth)/deliveryAuth/login" as any)}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                marginTop: moderateScale(14),
+                paddingVertical: moderateScale(8),
+                borderRadius: scale(8),
+                backgroundColor: "#F0FDFA",
+                borderWidth: 1,
+                borderColor: "#CCFBF1",
+                gap: scale(6),
+              }}
+            >
+              <Feather name="navigation" size={scale(14)} color="#0F766E" />
+              <Text
+                style={{
+                  fontSize: moderateScale(12),
+                  fontWeight: "700",
+                  color: "#0F766E",
+                }}
+              >
+                Deliver with Us? Delivery Partner Portal
+              </Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

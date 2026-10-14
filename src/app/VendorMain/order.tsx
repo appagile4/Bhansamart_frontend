@@ -1,8 +1,10 @@
 import VendorHeader from "@/components/VendorComponent/header";
 import { moderateScale, scale } from "@/theme";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import React, { memo, useCallback, useMemo, useState } from "react";
+import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   FlatList,
   Platform,
   RefreshControl,
@@ -13,42 +15,71 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
+  fetchVendorOrders,
+  orderStatusUpdatedRealtime,
+  updateVendorOrderStatus,
+  vendorOrderNewRealtime,
+  OrderRecord,
+} from "@/store/slices/orderSlice";
+import socketService from "@/store/services/socketService";
 
-interface VendorOrder {
-  id: string;
-  orderNumber: string;
-  customerName: string;
-  customerPhone: string;
-  itemsCount: number;
-  totalAmount: number;
-  status: "New" | "Preparing" | "Ready" | "Delivered" | "Cancelled";
-  time: string;
-  address: string;
-}
+const FILTER_TABS = ["All", "New", "Preparing", "Ready", "Delivered", "Cancelled"] as const;
+type FilterTab = (typeof FILTER_TABS)[number];
 
-const getStatusColor = (status: VendorOrder["status"]) => {
+const getStatusColor = (status: string) => {
   switch (status) {
+    case "PLACED":
     case "New":
-      return { bg: "#EFF6FF", text: "#1D4ED8", border: "#BFDBFE" };
+      return { bg: "#EFF6FF", text: "#1D4ED8", border: "#BFDBFE", label: "New Order" };
+    case "ACCEPTED":
+    case "PREPARING":
     case "Preparing":
-      return { bg: "#FFFBEB", text: "#B45309", border: "#FDE68A" };
+      return { bg: "#FFFBEB", text: "#B45309", border: "#FDE68A", label: "Preparing" };
+    case "READY_FOR_PICKUP":
     case "Ready":
-      return { bg: "#F0FDF4", text: "#15803D", border: "#BBF7D0" };
+      return { bg: "#F0FDF4", text: "#15803D", border: "#BBF7D0", label: "Ready" };
+    case "OUT_FOR_DELIVERY":
+      return { bg: "#F5F3FF", text: "#7C3AED", border: "#DDD6FE", label: "Out for Delivery" };
+    case "DELIVERED":
     case "Delivered":
-      return { bg: "#F8FAFC", text: "#475569", border: "#E2E8F0" };
+      return { bg: "#F8FAFC", text: "#475569", border: "#E2E8F0", label: "Delivered" };
+    case "REJECTED":
+    case "CANCELLED":
     case "Cancelled":
-      return { bg: "#FEF2F2", text: "#B91C1C", border: "#FECACA" };
+      return { bg: "#FEF2F2", text: "#B91C1C", border: "#FECACA", label: "Cancelled" };
+    default:
+      return { bg: "#F1F5F9", text: "#475569", border: "#CBD5E1", label: status };
   }
 };
 
 const VendorOrderItemCard = memo(function VendorOrderItemCard({
   item,
+  actionLoading,
   onUpdateStatus,
 }: {
-  item: VendorOrder;
-  onUpdateStatus: (id: string, newStatus: VendorOrder["status"]) => void;
+  item: OrderRecord;
+  actionLoading: boolean;
+  onUpdateStatus: (id: string, newStatus: string, reason?: string) => void;
 }) {
-  const statusStyle = getStatusColor(item.status);
+  const statusStyle = getStatusColor(item.orderStatus);
+  const formattedTime = item.createdAt
+    ? new Date(item.createdAt).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "Just now";
+
+  const customerName =
+    item.customer?.name || (item as any).customerName || "Customer";
+  const customerPhone =
+    item.customer?.phone ||
+    item.deliveryAddress?.phone ||
+    (item as any).customerPhone ||
+    "N/A";
+  const address =
+    item.deliveryAddress?.addressLine || (item as any).address || "Kathmandu";
 
   return (
     <View style={styles.orderCard}>
@@ -56,7 +87,7 @@ const VendorOrderItemCard = memo(function VendorOrderItemCard({
       <View style={styles.cardHeader}>
         <View>
           <Text style={styles.orderId}>{item.orderNumber}</Text>
-          <Text style={styles.orderTime}>{item.time}</Text>
+          <Text style={styles.orderTime}>{formattedTime}</Text>
         </View>
         <View
           style={[
@@ -65,7 +96,7 @@ const VendorOrderItemCard = memo(function VendorOrderItemCard({
           ]}
         >
           <Text style={[styles.statusBadgeText, { color: statusStyle.text }]}>
-            {item.status}
+            {statusStyle.label}
           </Text>
         </View>
       </View>
@@ -74,64 +105,121 @@ const VendorOrderItemCard = memo(function VendorOrderItemCard({
       <View style={styles.cardBody}>
         <View style={styles.infoRow}>
           <Ionicons name="person-outline" size={scale(14)} color="#64748B" />
-          <Text style={styles.customerName}>{item.customerName}</Text>
-          <Text style={styles.customerPhone}>({item.customerPhone})</Text>
+          <Text style={styles.customerName}>{customerName}</Text>
+          <Text style={styles.customerPhone}>({customerPhone})</Text>
         </View>
         <View style={styles.infoRow}>
           <Ionicons name="location-outline" size={scale(14)} color="#64748B" />
           <Text style={styles.addressText} numberOfLines={1}>
-            {item.address}
+            {address}
           </Text>
         </View>
         <View style={styles.infoRow}>
           <Ionicons name="basket-outline" size={scale(14)} color="#64748B" />
           <Text style={styles.itemsCountText}>
-            {item.itemsCount} {item.itemsCount === 1 ? "item" : "items"} &middot; Total:{" "}
+            {item.totalCount || item.items?.length || 1} items &middot; Total:{" "}
             <Text style={styles.amountText}>NPR {item.totalAmount}</Text>
           </Text>
         </View>
+
+        {/* Item Summaries for Kitchen/Fulfillment */}
+        {item.items && item.items.length > 0 && (
+          <View style={styles.itemsPreviewBox}>
+            {item.items.map((it, idx) => (
+              <Text key={idx} style={styles.itemPreviewLine} numberOfLines={1}>
+                &bull; {it.quantity}x {it.name} ({it.weight || "1 unit"})
+              </Text>
+            ))}
+          </View>
+        )}
       </View>
 
       {/* Action Buttons */}
       <View style={styles.cardActions}>
-        {item.status === "New" && (
+        {item.orderStatus === "PLACED" && (
           <>
             <TouchableOpacity
               style={[styles.actionBtn, styles.rejectBtn]}
-              onPress={() => onUpdateStatus(item.id, "Cancelled")}
+              disabled={actionLoading}
+              onPress={() => {
+                Alert.alert(
+                  "Decline Order",
+                  "Are you sure you want to decline this order?",
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                      text: "Out of Stock",
+                      style: "destructive",
+                      onPress: () =>
+                        onUpdateStatus(item._id, "REJECTED", "Items Out of Stock"),
+                    },
+                    {
+                      text: "Store Busy",
+                      style: "destructive",
+                      onPress: () =>
+                        onUpdateStatus(item._id, "REJECTED", "Store Busy"),
+                    },
+                  ]
+                );
+              }}
             >
               <Text style={styles.rejectBtnText}>Reject</Text>
             </TouchableOpacity>
+
             <TouchableOpacity
               style={[styles.actionBtn, styles.acceptBtn]}
-              onPress={() => onUpdateStatus(item.id, "Preparing")}
+              disabled={actionLoading}
+              onPress={() => onUpdateStatus(item._id, "ACCEPTED")}
             >
-              <Text style={styles.acceptBtnText}>Accept Order</Text>
+              {actionLoading ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text style={styles.acceptBtnText}>Accept Order</Text>
+              )}
             </TouchableOpacity>
           </>
         )}
 
-        {item.status === "Preparing" && (
+        {(item.orderStatus === "ACCEPTED" || item.orderStatus === "PREPARING") && (
           <TouchableOpacity
             style={[styles.actionBtn, styles.readyBtn]}
-            onPress={() => onUpdateStatus(item.id, "Ready")}
+            disabled={actionLoading}
+            onPress={() => onUpdateStatus(item._id, "READY_FOR_PICKUP")}
           >
             <MaterialCommunityIcons name="check-all" size={scale(16)} color="#FFFFFF" />
-            <Text style={styles.readyBtnText}>Mark Food Ready</Text>
+            <Text style={styles.readyBtnText}>Mark Order Ready</Text>
           </TouchableOpacity>
         )}
 
-        {item.status === "Ready" && (
+        {item.orderStatus === "READY_FOR_PICKUP" && (
           <View style={styles.readyNotice}>
             <Ionicons name="bicycle" size={scale(16)} color="#008080" />
             <Text style={styles.readyNoticeText}>Waiting for Delivery Partner</Text>
           </View>
         )}
 
-        {item.status === "Delivered" && (
+        {item.orderStatus === "OUT_FOR_DELIVERY" && (
+          <View style={styles.readyNotice}>
+            <Ionicons name="bicycle" size={scale(16)} color="#7C3AED" />
+            <Text style={[styles.readyNoticeText, { color: "#7C3AED" }]}>
+              Order is Out for Delivery
+            </Text>
+          </View>
+        )}
+
+        {item.orderStatus === "DELIVERED" && (
           <View style={styles.deliveredNotice}>
             <Ionicons name="checkmark-circle" size={scale(16)} color="#16A34A" />
             <Text style={styles.deliveredNoticeText}>Order Delivered Successfully</Text>
+          </View>
+        )}
+
+        {(item.orderStatus === "REJECTED" || item.orderStatus === "CANCELLED") && (
+          <View style={styles.cancelledNotice}>
+            <Ionicons name="close-circle" size={scale(16)} color="#DC2626" />
+            <Text style={styles.cancelledNoticeText}>
+              {item.rejectionReason || "Order Declined"}
+            </Text>
           </View>
         )}
       </View>
@@ -139,110 +227,134 @@ const VendorOrderItemCard = memo(function VendorOrderItemCard({
   );
 });
 
-const SAMPLE_ORDERS: VendorOrder[] = [
-  {
-    id: "1",
-    orderNumber: "#BM-9481",
-    customerName: "Rahul Sharma",
-    customerPhone: "+977-9801234567",
-    itemsCount: 4,
-    totalAmount: 1450,
-    status: "New",
-    time: "5 mins ago",
-    address: "Baneshwor, Kathmandu",
-  },
-  {
-    id: "2",
-    orderNumber: "#BM-9480",
-    customerName: "Anita Karki",
-    customerPhone: "+977-9812345678",
-    itemsCount: 2,
-    totalAmount: 680,
-    status: "Preparing",
-    time: "20 mins ago",
-    address: "Koteshwor, Kathmandu",
-  },
-  {
-    id: "3",
-    orderNumber: "#BM-9479",
-    customerName: "Prakash Thapa",
-    customerPhone: "+977-9823456789",
-    itemsCount: 6,
-    totalAmount: 2340,
-    status: "Ready",
-    time: "45 mins ago",
-    address: "Patan Dhoka, Lalitpur",
-  },
-  {
-    id: "4",
-    orderNumber: "#BM-9478",
-    customerName: "Sunita Rai",
-    customerPhone: "+977-9834567890",
-    itemsCount: 1,
-    totalAmount: 320,
-    status: "Delivered",
-    time: "2 hours ago",
-    address: "Balkumari, Lalitpur",
-  },
-];
+export default function VendorOrderScreen() {
+  const dispatch = useAppDispatch();
+  const { vendorOrders, vendorPendingCount, vendorLoading, actionLoading } =
+    useAppSelector((state) => state.order);
 
-const FILTER_TABS = ["All", "New", "Preparing", "Ready", "Delivered"];
-
-export default function VendorOrdersScreen() {
-  const [selectedFilter, setSelectedFilter] = useState("All");
+  const [selectedFilter, setSelectedFilter] = useState<FilterTab>("All");
   const [searchQuery, setSearchQuery] = useState("");
-  const [refreshing, setRefreshing] = useState(false);
-  const [orders, setOrders] = useState<VendorOrder[]>(SAMPLE_ORDERS);
+
+  // ── 1. Fetch live orders & Connect Real-Time Socket ─────────────────
+  useEffect(() => {
+    dispatch(fetchVendorOrders());
+
+    // Connect vendor socket
+    socketService.connect(true).then(() => {
+      socketService.subscribeToVendorOrders();
+    });
+
+    // Listen for new orders emitted directly to this vendor
+    const unsubscribeNew = socketService.onNewVendorOrder((incomingOrder) => {
+      dispatch(vendorOrderNewRealtime(incomingOrder));
+    });
+
+    // Listen for status updates
+    const unsubscribeStatus = socketService.onOrderStatusUpdated((update) => {
+      dispatch(orderStatusUpdatedRealtime(update));
+    });
+
+    return () => {
+      unsubscribeNew();
+      unsubscribeStatus();
+    };
+  }, [dispatch]);
 
   const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 800);
-  }, []);
+    dispatch(fetchVendorOrders());
+  }, [dispatch]);
 
-  const filteredOrders = useMemo(() => {
-    return orders.filter((order) => {
-      const matchesFilter =
-        selectedFilter === "All" || order.status === selectedFilter;
-      const matchesSearch =
-        order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        order.customerName.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesFilter && matchesSearch;
-    });
-  }, [orders, selectedFilter, searchQuery]);
+  // ── 2. Handle Status Transitions (Accept / Reject / Ready) ───────────
+  const handleUpdateStatus = useCallback(
+    async (orderId: string, newStatus: string, reason?: string) => {
+      try {
+        const result = await dispatch(
+          updateVendorOrderStatus({ orderId, status: newStatus, reason })
+        );
 
-  const updateOrderStatus = useCallback(
-    (id: string, newStatus: VendorOrder["status"]) => {
-      setOrders((prev) =>
-        prev.map((o) => (o.id === id ? { ...o, status: newStatus } : o))
-      );
+        if (updateVendorOrderStatus.fulfilled.match(result)) {
+          console.log(`[VendorOrder] Status updated successfully to ${newStatus}`);
+        } else {
+          Alert.alert(
+            "Action Failed",
+            (result.payload as string) || "Could not update order status."
+          );
+        }
+      } catch (err: any) {
+        Alert.alert("Error", err.message || "Something went wrong.");
+      }
     },
-    []
+    [dispatch]
   );
+
+  // ── 3. Filter and Search Logic ──────────────────────────────────────
+  const filteredOrders = useMemo(() => {
+    return vendorOrders.filter((order) => {
+      // Filter by tab
+      if (selectedFilter === "New") {
+        if (order.orderStatus !== "PLACED") return false;
+      } else if (selectedFilter === "Preparing") {
+        if (order.orderStatus !== "ACCEPTED" && order.orderStatus !== "PREPARING")
+          return false;
+      } else if (selectedFilter === "Ready") {
+        if (order.orderStatus !== "READY_FOR_PICKUP") return false;
+      } else if (selectedFilter === "Delivered") {
+        if (order.orderStatus !== "DELIVERED") return false;
+      } else if (selectedFilter === "Cancelled") {
+        if (order.orderStatus !== "CANCELLED" && order.orderStatus !== "REJECTED")
+          return false;
+      }
+
+      // Search Query
+      if (searchQuery.trim().length > 0) {
+        const query = searchQuery.toLowerCase().trim();
+        const matchesNum = order.orderNumber.toLowerCase().includes(query);
+        const matchesName = (
+          order.customer?.name ||
+          (order as any).customerName ||
+          ""
+        )
+          .toLowerCase()
+          .includes(query);
+        return matchesNum || matchesName;
+      }
+
+      return true;
+    });
+  }, [vendorOrders, selectedFilter, searchQuery]);
 
   const renderOrderItem = useCallback(
-    ({ item }: { item: VendorOrder }) => (
+    ({ item }: { item: OrderRecord }) => (
       <VendorOrderItemCard
         item={item}
-        onUpdateStatus={updateOrderStatus}
+        actionLoading={actionLoading}
+        onUpdateStatus={handleUpdateStatus}
       />
     ),
-    [updateOrderStatus]
+    [actionLoading, handleUpdateStatus]
   );
 
-  const keyExtractor = useCallback((item: VendorOrder) => item.id, []);
+  const keyExtractor = useCallback((item: OrderRecord) => item._id, []);
 
   return (
     <SafeAreaView style={styles.root} edges={["top"]}>
-      {/* Unified Vendor Header */}
-      <VendorHeader activeRoute="/VendorMain/order" />
+      {/* Vendor Header */}
+      <VendorHeader />
 
-      {/* Sub Header */}
+      {/* Screen Title Bar */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Live Orders</Text>
+        <View style={styles.headerTitleRow}>
+          <Text style={styles.headerTitle}>Order Management</Text>
+          {vendorPendingCount > 0 && (
+            <View style={styles.pendingBadge}>
+              <Text style={styles.pendingBadgeText}>
+                {vendorPendingCount} New
+              </Text>
+            </View>
+          )}
+        </View>
         <Text style={styles.headerSubtitle}>
-          Manage incoming, preparing, and completed orders
+          Accept incoming customer orders in real time
         </Text>
       </View>
 
@@ -286,7 +398,7 @@ export default function VendorOrdersScreen() {
         })}
       </View>
 
-      {/* Orders List */}
+      {/* Orders FlatList */}
       <FlatList
         data={filteredOrders}
         keyExtractor={keyExtractor}
@@ -299,7 +411,7 @@ export default function VendorOrdersScreen() {
         contentContainerStyle={styles.listContent}
         refreshControl={
           <RefreshControl
-            refreshing={refreshing}
+            refreshing={vendorLoading}
             onRefresh={onRefresh}
             colors={["#016073"]}
             tintColor="#016073"
@@ -314,7 +426,9 @@ export default function VendorOrdersScreen() {
             />
             <Text style={styles.emptyTitle}>No Orders Found</Text>
             <Text style={styles.emptySubtitle}>
-              There are no orders matching your current filter.
+              {selectedFilter === "New"
+                ? "Waiting for new customer orders..."
+                : "There are no orders matching your current filter."}
             </Text>
           </View>
         }
@@ -336,10 +450,28 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#F1F5F9",
   },
+  headerTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(10),
+  },
   headerTitle: {
     fontSize: moderateScale(19),
     fontWeight: "800",
     color: "#016073",
+  },
+  pendingBadge: {
+    backgroundColor: "#EFF6FF",
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(2),
+    borderRadius: scale(10),
+  },
+  pendingBadgeText: {
+    color: "#1D4ED8",
+    fontSize: moderateScale(11.5),
+    fontWeight: "800",
   },
   headerSubtitle: {
     fontSize: moderateScale(12),
@@ -351,10 +483,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#FFFFFF",
     marginHorizontal: scale(16),
-    marginTop: moderateScale(12),
+    marginTop: moderateScale(10),
     paddingHorizontal: scale(12),
-    height: moderateScale(42),
-    borderRadius: scale(8),
+    height: moderateScale(40),
+    borderRadius: scale(10),
     borderWidth: 1,
     borderColor: "#E2E8F0",
     gap: scale(8),
@@ -362,17 +494,18 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: moderateScale(13),
-    color: "#0F172A",
+    color: "#1E293B",
+    padding: 0,
   },
   filtersRow: {
     flexDirection: "row",
     paddingHorizontal: scale(16),
-    paddingVertical: moderateScale(12),
+    paddingVertical: moderateScale(10),
     gap: scale(8),
   },
   filterChip: {
     paddingHorizontal: scale(12),
-    paddingVertical: moderateScale(6),
+    paddingVertical: moderateScale(5),
     borderRadius: scale(20),
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
@@ -389,42 +522,40 @@ const styles = StyleSheet.create({
   },
   filterChipTextActive: {
     color: "#FFFFFF",
-    fontWeight: "700",
   },
   listContent: {
     paddingHorizontal: scale(16),
-    paddingBottom: moderateScale(30),
+    paddingBottom: moderateScale(100),
     gap: moderateScale(12),
   },
   orderCard: {
     backgroundColor: "#FFFFFF",
-    borderRadius: scale(12),
+    borderRadius: scale(14),
+    padding: scale(14),
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 3,
-    elevation: 1,
+    elevation: 2,
   },
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: scale(14),
-    paddingVertical: moderateScale(10),
+    alignItems: "flex-start",
     borderBottomWidth: 1,
     borderBottomColor: "#F1F5F9",
-    backgroundColor: "#FAFAFA",
+    paddingBottom: moderateScale(8),
+    marginBottom: moderateScale(8),
   },
   orderId: {
     fontSize: moderateScale(14),
-    fontWeight: "800",
-    color: "#016073",
+    fontWeight: "700",
+    color: "#0F172A",
   },
   orderTime: {
-    fontSize: moderateScale(11),
+    fontSize: moderateScale(11.5),
     color: "#94A3B8",
     marginTop: scale(1),
   },
@@ -439,8 +570,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   cardBody: {
-    padding: scale(14),
-    gap: scale(6),
+    gap: moderateScale(4),
   },
   infoRow: {
     flexDirection: "row",
@@ -448,8 +578,8 @@ const styles = StyleSheet.create({
     gap: scale(6),
   },
   customerName: {
-    fontSize: moderateScale(13),
-    fontWeight: "700",
+    fontSize: moderateScale(12.5),
+    fontWeight: "600",
     color: "#1E293B",
   },
   customerPhone: {
@@ -463,32 +593,41 @@ const styles = StyleSheet.create({
   },
   itemsCountText: {
     fontSize: moderateScale(12),
-    color: "#475569",
+    color: "#64748B",
   },
   amountText: {
-    fontWeight: "800",
-    color: "#016073",
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+  itemsPreviewBox: {
+    backgroundColor: "#F8FAFC",
+    padding: scale(8),
+    borderRadius: scale(8),
+    marginTop: scale(4),
+    gap: scale(2),
+  },
+  itemPreviewLine: {
+    fontSize: moderateScale(11.5),
+    color: "#475569",
   },
   cardActions: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: scale(14),
-    paddingBottom: moderateScale(12),
-    gap: scale(10),
+    gap: scale(8),
+    marginTop: moderateScale(10),
+    paddingTop: moderateScale(8),
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
   },
   actionBtn: {
     flex: 1,
-    height: moderateScale(38),
+    paddingVertical: moderateScale(8),
     borderRadius: scale(8),
     alignItems: "center",
     justifyContent: "center",
-    flexDirection: "row",
-    gap: scale(6),
   },
   rejectBtn: {
-    backgroundColor: "#FEF2F2",
-    borderWidth: 1,
-    borderColor: "#FECACA",
+    backgroundColor: "#FEE2E2",
   },
   rejectBtnText: {
     fontSize: moderateScale(12.5),
@@ -496,7 +635,7 @@ const styles = StyleSheet.create({
     color: "#DC2626",
   },
   acceptBtn: {
-    backgroundColor: "#016073",
+    backgroundColor: "#059669",
   },
   acceptBtnText: {
     fontSize: moderateScale(12.5),
@@ -504,6 +643,8 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
   },
   readyBtn: {
+    flexDirection: "row",
+    gap: scale(6),
     backgroundColor: "#008080",
   },
   readyBtnText: {
@@ -517,14 +658,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: scale(6),
-    backgroundColor: "#E6F4F6",
-    paddingVertical: moderateScale(8),
+    backgroundColor: "#F0FDFA",
+    paddingVertical: moderateScale(6),
     borderRadius: scale(6),
   },
   readyNoticeText: {
     fontSize: moderateScale(12),
-    fontWeight: "700",
-    color: "#004D5A",
+    fontWeight: "600",
+    color: "#008080",
   },
   deliveredNotice: {
     flex: 1,
@@ -533,30 +674,44 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: scale(6),
     backgroundColor: "#F0FDF4",
-    paddingVertical: moderateScale(8),
+    paddingVertical: moderateScale(6),
     borderRadius: scale(6),
   },
   deliveredNoticeText: {
     fontSize: moderateScale(12),
-    fontWeight: "700",
+    fontWeight: "600",
     color: "#16A34A",
+  },
+  cancelledNotice: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: scale(6),
+    backgroundColor: "#FEF2F2",
+    paddingVertical: moderateScale(6),
+    borderRadius: scale(6),
+  },
+  cancelledNoticeText: {
+    fontSize: moderateScale(12),
+    fontWeight: "600",
+    color: "#DC2626",
   },
   emptyContainer: {
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: moderateScale(60),
+    gap: moderateScale(8),
   },
   emptyTitle: {
-    fontSize: moderateScale(15),
+    fontSize: moderateScale(16),
     fontWeight: "700",
     color: "#64748B",
-    marginTop: moderateScale(10),
   },
   emptySubtitle: {
-    fontSize: moderateScale(12),
+    fontSize: moderateScale(13),
     color: "#94A3B8",
     textAlign: "center",
-    marginTop: scale(4),
+    paddingHorizontal: scale(32),
   },
 });
-

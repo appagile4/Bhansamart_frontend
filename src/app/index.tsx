@@ -55,6 +55,7 @@ const Index = () => {
       try {
         const customerToken = await storage.getItem("bhansa_token");
         const vendorToken = await storage.getItem("bhansa_vendor_token");
+        const deliveryToken = await storage.getItem("bhansa_delivery_token");
 
         let currentVendorUser = vendorUser;
         let currentVendorDetails = vendorDetails;
@@ -106,14 +107,20 @@ const Index = () => {
             }
           }
 
-          // 2. Customer check
+          // 2. Delivery Partner check
+          if (deliveryToken) {
+            router.replace("/DeliveryMain" as any);
+            return;
+          }
+
+          // 3. Customer check
           if (customerToken || isCustomerAuthenticated) {
             // Customer: Navigate to Customer Dashboard
             router.replace("/customerMain" as any);
             return;
           }
 
-          // 3. Unauthenticated / No Token: Navigate to Login
+          // 4. Unauthenticated / No Token: Navigate to Login
           router.replace("/(auth)/login");
         }, 2200);
 

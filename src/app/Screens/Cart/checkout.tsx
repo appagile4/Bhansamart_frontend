@@ -6,11 +6,21 @@ import {
   Ionicons,
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
-import { useAppSelector } from "@/store/hooks";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { createOrder } from "@/store/slices/orderSlice";
+import socketService from "@/store/services/socketService";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useMemo, useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function CheckoutScreen() {
@@ -50,24 +60,74 @@ export default function CheckoutScreen() {
   const handlingCharge = cartItems.length > 0 ? 30 : 0;
   const grandTotal = itemsTotal + handlingCharge;
 
+  const dispatch = useAppDispatch();
+  const { customerLoading } = useAppSelector((state) => state.order);
+
   const handleCopyOrderId = () => {
     setCopied(true);
     Alert.alert("Copied", `Order ID ${orderId} copied to clipboard!`);
     setTimeout(() => setCopied(false), 2500);
   };
 
-  const handleConfirmOrder = () => {
-    clearCart();
-    Alert.alert(
-      "Order Confirmed!",
-      `Your order ${orderId} has been placed successfully for Rs.${grandTotal}. It will arrive within 24 hours.`,
-      [
-        {
-          text: "Back to Home",
-          onPress: () => router.replace("/customerMain/home" as any),
-        },
-      ]
-    );
+  const handleConfirmOrder = async () => {
+    if (cartItems.length === 0) {
+      Alert.alert("Cart Empty", "Please add items to your cart before checking out.");
+      return;
+    }
+
+    if (!deliveryAddress) {
+      Alert.alert("Missing Address", "Please select or enter a valid delivery address.");
+      return;
+    }
+
+    try {
+      const itemsPayload = cartItems.map((item) => ({
+        productId: item.id,
+        quantity: item.quantity,
+        price: item.price,
+        name: item.name,
+        imageUrl: item.imageUrl,
+        weight: item.weight,
+      }));
+
+      const actionResult = await dispatch(
+        createOrder({
+          items: itemsPayload,
+          deliveryAddress: {
+            addressLine: deliveryAddress,
+            city: selectedAddress?.city || "Kathmandu",
+            phone: selectedAddress?.phone || "9800000000",
+            street: selectedAddress?.street || "",
+            houseNo: selectedAddress?.houseNo || "",
+            landmark: selectedAddress?.landmark || "",
+          },
+          paymentMethod,
+          idempotencyKey: orderId,
+        })
+      );
+
+      if (createOrder.fulfilled.match(actionResult)) {
+        const created = actionResult.payload;
+        clearCart();
+        // Subscribe to real-time updates for this order
+        socketService.subscribeToOrder(created._id);
+
+        router.replace({
+          pathname: "/Screens/Profile/order-summary" as any,
+          params: {
+            orderId: created._id,
+            orderNumber: created.orderNumber,
+          },
+        });
+      } else {
+        const errorMsg =
+          (actionResult.payload as string) ||
+          "Failed to place order. Please try again.";
+        Alert.alert("Order Failed", errorMsg);
+      }
+    } catch (err: any) {
+      Alert.alert("Error", err.message || "An unexpected error occurred.");
+    }
   };
 
   return (
@@ -284,21 +344,31 @@ export default function CheckoutScreen() {
           <TouchableOpacity
             activeOpacity={0.88}
             onPress={handleConfirmOrder}
-            style={styles.confirmOrderBtn}
+            disabled={customerLoading}
+            style={[
+              styles.confirmOrderBtn,
+              customerLoading && { opacity: 0.75 },
+            ]}
           >
             <View style={styles.btnPriceCol}>
-              <Text style={styles.btnPriceText}>Rs.5500</Text>
+              <Text style={styles.btnPriceText}>Rs.{grandTotal}</Text>
               <Text style={styles.btnTotalLabel}>Total</Text>
             </View>
 
             <View style={styles.btnActionCol}>
-              <Text style={styles.confirmOrderText}>Confirm Order</Text>
-              <Ionicons
-                name="caret-forward"
-                size={scale(14)}
-                color="#ffffff"
-                style={{ marginLeft: scale(2) }}
-              />
+              {customerLoading ? (
+                <ActivityIndicator color="#ffffff" size="small" />
+              ) : (
+                <>
+                  <Text style={styles.confirmOrderText}>Confirm Order</Text>
+                  <Ionicons
+                    name="caret-forward"
+                    size={scale(14)}
+                    color="#ffffff"
+                    style={{ marginLeft: scale(2) }}
+                  />
+                </>
+              )}
             </View>
           </TouchableOpacity>
         </View>

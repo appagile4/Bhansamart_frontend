@@ -1,6 +1,7 @@
 import VendorHeader from "@/components/VendorComponent/header";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { logoutVendorAction } from "@/store/slices/vendorAuthSlice";
+import { fetchVendorOrders } from "@/store/slices/orderSlice";
 import { moderateScale, scale } from "@/theme";
 import {
   Feather,
@@ -11,7 +12,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   Dimensions,
@@ -32,9 +33,16 @@ export default function VendorDashboardScreen() {
   const { vendorUser, vendorDetails } = useAppSelector(
     (state) => state.vendorAuth
   );
+  const { vendorOrders, vendorPendingCount } = useAppSelector(
+    (state) => state.order
+  );
 
   const [refreshing, setRefreshing] = useState(false);
   const [isStoreOpen, setIsStoreOpen] = useState(true);
+
+  useEffect(() => {
+    dispatch(fetchVendorOrders());
+  }, [dispatch]);
 
   const storeName =
     vendorDetails?.businessDetails?.businessName ||
@@ -61,9 +69,9 @@ export default function VendorDashboardScreen() {
 
   const onRefresh = () => {
     setRefreshing(true);
-    setTimeout(() => {
+    dispatch(fetchVendorOrders()).finally(() => {
       setRefreshing(false);
-    }, 1000);
+    });
   };
 
   return (
@@ -213,9 +221,7 @@ export default function VendorDashboardScreen() {
 
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() =>
-              Alert.alert("Orders", "Order manager view opening soon.")
-            }
+            onPress={() => router.push("/VendorMain/order" as any)}
             style={styles.actionBtn}
           >
             <LinearGradient
@@ -227,7 +233,9 @@ export default function VendorDashboardScreen() {
                 size={scale(22)}
                 color="#016073"
               />
-              <Text style={styles.actionBtnText}>Live Orders</Text>
+              <Text style={styles.actionBtnText}>
+                Live Orders {vendorPendingCount > 0 ? `(${vendorPendingCount})` : ""}
+              </Text>
             </LinearGradient>
           </TouchableOpacity>
 
@@ -256,50 +264,67 @@ export default function VendorDashboardScreen() {
         <View style={styles.recentOrdersCard}>
           <View style={styles.recentOrdersHeader}>
             <Text style={styles.recentOrdersTitle}>Recent Customer Orders</Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push("/VendorMain/order" as any)}>
               <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Sample Order 1 */}
-          <View style={styles.orderItem}>
-            <View style={styles.orderLeft}>
-              <View style={styles.orderIconBox}>
-                <Feather name="package" size={scale(16)} color="#016073" />
-              </View>
-              <View>
-                <Text style={styles.orderId}>Order #BM-8921</Text>
-                <Text style={styles.orderSub}>3 Items &middot; Grocery Staples</Text>
-              </View>
+          {vendorOrders.length === 0 ? (
+            <View style={{ paddingVertical: scale(20), alignItems: "center" }}>
+              <Text style={{ color: "#94A3B8", fontSize: scale(13) }}>
+                No incoming orders yet.
+              </Text>
             </View>
-            <View style={styles.orderRight}>
-              <Text style={styles.orderAmount}>Rs. 1,450</Text>
-              <View style={styles.prepBadge}>
-                <Text style={styles.prepBadgeText}>Preparing</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Sample Order 2 */}
-          <View style={[styles.orderItem, { borderBottomWidth: 0 }]}>
-            <View style={styles.orderLeft}>
-              <View style={styles.orderIconBox}>
-                <Feather name="check" size={scale(16)} color="#059669" />
-              </View>
-              <View>
-                <Text style={styles.orderId}>Order #BM-8919</Text>
-                <Text style={styles.orderSub}>5 Items &middot; Fresh Produce</Text>
-              </View>
-            </View>
-            <View style={styles.orderRight}>
-              <Text style={styles.orderAmount}>Rs. 2,120</Text>
-              <View style={[styles.prepBadge, { backgroundColor: "#ECFDF5" }]}>
-                <Text style={[styles.prepBadgeText, { color: "#059669" }]}>
-                  Dispatched
-                </Text>
-              </View>
-            </View>
-          </View>
+          ) : (
+            vendorOrders.slice(0, 4).map((ord, idx) => (
+              <TouchableOpacity
+                key={ord._id}
+                activeOpacity={0.7}
+                onPress={() => router.push("/VendorMain/order" as any)}
+                style={[
+                  styles.orderItem,
+                  idx === Math.min(vendorOrders.length, 4) - 1 && { borderBottomWidth: 0 },
+                ]}
+              >
+                <View style={styles.orderLeft}>
+                  <View style={styles.orderIconBox}>
+                    <Feather
+                      name={ord.orderStatus === "DELIVERED" ? "check" : "package"}
+                      size={scale(16)}
+                      color={ord.orderStatus === "DELIVERED" ? "#059669" : "#016073"}
+                    />
+                  </View>
+                  <View>
+                    <Text style={styles.orderId}>{ord.orderNumber}</Text>
+                    <Text style={styles.orderSub}>
+                      {ord.totalCount || ord.items?.length || 1} Items &middot;{" "}
+                      {ord.customer?.name || "Customer"}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.orderRight}>
+                  <Text style={styles.orderAmount}>Rs. {ord.totalAmount}</Text>
+                  <View
+                    style={[
+                      styles.prepBadge,
+                      ord.orderStatus === "DELIVERED" && { backgroundColor: "#ECFDF5" },
+                      ord.orderStatus === "PLACED" && { backgroundColor: "#EFF6FF" },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.prepBadgeText,
+                        ord.orderStatus === "DELIVERED" && { color: "#059669" },
+                        ord.orderStatus === "PLACED" && { color: "#1D4ED8" },
+                      ]}
+                    >
+                      {ord.orderStatus}
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>

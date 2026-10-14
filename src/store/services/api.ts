@@ -32,13 +32,17 @@ api.interceptors.request.use(
     try {
       const customerToken = await storage.getItem("bhansa_token");
       const vendorToken = await storage.getItem("bhansa_vendor_token");
+      const deliveryToken = await storage.getItem("bhansa_delivery_token");
 
-      // Prioritize vendorToken for vendor endpoints or if only vendorToken exists
-      const isVendorEndpoint =
-        config.url?.includes("/vendor") || config.url?.includes("/auth/vendor");
-      const token = isVendorEndpoint
-        ? vendorToken || customerToken
-        : customerToken || vendorToken;
+      // Prioritize token based on target endpoint
+      let token = customerToken;
+      if (config.url?.includes("/delivery")) {
+        token = deliveryToken || vendorToken || customerToken;
+      } else if (config.url?.includes("/vendor") || config.url?.includes("/auth/vendor")) {
+        token = vendorToken || customerToken;
+      } else {
+        token = customerToken || deliveryToken || vendorToken;
+      }
 
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
