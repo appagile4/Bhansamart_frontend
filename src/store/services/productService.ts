@@ -58,6 +58,10 @@ export interface GetPublicProductsParams {
   maxPrice?: number;
   sortBy?: "popularity" | "price_asc" | "price_desc" | "rating" | "newest" | "default";
   inStockOnly?: boolean;
+  lat?: number;
+  lng?: number;
+  latitude?: number;
+  longitude?: number;
   page?: number;
   limit?: number;
 }

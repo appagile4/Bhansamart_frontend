@@ -353,6 +353,67 @@ class SocketService {
     };
   }
 
+  /**
+   * Emit customer current GPS coordinates for real-time proximity discovery
+   */
+  public emitCustomerLocation(latitude: number, longitude: number): Promise<any> {
+    return new Promise((resolve) => {
+      if (!this.socket || !this.socket.connected) {
+        return resolve({ success: false, message: "Socket not connected" });
+      }
+
+      this.socket.emit(
+        "customer:location:update",
+        { latitude, longitude },
+        (res: any) => {
+          resolve(res);
+        }
+      );
+    });
+  }
+
+  /**
+   * Listen for real-time nearby eligible vendors updates
+   */
+  public onNearbyVendorsUpdate(handler: (data: any) => void): () => void {
+    const wrappedHandler = (data: any) => {
+      handler(data);
+    };
+
+    this.socket?.on("customer:nearby-vendors:update", wrappedHandler);
+    return () => {
+      this.socket?.off("customer:nearby-vendors:update", wrappedHandler);
+    };
+  }
+
+  /**
+   * Listen for broadcasted vendor delivery radius updates
+   */
+  public onDeliveryRadiusUpdated(handler: (data: any) => void): () => void {
+    const wrappedHandler = (data: any) => {
+      handler(data);
+    };
+
+    this.socket?.on("vendor:delivery-radius:updated", wrappedHandler);
+    return () => {
+      this.socket?.off("vendor:delivery-radius:updated", wrappedHandler);
+    };
+  }
+
+  /**
+   * Listen for broadcasted vendor store open/closed availability changes
+   */
+  public onVendorAvailabilityChanged(handler: (data: any) => void): () => void {
+    const wrappedHandler = (data: any) => {
+      handler(data);
+    };
+
+    this.socket?.on("vendor:availability:changed", wrappedHandler);
+    return () => {
+      this.socket?.off("vendor:availability:changed", wrappedHandler);
+    };
+  }
+
   public getSocket(): Socket | null {
     return this.socket;
   }

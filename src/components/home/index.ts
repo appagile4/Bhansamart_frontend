@@ -25,3 +25,4 @@ export { default as SweetTooth } from "./SweetTooth";
 export { default as TopDeals } from "./TopDeals";
 export { default as SelectLocationModal } from "./SelectLocationModal";
 export * from "./SelectLocationModal";
+export { default as NearbyStoresModal } from "./NearbyStoresModal";

@@ -13,6 +13,7 @@ import {
   InstantFrozenFood,
   KidsWinterEssentials,
   NewArrivals,
+  NearbyStoresModal,
   SchoolOfficeStationery,
   SelectLocationModal,
   SnacksDrinks,
@@ -27,11 +28,13 @@ import {
   fetchPublicProducts,
   setSelectedCategory,
 } from "@/store/slices/productSlice";
+import socketService from "@/store/services/socketService";
 import { moderateScale, scale, useTheme } from "@/theme";
+import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function HomeScreen() {
   const theme = useTheme();
@@ -47,18 +50,67 @@ export default function HomeScreen() {
   const activeDisplayLocation = useAppSelector(
     (state) => state.address?.activeDisplayLocation
   );
+  const customerLat = useAppSelector((state) => state.address?.latitude);
+  const customerLng = useAppSelector((state) => state.address?.longitude);
+  const isOutsideDeliveryZone = useAppSelector(
+    (state) => state.product?.isOutsideDeliveryZone
+  );
+  const eligibleVendorsCount = useAppSelector(
+    (state) => state.product?.eligibleVendorsCount
+  );
 
   const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
+  const [isNearbyStoresModalVisible, setIsNearbyStoresModalVisible] = useState(false);
 
-  // ── Data Fetching Effects ──────────────────────────────────────────
+  // ── Data Fetching Effects with Location-Based Delivery Radius Filtering ─
   useEffect(() => {
     dispatch(
       fetchPublicProducts({
         category: selectedCategory === "all" ? undefined : selectedCategory,
+        lat: customerLat || undefined,
+        lng: customerLng || undefined,
         limit: 50,
       })
     );
-  }, [dispatch, selectedCategory]);
+  }, [dispatch, selectedCategory, customerLat, customerLng]);
+
+  // ── Real-Time Socket Connection & Radius Change Listeners ──────────────
+  useEffect(() => {
+    socketService.connect(false).then(() => {
+      if (customerLat && customerLng) {
+        socketService.emitCustomerLocation(customerLat, customerLng);
+      }
+    });
+
+    // When any vendor updates their delivery radius, refresh product availability
+    const unsubRadius = socketService.onDeliveryRadiusUpdated(() => {
+      dispatch(
+        fetchPublicProducts({
+          category: selectedCategory === "all" ? undefined : selectedCategory,
+          lat: customerLat || undefined,
+          lng: customerLng || undefined,
+          limit: 50,
+        })
+      );
+    });
+
+    // When any vendor opens or closes their store, refresh product availability
+    const unsubAvail = socketService.onVendorAvailabilityChanged(() => {
+      dispatch(
+        fetchPublicProducts({
+          category: selectedCategory === "all" ? undefined : selectedCategory,
+          lat: customerLat || undefined,
+          lng: customerLng || undefined,
+          limit: 50,
+        })
+      );
+    });
+
+    return () => {
+      unsubRadius();
+      unsubAvail();
+    };
+  }, [dispatch, selectedCategory, customerLat, customerLng]);
 
   useEffect(() => {
     dispatch(fetchAddresses());
@@ -110,7 +162,11 @@ export default function HomeScreen() {
   }, []);
 
   const handleStorePress = useCallback(() => {
-    console.log("Store icon pressed");
+    setIsNearbyStoresModalVisible(true);
+  }, []);
+
+  const handleCloseNearbyStoresModal = useCallback(() => {
+    setIsNearbyStoresModalVisible(false);
   }, []);
 
   const handleCategoryPress = useCallback(
@@ -833,14 +889,57 @@ export default function HomeScreen() {
           onVoicePress={handleVoicePress}
         />
 
+        {/* ── Delivery Zone Availability Indicator ────────────────────── */}
+        {isOutsideDeliveryZone ? (
+          <View style={styles.outsideZoneBanner}>
+            <View style={styles.outsideZoneIconBox}>
+              <Feather name="map-pin" size={scale(20)} color="#DC2626" />
+            </View>
+            <View style={{ flex: 1, marginLeft: scale(10) }}>
+              <Text style={styles.outsideZoneTitle}>Delivery Unavailable at this Location</Text>
+              <Text style={styles.outsideZoneSub}>
+                None of our active partner stores currently deliver to this selected area.
+              </Text>
+              <TouchableOpacity
+                style={styles.changeLocBtn}
+                activeOpacity={0.7}
+                onPress={handleOpenLocationModal}
+              >
+                <Feather name="navigation" size={scale(13)} color="#FFFFFF" />
+                <Text style={styles.changeLocBtnText}>Change Delivery Address</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.deliveryAvailableBadge}>
+            <View style={styles.activeDot} />
+            <Text style={styles.deliveryAvailableText}>
+              ⚡ Delivering within 15-25 mins from{" "}
+              <Text style={{ fontWeight: "700" }}>
+                {eligibleVendorsCount > 0 ? `${eligibleVendorsCount} nearby stores` : "partner stores"}
+              </Text>
+            </Text>
+          </View>
+        )}
+
         {/* Dynamically Memoized Category Content */}
-        {categoryContent}
+        {!isOutsideDeliveryZone && categoryContent}
       </ScrollView>
 
       {/* Select Location Bottom Sheet Modal */}
       <SelectLocationModal
         visible={isLocationModalVisible}
         onClose={handleCloseLocationModal}
+      />
+
+      {/* Nearest Stores with Distance Modal */}
+      <NearbyStoresModal
+        visible={isNearbyStoresModalVisible}
+        onClose={handleCloseNearbyStoresModal}
+        customerLat={customerLat ?? undefined}
+        customerLng={customerLng ?? undefined}
+        customerAddress={displayLocation}
+        onChangeLocation={handleOpenLocationModal}
       />
     </View>
   );
@@ -852,6 +951,76 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: moderateScale(180),
+  },
+  deliveryAvailableBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E6F4EA",
+    marginHorizontal: scale(16),
+    marginTop: moderateScale(8),
+    marginBottom: moderateScale(4),
+    paddingHorizontal: scale(12),
+    paddingVertical: moderateScale(6),
+    borderRadius: scale(8),
+    gap: scale(8),
+  },
+  activeDot: {
+    width: scale(7),
+    height: scale(7),
+    borderRadius: scale(4),
+    backgroundColor: "#10B981",
+  },
+  deliveryAvailableText: {
+    fontSize: moderateScale(11.5),
+    color: "#065F46",
+    fontWeight: "500",
+  },
+  outsideZoneBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FEE2E2",
+    marginHorizontal: scale(16),
+    marginTop: moderateScale(10),
+    marginBottom: moderateScale(10),
+    padding: scale(14),
+    borderRadius: scale(12),
+  },
+  outsideZoneIconBox: {
+    width: scale(38),
+    height: scale(38),
+    borderRadius: scale(19),
+    backgroundColor: "#FEE2E2",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  outsideZoneTitle: {
+    fontSize: moderateScale(13.5),
+    fontWeight: "700",
+    color: "#991B1B",
+  },
+  outsideZoneSub: {
+    fontSize: moderateScale(11.5),
+    color: "#7F1D1D",
+    marginTop: moderateScale(3),
+    lineHeight: moderateScale(16),
+  },
+  changeLocBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: "#DC2626",
+    paddingHorizontal: scale(12),
+    paddingVertical: moderateScale(6),
+    borderRadius: scale(6),
+    gap: scale(6),
+    marginTop: moderateScale(8),
+  },
+  changeLocBtnText: {
+    color: "#FFFFFF",
+    fontSize: moderateScale(11.5),
+    fontWeight: "700",
   },
   sectionHeader: {
     flexDirection: "row",

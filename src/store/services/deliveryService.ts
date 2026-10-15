@@ -33,6 +33,7 @@ export interface DocumentUploadPayload {
   documentNumber?: string;
   frontUrl?: string;
   backUrl?: string;
+  fileUri?: string;
   expiryDate?: string;
 }
 
@@ -58,8 +59,63 @@ export const deliveryService = {
     return response.data;
   },
 
-  // Documents
+  uploadProfilePhoto: async (imageUri: string) => {
+    const formData = new FormData();
+    const filename = imageUri.split("/").pop() || "profile.jpg";
+    const match = /\.(\w+)$/.exec(filename);
+    const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+    formData.append("profilePhoto", {
+      uri: imageUri,
+      name: filename,
+      type,
+    } as any);
+
+    const response = await api.post("/delivery/auth/profile-photo", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return response.data;
+  },
+
+  updateBankDetails: async (bankDetails: {
+    accountHolderName?: string;
+    accountNumber?: string;
+    ifscCode?: string;
+    bankName?: string;
+    upiId?: string;
+  }) => {
+    const response = await api.put("/delivery/auth/bank-details", { bankDetails });
+    return response.data;
+  },
+
+  // Documents (Supports direct Cloudinary upload via fileUri)
   uploadDocument: async (data: DocumentUploadPayload) => {
+    if (data.fileUri) {
+      const formData = new FormData();
+      formData.append("documentType", data.documentType);
+      if (data.documentNumber) {
+        formData.append("documentNumber", data.documentNumber);
+      }
+      if (data.expiryDate) {
+        formData.append("expiryDate", data.expiryDate);
+      }
+
+      const filename = data.fileUri.split("/").pop() || `${data.documentType}.jpg`;
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+      formData.append("frontImage", {
+        uri: data.fileUri,
+        name: filename,
+        type,
+      } as any);
+
+      const response = await api.post("/delivery/documents/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      return response.data;
+    }
+
     const response = await api.post("/delivery/documents/upload", data);
     return response.data;
   },

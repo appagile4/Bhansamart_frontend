@@ -9,6 +9,8 @@ export interface AddressPayload {
   landmark?: string;
   phone: string;
   isDefault?: boolean;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface SavedAddress {
@@ -22,6 +24,8 @@ export interface SavedAddress {
   landmark?: string;
   phone: string;
   isDefault?: boolean;
+  latitude?: number;
+  longitude?: number;
   createdAt?: string;
 }
 

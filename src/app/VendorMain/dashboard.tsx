@@ -12,6 +12,8 @@ import {
   onNotificationReceived,
   onWalletUpdated,
   setNewOrderAlert,
+  updateVendorDeliveryRadius,
+  updateVendorStoreStatus,
 } from "@/store/slices/vendorFinanceSlice";
 import { moderateScale, scale } from "@/theme";
 import {
@@ -54,11 +56,49 @@ export default function VendorDashboardScreen() {
     dashboardLoading,
     newOrderAlert,
     error,
+    deliveryRadiusKm,
+    isStoreOpen: reduxStoreOpen,
+    shippingLocations,
   } = useAppSelector((state) => state.vendorFinance);
 
   const [refreshing, setRefreshing] = useState(false);
-  const [isStoreOpen, setIsStoreOpen] = useState(true);
+  const [selectedRadius, setSelectedRadius] = useState<number>(deliveryRadiusKm || 5);
+  const [savingRadius, setSavingRadius] = useState(false);
+  const [togglingStore, setTogglingStore] = useState(false);
   const [processingOrderAction, setProcessingOrderAction] = useState(false);
+
+  useEffect(() => {
+    if (deliveryRadiusKm) {
+      setSelectedRadius(deliveryRadiusKm);
+    }
+  }, [deliveryRadiusKm]);
+
+  const handleToggleStoreStatus = async () => {
+    try {
+      setTogglingStore(true);
+      await dispatch(updateVendorStoreStatus(!reduxStoreOpen)).unwrap();
+    } catch (err: any) {
+      Alert.alert("Store Status", err || "Failed to update store status");
+    } finally {
+      setTogglingStore(false);
+    }
+  };
+
+  const handleUpdateRadius = async (newRadius: number) => {
+    try {
+      setSavingRadius(true);
+      setSelectedRadius(newRadius);
+      await dispatch(updateVendorDeliveryRadius(newRadius)).unwrap();
+      Alert.alert(
+        "Delivery Radius Updated",
+        `Your store delivery radius is now set to ${newRadius} km. Nearby customer product availability has updated in real-time.`
+      );
+    } catch (err: any) {
+      Alert.alert("Error", err || "Failed to update delivery radius");
+    } finally {
+      setSavingRadius(false);
+    }
+  };
 
   // 1. Initial Load & Background Refresh
   useEffect(() => {
@@ -205,11 +245,11 @@ export default function VendorDashboardScreen() {
           <View
             style={[
               styles.statusDot,
-              { backgroundColor: isStoreOpen ? "#10B981" : "#EF4444" },
+              { backgroundColor: reduxStoreOpen ? "#10B981" : "#EF4444" },
             ]}
           />
           <Text style={styles.statusText}>
-            {isStoreOpen
+            {reduxStoreOpen
               ? "Store is Open & Accepting Orders"
               : "Store is Currently Closed"}
           </Text>
@@ -217,25 +257,35 @@ export default function VendorDashboardScreen() {
 
         <TouchableOpacity
           activeOpacity={0.7}
-          onPress={() => setIsStoreOpen((prev) => !prev)}
+          disabled={togglingStore}
+          onPress={handleToggleStoreStatus}
           style={[
             styles.toggleBtn,
-            { backgroundColor: isStoreOpen ? "#E6F4EA" : "#FEE2E2" },
+            { backgroundColor: reduxStoreOpen ? "#E6F4EA" : "#FEE2E2" },
           ]}
         >
-          <Feather
-            name={isStoreOpen ? "power" : "play"}
-            size={scale(14)}
-            color={isStoreOpen ? "#10B981" : "#EF4444"}
-          />
-          <Text
-            style={[
-              styles.toggleBtnLabel,
-              { color: isStoreOpen ? "#10B981" : "#EF4444" },
-            ]}
-          >
-            {isStoreOpen ? "Close Store" : "Open Store"}
-          </Text>
+          {togglingStore ? (
+            <ActivityIndicator
+              size="small"
+              color={reduxStoreOpen ? "#10B981" : "#EF4444"}
+            />
+          ) : (
+            <>
+              <Feather
+                name={reduxStoreOpen ? "power" : "play"}
+                size={scale(14)}
+                color={reduxStoreOpen ? "#10B981" : "#EF4444"}
+              />
+              <Text
+                style={[
+                  styles.toggleBtnLabel,
+                  { color: reduxStoreOpen ? "#10B981" : "#EF4444" },
+                ]}
+              >
+                {reduxStoreOpen ? "Close Store" : "Open Store"}
+              </Text>
+            </>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -250,6 +300,97 @@ export default function VendorDashboardScreen() {
         }
         contentContainerStyle={styles.scrollContent}
       >
+        {/* ── Delivery Coverage Radius Card ───────────────────────────────── */}
+        <View style={styles.radiusCard}>
+          <View style={styles.radiusHeaderRow}>
+            <View style={styles.radiusIconBox}>
+              <Ionicons name="location-outline" size={scale(20)} color="#016073" />
+            </View>
+            <View style={{ flex: 1, marginLeft: scale(10) }}>
+              <Text style={styles.radiusTitle}>Delivery Coverage Radius</Text>
+              <Text style={styles.radiusSub}>
+                Only customers within this radius can order
+              </Text>
+            </View>
+            <View style={styles.radiusBadge}>
+              <Text style={styles.radiusBadgeText}>{selectedRadius} km</Text>
+            </View>
+          </View>
+
+          {/* Stepper & Current Distance Display */}
+          <View style={styles.radiusControlsRow}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              disabled={selectedRadius <= 1 || savingRadius}
+              onPress={() => handleUpdateRadius(Math.max(1, selectedRadius - 1))}
+              style={[
+                styles.radiusStepBtn,
+                (selectedRadius <= 1 || savingRadius) && styles.radiusStepBtnDisabled,
+              ]}
+            >
+              <Feather name="minus" size={scale(16)} color="#016073" />
+            </TouchableOpacity>
+
+            <View style={styles.radiusValueDisplay}>
+              <Text style={styles.radiusValueText}>{selectedRadius} km</Text>
+              <Text style={styles.radiusValueSub}>Active Radius</Text>
+            </View>
+
+            <TouchableOpacity
+              activeOpacity={0.7}
+              disabled={selectedRadius >= 50 || savingRadius}
+              onPress={() => handleUpdateRadius(Math.min(50, selectedRadius + 1))}
+              style={[
+                styles.radiusStepBtn,
+                (selectedRadius >= 50 || savingRadius) && styles.radiusStepBtnDisabled,
+              ]}
+            >
+              <Feather name="plus" size={scale(16)} color="#016073" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Preset Radius Chips */}
+          <View style={styles.radiusChipsRow}>
+            {[1, 3, 5, 8, 10, 15, 20].map((r) => {
+              const isSelected = selectedRadius === r;
+              return (
+                <TouchableOpacity
+                  key={r}
+                  activeOpacity={0.7}
+                  disabled={savingRadius}
+                  onPress={() => handleUpdateRadius(r)}
+                  style={[
+                    styles.radiusChip,
+                    isSelected && styles.radiusChipActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.radiusChipText,
+                      isSelected && styles.radiusChipTextActive,
+                    ]}
+                  >
+                    {r} km
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Store Location Coordinates Verification */}
+          <View style={styles.storeLocInfoBox}>
+            <Feather name="map-pin" size={scale(14)} color="#64748B" />
+            <Text style={styles.storeLocInfoText} numberOfLines={1}>
+              {shippingLocations?.warehouseAddress ||
+                vendorDetails?.shippingLocations?.warehouseAddress ||
+                "Kathmandu Store Hub"}
+              {" • "}
+              {shippingLocations?.latitude && shippingLocations?.longitude
+                ? `${Number(shippingLocations.latitude).toFixed(4)}°N, ${Number(shippingLocations.longitude).toFixed(4)}°E`
+                : "27.7172°N, 85.3240°E"}
+            </Text>
+          </View>
+        </View>
         {/* Welcome Gradient Banner */}
         <LinearGradient
           colors={["#016073", "#005566", "#00687D"]}
@@ -1221,5 +1362,127 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(13),
     fontWeight: "700",
     color: "#FFFFFF",
+  },
+  radiusCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: scale(14),
+    padding: scale(16),
+    marginBottom: moderateScale(14),
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  radiusHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  radiusIconBox: {
+    width: scale(38),
+    height: scale(38),
+    borderRadius: scale(19),
+    backgroundColor: "#E6F4EA",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  radiusTitle: {
+    fontSize: moderateScale(14),
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+  radiusSub: {
+    fontSize: moderateScale(11),
+    color: "#64748B",
+    marginTop: moderateScale(2),
+  },
+  radiusBadge: {
+    backgroundColor: "#016073",
+    paddingHorizontal: scale(10),
+    paddingVertical: moderateScale(4),
+    borderRadius: scale(12),
+  },
+  radiusBadgeText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: moderateScale(12),
+  },
+  radiusControlsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginVertical: moderateScale(12),
+    paddingHorizontal: scale(8),
+  },
+  radiusStepBtn: {
+    width: scale(38),
+    height: scale(38),
+    borderRadius: scale(19),
+    backgroundColor: "#F1F5F9",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+  },
+  radiusStepBtnDisabled: {
+    opacity: 0.4,
+  },
+  radiusValueDisplay: {
+    alignItems: "center",
+  },
+  radiusValueText: {
+    fontSize: moderateScale(22),
+    fontWeight: "800",
+    color: "#016073",
+  },
+  radiusValueSub: {
+    fontSize: moderateScale(10),
+    fontWeight: "600",
+    color: "#64748B",
+    textTransform: "uppercase",
+  },
+  radiusChipsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: scale(8),
+    marginBottom: moderateScale(12),
+  },
+  radiusChip: {
+    paddingHorizontal: scale(12),
+    paddingVertical: moderateScale(6),
+    borderRadius: scale(16),
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  radiusChipActive: {
+    backgroundColor: "#016073",
+    borderColor: "#016073",
+  },
+  radiusChipText: {
+    fontSize: moderateScale(12),
+    fontWeight: "600",
+    color: "#475569",
+  },
+  radiusChipTextActive: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+  },
+  storeLocInfoBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+    padding: scale(10),
+    borderRadius: scale(8),
+    gap: scale(6),
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  storeLocInfoText: {
+    fontSize: moderateScale(11),
+    color: "#475569",
+    flex: 1,
   },
 });

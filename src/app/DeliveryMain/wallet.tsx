@@ -9,12 +9,15 @@ import deliveryService from "@/store/services/deliveryService";
 import { moderateScale, scale } from "@/theme";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
   Linking,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -22,11 +25,14 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function DeliveryWalletScreen() {
+  const router = useRouter();
   const dispatch = useAppDispatch();
+  const insets = useSafeAreaInsets();
   const {
+    partner,
     earnings,
     codCustody,
     securityDeposit,
@@ -130,7 +136,7 @@ export default function DeliveryWalletScreen() {
   const hasCashInCustody = Number(codCustody.currentCashInCustody || 0) > 0;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top"]}>
+    <SafeAreaView style={styles.safeArea} edges={[""] as any}>
       <StatusBar style="light" />
 
       {/* Header Banner */}
@@ -140,7 +146,10 @@ export default function DeliveryWalletScreen() {
             ? ["#0F766E", "#0D9488", "#115E59"]
             : ["#B45309", "#D97706", "#78350F"]
         }
-        style={styles.headerGradient}
+        style={[
+          styles.headerGradient,
+          { paddingTop: Math.max(insets.top, moderateScale(16)) + moderateScale(8) },
+        ]}
       >
         <Text style={styles.headerTitle}>
           {activeTab === "EARNINGS"
@@ -233,13 +242,18 @@ export default function DeliveryWalletScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{ flex: 1 }}
       >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
         {activeTab === "EARNINGS" ? (
           <>
             {/* Banner if Cash In Custody is pending */}
@@ -381,6 +395,51 @@ export default function DeliveryWalletScreen() {
                   </TouchableOpacity>
                 </View>
               )}
+            </View>
+
+            {/* ── LINKED BANK & WALLET PAYOUT DESTINATION ─────────────────── */}
+            <View style={styles.payoutCard}>
+              <View style={styles.payoutHeaderRow}>
+                <View style={styles.payoutIconBox}>
+                  <MaterialCommunityIcons
+                    name="bank-transfer"
+                    size={scale(22)}
+                    color="#0F766E"
+                  />
+                </View>
+                <View style={{ flex: 1, marginLeft: scale(10) }}>
+                  <Text style={styles.payoutTitle}>Bank & UPI Payout Wallet</Text>
+                  <Text style={styles.payoutSub}>
+                    Direct withdrawal destination for earnings
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.payoutEditBtn}
+                  onPress={() => router.push("/DeliveryMain/profile" as any)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.payoutEditBtnText}>Manage</Text>
+                  <Feather name="chevron-right" size={scale(14)} color="#0F766E" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.payoutDetailsRow}>
+                <View style={styles.payoutItem}>
+                  <Text style={styles.payoutItemLabel}>Bank Account</Text>
+                  <Text style={styles.payoutItemVal} numberOfLines={1}>
+                    {partner?.bankDetails?.bankName
+                      ? `${partner.bankDetails.bankName} (${partner.bankDetails.accountNumber || "Set"})`
+                      : "Not Linked"}
+                  </Text>
+                </View>
+                <View style={styles.payoutDivider} />
+                <View style={styles.payoutItem}>
+                  <Text style={styles.payoutItemLabel}>UPI / eSewa</Text>
+                  <Text style={[styles.payoutItemVal, { color: "#0F766E" }]} numberOfLines={1}>
+                    {partner?.bankDetails?.upiId || "Not Linked"}
+                  </Text>
+                </View>
+              </View>
             </View>
 
             {/* ── DELIVERY EARNINGS TRANSACTIONS ─────────────────────────── */}
@@ -750,6 +809,7 @@ export default function DeliveryWalletScreen() {
           </>
         )}
       </ScrollView>
+    </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -1027,6 +1087,82 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(11),
     fontWeight: "700",
     color: "#DC2626",
+  },
+  payoutCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: scale(16),
+    padding: scale(16),
+    borderWidth: 1.5,
+    borderColor: "#CCFBF1",
+    marginBottom: moderateScale(20),
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  payoutHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  payoutIconBox: {
+    width: scale(38),
+    height: scale(38),
+    borderRadius: scale(19),
+    backgroundColor: "#F0FDFA",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  payoutTitle: {
+    fontSize: moderateScale(14),
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+  payoutSub: {
+    fontSize: moderateScale(11),
+    color: "#64748B",
+  },
+  payoutEditBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#CCFBF1",
+    paddingHorizontal: scale(10),
+    paddingVertical: moderateScale(5),
+    borderRadius: scale(8),
+    gap: scale(2),
+  },
+  payoutEditBtnText: {
+    fontSize: moderateScale(11),
+    fontWeight: "700",
+    color: "#0F766E",
+  },
+  payoutDetailsRow: {
+    flexDirection: "row",
+    backgroundColor: "#F8FAFC",
+    borderRadius: scale(10),
+    padding: scale(12),
+    alignItems: "center",
+    marginTop: moderateScale(12),
+  },
+  payoutItem: {
+    flex: 1,
+  },
+  payoutDivider: {
+    width: 1,
+    height: "80%",
+    backgroundColor: "#CBD5E1",
+    marginHorizontal: scale(10),
+  },
+  payoutItemLabel: {
+    fontSize: moderateScale(10),
+    color: "#64748B",
+    fontWeight: "600",
+  },
+  payoutItemVal: {
+    fontSize: moderateScale(12),
+    fontWeight: "800",
+    color: "#0F172A",
+    marginTop: moderateScale(2),
   },
   sectionHeaderRow: {
     marginBottom: moderateScale(12),

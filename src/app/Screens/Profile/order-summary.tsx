@@ -53,6 +53,12 @@ export default function OrderSummaryScreen() {
   );
 
   const [copied, setCopied] = useState(false);
+  const [liveRiderLocation, setLiveRiderLocation] = useState<{
+    latitude: number;
+    longitude: number;
+    speed?: number;
+    updatedAt?: string;
+  } | null>(null);
 
   // Active target order ID
   const activeOrderId = params.orderId || currentOrder?._id || "";
@@ -84,9 +90,22 @@ export default function OrderSummaryScreen() {
         }
       });
 
+      // Listen for live delivery partner GPS location updates
+      const unsubLocation = socketService.onDeliveryLocationUpdate((locData) => {
+        if (String(locData?.orderId) === String(activeOrderId)) {
+          setLiveRiderLocation({
+            latitude: locData.latitude,
+            longitude: locData.longitude,
+            speed: locData.speed,
+            updatedAt: locData.updatedAt || new Date().toISOString(),
+          });
+        }
+      });
+
       return () => {
         unsubscribe();
         unsubPartner();
+        unsubLocation();
       };
     }
   }, [dispatch, activeOrderId, params.orderNumber]);
@@ -281,25 +300,39 @@ export default function OrderSummaryScreen() {
         {/* ── Assigned Delivery Partner Card ───────────────────────────── */}
         {order?.assignedDeliveryBoy ? (
           <View style={styles.partnerCard}>
-            <View style={styles.partnerAvatarBox}>
-              <MaterialCommunityIcons name="moped" size={scale(22)} color="#0F766E" />
+            <View style={styles.partnerCardTop}>
+              <View style={styles.partnerAvatarBox}>
+                <MaterialCommunityIcons name="moped" size={scale(22)} color="#0F766E" />
+              </View>
+              <View style={{ flex: 1, marginLeft: scale(10) }}>
+                <Text style={styles.partnerRoleLabel}>DELIVERY PARTNER ASSIGNED</Text>
+                <Text style={styles.partnerName}>
+                  {order.assignedDeliveryBoy.fullName || "Delivery Partner"}
+                </Text>
+                <Text style={styles.partnerVehicle}>
+                  {order.assignedDeliveryBoy.vehicleDetails?.vehicleType || "Motorcycle"} • ⭐ 5.0
+                </Text>
+              </View>
+              {order.assignedDeliveryBoy.phone ? (
+                <TouchableOpacity
+                  style={styles.partnerCallBtn}
+                  onPress={() => Linking.openURL(`tel:${order.assignedDeliveryBoy.phone}`)}
+                >
+                  <Feather name="phone" size={scale(16)} color="#0F766E" />
+                </TouchableOpacity>
+              ) : null}
             </View>
-            <View style={{ flex: 1, marginLeft: scale(10) }}>
-              <Text style={styles.partnerRoleLabel}>DELIVERY PARTNER ASSIGNED</Text>
-              <Text style={styles.partnerName}>
-                {order.assignedDeliveryBoy.fullName || "Delivery Partner"}
-              </Text>
-              <Text style={styles.partnerVehicle}>
-                {order.assignedDeliveryBoy.vehicleDetails?.vehicleType || "Motorcycle"} • ⭐ 5.0
-              </Text>
-            </View>
-            {order.assignedDeliveryBoy.phone ? (
-              <TouchableOpacity
-                style={styles.partnerCallBtn}
-                onPress={() => Linking.openURL(`tel:${order.assignedDeliveryBoy.phone}`)}
-              >
-                <Feather name="phone" size={scale(16)} color="#0F766E" />
-              </TouchableOpacity>
+
+            {/* Live GPS Tracker Indicator */}
+            {liveRiderLocation || currentStatus === "OUT_FOR_DELIVERY" ? (
+              <View style={styles.liveTrackingRow}>
+                <View style={styles.liveTrackingDot} />
+                <Text style={styles.liveTrackingText}>
+                  {liveRiderLocation
+                    ? `Live GPS Active • (${liveRiderLocation.latitude.toFixed(4)}°N, ${liveRiderLocation.longitude.toFixed(4)}°E)`
+                    : "Live GPS Active • Rider is on the way"}
+                </Text>
+              </View>
             ) : null}
           </View>
         ) : null}
@@ -911,5 +944,33 @@ const styles = StyleSheet.create({
     borderColor: "#CCFBF1",
     alignItems: "center",
     justifyContent: "center",
+  },
+  partnerCardTop: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  liveTrackingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ECFDF5",
+    paddingHorizontal: scale(10),
+    paddingVertical: moderateScale(6),
+    borderRadius: scale(8),
+    marginTop: moderateScale(10),
+    gap: scale(8),
+    borderWidth: 1,
+    borderColor: "#A7F3D0",
+  },
+  liveTrackingDot: {
+    width: scale(8),
+    height: scale(8),
+    borderRadius: scale(4),
+    backgroundColor: "#10B981",
+  },
+  liveTrackingText: {
+    fontSize: moderateScale(11),
+    fontWeight: "600",
+    color: "#065F46",
+    flex: 1,
   },
 });

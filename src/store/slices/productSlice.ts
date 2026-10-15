@@ -135,6 +135,10 @@ interface ProductState {
 
   // Active Category Selection for Customer Home Screen & Scrollers
   selectedCategory: string;
+
+  // Real-Time Geospatial Delivery Zone Status
+  isOutsideDeliveryZone: boolean;
+  eligibleVendorsCount: number;
 }
 
 const initialState: ProductState = {
@@ -156,6 +160,9 @@ const initialState: ProductState = {
   publicLoading: false,
   publicLoadingMore: false,
   publicError: null,
+
+  isOutsideDeliveryZone: false,
+  eligibleVendorsCount: 0,
 
   categoryProducts: [],
   categoryTotal: 0,
@@ -409,6 +416,9 @@ export const productSlice = createSlice({
         action.payload?.hasMore !== undefined
           ? action.payload.hasMore
           : state.publicCurrentPage < state.publicTotalPages;
+      state.isOutsideDeliveryZone = Boolean(action.payload?.isOutsideDeliveryZone);
+      state.eligibleVendorsCount =
+        action.payload?.eligibleVendorsCount ?? (mapped.length > 0 ? 1 : 0);
     });
     builder.addCase(fetchPublicProducts.rejected, (state, action) => {
       state.publicLoading = false;

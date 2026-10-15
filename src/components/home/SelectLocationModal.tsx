@@ -4,6 +4,7 @@ import {
   setSelectedAddress,
 } from "@/store/slices/addressSlice";
 import { SavedAddress } from "@/store/services/addressService";
+import socketService from "@/store/services/socketService";
 import { moderateScale, scale, useTheme } from "@/theme";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Location from "expo-location";
@@ -124,8 +125,13 @@ export default function SelectLocationModal({
           type: "Other",
           addressLine: formattedLocation,
           phone: "",
+          latitude: loc.coords.latitude,
+          longitude: loc.coords.longitude,
         })
       );
+
+      // Notify backend of fresh location for live delivery zone matching
+      socketService.emitCustomerLocation(loc.coords.latitude, loc.coords.longitude).catch(() => {});
 
       const currentLocItem: LocationItem = {
         id: "loc-current",

@@ -349,6 +349,30 @@ export const submitDocument = createAsyncThunk(
   }
 );
 
+export const uploadDeliveryProfilePhoto = createAsyncThunk(
+  "delivery/uploadProfilePhoto",
+  async (imageUri: string, { rejectWithValue }) => {
+    try {
+      const res = await deliveryService.uploadProfilePhoto(imageUri);
+      return res;
+    } catch (error: any) {
+      return rejectWithValue(error.message || "Failed to upload profile photo");
+    }
+  }
+);
+
+export const updateDeliveryBankDetails = createAsyncThunk(
+  "delivery/updateBankDetails",
+  async (bankDetails: any, { rejectWithValue }) => {
+    try {
+      const res = await deliveryService.updateBankDetails(bankDetails);
+      return res;
+    } catch (error: any) {
+      return rejectWithValue(error.message || "Failed to update bank details");
+    }
+  }
+);
+
 export const fetchDocumentStatus = createAsyncThunk(
   "delivery/fetchDocumentStatus",
   async (_, { rejectWithValue }) => {
@@ -616,6 +640,41 @@ export const deliverySlice = createSlice({
       state.documentsVerified = !!action.payload.allVerified;
       state.documents.items = action.payload.documents || {};
     });
+
+    // uploadDeliveryProfilePhoto
+    builder
+      .addCase(uploadDeliveryProfilePhoto.pending, (state) => {
+        state.actionLoading = true;
+      })
+      .addCase(uploadDeliveryProfilePhoto.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        if (state.partner) {
+          state.partner.profilePhoto = action.payload.profilePhoto;
+          if (state.partner.user) {
+            state.partner.user.avatar = action.payload.profilePhoto?.url;
+          }
+        }
+      })
+      .addCase(uploadDeliveryProfilePhoto.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload as string;
+      });
+
+    // updateDeliveryBankDetails
+    builder
+      .addCase(updateDeliveryBankDetails.pending, (state) => {
+        state.actionLoading = true;
+      })
+      .addCase(updateDeliveryBankDetails.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        if (state.partner) {
+          state.partner.bankDetails = action.payload.bankDetails;
+        }
+      })
+      .addCase(updateDeliveryBankDetails.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload as string;
+      });
 
     // logoutDeliveryPartner
     builder.addCase(logoutDeliveryPartner.fulfilled, (state) => {

@@ -18,7 +18,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 const VEHICLE_OPTIONS = [
   { key: "Motorcycle", label: "Motorcycle", icon: "motorbike" },
@@ -29,6 +29,7 @@ const VEHICLE_OPTIONS = [
 
 export default function DeliveryRegisterScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
   const { loading } = useAppSelector((state) => state.delivery);
 
@@ -105,21 +106,27 @@ export default function DeliveryRegisterScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
+    <SafeAreaView style={styles.safeArea} edges={[]}>
       <StatusBar style="light" />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1 }}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: Math.max(insets.bottom, moderateScale(20)) + moderateScale(20) },
+          ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
           {/* Header Banner */}
           <LinearGradient
             colors={["#0F766E", "#0D9488", "#14B8A6"]}
-            style={styles.headerGradient}
+            style={[
+              styles.headerGradient,
+              { paddingTop: Math.max(insets.top, moderateScale(16)) + moderateScale(10) },
+            ]}
           >
             <TouchableOpacity
               style={styles.backBtn}

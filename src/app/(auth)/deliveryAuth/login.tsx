@@ -18,10 +18,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function DeliveryLoginScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
   const { isAuthenticated, loading, error } = useAppSelector(
     (state) => state.delivery
@@ -63,24 +64,33 @@ export default function DeliveryLoginScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
+    <SafeAreaView style={styles.safeArea} edges={[]}>
       <StatusBar style="light" />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.keyboardView}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: Math.max(insets.bottom, moderateScale(20)) + moderateScale(20) },
+          ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
           {/* Header Banner */}
           <LinearGradient
             colors={["#0F766E", "#0D9488", "#14B8A6"]}
-            style={styles.headerGradient}
+            style={[
+              styles.headerGradient,
+              { paddingTop: Math.max(insets.top, moderateScale(16)) + moderateScale(14) },
+            ]}
           >
             <TouchableOpacity
-              style={styles.backBtn}
+              style={[
+                styles.backBtn,
+                { top: Math.max(insets.top, moderateScale(16)) + moderateScale(4) },
+              ]}
               onPress={() => {
                 if (router.canGoBack()) {
                   router.back();

@@ -19,6 +19,8 @@ export interface AddressState {
   selectedAddress: SavedAddress | null;
   currentGpsLocation: string | null;
   activeDisplayLocation: string;
+  latitude: number | null;
+  longitude: number | null;
   loading: boolean;
   error: string | null;
   initialized: boolean;
@@ -31,6 +33,8 @@ const initialState: AddressState = {
   selectedAddress: null,
   currentGpsLocation: null,
   activeDisplayLocation: DEFAULT_FALLBACK_LOCATION,
+  latitude: 27.7172,
+  longitude: 85.3240,
   loading: false,
   error: null,
   initialized: false,
@@ -192,17 +196,53 @@ export const addressSlice = createSlice({
       if (action.payload?.addressLine) {
         state.activeDisplayLocation = action.payload.addressLine;
       }
+      if (action.payload?.latitude != null && action.payload?.longitude != null) {
+        state.latitude = action.payload.latitude;
+        state.longitude = action.payload.longitude;
+      }
       saveSelectedAddressToStorage(state.selectedAddress, state.activeDisplayLocation);
     },
-    setCurrentGpsLocation: (state, action: PayloadAction<string>) => {
-      state.currentGpsLocation = action.payload;
-      state.activeDisplayLocation = action.payload;
-      state.selectedAddress = {
-        id: "current-location",
-        type: "Other",
-        addressLine: action.payload,
-        phone: "",
-      };
+    setUserCoordinates: (
+      state,
+      action: PayloadAction<{ latitude: number; longitude: number; addressLine?: string }>
+    ) => {
+      state.latitude = action.payload.latitude;
+      state.longitude = action.payload.longitude;
+      if (action.payload.addressLine) {
+        state.activeDisplayLocation = action.payload.addressLine;
+      }
+    },
+    setCurrentGpsLocation: (
+      state,
+      action: PayloadAction<
+        string | { addressLine: string; latitude: number; longitude: number }
+      >
+    ) => {
+      if (typeof action.payload === "string") {
+        state.currentGpsLocation = action.payload;
+        state.activeDisplayLocation = action.payload;
+        state.selectedAddress = {
+          id: "current-location",
+          type: "Other",
+          addressLine: action.payload,
+          phone: "",
+          latitude: state.latitude || 27.7172,
+          longitude: state.longitude || 85.3240,
+        };
+      } else {
+        state.currentGpsLocation = action.payload.addressLine;
+        state.activeDisplayLocation = action.payload.addressLine;
+        state.latitude = action.payload.latitude;
+        state.longitude = action.payload.longitude;
+        state.selectedAddress = {
+          id: "current-location",
+          type: "Other",
+          addressLine: action.payload.addressLine,
+          phone: "",
+          latitude: action.payload.latitude,
+          longitude: action.payload.longitude,
+        };
+      }
       saveSelectedAddressToStorage(state.selectedAddress, state.activeDisplayLocation);
     },
     setActiveDisplayLocation: (state, action: PayloadAction<string>) => {
@@ -357,6 +397,7 @@ export const addressSlice = createSlice({
 
 export const {
   setSelectedAddress,
+  setUserCoordinates,
   setCurrentGpsLocation,
   setActiveDisplayLocation,
   setAddressesLocal,

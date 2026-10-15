@@ -23,6 +23,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
   Linking,
   Modal,
   Platform,
@@ -34,33 +35,42 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import MapView, { Marker, Polyline, PROVIDER_DEFAULT, PROVIDER_GOOGLE } from "react-native-maps";
-import { SafeAreaView } from "react-native-safe-area-context";
+import MapView, {
+  Marker,
+  Polyline,
+  PROVIDER_DEFAULT,
+  PROVIDER_GOOGLE,
+} from "react-native-maps";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 const CANCELLATION_REASONS = [
   {
     id: "CUSTOMER_UNAVAILABLE",
     label: "Customer Not Available / Phone Unreachable",
     icon: "phone-off" as const,
-    description: "Door locked, or customer not answering phone after multiple calls.",
+    description:
+      "Door locked, or customer not answering phone after multiple calls.",
   },
   {
     id: "CUSTOMER_CANCELLED",
     label: "Customer Cancelled / Refused Delivery",
     icon: "x-circle" as const,
-    description: "Customer explicitly refused to take delivery or cancelled on spot.",
+    description:
+      "Customer explicitly refused to take delivery or cancelled on spot.",
   },
   {
     id: "WRONG_PRODUCT",
     label: "Product Wrong / Missing / Damaged",
     icon: "alert-triangle" as const,
-    description: "Items in package do not match order, or items are leaking/damaged.",
+    description:
+      "Items in package do not match order, or items are leaking/damaged.",
   },
   {
     id: "ADDRESS_UNREACHABLE",
     label: "Address Incorrect / Road Inaccessible",
     icon: "map-pin" as const,
-    description: "Could not find destination address or access route is blocked.",
+    description:
+      "Could not find destination address or access route is blocked.",
   },
   {
     id: "OTHER",
@@ -72,6 +82,7 @@ const CANCELLATION_REASONS = [
 
 export default function DeliveryDashboardScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
   const {
     partner,
@@ -89,7 +100,9 @@ export default function DeliveryDashboardScreen() {
   const [deliveryOtpInput, setDeliveryOtpInput] = useState("");
 
   // Payment mode for COD delivery at customer location: "CASH" (physical) or "DIRECT_QR" (vendor store QR)
-  const [selectedPaymentMode, setSelectedPaymentMode] = useState<"CASH" | "DIRECT_QR">("CASH");
+  const [selectedPaymentMode, setSelectedPaymentMode] = useState<
+    "CASH" | "DIRECT_QR"
+  >("CASH");
 
   // Countdown timer for incoming offer
   const [timeLeft, setTimeLeft] = useState(45);
@@ -115,17 +128,20 @@ export default function DeliveryDashboardScreen() {
     targetType: null,
     targetName: "",
     targetAddress: "",
-    targetCoord: { latitude: 27.7172, longitude: 85.3240 },
+    targetCoord: { latitude: 27.7172, longitude: 85.324 },
   });
   const navMapRef = useRef<MapView | null>(null);
 
   // Delivery partner's current coordinate
   const partnerCoord = useMemo(() => {
-    let lat = 27.7050;
-    let lng = 85.3150;
-    if (partner?.currentLocation?.coordinates && Array.isArray(partner.currentLocation.coordinates)) {
-      lng = Number(partner.currentLocation.coordinates[0]) || 85.3150;
-      lat = Number(partner.currentLocation.coordinates[1]) || 27.7050;
+    let lat = 27.705;
+    let lng = 85.315;
+    if (
+      partner?.currentLocation?.coordinates &&
+      Array.isArray(partner.currentLocation.coordinates)
+    ) {
+      lng = Number(partner.currentLocation.coordinates[0]) || 85.315;
+      lat = Number(partner.currentLocation.coordinates[1]) || 27.705;
     }
     return { latitude: lat, longitude: lng };
   }, [partner]);
@@ -155,29 +171,41 @@ export default function DeliveryDashboardScreen() {
     if (!offeredAssignment) return null;
 
     // Delivery boy / His location
-    let boyLat = 27.7050;
-    let boyLng = 85.3150;
-    if (offeredAssignment.partnerLocation && Array.isArray(offeredAssignment.partnerLocation)) {
-      boyLng = Number(offeredAssignment.partnerLocation[0]) || 85.3150;
-      boyLat = Number(offeredAssignment.partnerLocation[1]) || 27.7050;
-    } else if (partner?.currentLocation?.coordinates && Array.isArray(partner.currentLocation.coordinates)) {
-      boyLng = Number(partner.currentLocation.coordinates[0]) || 85.3150;
-      boyLat = Number(partner.currentLocation.coordinates[1]) || 27.7050;
+    let boyLat = 27.705;
+    let boyLng = 85.315;
+    if (
+      offeredAssignment.partnerLocation &&
+      Array.isArray(offeredAssignment.partnerLocation)
+    ) {
+      boyLng = Number(offeredAssignment.partnerLocation[0]) || 85.315;
+      boyLat = Number(offeredAssignment.partnerLocation[1]) || 27.705;
+    } else if (
+      partner?.currentLocation?.coordinates &&
+      Array.isArray(partner.currentLocation.coordinates)
+    ) {
+      boyLng = Number(partner.currentLocation.coordinates[0]) || 85.315;
+      boyLat = Number(partner.currentLocation.coordinates[1]) || 27.705;
     }
 
     // Store location
     let storeLat = 27.7172;
-    let storeLng = 85.3240;
-    if (offeredAssignment.pickup?.coordinates && Array.isArray(offeredAssignment.pickup.coordinates)) {
-      storeLng = Number(offeredAssignment.pickup.coordinates[0]) || 85.3240;
+    let storeLng = 85.324;
+    if (
+      offeredAssignment.pickup?.coordinates &&
+      Array.isArray(offeredAssignment.pickup.coordinates)
+    ) {
+      storeLng = Number(offeredAssignment.pickup.coordinates[0]) || 85.324;
       storeLat = Number(offeredAssignment.pickup.coordinates[1]) || 27.7172;
     }
 
     // Customer / Delivery location
     let dropLat = 27.7272;
-    let dropLng = 85.3340;
-    if (offeredAssignment.drop?.coordinates && Array.isArray(offeredAssignment.drop.coordinates)) {
-      dropLng = Number(offeredAssignment.drop.coordinates[0]) || 85.3340;
+    let dropLng = 85.334;
+    if (
+      offeredAssignment.drop?.coordinates &&
+      Array.isArray(offeredAssignment.drop.coordinates)
+    ) {
+      dropLng = Number(offeredAssignment.drop.coordinates[0]) || 85.334;
       dropLat = Number(offeredAssignment.drop.coordinates[1]) || 27.7272;
     }
 
@@ -284,7 +312,7 @@ export default function DeliveryDashboardScreen() {
       if (partner?.approvalStatus !== "APPROVED") {
         Alert.alert(
           "Approval Required",
-          `Your partner profile is currently '${partner?.approvalStatus || "PENDING_APPROVAL"}'. Admin must review and approve your account before you can go online.`
+          `Your partner profile is currently '${partner?.approvalStatus || "PENDING_APPROVAL"}'. Admin must review and approve your account before you can go online.`,
         );
         return;
       }
@@ -298,7 +326,7 @@ export default function DeliveryDashboardScreen() {
               onPress: () => router.push("/DeliveryMain/wallet" as any),
             },
             { text: "Cancel", style: "cancel" },
-          ]
+          ],
         );
         return;
       }
@@ -312,7 +340,7 @@ export default function DeliveryDashboardScreen() {
               onPress: () => router.push("/DeliveryMain/profile" as any),
             },
             { text: "Cancel", style: "cancel" },
-          ]
+          ],
         );
         return;
       }
@@ -329,10 +357,16 @@ export default function DeliveryDashboardScreen() {
   const handleAcceptOffer = async () => {
     if (!offeredAssignment) return;
     try {
-      await dispatch(acceptOfferedOrder(offeredAssignment.assignmentId)).unwrap();
+      await dispatch(
+        acceptOfferedOrder(offeredAssignment.assignmentId),
+      ).unwrap();
       dispatch(fetchActiveAssignment());
     } catch (err: any) {
-      Alert.alert("Offer Expired", err || "This order offer has expired or was assigned to another partner.");
+      Alert.alert(
+        "Offer Expired",
+        err ||
+          "This order offer has expired or was assigned to another partner.",
+      );
     }
   };
 
@@ -344,7 +378,7 @@ export default function DeliveryDashboardScreen() {
         rejectOfferedOrder({
           assignmentId: offeredAssignment.assignmentId,
           reason: "Delivery partner declined",
-        })
+        }),
       );
     } catch (err) {
       dispatch(clearIncomingOffer());
@@ -357,7 +391,10 @@ export default function DeliveryDashboardScreen() {
     try {
       await dispatch(markOrderArrivedStore(activeOrder._id)).unwrap();
       dispatch(fetchActiveAssignment());
-      Alert.alert("Arrived at Store", "Ask the vendor staff for the 4-digit Pickup OTP.");
+      Alert.alert(
+        "Arrived at Store",
+        "Ask the vendor staff for the 4-digit Pickup OTP.",
+      );
     } catch (err: any) {
       Alert.alert("Error", err || "Failed to update store arrival.");
     }
@@ -366,18 +403,30 @@ export default function DeliveryDashboardScreen() {
   // Verify Pickup OTP
   const handleVerifyPickupOtp = async () => {
     if (!pickupOtpInput.trim() || !activeOrder) {
-      Alert.alert("Required", "Please enter the Pickup OTP given by the vendor.");
+      Alert.alert(
+        "Required",
+        "Please enter the Pickup OTP given by the vendor.",
+      );
       return;
     }
     try {
       await dispatch(
-        verifyOrderPickupOtp({ orderId: activeOrder._id, otp: pickupOtpInput.trim() })
+        verifyOrderPickupOtp({
+          orderId: activeOrder._id,
+          otp: pickupOtpInput.trim(),
+        }),
       ).unwrap();
       setPickupOtpInput("");
       dispatch(fetchActiveAssignment());
-      Alert.alert("Pickup Confirmed!", "Order package received. You are now out for delivery.");
+      Alert.alert(
+        "Pickup Confirmed!",
+        "Order package received. You are now out for delivery.",
+      );
     } catch (err: any) {
-      Alert.alert("Verification Failed", err || "Invalid Pickup OTP. Check with the vendor.");
+      Alert.alert(
+        "Verification Failed",
+        err || "Invalid Pickup OTP. Check with the vendor.",
+      );
     }
   };
 
@@ -387,7 +436,10 @@ export default function DeliveryDashboardScreen() {
     try {
       await dispatch(markOrderArrivedCustomer(activeOrder._id)).unwrap();
       dispatch(fetchActiveAssignment());
-      Alert.alert("Arrived at Customer", "Ask the customer for their 4-digit Delivery OTP.");
+      Alert.alert(
+        "Arrived at Customer",
+        "Ask the customer for their 4-digit Delivery OTP.",
+      );
     } catch (err: any) {
       Alert.alert("Error", err || "Failed to update customer arrival.");
     }
@@ -396,7 +448,10 @@ export default function DeliveryDashboardScreen() {
   // Verify Customer Delivery OTP
   const handleVerifyDeliveryOtp = async () => {
     if (!deliveryOtpInput.trim() || !activeOrder) {
-      Alert.alert("Required", "Please enter the Delivery OTP provided by the customer.");
+      Alert.alert(
+        "Required",
+        "Please enter the Delivery OTP provided by the customer.",
+      );
       return;
     }
 
@@ -409,7 +464,7 @@ export default function DeliveryDashboardScreen() {
           orderId: activeOrder._id,
           otp: deliveryOtpInput.trim(),
           paymentMode,
-        })
+        }),
       ).unwrap();
       setDeliveryOtpInput("");
       dispatch(fetchActiveAssignment());
@@ -418,22 +473,27 @@ export default function DeliveryDashboardScreen() {
         paymentMode === "DIRECT_QR"
           ? `Online payment of ₹${activeOrder.totalAmount} was paid directly to the Store QR.`
           : isCod
-          ? `Collected ₹${activeOrder.totalAmount} physical cash (custody).`
-          : "Prepaid order delivered.";
+            ? `Collected ₹${activeOrder.totalAmount} physical cash (custody).`
+            : "Prepaid order delivered.";
 
       Alert.alert(
         "Order Delivered!",
-        `Congratulations! Delivery completed successfully.\n${paymentMsg}\nEarnings credited to your wallet: ₹${res.earnings?.totalEarnings || 60}`
+        `Congratulations! Delivery completed successfully.\n${paymentMsg}\nEarnings credited to your wallet: ₹${res.earnings?.totalEarnings || 60}`,
       );
     } catch (err: any) {
-      Alert.alert("Verification Failed", err || "Invalid Delivery OTP. Check with the customer.");
+      Alert.alert(
+        "Verification Failed",
+        err || "Invalid Delivery OTP. Check with the customer.",
+      );
     }
   };
 
   const handleOpenStoreNavigation = () => {
     if (!activeOrder) return;
-    const storeLat = Number(activeOrder.vendor?.shippingLocations?.latitude) || 27.7172;
-    const storeLng = Number(activeOrder.vendor?.shippingLocations?.longitude) || 85.3240;
+    const storeLat =
+      Number(activeOrder.vendor?.shippingLocations?.latitude) || 27.7172;
+    const storeLng =
+      Number(activeOrder.vendor?.shippingLocations?.longitude) || 85.324;
     setNavMapModal({
       visible: true,
       targetType: "STORE",
@@ -445,31 +505,40 @@ export default function DeliveryDashboardScreen() {
 
   const handleOpenCustomerNavigation = () => {
     if (!activeOrder) return;
-    const dropLat = Number(activeOrder.deliveryLocation?.coordinates?.[1]) || 27.7272;
-    const dropLng = Number(activeOrder.deliveryLocation?.coordinates?.[0]) || 85.3340;
+    const dropLat =
+      Number(activeOrder.deliveryLocation?.coordinates?.[1]) || 27.7272;
+    const dropLng =
+      Number(activeOrder.deliveryLocation?.coordinates?.[0]) || 85.334;
     setNavMapModal({
       visible: true,
       targetType: "CUSTOMER",
       targetName: activeOrder.customerName || "Customer Delivery",
-      targetAddress: activeOrder.deliveryAddress?.addressLine || "Delivery Destination",
+      targetAddress:
+        activeOrder.deliveryAddress?.addressLine || "Delivery Destination",
       targetCoord: { latitude: dropLat, longitude: dropLng },
     });
   };
 
-  const handleOpenExternalNavigation = (address: string, coord?: { latitude: number; longitude: number }) => {
+  const handleOpenExternalNavigation = (
+    address: string,
+    coord?: { latitude: number; longitude: number },
+  ) => {
     let url = "";
     if (coord && coord.latitude && coord.longitude) {
-      url = Platform.select({
-        ios: `maps:0,0?q=${coord.latitude},${coord.longitude}`,
-        android: `google.navigation:q=${coord.latitude},${coord.longitude}`,
-        default: `https://www.google.com/maps/dir/?api=1&destination=${coord.latitude},${coord.longitude}`,
-      }) || `https://www.google.com/maps/dir/?api=1&destination=${coord.latitude},${coord.longitude}`;
+      url =
+        Platform.select({
+          ios: `maps:0,0?q=${coord.latitude},${coord.longitude}`,
+          android: `google.navigation:q=${coord.latitude},${coord.longitude}`,
+          default: `https://www.google.com/maps/dir/?api=1&destination=${coord.latitude},${coord.longitude}`,
+        }) ||
+        `https://www.google.com/maps/dir/?api=1&destination=${coord.latitude},${coord.longitude}`;
     } else {
-      url = Platform.select({
-        ios: `maps:0,0?q=${encodeURIComponent(address)}`,
-        android: `geo:0,0?q=${encodeURIComponent(address)}`,
-        default: `https://maps.google.com/?q=${encodeURIComponent(address)}`,
-      }) || `https://maps.google.com/?q=${encodeURIComponent(address)}`;
+      url =
+        Platform.select({
+          ios: `maps:0,0?q=${encodeURIComponent(address)}`,
+          android: `geo:0,0?q=${encodeURIComponent(address)}`,
+          default: `https://maps.google.com/?q=${encodeURIComponent(address)}`,
+        }) || `https://maps.google.com/?q=${encodeURIComponent(address)}`;
     }
     Linking.openURL(url).catch(() => {
       Alert.alert("Navigation", "Could not open map app on this device.");
@@ -494,7 +563,9 @@ export default function DeliveryDashboardScreen() {
       [
         { text: "Dismiss", style: "cancel" },
         {
-          text: isPermanent ? "Confirm Permanent Cancel" : "Return & Re-Dispatch",
+          text: isPermanent
+            ? "Confirm Permanent Cancel"
+            : "Return & Re-Dispatch",
           style: "destructive",
           onPress: async () => {
             try {
@@ -503,7 +574,7 @@ export default function DeliveryDashboardScreen() {
                   orderId: activeOrder._id,
                   reason: cancelReason,
                   notes: cancelNotes.trim(),
-                })
+                }),
               ).unwrap();
 
               setCancelModalVisible(false);
@@ -513,12 +584,12 @@ export default function DeliveryDashboardScreen() {
               if (res.orderCancelled) {
                 Alert.alert(
                   "Order Cancelled",
-                  `Maximum 3 delivery attempts reached. Order #${activeOrder.orderNumber} is now permanently cancelled. Please return items to the store.`
+                  `Maximum 3 delivery attempts reached. Order #${activeOrder.orderNumber} is now permanently cancelled. Please return items to the store.`,
                 );
               } else {
                 Alert.alert(
                   "Delivery Returned",
-                  `Package marked returned to vendor (Attempt ${res.deliveryCancellationCount} of 3). System is dispatching to the next nearest partner.`
+                  `Package marked returned to vendor (Attempt ${res.deliveryCancellationCount} of 3). System is dispatching to the next nearest partner.`,
                 );
               }
             } catch (err: any) {
@@ -526,7 +597,7 @@ export default function DeliveryDashboardScreen() {
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -535,33 +606,58 @@ export default function DeliveryDashboardScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top"]}>
+    <SafeAreaView style={styles.safeArea} edges={[""] as any}>
       <StatusBar style="light" />
 
       {/* Top Header Card */}
       <LinearGradient
         colors={["#0F766E", "#0D9488", "#115E59"]}
-        style={styles.headerGradient}
+        style={[
+          styles.headerGradient,
+          { paddingTop: Math.max(insets.top, moderateScale(14)) + moderateScale(8) },
+        ]}
       >
         <View style={styles.headerTopRow}>
-          <View>
-            <Text style={styles.partnerGreeting}>
-              Hello, {partner?.fullName?.split(" ")[0] || "Partner"} 👋
-            </Text>
-            <View style={styles.badgeRow}>
-              <View style={styles.vehicleBadge}>
-                <MaterialCommunityIcons
-                  name="moped"
-                  size={scale(13)}
-                  color="#CCFBF1"
+          <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+            <TouchableOpacity
+              style={styles.headerAvatarContainer}
+              onPress={() => router.push("/DeliveryMain/profile" as any)}
+              activeOpacity={0.8}
+            >
+              {partner?.profilePhoto?.url || partner?.user?.avatar ? (
+                <Image
+                  source={{ uri: partner.profilePhoto?.url || partner.user?.avatar }}
+                  style={styles.headerAvatarImg}
+                  contentFit="cover"
                 />
-                <Text style={styles.vehicleBadgeText}>
-                  {partner?.vehicleDetails?.vehicleType || "Motorcycle"}
-                </Text>
-              </View>
-              <View style={styles.ratingBadge}>
-                <Ionicons name="star" size={scale(12)} color="#FBBF24" />
-                <Text style={styles.ratingText}>5.0</Text>
+              ) : (
+                <View style={styles.headerAvatarPlaceholder}>
+                  <Text style={styles.headerAvatarLetter}>
+                    {partner?.fullName?.charAt(0) || "P"}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+
+            <View style={{ marginLeft: scale(10), flex: 1 }}>
+              <Text style={styles.partnerGreeting} numberOfLines={1}>
+                Hello, {partner?.fullName?.split(" ")[0] || "Partner"} 👋
+              </Text>
+              <View style={styles.badgeRow}>
+                <View style={styles.vehicleBadge}>
+                  <MaterialCommunityIcons
+                    name="moped"
+                    size={scale(13)}
+                    color="#CCFBF1"
+                  />
+                  <Text style={styles.vehicleBadgeText}>
+                    {partner?.vehicleDetails?.vehicleType || "Motorcycle"}
+                  </Text>
+                </View>
+                <View style={styles.ratingBadge}>
+                  <Ionicons name="star" size={scale(12)} color="#FBBF24" />
+                  <Text style={styles.ratingText}>5.0</Text>
+                </View>
               </View>
             </View>
           </View>
@@ -588,10 +684,15 @@ export default function DeliveryDashboardScreen() {
         </View>
       </LinearGradient>
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{ flex: 1 }}
       >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
         {/* Onboarding Alert Banner if not fully approved or deposit unpaid */}
         {partner?.approvalStatus !== "APPROVED" && (
           <TouchableOpacity
@@ -601,9 +702,12 @@ export default function DeliveryDashboardScreen() {
           >
             <Feather name="alert-circle" size={scale(20)} color="#D97706" />
             <View style={{ flex: 1, marginLeft: scale(10) }}>
-              <Text style={styles.alertBannerTitle}>Account Pending Approval</Text>
+              <Text style={styles.alertBannerTitle}>
+                Account Pending Approval
+              </Text>
               <Text style={styles.alertBannerSub}>
-                Upload all 4 documents and complete the ₹1,000 security deposit to activate your account.
+                Upload all 4 documents and complete the ₹1,000 security deposit
+                to activate your account.
               </Text>
             </View>
             <Feather name="chevron-right" size={scale(18)} color="#92400E" />
@@ -626,10 +730,12 @@ export default function DeliveryDashboardScreen() {
             </View>
             <View style={{ flex: 1, marginLeft: scale(10) }}>
               <Text style={styles.codAlertTitle}>
-                ₹{Number(partner?.codCashInCustody || 0).toFixed(2)} COD Cash in Hand
+                ₹{Number(partner?.codCashInCustody || 0).toFixed(2)} COD Cash in
+                Hand
               </Text>
               <Text style={styles.codAlertSub}>
-                Cash collected from customers. Tap to view vendor store breakdown & submit cash.
+                Cash collected from customers. Tap to view vendor store
+                breakdown & submit cash.
               </Text>
             </View>
             <Feather name="chevron-right" size={scale(18)} color="#92400E" />
@@ -641,8 +747,12 @@ export default function DeliveryDashboardScreen() {
           <View style={styles.activeOrderCard}>
             <View style={styles.orderHeaderRow}>
               <View>
-                <Text style={styles.activeOrderBadge}>ACTIVE DELIVERY IN PROGRESS</Text>
-                <Text style={styles.orderNumberText}>Order #{activeOrder.orderNumber}</Text>
+                <Text style={styles.activeOrderBadge}>
+                  ACTIVE DELIVERY IN PROGRESS
+                </Text>
+                <Text style={styles.orderNumberText}>
+                  Order #{activeOrder.orderNumber}
+                </Text>
               </View>
               <View style={styles.earningsPill}>
                 <Text style={styles.earningsPillText}>
@@ -653,12 +763,7 @@ export default function DeliveryDashboardScreen() {
 
             {/* Stepper */}
             <View style={styles.orderProgressRow}>
-              <View
-                style={[
-                  styles.progressDot,
-                  styles.progressDotActive,
-                ]}
-              >
+              <View style={[styles.progressDot, styles.progressDotActive]}>
                 <Feather name="check" size={scale(12)} color="#FFFFFF" />
               </View>
               <View
@@ -699,7 +804,9 @@ export default function DeliveryDashboardScreen() {
               </View>
               <View style={{ flex: 1, marginLeft: scale(10) }}>
                 <Text style={styles.locationTypeLabel}>PICKUP FROM STORE</Text>
-                <Text style={styles.locationTitle}>{activeOrder.vendor?.name || "Grocery Store"}</Text>
+                <Text style={styles.locationTitle}>
+                  {activeOrder.vendor?.name || "Grocery Store"}
+                </Text>
                 <Text style={styles.locationAddress} numberOfLines={2}>
                   {activeOrder.vendor?.address || "Store Address"}
                 </Text>
@@ -730,7 +837,9 @@ export default function DeliveryDashboardScreen() {
                     activeOpacity={0.85}
                   >
                     <Feather name="map-pin" size={scale(16)} color="#FFFFFF" />
-                    <Text style={styles.stagePrimaryBtnText}>I Have Arrived at Store</Text>
+                    <Text style={styles.stagePrimaryBtnText}>
+                      I Have Arrived at Store
+                    </Text>
                   </TouchableOpacity>
                 ) : (
                   <View style={styles.otpVerifyContainer}>
@@ -758,7 +867,9 @@ export default function DeliveryDashboardScreen() {
                         {actionLoading ? (
                           <ActivityIndicator color="#FFFFFF" size="small" />
                         ) : (
-                          <Text style={styles.otpSubmitBtnText}>Verify & Take</Text>
+                          <Text style={styles.otpSubmitBtnText}>
+                            Verify & Take
+                          </Text>
                         )}
                       </TouchableOpacity>
                     </View>
@@ -775,10 +886,15 @@ export default function DeliveryDashboardScreen() {
                 <Feather name="user" size={scale(18)} color="#2563EB" />
               </View>
               <View style={{ flex: 1, marginLeft: scale(10) }}>
-                <Text style={styles.locationTypeLabel}>DELIVER TO CUSTOMER</Text>
-                <Text style={styles.locationTitle}>{activeOrder.customerName || "Customer"}</Text>
+                <Text style={styles.locationTypeLabel}>
+                  DELIVER TO CUSTOMER
+                </Text>
+                <Text style={styles.locationTitle}>
+                  {activeOrder.customerName || "Customer"}
+                </Text>
                 <Text style={styles.locationAddress} numberOfLines={2}>
-                  {activeOrder.deliveryAddress?.addressLine || "Delivery Address"}
+                  {activeOrder.deliveryAddress?.addressLine ||
+                    "Delivery Address"}
                 </Text>
                 <Text style={styles.paymentMethodBadge}>
                   {activeOrder.paymentMethod === "Cash on delivery"
@@ -807,12 +923,17 @@ export default function DeliveryDashboardScreen() {
               <View style={styles.stageActionBox}>
                 {!activeOrder.arrivedAtCustomerAt ? (
                   <TouchableOpacity
-                    style={[styles.stagePrimaryBtn, { backgroundColor: "#2563EB" }]}
+                    style={[
+                      styles.stagePrimaryBtn,
+                      { backgroundColor: "#2563EB" },
+                    ]}
                     onPress={handleArriveAtCustomer}
                     activeOpacity={0.85}
                   >
                     <Feather name="map-pin" size={scale(16)} color="#FFFFFF" />
-                    <Text style={styles.stagePrimaryBtnText}>I Have Reached Customer Door</Text>
+                    <Text style={styles.stagePrimaryBtnText}>
+                      I Have Reached Customer Door
+                    </Text>
                   </TouchableOpacity>
                 ) : (
                   <View style={styles.otpVerifyContainer}>
@@ -829,19 +950,25 @@ export default function DeliveryDashboardScreen() {
                             onPress={() => setSelectedPaymentMode("CASH")}
                             style={[
                               styles.paymentOptionBtn,
-                              selectedPaymentMode === "CASH" && styles.paymentOptionBtnActiveCash,
+                              selectedPaymentMode === "CASH" &&
+                                styles.paymentOptionBtnActiveCash,
                             ]}
                           >
                             <MaterialCommunityIcons
                               name="cash-multiple"
                               size={scale(18)}
-                              color={selectedPaymentMode === "CASH" ? "#15803D" : "#64748B"}
+                              color={
+                                selectedPaymentMode === "CASH"
+                                  ? "#15803D"
+                                  : "#64748B"
+                              }
                             />
                             <View style={{ marginLeft: scale(6), flex: 1 }}>
                               <Text
                                 style={[
                                   styles.paymentOptionBtnText,
-                                  selectedPaymentMode === "CASH" && styles.paymentOptionBtnTextActiveCash,
+                                  selectedPaymentMode === "CASH" &&
+                                    styles.paymentOptionBtnTextActiveCash,
                                 ]}
                               >
                                 1. Cash Payment
@@ -851,7 +978,11 @@ export default function DeliveryDashboardScreen() {
                               </Text>
                             </View>
                             {selectedPaymentMode === "CASH" && (
-                              <Ionicons name="checkmark-circle" size={scale(16)} color="#15803D" />
+                              <Ionicons
+                                name="checkmark-circle"
+                                size={scale(16)}
+                                color="#15803D"
+                              />
                             )}
                           </TouchableOpacity>
 
@@ -861,19 +992,25 @@ export default function DeliveryDashboardScreen() {
                             onPress={() => setSelectedPaymentMode("DIRECT_QR")}
                             style={[
                               styles.paymentOptionBtn,
-                              selectedPaymentMode === "DIRECT_QR" && styles.paymentOptionBtnActiveQr,
+                              selectedPaymentMode === "DIRECT_QR" &&
+                                styles.paymentOptionBtnActiveQr,
                             ]}
                           >
                             <MaterialCommunityIcons
                               name="qrcode-scan"
                               size={scale(18)}
-                              color={selectedPaymentMode === "DIRECT_QR" ? "#0F766E" : "#64748B"}
+                              color={
+                                selectedPaymentMode === "DIRECT_QR"
+                                  ? "#0F766E"
+                                  : "#64748B"
+                              }
                             />
                             <View style={{ marginLeft: scale(6), flex: 1 }}>
                               <Text
                                 style={[
                                   styles.paymentOptionBtnText,
-                                  selectedPaymentMode === "DIRECT_QR" && styles.paymentOptionBtnTextActiveQr,
+                                  selectedPaymentMode === "DIRECT_QR" &&
+                                    styles.paymentOptionBtnTextActiveQr,
                                 ]}
                               >
                                 2. Online (Store QR)
@@ -883,7 +1020,11 @@ export default function DeliveryDashboardScreen() {
                               </Text>
                             </View>
                             {selectedPaymentMode === "DIRECT_QR" && (
-                              <Ionicons name="checkmark-circle" size={scale(16)} color="#0F766E" />
+                              <Ionicons
+                                name="checkmark-circle"
+                                size={scale(16)}
+                                color="#0F766E"
+                              />
                             )}
                           </TouchableOpacity>
                         </View>
@@ -891,33 +1032,59 @@ export default function DeliveryDashboardScreen() {
                         {/* Detail Card based on selected option */}
                         {selectedPaymentMode === "CASH" ? (
                           <View style={styles.cashNoticeBox}>
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: scale(6) }}>
-                              <Feather name="dollar-sign" size={scale(15)} color="#15803D" />
+                            <View
+                              style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                gap: scale(6),
+                              }}
+                            >
+                              <Feather
+                                name="dollar-sign"
+                                size={scale(15)}
+                                color="#15803D"
+                              />
                               <Text style={styles.cashNoticeTitle}>
-                                Physical Cash Collection: ₹{activeOrder.totalAmount}
+                                Physical Cash Collection: ₹
+                                {activeOrder.totalAmount}
                               </Text>
                             </View>
                             <Text style={styles.cashNoticeText}>
-                              Collect physical cash from the customer. You must submit this collected cash at the vendor store counter.
+                              Collect physical cash from the customer. You must
+                              submit this collected cash at the vendor store
+                              counter.
                             </Text>
                           </View>
                         ) : (
                           <View style={styles.qrDisplayCard}>
                             <View style={styles.qrHeaderRow}>
-                              <MaterialCommunityIcons name="storefront-outline" size={scale(16)} color="#0F766E" />
-                              <Text style={styles.qrStoreTitle} numberOfLines={1}>
+                              <MaterialCommunityIcons
+                                name="storefront-outline"
+                                size={scale(16)}
+                                color="#0F766E"
+                              />
+                              <Text
+                                style={styles.qrStoreTitle}
+                                numberOfLines={1}
+                              >
                                 {activeOrder.vendor?.name || "Store"} Payment QR
                               </Text>
                             </View>
                             <Text style={styles.qrExplainer}>
-                              Customer scans this QR code to pay directly to the vendor's bank/UPI account. This will not be added to rider cash custody or vendor app wallet.
+                              Customer scans this QR code to pay directly to the
+                              vendor's bank/UPI account. This will not be added
+                              to rider cash custody or vendor app wallet.
                             </Text>
 
                             {/* QR Code Preview Box */}
                             <View style={styles.qrImageContainer}>
-                              {activeOrder.vendor?.paymentSettings?.qrCodeUrl ? (
+                              {activeOrder.vendor?.paymentSettings
+                                ?.qrCodeUrl ? (
                                 <Image
-                                  source={{ uri: activeOrder.vendor.paymentSettings.qrCodeUrl }}
+                                  source={{
+                                    uri: activeOrder.vendor.paymentSettings
+                                      .qrCodeUrl,
+                                  }}
                                   style={styles.qrCodeImage}
                                   contentFit="contain"
                                 />
@@ -926,10 +1093,11 @@ export default function DeliveryDashboardScreen() {
                                   source={{
                                     uri: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
                                       `upi://pay?pa=${activeOrder.vendor.paymentSettings.upiId}&pn=${encodeURIComponent(
-                                        activeOrder.vendor?.paymentSettings?.accountName ||
+                                        activeOrder.vendor?.paymentSettings
+                                          ?.accountName ||
                                           activeOrder.vendor?.name ||
-                                          "Store"
-                                      )}&am=${activeOrder.totalAmount}&cu=INR`
+                                          "Store",
+                                      )}&am=${activeOrder.totalAmount}&cu=INR`,
                                     )}`,
                                   }}
                                   style={styles.qrCodeImage}
@@ -937,9 +1105,14 @@ export default function DeliveryDashboardScreen() {
                                 />
                               ) : (
                                 <View style={styles.qrPlaceholderBox}>
-                                  <MaterialCommunityIcons name="qrcode" size={scale(50)} color="#94A3B8" />
+                                  <MaterialCommunityIcons
+                                    name="qrcode"
+                                    size={scale(50)}
+                                    color="#94A3B8"
+                                  />
                                   <Text style={styles.qrPlaceholderText}>
-                                    No QR/UPI uploaded by store. Please collect cash.
+                                    No QR/UPI uploaded by store. Please collect
+                                    cash.
                                   </Text>
                                 </View>
                               )}
@@ -948,32 +1121,56 @@ export default function DeliveryDashboardScreen() {
                             {/* Store UPI & Account Details */}
                             {activeOrder.vendor?.paymentSettings?.upiId ? (
                               <View style={styles.upiDetailsPill}>
-                                <Text style={styles.upiPillLabel}>Store UPI:</Text>
-                                <Text style={styles.upiPillValue} numberOfLines={1}>
+                                <Text style={styles.upiPillLabel}>
+                                  Store UPI:
+                                </Text>
+                                <Text
+                                  style={styles.upiPillValue}
+                                  numberOfLines={1}
+                                >
                                   {activeOrder.vendor.paymentSettings.upiId}
                                 </Text>
                               </View>
                             ) : null}
 
                             <View style={styles.qrAmountRow}>
-                              <Text style={styles.qrAmountLabel}>Total Bill Amount:</Text>
-                              <Text style={styles.qrAmountValue}>₹{activeOrder.totalAmount}</Text>
+                              <Text style={styles.qrAmountLabel}>
+                                Total Bill Amount:
+                              </Text>
+                              <Text style={styles.qrAmountValue}>
+                                ₹{activeOrder.totalAmount}
+                              </Text>
                             </View>
 
                             <Text style={styles.qrVerifyNotice}>
-                              ⚠️ Verify the payment success message on customer's screen before entering the Delivery OTP.
+                              ⚠️ Verify the payment success message on
+                              customer's screen before entering the Delivery
+                              OTP.
                             </Text>
                           </View>
                         )}
                       </View>
                     ) : (
                       <View style={styles.prepaidNoticeBox}>
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: scale(6) }}>
-                          <Ionicons name="checkmark-done-circle" size={scale(16)} color="#15803D" />
-                          <Text style={styles.prepaidNoticeTitle}>Prepaid Online Order</Text>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: scale(6),
+                          }}
+                        >
+                          <Ionicons
+                            name="checkmark-done-circle"
+                            size={scale(16)}
+                            color="#15803D"
+                          />
+                          <Text style={styles.prepaidNoticeTitle}>
+                            Prepaid Online Order
+                          </Text>
                         </View>
                         <Text style={styles.prepaidNoticeText}>
-                          This order was already paid online by the customer. No cash collection required.
+                          This order was already paid online by the customer. No
+                          cash collection required.
                         </Text>
                       </View>
                     )}
@@ -1059,6 +1256,7 @@ export default function DeliveryDashboardScreen() {
           </View>
         )}
       </ScrollView>
+    </KeyboardAvoidingView>
 
       {/* ── REAL-TIME ORDER OFFER MODAL (45-second timer) ──────────── */}
       <Modal
@@ -1072,7 +1270,11 @@ export default function DeliveryDashboardScreen() {
             {/* Timer Header */}
             <View style={styles.offerTimerRow}>
               <View style={styles.timerBadge}>
-                <Ionicons name="timer-outline" size={scale(18)} color="#EF4444" />
+                <Ionicons
+                  name="timer-outline"
+                  size={scale(18)}
+                  color="#EF4444"
+                />
                 <Text style={styles.timerText}>{timeLeft}s left</Text>
               </View>
               <View style={styles.earningsBanner}>
@@ -1083,9 +1285,12 @@ export default function DeliveryDashboardScreen() {
               </View>
             </View>
 
-            <Text style={styles.newOrderAlertTitle}>New Grocery Order Request!</Text>
+            <Text style={styles.newOrderAlertTitle}>
+              New Grocery Order Request!
+            </Text>
             <Text style={styles.orderNumberBadge}>
-              Order #{offeredAssignment?.orderNumber} • {offeredAssignment?.itemsCount || 1} Item(s)
+              Order #{offeredAssignment?.orderNumber} •{" "}
+              {offeredAssignment?.itemsCount || 1} Item(s)
             </Text>
 
             {/* Interactive Live Route Map (Store, Partner Location & Delivery Location) */}
@@ -1094,7 +1299,11 @@ export default function DeliveryDashboardScreen() {
                 <MapView
                   ref={mapRef}
                   style={styles.offerMapView}
-                  provider={Platform.OS === "android" ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}
+                  provider={
+                    Platform.OS === "android"
+                      ? PROVIDER_GOOGLE
+                      : PROVIDER_DEFAULT
+                  }
                   initialRegion={mapData.initialRegion}
                   onMapReady={onMapReady}
                   showsCompass={false}
@@ -1115,8 +1324,12 @@ export default function DeliveryDashboardScreen() {
                   {/* Store Pickup Location Marker */}
                   <Marker
                     coordinate={mapData.storeCoord}
-                    title={offeredAssignment?.pickup?.storeName || "Store Pickup"}
-                    description={offeredAssignment?.pickup?.address || "Pickup warehouse"}
+                    title={
+                      offeredAssignment?.pickup?.storeName || "Store Pickup"
+                    }
+                    description={
+                      offeredAssignment?.pickup?.address || "Pickup warehouse"
+                    }
                   >
                     <View style={styles.storeMarkerPin}>
                       <Text style={styles.markerEmoji}>🏬</Text>
@@ -1126,8 +1339,12 @@ export default function DeliveryDashboardScreen() {
                   {/* Customer Drop Location Marker */}
                   <Marker
                     coordinate={mapData.dropCoord}
-                    title={offeredAssignment?.drop?.customerName || "Customer Drop"}
-                    description={offeredAssignment?.drop?.address || "Delivery destination"}
+                    title={
+                      offeredAssignment?.drop?.customerName || "Customer Drop"
+                    }
+                    description={
+                      offeredAssignment?.drop?.address || "Delivery destination"
+                    }
                   >
                     <View style={styles.customerMarkerPin}>
                       <Text style={styles.markerEmoji}>🏠</Text>
@@ -1156,12 +1373,20 @@ export default function DeliveryDashboardScreen() {
                     <Text style={styles.mapRouteIcon}>🛵</Text>
                     <Text style={styles.mapRouteStepText}>You</Text>
                   </View>
-                  <Feather name="arrow-right" size={scale(12)} color="#0F766E" />
+                  <Feather
+                    name="arrow-right"
+                    size={scale(12)}
+                    color="#0F766E"
+                  />
                   <View style={styles.mapRouteStep}>
                     <Text style={styles.mapRouteIcon}>🏬</Text>
                     <Text style={styles.mapRouteStepText}>Store</Text>
                   </View>
-                  <Feather name="arrow-right" size={scale(12)} color="#2563EB" />
+                  <Feather
+                    name="arrow-right"
+                    size={scale(12)}
+                    color="#2563EB"
+                  />
                   <View style={styles.mapRouteStep}>
                     <Text style={styles.mapRouteIcon}>🏠</Text>
                     <Text style={styles.mapRouteStepText}>Drop</Text>
@@ -1231,7 +1456,9 @@ export default function DeliveryDashboardScreen() {
         visible={navMapModal.visible}
         transparent
         animationType="slide"
-        onRequestClose={() => setNavMapModal((prev) => ({ ...prev, visible: false }))}
+        onRequestClose={() =>
+          setNavMapModal((prev) => ({ ...prev, visible: false }))
+        }
       >
         <View style={styles.modalOverlay}>
           <View style={styles.navMapCard}>
@@ -1252,7 +1479,9 @@ export default function DeliveryDashboardScreen() {
               </View>
               <TouchableOpacity
                 style={styles.navMapCloseBtn}
-                onPress={() => setNavMapModal((prev) => ({ ...prev, visible: false }))}
+                onPress={() =>
+                  setNavMapModal((prev) => ({ ...prev, visible: false }))
+                }
               >
                 <Ionicons name="close" size={scale(20)} color="#64748B" />
               </TouchableOpacity>
@@ -1263,7 +1492,9 @@ export default function DeliveryDashboardScreen() {
               <MapView
                 ref={navMapRef}
                 style={styles.navMapView}
-                provider={Platform.OS === "android" ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}
+                provider={
+                  Platform.OS === "android" ? PROVIDER_GOOGLE : PROVIDER_DEFAULT
+                }
                 initialRegion={navMapRegion}
                 showsCompass={true}
               >
@@ -1300,7 +1531,9 @@ export default function DeliveryDashboardScreen() {
                 {/* Connecting Route Way */}
                 <Polyline
                   coordinates={[partnerCoord, navMapModal.targetCoord]}
-                  strokeColor={navMapModal.targetType === "STORE" ? "#0F766E" : "#2563EB"}
+                  strokeColor={
+                    navMapModal.targetType === "STORE" ? "#0F766E" : "#2563EB"
+                  }
                   strokeWidth={4}
                   lineDashPattern={[6, 4]}
                 />
@@ -1309,7 +1542,10 @@ export default function DeliveryDashboardScreen() {
               {/* Waypoint pill overlay */}
               <View style={styles.navMapRoutePill}>
                 <Text style={styles.navMapRoutePillText}>
-                  🛵 You ➔ {navMapModal.targetType === "STORE" ? "🏬 Store" : "🏠 Customer"}
+                  🛵 You ➔{" "}
+                  {navMapModal.targetType === "STORE"
+                    ? "🏬 Store"
+                    : "🏠 Customer"}
                 </Text>
               </View>
             </View>
@@ -1321,13 +1557,19 @@ export default function DeliveryDashboardScreen() {
                 onPress={() =>
                   handleOpenExternalNavigation(
                     navMapModal.targetAddress,
-                    navMapModal.targetCoord
+                    navMapModal.targetCoord,
                   )
                 }
                 activeOpacity={0.85}
               >
-                <MaterialCommunityIcons name="google-maps" size={scale(18)} color="#FFFFFF" />
-                <Text style={styles.navMapExternalBtnText}>Open Turn-by-Turn GPS</Text>
+                <MaterialCommunityIcons
+                  name="google-maps"
+                  size={scale(18)}
+                  color="#FFFFFF"
+                />
+                <Text style={styles.navMapExternalBtnText}>
+                  Open Turn-by-Turn GPS
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1341,14 +1583,20 @@ export default function DeliveryDashboardScreen() {
         animationType="slide"
         onRequestClose={() => setCancelModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalOverlay}
+        >
           <View style={styles.cancelModalCard}>
             {/* Header */}
             <View style={styles.cancelModalHeader}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.cancelModalTitle}>Cancel Delivery & Return</Text>
+                <Text style={styles.cancelModalTitle}>
+                  Cancel Delivery & Return
+                </Text>
                 <Text style={styles.cancelModalSubtitle}>
-                  Order #{activeOrder?.orderNumber} • Select valid cancellation reason
+                  Order #{activeOrder?.orderNumber} • Select valid cancellation
+                  reason
                 </Text>
               </View>
               <TouchableOpacity
@@ -1361,13 +1609,18 @@ export default function DeliveryDashboardScreen() {
 
             {/* Attempt notice box */}
             <View style={styles.attemptNoticeBox}>
-              <Ionicons name="information-circle" size={scale(18)} color="#D97706" />
+              <Ionicons
+                name="information-circle"
+                size={scale(18)}
+                color="#D97706"
+              />
               <View style={{ flex: 1, marginLeft: scale(8) }}>
                 <Text style={styles.attemptNoticeTitle}>
-                  Delivery Cancellation Attempt {((activeOrder?.deliveryCancellationCount || 0) + 1)} of 3
+                  Delivery Cancellation Attempt{" "}
+                  {(activeOrder?.deliveryCancellationCount || 0) + 1} of 3
                 </Text>
                 <Text style={styles.attemptNoticeDesc}>
-                  {((activeOrder?.deliveryCancellationCount || 0) + 1) >= 3
+                  {(activeOrder?.deliveryCancellationCount || 0) + 1 >= 3
                     ? "Warning: Reaching 3 failed delivery cancellations will PERMANENTLY cancel this order in the system."
                     : "You will return the package back to the store. The system will then dispatch the order to the next nearest delivery partner."}
                 </Text>
@@ -1375,7 +1628,10 @@ export default function DeliveryDashboardScreen() {
             </View>
 
             {/* Reasons List */}
-            <ScrollView style={styles.reasonsList} showsVerticalScrollIndicator={false}>
+            <ScrollView
+              style={styles.reasonsList}
+              showsVerticalScrollIndicator={false}
+            >
               {CANCELLATION_REASONS.map((reason) => {
                 const isSelected = cancelReason === reason.id;
                 return (
@@ -1415,7 +1671,9 @@ export default function DeliveryDashboardScreen() {
 
               {/* Optional notes */}
               <View style={styles.notesContainer}>
-                <Text style={styles.notesLabel}>Additional Notes (Optional):</Text>
+                <Text style={styles.notesLabel}>
+                  Additional Notes (Optional):
+                </Text>
                 <TextInput
                   style={styles.notesInput}
                   placeholder="e.g. Called customer 4 times, no response..."
@@ -1451,7 +1709,7 @@ export default function DeliveryDashboardScreen() {
                   <ActivityIndicator color="#FFFFFF" size="small" />
                 ) : (
                   <Text style={styles.cancelModalConfirmText}>
-                    {((activeOrder?.deliveryCancellationCount || 0) + 1) >= 3
+                    {(activeOrder?.deliveryCancellationCount || 0) + 1 >= 3
                       ? "Confirm Permanent Cancel"
                       : "Return to Store & Re-Dispatch"}
                   </Text>
@@ -1459,7 +1717,7 @@ export default function DeliveryDashboardScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
@@ -1481,6 +1739,31 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+  },
+  headerAvatarContainer: {
+    marginRight: scale(4),
+  },
+  headerAvatarImg: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+  },
+  headerAvatarPlaceholder: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
+    backgroundColor: "rgba(255, 255, 255, 0.25)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+  },
+  headerAvatarLetter: {
+    fontSize: moderateScale(18),
+    fontWeight: "900",
+    color: "#FFFFFF",
   },
   partnerGreeting: {
     fontSize: moderateScale(18),

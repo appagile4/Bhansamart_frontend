@@ -118,6 +118,11 @@ export interface VendorFinanceState {
   paymentQr: PaymentQrSettings;
   qrLoading: boolean;
 
+  // Store Operations & Delivery Radius
+  deliveryRadiusKm: number;
+  isStoreOpen: boolean;
+  shippingLocations: any;
+
   dashboardLoading: boolean;
   actionLoading: boolean;
   error: string | null;
@@ -163,6 +168,10 @@ const initialState: VendorFinanceState = {
     acceptQrPayments: false,
   },
   qrLoading: false,
+
+  deliveryRadiusKm: 5,
+  isStoreOpen: true,
+  shippingLocations: null,
 
   dashboardLoading: false,
   actionLoading: false,
@@ -301,6 +310,34 @@ export const updatePaymentQr = createAsyncThunk(
   }
 );
 
+export const updateVendorDeliveryRadius = createAsyncThunk(
+  "vendorFinance/updateVendorDeliveryRadius",
+  async (deliveryRadiusKm: number, { rejectWithValue }) => {
+    try {
+      const response = await api.put("/vendor/delivery-radius", { deliveryRadiusKm });
+      return response.data;
+    } catch (err: any) {
+      return rejectWithValue(
+        err.response?.data?.message || err.message || "Failed to update delivery radius"
+      );
+    }
+  }
+);
+
+export const updateVendorStoreStatus = createAsyncThunk(
+  "vendorFinance/updateVendorStoreStatus",
+  async (isStoreOpen: boolean, { rejectWithValue }) => {
+    try {
+      const response = await api.put("/vendor/store-status", { isStoreOpen });
+      return response.data;
+    } catch (err: any) {
+      return rejectWithValue(
+        err.response?.data?.message || err.message || "Failed to update store status"
+      );
+    }
+  }
+);
+
 // ── Slice ────────────────────────────────────────────────────────────────────
 
 const vendorFinanceSlice = createSlice({
@@ -372,6 +409,15 @@ const vendorFinanceSlice = createSlice({
         state.recentOrders = action.payload.recentOrders || [];
         state.recentNotifications = action.payload.recentNotifications || [];
         state.unreadCount = action.payload.unreadNotificationsCount ?? 0;
+        if (action.payload.deliveryRadiusKm !== undefined) {
+          state.deliveryRadiusKm = action.payload.deliveryRadiusKm;
+        }
+        if (action.payload.isStoreOpen !== undefined) {
+          state.isStoreOpen = action.payload.isStoreOpen;
+        }
+        if (action.payload.shippingLocations) {
+          state.shippingLocations = action.payload.shippingLocations;
+        }
       })
       .addCase(fetchDashboardStats.rejected, (state, action) => {
         state.dashboardLoading = false;
@@ -494,6 +540,38 @@ const vendorFinanceSlice = createSlice({
       })
       .addCase(updatePaymentQr.fulfilled, (state, action) => {
         state.paymentQr = action.payload;
+      });
+
+    // Delivery Radius
+    builder
+      .addCase(updateVendorDeliveryRadius.pending, (state) => {
+        state.actionLoading = true;
+      })
+      .addCase(updateVendorDeliveryRadius.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        if (action.payload.deliveryRadiusKm !== undefined) {
+          state.deliveryRadiusKm = action.payload.deliveryRadiusKm;
+        }
+      })
+      .addCase(updateVendorDeliveryRadius.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload as string;
+      });
+
+    // Store Status
+    builder
+      .addCase(updateVendorStoreStatus.pending, (state) => {
+        state.actionLoading = true;
+      })
+      .addCase(updateVendorStoreStatus.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        if (action.payload.isStoreOpen !== undefined) {
+          state.isStoreOpen = action.payload.isStoreOpen;
+        }
+      })
+      .addCase(updateVendorStoreStatus.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload as string;
       });
   },
 });
