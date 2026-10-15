@@ -50,6 +50,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 
@@ -92,6 +93,19 @@ const normalizeDealProduct = (p: any): DealProduct => {
 
 export default function HomeScreen() {
   const theme = useTheme();
+  const isDark = theme.mode === "dark";
+  const { width: windowWidth } = useWindowDimensions();
+  const isTablet = windowWidth >= 768;
+  const numColumns = isTablet ? 3 : 2;
+
+  const gridCardWidth = useMemo(() => {
+    const horizontalPadding = scale(16);
+    const gridGap = scale(12);
+    return Math.floor(
+      (windowWidth - horizontalPadding * 2 - gridGap * (numColumns - 1)) / numColumns
+    );
+  }, [windowWidth, numColumns]);
+
   const dispatch = useAppDispatch();
   const { addToCart } = useCart();
 
@@ -365,8 +379,11 @@ export default function HomeScreen() {
   );
 
   const containerStyle = useMemo(
-    () => [styles.container, { backgroundColor: theme.colors.background }],
-    [theme.colors.background],
+    () => [
+      styles.container,
+      { backgroundColor: isDark ? "#080D0F" : theme.colors.background },
+    ],
+    [isDark, theme.colors.background],
   );
 
   // ── Memoized Navigation & Action Callbacks ──────────────────────────
@@ -1124,12 +1141,12 @@ export default function HomeScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            colors={["#008080"]}
-            tintColor="#008080"
+            colors={[isDark ? "#39D353" : "#008080"]}
+            tintColor={isDark ? "#39D353" : "#008080"}
           />
         }
       >
-        <StatusBar style="dark" />
+        <StatusBar style={isDark ? "light" : "dark"} />
 
         {/* Top Header with Gradient, Store Location, SearchBar & Category Scroller */}
         <Header
@@ -1146,20 +1163,51 @@ export default function HomeScreen() {
 
         {/* ── Delivery Zone Availability Indicator ────────────────────── */}
         {isOutsideDeliveryZone ? (
-          <View style={styles.outsideZoneBanner}>
-            <View style={styles.outsideZoneIconBox}>
-              <Feather name="map-pin" size={scale(20)} color="#DC2626" />
+          <View
+            style={[
+              styles.outsideZoneBanner,
+              isDark && {
+                backgroundColor: "#151D24",
+                borderColor: "#FF2028",
+                borderWidth: 1,
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.outsideZoneIconBox,
+                isDark && { backgroundColor: "rgba(255, 32, 40, 0.15)" },
+              ]}
+            >
+              <Feather
+                name="map-pin"
+                size={scale(20)}
+                color={isDark ? "#FF2028" : "#DC2626"}
+              />
             </View>
             <View style={{ flex: 1, marginLeft: scale(10) }}>
-              <Text style={styles.outsideZoneTitle}>
+              <Text
+                style={[
+                  styles.outsideZoneTitle,
+                  isDark && { color: "#FF2028" },
+                ]}
+              >
                 Delivery Unavailable at this Location
               </Text>
-              <Text style={styles.outsideZoneSub}>
+              <Text
+                style={[
+                  styles.outsideZoneSub,
+                  isDark && { color: "#A8B2BE" },
+                ]}
+              >
                 None of our active partner stores currently deliver to this
                 selected area.
               </Text>
               <TouchableOpacity
-                style={styles.changeLocBtn}
+                style={[
+                  styles.changeLocBtn,
+                  isDark && { backgroundColor: "#FF2028" },
+                ]}
                 activeOpacity={0.7}
                 onPress={handleOpenLocationModal}
               >
@@ -1171,11 +1219,35 @@ export default function HomeScreen() {
             </View>
           </View>
         ) : (
-          <View style={styles.deliveryAvailableBadge}>
-            <View style={styles.activeDot} />
-            <Text style={styles.deliveryAvailableText}>
+          <View
+            style={[
+              styles.deliveryAvailableBadge,
+              isDark && {
+                backgroundColor: "#151D24",
+                borderWidth: 1,
+                borderColor: "#303B45",
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.activeDot,
+                isDark && { backgroundColor: "#39D353" },
+              ]}
+            />
+            <Text
+              style={[
+                styles.deliveryAvailableText,
+                isDark && { color: "#F8FAFC" },
+              ]}
+            >
               ⚡ Delivering within 15-25 mins from{" "}
-              <Text style={{ fontWeight: "700" }}>
+              <Text
+                style={{
+                  fontWeight: "700",
+                  color: isDark ? "#5BB74A" : "#065F46",
+                }}
+              >
                 {eligibleVendorsCount > 0
                   ? `${eligibleVendorsCount} nearby stores`
                   : "partner stores"}
@@ -1192,8 +1264,16 @@ export default function HomeScreen() {
             {/* Section Pagination Loader (shows when user reaches bottom of current sections) */}
             {hasMoreSections && (
               <View style={styles.loadingMoreContainer}>
-                <ActivityIndicator size="small" color="#008080" />
-                <Text style={styles.loadingMoreText}>
+                <ActivityIndicator
+                  size="small"
+                  color={isDark ? "#39D353" : "#008080"}
+                />
+                <Text
+                  style={[
+                    styles.loadingMoreText,
+                    isDark && { color: "#39D353" },
+                  ]}
+                >
                   Loading more recommendations...
                 </Text>
               </View>
@@ -1208,12 +1288,22 @@ export default function HomeScreen() {
             <View style={styles.streamSection}>
               <View style={styles.streamHeader}>
                 <View>
-                  <Text style={styles.streamTitle}>
+                  <Text
+                    style={[
+                      styles.streamTitle,
+                      isDark && { color: "#F8FAFC" },
+                    ]}
+                  >
                     {selectedCategory === "all"
                       ? "All Products Near You"
                       : "More in this Category"}
                   </Text>
-                  <Text style={styles.streamSub}>
+                  <Text
+                    style={[
+                      styles.streamSub,
+                      isDark && { color: "#A8B2BE" },
+                    ]}
+                  >
                     Showing {publicProducts.length} of {publicTotal} products from
                     nearby stores
                   </Text>
@@ -1225,7 +1315,7 @@ export default function HomeScreen() {
                   <ProductCard
                     key={prod._id || prod.id || idx}
                     product={normalizeDealProduct(prod)}
-                    cardWidth={(SCREEN_WIDTH - scale(44)) / 2}
+                    cardWidth={gridCardWidth}
                     onPress={handleProductPress}
                     onAddPress={handleAddToCart}
                   />
@@ -1237,8 +1327,18 @@ export default function HomeScreen() {
         {/* Infinite Scroll Activity Indicator */}
         {!hasMoreSections && publicLoadingMore && (
           <View style={styles.loadingMoreContainer}>
-            <ActivityIndicator size="small" color="#008080" />
-            <Text style={styles.loadingMoreText}>Loading more products...</Text>
+            <ActivityIndicator
+              size="small"
+              color={isDark ? "#39D353" : "#008080"}
+            />
+            <Text
+              style={[
+                styles.loadingMoreText,
+                isDark && { color: "#39D353" },
+              ]}
+            >
+              Loading more products...
+            </Text>
           </View>
         )}
 
@@ -1248,11 +1348,26 @@ export default function HomeScreen() {
           publicProducts.length > 0 &&
           !isOutsideDeliveryZone && (
             <View style={styles.endOfListContainer}>
-              <View style={styles.endOfListLine} />
-              <Text style={styles.endOfListText}>
+              <View
+                style={[
+                  styles.endOfListLine,
+                  isDark && { backgroundColor: "#303B45" },
+                ]}
+              />
+              <Text
+                style={[
+                  styles.endOfListText,
+                  isDark && { color: "#A8B2BE" },
+                ]}
+              >
                 ✓ You've viewed all available products from nearby stores
               </Text>
-              <View style={styles.endOfListLine} />
+              <View
+                style={[
+                  styles.endOfListLine,
+                  isDark && { backgroundColor: "#303B45" },
+                ]}
+              />
             </View>
           )}
       </ScrollView>

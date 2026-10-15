@@ -62,7 +62,7 @@ function ProductCardComponent({
   const dispatch = useAppDispatch();
   const { addToCart, updateQuantity, getItemQuantity } = useCart();
   const targetProductId = String(
-    product.id || (product as any)._id || (product as any).productId || ""
+    product.id || (product as any)._id || (product as any).productId || "",
   ).trim();
 
   const isWishlisted = useAppSelector((state) => {
@@ -71,7 +71,7 @@ function ProductCardComponent({
     for (let i = 0; i < list.length; i++) {
       const it = list[i];
       const savedId = String(
-        it.productId || (it as any).id || (it as any)._id || ""
+        it.productId || (it as any).id || (it as any)._id || "",
       ).trim();
       if (
         (savedId.length > 0 && savedId === targetProductId) ||
@@ -89,7 +89,7 @@ function ProductCardComponent({
         ...product,
         id: targetProductId,
         productId: targetProductId,
-      })
+      }),
     );
   };
 
@@ -217,7 +217,7 @@ function ProductCardComponent({
         (kw) =>
           (cat.includes(kw) || sub.includes(kw)) &&
           !sub.includes("baby-food") &&
-          !sub.includes("baby food")
+          !sub.includes("baby food"),
       ) &&
       !cat.includes("grocery") &&
       !cat.includes("snack");
@@ -318,7 +318,7 @@ function ProductCardComponent({
     ];
 
     return foodKeywords.some(
-      (kw) => cat.includes(kw) || sub.includes(kw) || name.includes(kw)
+      (kw) => cat.includes(kw) || sub.includes(kw) || name.includes(kw),
     );
   }, [product.isVeg, product.category, product.subCategory, product.name]);
 
@@ -327,7 +327,8 @@ function ProductCardComponent({
     if (product.isVeg === false) return false;
     if (product.isVeg === true) return true;
 
-    const combined = `${product.name || ""} ${product.subCategory || ""} ${product.category || ""}`.toLowerCase();
+    const combined =
+      `${product.name || ""} ${product.subCategory || ""} ${product.category || ""}`.toLowerCase();
     const nonVegKeywords = [
       "chicken",
       "meat",
@@ -390,14 +391,29 @@ function ProductCardComponent({
     }
   };
 
+  const isDark = theme.mode === "dark";
+
   return (
     <TouchableOpacity
       activeOpacity={0.92}
       onPress={handlePress}
-      style={[styles.cardContainer, { width: dynamicWidth }]}
+      style={[
+        styles.cardContainer,
+        { width: dynamicWidth },
+        isDark && {
+          backgroundColor: "#151D24",
+          borderColor: "#303B45",
+        },
+      ]}
     >
       {/* 1. Hero Product Image Area */}
-      <View style={[styles.imageContainer, { height: dynamicImageHeight }]}>
+      <View
+        style={[
+          styles.imageContainer,
+          { height: dynamicImageHeight },
+          isDark && { backgroundColor: "#1B252E" },
+        ]}
+      >
         <Image
           source={product.image}
           style={styles.productImage}
@@ -407,7 +423,7 @@ function ProductCardComponent({
 
         {/* Top-Left Discount Badge */}
         {discountPercent > 0 && (
-          <View style={[styles.discountBadge, { backgroundColor: "red" }]}>
+          <View style={[styles.discountBadge, { backgroundColor: "#FF2028" }]}>
             <Text style={styles.discountBadgeText}>{discountPercent}% OFF</Text>
           </View>
         )}
@@ -418,23 +434,41 @@ function ProductCardComponent({
           onPress={handleToggleWishlist}
           style={[
             styles.wishlistBtn,
-            isWishlisted && { backgroundColor: "#FFF1F2" },
+            isWishlisted && {
+              backgroundColor: isDark ? "#2A1215" : "#FFF1F2",
+            },
+            isDark && {
+              backgroundColor: isWishlisted ? "#2A1215" : "#1B252E",
+              borderWidth: 1,
+              borderColor: "#303B45",
+            },
           ]}
         >
           <Ionicons
             name={isWishlisted ? "heart" : "heart-outline"}
             size={scale(13)}
-            color={isWishlisted ? "#DC2626" : "#64748B"}
+            color={isWishlisted ? "#FF2028" : isDark ? "#A8B2BE" : "#64748B"}
           />
         </TouchableOpacity>
 
         {/* Bottom-Right Dot Pagination Indicator (Only shown when product has more than 1 image) */}
         {imagesCount > 1 && (
-          <View style={styles.dotsIndicator}>
+          <View
+            style={[
+              styles.dotsIndicator,
+              isDark && { backgroundColor: "rgba(21, 29, 36, 0.85)" },
+            ]}
+          >
             {Array.from({ length: Math.min(imagesCount, 4) }).map((_, idx) => (
               <View
                 key={idx}
-                style={[styles.dot, idx === 0 && styles.activeDot]}
+                style={[
+                  styles.dot,
+                  idx === 0 &&
+                    (isDark
+                      ? { backgroundColor: "#39D353" }
+                      : styles.activeDot),
+                ]}
               />
             ))}
           </View>
@@ -444,12 +478,18 @@ function ProductCardComponent({
       {/* 2. Product Details Body */}
       <View style={styles.bodyContent}>
         {/* Title */}
-        <Text numberOfLines={1} style={styles.titleText}>
+        <Text
+          numberOfLines={1}
+          style={[styles.titleText, isDark && { color: "#F8FAFC" }]}
+        >
           {product.name}
         </Text>
 
         {/* Subtitle / Weight & Variant */}
-        <Text numberOfLines={1} style={styles.subtitleText}>
+        <Text
+          numberOfLines={1}
+          style={[styles.subtitleText, isDark && { color: "#A8B2BE" }]}
+        >
           {subtitleText}
         </Text>
 
@@ -460,13 +500,15 @@ function ProductCardComponent({
             <FontAwesome
               name="star"
               size={scale(9.5)}
-              color={primaryColor}
+              color={isDark ? "#FFC928" : primaryColor}
               style={{ marginRight: scale(2) }}
             />
-            <Text style={styles.ratingScore}>
+            <Text style={[styles.ratingScore, isDark && { color: "#F8FAFC" }]}>
               {Number(product.rating || 4.5).toFixed(1)}
             </Text>
-            <Text style={styles.ratingCountText}>
+            <Text
+              style={[styles.ratingCountText, isDark && { color: "#A8B2BE" }]}
+            >
               ({product.reviewsCount || 142})
             </Text>
           </View>
@@ -478,21 +520,33 @@ function ProductCardComponent({
                 styles.vegBadge,
                 {
                   backgroundColor: isVegetarian
-                    ? "rgba(22, 163, 74, 0.12)"
-                    : "rgba(220, 38, 38, 0.12)",
+                    ? isDark
+                      ? "rgba(57, 211, 83, 0.15)"
+                      : "rgba(22, 163, 74, 0.12)"
+                    : isDark
+                      ? "rgba(255, 32, 40, 0.15)"
+                      : "rgba(220, 38, 38, 0.12)",
                 },
               ]}
             >
               <MaterialCommunityIcons
                 name={isVegetarian ? "leaf" : "circle"}
                 size={isVegetarian ? scale(9.5) : scale(6.5)}
-                color={isVegetarian ? "#16A34A" : "#DC2626"}
+                color={
+                  isVegetarian ? (isDark ? "#39D353" : "#16A34A") : "#FF2028"
+                }
                 style={{ marginRight: scale(2) }}
               />
               <Text
                 style={[
                   styles.vegBadgeText,
-                  { color: isVegetarian ? "#16A34A" : "#DC2626" },
+                  {
+                    color: isVegetarian
+                      ? isDark
+                        ? "#39D353"
+                        : "#16A34A"
+                      : "#FF2028",
+                  },
                 ]}
               >
                 {isVegetarian ? "Veg" : "Non-Veg"}
@@ -503,17 +557,26 @@ function ProductCardComponent({
 
         {/* Pricing Row */}
         <View style={styles.pricingRow}>
-          <Text style={styles.currencySymbol}>Rs. </Text>
-          <Text style={styles.mainPrice}>{product.price}</Text>
+          <Text style={[styles.currencySymbol, isDark && { color: "#F8FAFC" }]}>
+            Rs.{" "}
+          </Text>
+          <Text style={[styles.mainPrice, isDark && { color: "#F8FAFC" }]}>
+            {product.price}
+          </Text>
 
           {product.originalPrice && product.originalPrice > product.price ? (
-            <Text style={styles.strikePrice}>Rs. {product.originalPrice}</Text>
+            <Text style={[styles.strikePrice, isDark && { color: "#A8B2BE" }]}>
+              Rs. {product.originalPrice}
+            </Text>
           ) : null}
         </View>
 
         {/* Unit Price / Savings Note */}
         {unitPrice ? (
-          <Text numberOfLines={1} style={styles.unitPriceText}>
+          <Text
+            numberOfLines={1}
+            style={[styles.unitPriceText, isDark && { color: "#A8B2BE" }]}
+          >
             ({unitPrice})
           </Text>
         ) : null}
@@ -526,7 +589,7 @@ function ProductCardComponent({
             style={[
               styles.addToCartBtn,
               {
-                backgroundColor: primaryColor,
+                backgroundColor: "#004d5d",
                 shadowColor: primaryColor,
               },
             ]}

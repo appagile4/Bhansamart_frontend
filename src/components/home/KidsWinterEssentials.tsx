@@ -1,4 +1,4 @@
-import { moderateScale, scale } from "@/theme";
+import { moderateScale, scale, useTheme } from "@/theme";
 import { Image } from "expo-image";
 import React from "react";
 import {
@@ -54,10 +54,13 @@ export default function KidsWinterEssentials({
   items = WINTER_ITEMS,
   onItemPress,
 }: KidsWinterEssentialsProps) {
+  const theme = useTheme();
+  const isDark = theme.mode === "dark";
+
   return (
     <View style={styles.container}>
       {/* Section Title */}
-      <Text style={styles.sectionTitle}>{title}</Text>
+      <Text style={[styles.sectionTitle, isDark && { color: "#F8FAFC" }]}>{title}</Text>
 
       {/* 3-Cards Row */}
       <View style={styles.row}>

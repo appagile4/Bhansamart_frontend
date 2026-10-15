@@ -219,6 +219,7 @@ export default function TopDeals({
 }: TopDealsProps) {
   const router = useRouter();
   const theme = useTheme();
+  const isDark = theme.mode === "dark";
   const dispatch = useAppDispatch();
   const { publicProducts, publicLoading } = useAppSelector(
     (state) => state.product
@@ -427,8 +428,15 @@ export default function TopDeals({
       <View style={styles.container}>
         {/* Section Title Header */}
         <View style={styles.headerRow}>
-          <Text style={styles.sectionTitle}>{title}</Text>
-          <Text style={styles.seeAllText}>See all</Text>
+          <Text
+            style={[
+              styles.sectionTitle,
+              { color: isDark ? "#F8FAFC" : "#1E293B" },
+            ]}
+          >
+            {title}
+          </Text>
+          <Text style={[styles.seeAllText, isDark && { color: "#A8B2BE" }]}>See all</Text>
         </View>
 
         {/* Skeleton Horizontal Carousel */}
@@ -455,6 +463,7 @@ export default function TopDeals({
             style={[
               styles.seeAllBar,
               styles.skeletonBlock,
+              isDark && { backgroundColor: "#151D24", borderColor: "#303B45" },
               { opacity: pulseAnim, height: scale(46) },
             ]}
           />
@@ -473,9 +482,16 @@ export default function TopDeals({
     <View style={styles.container}>
       {/* Section Title Header */}
       <View style={styles.headerRow}>
-        <Text style={styles.sectionTitle}>{title}</Text>
+        <Text
+          style={[
+            styles.sectionTitle,
+            { color: isDark ? "#F8FAFC" : "#1E293B" },
+          ]}
+        >
+          {title}
+        </Text>
         <TouchableOpacity activeOpacity={0.7} onPress={handleSeeAll}>
-          <Text style={styles.seeAllHeaderBtnText}>See all</Text>
+          <Text style={[styles.seeAllHeaderBtnText, isDark && { color: "#39D353" }]}>See all</Text>
         </TouchableOpacity>
       </View>
 
@@ -506,7 +522,13 @@ export default function TopDeals({
         <TouchableOpacity
           activeOpacity={0.85}
           onPress={handleSeeAll}
-          style={styles.seeAllBar}
+          style={[
+            styles.seeAllBar,
+            isDark && {
+              backgroundColor: "#151D24",
+              borderColor: "#303B45",
+            },
+          ]}
         >
           {/* 3 Real Live Product Overlapping Thumbnail Avatars */}
           <View style={styles.avatarGroup}>
@@ -517,6 +539,10 @@ export default function TopDeals({
                   styles.avatarCircle,
                   idx > 0 && { marginLeft: -scale(10) },
                   { zIndex: 10 - idx },
+                  isDark && {
+                    backgroundColor: "#1B252E",
+                    borderColor: "#151D24",
+                  },
                 ]}
               >
                 <Image
@@ -528,8 +554,14 @@ export default function TopDeals({
             ))}
           </View>
 
-          <Text style={styles.seeAllText}>See all products</Text>
-          <Ionicons name="caret-forward" size={scale(15)} color="#1E3A5F" />
+          <Text style={[styles.seeAllText, isDark && { color: "#F8FAFC" }]}>
+            See all products
+          </Text>
+          <Ionicons
+            name="caret-forward"
+            size={scale(15)}
+            color={isDark ? "#39D353" : "#1E3A5F"}
+          />
         </TouchableOpacity>
       )}
     </View>

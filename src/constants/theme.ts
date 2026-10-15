@@ -74,6 +74,9 @@ export const BrandColors = {
     meat: { bg: "#ffe8ec", text: "#be123c", border: "#fecdd6" },
     dairy: { bg: "#e8f4fd", text: "#0369a1", border: "#bae0fd" },
     spices: { bg: "#f3e8ff", text: "#7e22ce", border: "#e9d5ff" },
+    beauty: { bg: "#fce7f3", text: "#FF4F81", border: "#fbcfe8" },
+    baby: { bg: "#ffedd5", text: "#FF8C32", border: "#fed7aa" },
+    gifting: { bg: "#f3e8ff", text: "#AD70FF", border: "#e9d5ff" },
   },
 };
 
@@ -286,11 +289,32 @@ export const lightColors = {
   shadowColor: "#000000",
 };
 
+// ==========================================
+// Customer Dark Mode Design System Palette
+// ==========================================
+export const CustomerDarkPalette = {
+  mainBackground: "#080D0F", // Near Black
+  cardsSurfaces: "#151D24", // Dark Charcoal
+  searchBar: "#1B252E", // Blue-Gray
+  primaryBrand: "#39D353", // Emerald Green
+  secondaryGreen: "#5BB74A", // Fresh Green
+  brandBanner: "#003C3A", // Deep Teal
+  accentFlashSale: "#FFC928", // Golden Yellow
+  discountBadges: "#FF2028", // Sale Red
+  primaryText: "#F8FAFC", // White
+  secondaryText: "#A8B2BE", // Cool Gray
+  borders: "#303B45", // Slate Gray
+  linksLocationIcon: "#19A9FF", // Sky Blue
+  beautyCategory: "#FF4F81", // Pink
+  babyCategory: "#FF8C32", // Orange
+  giftingCategory: "#AD70FF", // Purple
+};
+
 export const darkColors = {
-  primary: "#22c55e",
-  primaryHover: "#2ecc71",
-  primaryLight: "rgba(34, 197, 94, 0.2)",
-  primaryUltraLight: "#16281e",
+  primary: CustomerDarkPalette.primaryBrand, // #39D353 Emerald Green
+  primaryHover: CustomerDarkPalette.secondaryGreen, // #5BB74A Fresh Green
+  primaryLight: "rgba(57, 211, 83, 0.18)",
+  primaryUltraLight: "#0B1E12",
 
   vendorPrimary: "#016073",
   vendorPrimaryHover: "#027b93",
@@ -299,46 +323,52 @@ export const darkColors = {
   vendorSecondary: "#86C4CB",
   vendorDark: "#003844",
 
-  brandDark: "#f0faf4",
-  brandMint: "#3d7360",
-  brandSage: "#1b2c23",
-  accentOrange: "#f5a623",
-  accentRed: "#f87171",
+  brandDark: CustomerDarkPalette.brandBanner, // #003C3A Deep Teal
+  brandDeep: CustomerDarkPalette.brandBanner, // #003C3A Deep Teal
+  brandMint: CustomerDarkPalette.primaryBrand,
+  brandSage: CustomerDarkPalette.cardsSurfaces,
+  accentOrange: CustomerDarkPalette.babyCategory, // #FF8C32
+  accentYellow: CustomerDarkPalette.accentFlashSale, // #FFC928
+  accentRed: CustomerDarkPalette.discountBadges, // #FF2028
+  accentBlue: CustomerDarkPalette.linksLocationIcon, // #19A9FF
 
-  background: "#0c1511",
-  backgroundSecondary: "#111c16",
-  surface: "#14221b",
-  surfaceElevated: "#1c2e25",
-  card: "#14221b",
-  modal: "#18271f",
+  background: CustomerDarkPalette.mainBackground, // #080D0F Near Black
+  backgroundSecondary: CustomerDarkPalette.cardsSurfaces, // #151D24 Dark Charcoal
+  surface: CustomerDarkPalette.cardsSurfaces, // #151D24 Dark Charcoal
+  surfaceElevated: CustomerDarkPalette.searchBar, // #1B252E Blue-Gray
+  card: CustomerDarkPalette.cardsSurfaces, // #151D24 Dark Charcoal
+  modal: CustomerDarkPalette.cardsSurfaces, // #151D24 Dark Charcoal
 
-  input: "#1b2b22",
-  inputBorder: "#273f32",
-  inputPlaceholder: "#5f7e6e",
+  input: CustomerDarkPalette.searchBar, // #1B252E Blue-Gray
+  inputBorder: CustomerDarkPalette.borders, // #303B45 Slate Gray
+  inputPlaceholder: CustomerDarkPalette.secondaryText, // #A8B2BE Cool Gray
 
-  textPrimary: "#f0faf4",
-  textSecondary: "#a4c5b5",
-  textMuted: "#668877",
-  textInverse: "#0c1511",
-  textLink: "#22c55e",
+  textPrimary: CustomerDarkPalette.primaryText, // #F8FAFC White
+  textSecondary: CustomerDarkPalette.secondaryText, // #A8B2BE Cool Gray
+  textMuted: CustomerDarkPalette.secondaryText, // #A8B2BE Cool Gray
+  textInverse: CustomerDarkPalette.mainBackground,
+  textLink: CustomerDarkPalette.linksLocationIcon, // #19A9FF Sky Blue
 
-  border: "#23372c",
-  borderLight: "#1c2d24",
-  divider: "#1e3026",
+  border: CustomerDarkPalette.borders, // #303B45 Slate Gray
+  borderLight: CustomerDarkPalette.borders, // #303B45 Slate Gray
+  divider: CustomerDarkPalette.borders, // #303B45 Slate Gray
 
-  tabBar: "#14221b",
-  tabBarBorder: "#1f3328",
-  tabBarActive: "#22c55e",
-  tabBarInactive: "#668877",
+  tabBar: CustomerDarkPalette.cardsSurfaces, // #151D24 Dark Charcoal
+  tabBarBorder: CustomerDarkPalette.borders, // #303B45 Slate Gray
+  tabBarActive: CustomerDarkPalette.primaryBrand, // #39D353 Emerald Green
+  tabBarInactive: CustomerDarkPalette.secondaryText, // #A8B2BE Cool Gray
   statusBar: "light" as const,
 
   categories: {
-    vegetables: { bg: "#162d21", text: "#4ade80", border: "#234934" },
-    fruits: { bg: "#2d1d16", text: "#fb923c", border: "#4a2d20" },
-    bakery: { bg: "#2d2616", text: "#fbbf24", border: "#4a3c1f" },
-    meat: { bg: "#2d161c", text: "#fb7185", border: "#4a1f28" },
-    dairy: { bg: "#162633", text: "#38bdf8", border: "#1f3d52" },
-    spices: { bg: "#271633", text: "#c084fc", border: "#3e2054" },
+    vegetables: { bg: "#102618", text: "#39D353", border: "#303B45" },
+    fruits: { bg: "#2A1810", text: "#FF8C32", border: "#303B45" },
+    bakery: { bg: "#282010", text: "#FFC928", border: "#303B45" },
+    meat: { bg: "#2A1215", text: "#FF2028", border: "#303B45" },
+    dairy: { bg: "#10202E", text: "#19A9FF", border: "#303B45" },
+    spices: { bg: "#20122B", text: "#AD70FF", border: "#303B45" },
+    beauty: { bg: "#2A1420", text: CustomerDarkPalette.beautyCategory, border: "#303B45" },
+    baby: { bg: "#2A1810", text: CustomerDarkPalette.babyCategory, border: "#303B45" },
+    gifting: { bg: "#20122B", text: CustomerDarkPalette.giftingCategory, border: "#303B45" },
   },
   shadowColor: "#000000",
 };

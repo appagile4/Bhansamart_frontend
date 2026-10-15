@@ -184,6 +184,7 @@ function InstantFrozenFoodComponent({
 }: InstantFrozenFoodProps) {
   const router = useRouter();
   const theme = useTheme();
+  const isDark = theme.mode === "dark";
   const { width: windowWidth } = useWindowDimensions();
   const { publicProducts, publicLoading } = useAppSelector(
     (state) => state.product
@@ -346,13 +347,13 @@ function InstantFrozenFoodComponent({
       <View style={styles.container}>
         {/* Section Header with Side Lines */}
         <View style={styles.headerRow}>
-          <View style={styles.headerLine} />
+          <View style={[styles.headerLine, isDark && { backgroundColor: "#303B45" }]} />
           <Text
-            style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}
+            style={[styles.sectionTitle, { color: isDark ? "#F8FAFC" : theme.colors.textPrimary }]}
           >
             {title}
           </Text>
-          <View style={styles.headerLine} />
+          <View style={[styles.headerLine, isDark && { backgroundColor: "#303B45" }]} />
         </View>
 
         {/* 3-Column Grid of 6 Skeletons */}
@@ -371,6 +372,7 @@ function InstantFrozenFoodComponent({
           style={[
             styles.seeAllBar,
             styles.skeletonBlock,
+            isDark && { backgroundColor: "#151D24", borderColor: "#303B45" },
             { opacity: pulseAnim, height: scale(46), marginTop: moderateScale(14) },
           ]}
         />
@@ -382,13 +384,13 @@ function InstantFrozenFoodComponent({
     <View style={styles.container}>
       {/* Section Header with Side Lines matching DealsOfTheDays */}
       <View style={styles.headerRow}>
-        <View style={styles.headerLine} />
+        <View style={[styles.headerLine, isDark && { backgroundColor: "#303B45" }]} />
         <Text
-          style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}
+          style={[styles.sectionTitle, { color: isDark ? "#F8FAFC" : theme.colors.textPrimary }]}
         >
           {title}
         </Text>
-        <View style={styles.headerLine} />
+        <View style={[styles.headerLine, isDark && { backgroundColor: "#303B45" }]} />
       </View>
 
       {/* 3-Column Product Cards Grid */}
@@ -409,7 +411,13 @@ function InstantFrozenFoodComponent({
       <TouchableOpacity
         activeOpacity={0.85}
         onPress={handleSeeAllPress}
-        style={styles.seeAllBar}
+        style={[
+          styles.seeAllBar,
+          isDark && {
+            backgroundColor: "#151D24",
+            borderColor: "#303B45",
+          },
+        ]}
       >
         {/* 3 Real Product Overlapping Thumbnail Avatars */}
         <View style={styles.avatarGroup}>
@@ -420,6 +428,10 @@ function InstantFrozenFoodComponent({
                 styles.avatarCircle,
                 idx > 0 && { marginLeft: -scale(10) },
                 { zIndex: 10 - idx },
+                isDark && {
+                  backgroundColor: "#1B252E",
+                  borderColor: "#151D24",
+                },
               ]}
             >
               <Image
@@ -431,8 +443,14 @@ function InstantFrozenFoodComponent({
           ))}
         </View>
 
-        <Text style={styles.seeAllText}>See all products</Text>
-        <Ionicons name="caret-forward" size={scale(15)} color="#1E3A5F" />
+        <Text style={[styles.seeAllText, isDark && { color: "#F8FAFC" }]}>
+          See all products
+        </Text>
+        <Ionicons
+          name="caret-forward"
+          size={scale(15)}
+          color={isDark ? "#39D353" : "#1E3A5F"}
+        />
       </TouchableOpacity>
     </View>
   );

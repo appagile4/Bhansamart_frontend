@@ -3,7 +3,7 @@ import { moderateScale, scale, useTheme } from "@/theme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import React, { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import {
   Animated,
   Dimensions,
@@ -106,7 +106,7 @@ export default function SnacksDrinks({
   const theme = useTheme();
   const router = useRouter();
   const { publicProducts, publicLoading } = useAppSelector(
-    (state) => state.product
+    (state) => state.product,
   );
 
   const pulseAnim = useRef(new Animated.Value(0.35)).current;
@@ -124,7 +124,7 @@ export default function SnacksDrinks({
           duration: 800,
           useNativeDriver: true,
         }),
-      ])
+      ]),
     );
     pulseLoop.start();
     return () => pulseLoop.stop();
@@ -238,7 +238,7 @@ export default function SnacksDrinks({
                 <Image
                   source={item.image}
                   style={styles.image}
-                  contentFit="contain"
+                  contentFit="cover"
                   transition={200}
                 />
               ) : (
@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
     borderRadius: moderateScale(16),
     alignItems: "center",
     justifyContent: "center",
-    padding: scale(6),
+    // padding: scale(6),
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,

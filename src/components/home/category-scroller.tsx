@@ -1,6 +1,6 @@
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { setSelectedCategory as setReduxCategory } from "@/store/slices/productSlice";
-import { moderateScale, scale } from "@/theme";
+import { moderateScale, scale, useTheme } from "@/theme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { memo, useCallback, useEffect, useRef } from "react";
 import {
@@ -48,6 +48,8 @@ const CategoryButton = memo(function CategoryButton({
   isSelected,
   onPress,
 }: CategoryButtonProps) {
+  const theme = useTheme();
+  const isDark = theme.mode === "dark";
   const scaleAnim = useRef(new Animated.Value(isSelected ? 1.08 : 1)).current;
   const underlineAnim = useRef(new Animated.Value(isSelected ? 1 : 0)).current;
   const layoutRef = useRef({ x: 0, width: 0 });
@@ -71,6 +73,16 @@ const CategoryButton = memo(function CategoryButton({
   const handlePress = useCallback(() => {
     onPress(item.id, layoutRef.current.x, layoutRef.current.width);
   }, [item.id, onPress]);
+
+  const getCategoryColor = () => {
+    if (item.id === "beauty") return "#FF4F81"; // Beauty: Pink #FF4F81
+    if (item.id === "baby" || item.id === "kids") return "#FF8C32"; // Baby: Orange #FF8C32
+    if (item.id === "gifting") return "#AD70FF"; // Gifting: Purple #AD70FF
+    if (isSelected) return isDark ? "#39D353" : "#ffd215"; // Primary brand: Emerald Green #39D353
+    return isDark ? "#A8B2BE" : "rgba(255, 210, 21, 0.85)";
+  };
+
+  const itemColor = getCategoryColor();
 
   return (
     <TouchableOpacity
@@ -96,7 +108,7 @@ const CategoryButton = memo(function CategoryButton({
         <MaterialCommunityIcons
           name={item.icon}
           size={scale(32)}
-          color={isSelected ? "#ffd215" : "rgba(255, 210, 21, 0.85)"}
+          color={itemColor}
         />
       </Animated.View>
 
@@ -105,17 +117,20 @@ const CategoryButton = memo(function CategoryButton({
         <Text
           style={[
             styles.categoryLabel,
-            isSelected ? styles.selectedLabel : styles.unselectedLabel,
+            isSelected
+              ? { color: itemColor, fontWeight: "700" }
+              : { color: isDark ? "#A8B2BE" : "#ffffff" },
           ]}
         >
           {item.label}
         </Text>
 
-        {/* Yellow Underline Indicator Bar with Smooth Scale Animation */}
+        {/* Underline Indicator Bar with Smooth Scale Animation */}
         <Animated.View
           style={[
             styles.activeIndicator,
             {
+              backgroundColor: itemColor,
               transform: [{ scaleX: underlineAnim }],
               opacity: underlineAnim,
             },

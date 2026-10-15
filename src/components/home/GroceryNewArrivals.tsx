@@ -3,7 +3,7 @@ import { moderateScale, scale, useTheme } from "@/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import React, { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   Animated,
   Dimensions,
@@ -420,7 +420,11 @@ const ARRIVALS_CATEGORY_MAP: Record<string, NewArrivalDuoCategory[]> = {
 };
 
 // ── Animated Skeleton Duo Card Component ─────────────────────────────
-function NewArrivalCardSkeleton({ animOpacity }: { animOpacity: Animated.Value }) {
+function NewArrivalCardSkeleton({
+  animOpacity,
+}: {
+  animOpacity: Animated.Value;
+}) {
   return (
     <View style={styles.card}>
       {/* Title skeleton */}
@@ -440,18 +444,10 @@ function NewArrivalCardSkeleton({ animOpacity }: { animOpacity: Animated.Value }
       {/* Dual Tile Skeletons */}
       <View style={styles.tilesRow}>
         <Animated.View
-          style={[
-            styles.tile,
-            styles.skeletonBlock,
-            { opacity: animOpacity },
-          ]}
+          style={[styles.tile, styles.skeletonBlock, { opacity: animOpacity }]}
         />
         <Animated.View
-          style={[
-            styles.tile,
-            styles.skeletonBlock,
-            { opacity: animOpacity },
-          ]}
+          style={[styles.tile, styles.skeletonBlock, { opacity: animOpacity }]}
         />
       </View>
     </View>
@@ -460,7 +456,15 @@ function NewArrivalCardSkeleton({ animOpacity }: { animOpacity: Animated.Value }
 
 interface GroceryNewArrivalsProps {
   title?: string;
-  category?: "all" | "grocery" | "kids" | "gifting" | "stationery" | "beauty" | "snacks" | string;
+  category?:
+    | "all"
+    | "grocery"
+    | "kids"
+    | "gifting"
+    | "stationery"
+    | "beauty"
+    | "snacks"
+    | string;
   items?: NewArrivalDuoCategory[];
   onCategoryPress?: (item: NewArrivalDuoCategory) => void;
   onSeeAllPress?: () => void;
@@ -475,10 +479,15 @@ export default function GroceryNewArrivals({
 }: GroceryNewArrivalsProps) {
   const router = useRouter();
   const theme = useTheme();
-  const { publicProducts, publicLoading, selectedCategory: reduxCategory } =
-    useAppSelector((state) => state.product);
+  const {
+    publicProducts,
+    publicLoading,
+    selectedCategory: reduxCategory,
+  } = useAppSelector((state) => state.product);
 
-  const activeCategory = (propCategory || reduxCategory || "all").toLowerCase().trim();
+  const activeCategory = (propCategory || reduxCategory || "all")
+    .toLowerCase()
+    .trim();
 
   // Pulse animation for loading skeletons
   const pulseAnim = useRef(new Animated.Value(0.35)).current;
@@ -495,7 +504,7 @@ export default function GroceryNewArrivals({
           duration: 800,
           useNativeDriver: true,
         }),
-      ])
+      ]),
     );
     pulseLoop.start();
     return () => pulseLoop.stop();
@@ -516,7 +525,7 @@ export default function GroceryNewArrivals({
     let newArrivals = publicProducts.filter(
       (p) =>
         p.visibility?.isNewArrival === true ||
-        p.tags?.some((t) => t.toLowerCase().includes("new"))
+        p.tags?.some((t) => t.toLowerCase().includes("new")),
     );
 
     // If no explicit isNewArrival flag set on backend, fallback to all available products
@@ -542,7 +551,9 @@ export default function GroceryNewArrivals({
     const groupedMap: Record<string, any[]> = {};
     newArrivals.forEach((prod) => {
       const groupKey =
-        prod.subCategory || prod.category || (activeCategory === "all" ? "Picks" : "Items");
+        prod.subCategory ||
+        prod.category ||
+        (activeCategory === "all" ? "Picks" : "Items");
       if (!groupedMap[groupKey]) {
         groupedMap[groupKey] = [];
       }
@@ -665,7 +676,9 @@ export default function GroceryNewArrivals({
       <View style={styles.headerRow}>
         <View style={styles.titleContainer}>
           <View style={styles.badgeTitleRow}>
-            <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>
+            <Text
+              style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}
+            >
               {title}
             </Text>
             <View style={styles.sparkleBadge}>
@@ -717,7 +730,7 @@ export default function GroceryNewArrivals({
                 <Image
                   source={cat.imageLeft}
                   style={styles.tileImage}
-                  contentFit="contain"
+                  contentFit="cover"
                   transition={150}
                 />
               </View>
@@ -725,7 +738,7 @@ export default function GroceryNewArrivals({
                 <Image
                   source={cat.imageRight}
                   style={styles.tileImage}
-                  contentFit="contain"
+                  contentFit="cover"
                   transition={150}
                 />
               </View>
@@ -838,7 +851,6 @@ const styles = StyleSheet.create({
     borderRadius: moderateScale(8),
     alignItems: "center",
     justifyContent: "center",
-    padding: scale(2),
     overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
@@ -854,6 +866,3 @@ const styles = StyleSheet.create({
     backgroundColor: "#E2E8F0",
   },
 });
-
-
-

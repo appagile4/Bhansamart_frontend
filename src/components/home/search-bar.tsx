@@ -1,4 +1,4 @@
-import { moderateScale, scale } from "@/theme";
+import { moderateScale, scale, useTheme } from "@/theme";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
@@ -24,6 +24,8 @@ export default function SearchBar({
   readOnly = false,
 }: SearchBarProps) {
   const router = useRouter();
+  const theme = useTheme();
+  const isDark = theme.mode === "dark";
 
   const handlePress = () => {
     if (onPress) {
@@ -43,25 +45,53 @@ export default function SearchBar({
     }
   };
 
+  const searchContainerStyle = [
+    styles.container,
+    isDark && {
+      backgroundColor: "#1B252E",
+      borderWidth: 1,
+      borderColor: "#303B45",
+      shadowOpacity: 0.2,
+    },
+  ];
+
+  const searchInputStyle = [
+    styles.input,
+    isDark && {
+      color: "#F8FAFC",
+    },
+  ];
+
+  const searchDividerStyle = [
+    styles.divider,
+    isDark && {
+      backgroundColor: "#303B45",
+    },
+  ];
+
+  const iconColor = isDark ? "#A8B2BE" : "#555555";
+  const micColor = isDark ? "#39D353" : "#222222";
+  const placeholderColor = isDark ? "#A8B2BE" : "#888888";
+
   // If readOnly or onPress is explicitly provided, clicking anywhere routes to search
   if (readOnly || onPress) {
     return (
       <TouchableOpacity
         activeOpacity={0.88}
         onPress={handlePress}
-        style={styles.container}
+        style={searchContainerStyle}
       >
         {/* Left Search Icon */}
         <View style={styles.iconButton}>
-          <Feather name="search" size={scale(20)} color="#555555" />
+          <Feather name="search" size={scale(20)} color={iconColor} />
         </View>
 
         {/* Search Placeholder / Text Display */}
         <View style={styles.inputContainer}>
           <TextInput
-            style={styles.input}
+            style={searchInputStyle}
             placeholder={placeholder}
-            placeholderTextColor="#888888"
+            placeholderTextColor={placeholderColor}
             editable={false}
             pointerEvents="none"
             value={value}
@@ -69,7 +99,7 @@ export default function SearchBar({
         </View>
 
         {/* Subtle Vertical Divider */}
-        <View style={styles.divider} />
+        <View style={searchDividerStyle} />
 
         {/* Right Voice/Mic Icon */}
         <TouchableOpacity
@@ -77,28 +107,28 @@ export default function SearchBar({
           onPress={handleVoice}
           style={styles.iconButton}
         >
-          <Feather name="mic" size={scale(19)} color="#222222" />
+          <Feather name="mic" size={scale(19)} color={micColor} />
         </TouchableOpacity>
       </TouchableOpacity>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={searchContainerStyle}>
       {/* Left Search Icon */}
       <TouchableOpacity
         activeOpacity={0.7}
         onPress={handlePress}
         style={styles.iconButton}
       >
-        <Feather name="search" size={scale(20)} color="#555555" />
+        <Feather name="search" size={scale(20)} color={iconColor} />
       </TouchableOpacity>
 
       {/* Search Input Field */}
       <TextInput
-        style={styles.input}
+        style={searchInputStyle}
         placeholder={placeholder}
-        placeholderTextColor="#888888"
+        placeholderTextColor={placeholderColor}
         value={value}
         onChangeText={onChangeText}
         returnKeyType="search"
@@ -107,7 +137,7 @@ export default function SearchBar({
       />
 
       {/* Subtle Vertical Divider */}
-      <View style={styles.divider} />
+      <View style={searchDividerStyle} />
 
       {/* Right Voice/Mic Icon */}
       <TouchableOpacity
@@ -115,7 +145,7 @@ export default function SearchBar({
         onPress={handleVoice}
         style={styles.iconButton}
       >
-        <Feather name="mic" size={scale(19)} color="#222222" />
+        <Feather name="mic" size={scale(19)} color={micColor} />
       </TouchableOpacity>
     </View>
   );

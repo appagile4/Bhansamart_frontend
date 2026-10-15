@@ -167,6 +167,7 @@ export default function YouMightLikeSection({
 }: YouMightLikeSectionProps) {
   const router = useRouter();
   const theme = useTheme();
+  const isDark = theme.mode === "dark";
 
   // Also query public products from Redux as optional live pool
   const reduxPublicProducts = useAppSelector(
@@ -254,7 +255,13 @@ export default function YouMightLikeSection({
       <TouchableOpacity
         activeOpacity={0.85}
         onPress={onSeeAllPress}
-        style={styles.seeAllBanner}
+        style={[
+          styles.seeAllBanner,
+          isDark && {
+            backgroundColor: "#151D24",
+            borderColor: "#303B45",
+          },
+        ]}
       >
         <View style={styles.avatarGroup}>
           {previewThumbnails.map((imgSrc, idx) => (
@@ -263,6 +270,10 @@ export default function YouMightLikeSection({
               style={[
                 styles.avatarCircle,
                 { zIndex: 10 - idx, left: scale(idx * 16) },
+                isDark && {
+                  backgroundColor: "#1B252E",
+                  borderColor: "#151D24",
+                },
               ]}
             >
               <Image
@@ -275,8 +286,14 @@ export default function YouMightLikeSection({
         </View>
 
         <View style={styles.seeAllTextRow}>
-          <Text style={styles.seeAllText}>See all products</Text>
-          <Feather name="chevron-right" size={scale(16)} color="#0E4A56" />
+          <Text style={[styles.seeAllText, isDark && { color: "#F8FAFC" }]}>
+            See all products
+          </Text>
+          <Feather
+            name="chevron-right"
+            size={scale(16)}
+            color={isDark ? "#39D353" : "#0E4A56"}
+          />
         </View>
       </TouchableOpacity>
     </View>

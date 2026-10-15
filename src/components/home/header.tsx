@@ -1,4 +1,4 @@
-import { moderateScale, scale } from "@/theme";
+import { moderateScale, scale, useTheme } from "@/theme";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -33,6 +33,8 @@ export default function Header({
   onVoicePress,
 }: HeaderProps) {
   const router = useRouter();
+  const theme = useTheme();
+  const isDark = theme.mode === "dark";
   const [activeCategory, setActiveCategory] = useState(selectedCategory);
   const [searchValue, setSearchValue] = useState("");
 
@@ -59,7 +61,11 @@ export default function Header({
 
   return (
     <LinearGradient
-      colors={["#003844", "#004d5d", "#016073"]}
+      colors={
+        isDark
+          ? ["#003C3A", "#061A19", "#080D0F"]
+          : ["#003844", "#004d5d", "#016073"]
+      }
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
       style={styles.gradientContainer}
@@ -79,10 +85,10 @@ export default function Header({
               <Ionicons
                 name="location-sharp"
                 size={scale(14)}
-                color="#38BDF8"
+                color={isDark ? "#19A9FF" : "#38BDF8"}
                 style={{ marginRight: scale(4) }}
               />
-              <Text numberOfLines={1} style={styles.locationText}>
+              <Text numberOfLines={1} style={[styles.locationText, isDark && { color: "#F8FAFC" }]}>
                 {location}
               </Text>
               <Feather
@@ -100,12 +106,20 @@ export default function Header({
             <TouchableOpacity
               activeOpacity={0.75}
               onPress={onStorePress}
-              style={styles.storeButton}
+              style={[
+                styles.storeButton,
+                isDark && {
+                  backgroundColor: "#151D24",
+                  borderRadius: scale(19),
+                  borderWidth: 1,
+                  borderColor: "#303B45",
+                },
+              ]}
             >
               <MaterialCommunityIcons
                 name="storefront-outline"
-                size={scale(24)}
-                color="#ffffff"
+                size={scale(22)}
+                color={isDark ? "#F8FAFC" : "#ffffff"}
               />
             </TouchableOpacity>
 
@@ -113,9 +127,20 @@ export default function Header({
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={onProfilePress}
-              style={styles.profileAvatar}
+              style={[
+                styles.profileAvatar,
+                isDark && {
+                  backgroundColor: "#151D24",
+                  borderWidth: 1,
+                  borderColor: "#303B45",
+                },
+              ]}
             >
-              <Ionicons name="person" size={scale(18)} color="#003844" />
+              <Ionicons
+                name="person"
+                size={scale(18)}
+                color={isDark ? "#39D353" : "#003844"}
+              />
             </TouchableOpacity>
           </View>
         </View>

@@ -37,7 +37,9 @@ const DEFAULT_DEALS_FALLBACK: DealProduct[] = [
     price: 120,
     originalPrice: 140,
     priceDropText: "14% OFF",
-    image: { uri: "https://images.unsplash.com/photo-1612927601601-6638404737ce?w=400&q=80" },
+    image: {
+      uri: "https://images.unsplash.com/photo-1612927601601-6638404737ce?w=400&q=80",
+    },
     discountPct: 14,
   },
   {
@@ -50,7 +52,9 @@ const DEFAULT_DEALS_FALLBACK: DealProduct[] = [
     price: 100,
     originalPrice: 120,
     priceDropText: "17% OFF",
-    image: { uri: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400&q=80" },
+    image: {
+      uri: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400&q=80",
+    },
     discountPct: 17,
   },
 ];
@@ -62,12 +66,12 @@ function DealCardSkeleton({ animOpacity }: { animOpacity: Animated.Value }) {
     windowWidth >= 768
       ? Math.min(Math.round(windowWidth * 0.2), 175)
       : windowWidth < 360
-      ? Math.round(windowWidth * 0.42)
-      : Math.min(Math.max(Math.round(windowWidth * 0.38), 138), 158);
+        ? Math.round(windowWidth * 0.42)
+        : Math.min(Math.max(Math.round(windowWidth * 0.38), 138), 158);
 
   const dynamicImageHeight = Math.min(
     Math.max(Math.round(dynamicWidth * 0.7), scale(95)),
-    Math.round(windowHeight * 0.17)
+    Math.round(windowHeight * 0.17),
   );
 
   return (
@@ -88,7 +92,12 @@ function DealCardSkeleton({ animOpacity }: { animOpacity: Animated.Value }) {
           style={[
             styles.skeletonBlock,
             styles.skeletonLine,
-            { width: "85%", height: scale(16), marginBottom: scale(6), opacity: animOpacity },
+            {
+              width: "85%",
+              height: scale(16),
+              marginBottom: scale(6),
+              opacity: animOpacity,
+            },
           ]}
         />
 
@@ -97,7 +106,12 @@ function DealCardSkeleton({ animOpacity }: { animOpacity: Animated.Value }) {
           style={[
             styles.skeletonBlock,
             styles.skeletonLine,
-            { width: "55%", height: scale(12), marginBottom: scale(10), opacity: animOpacity },
+            {
+              width: "55%",
+              height: scale(12),
+              marginBottom: scale(10),
+              opacity: animOpacity,
+            },
           ]}
         />
 
@@ -113,7 +127,12 @@ function DealCardSkeleton({ animOpacity }: { animOpacity: Animated.Value }) {
           <Animated.View
             style={[
               styles.skeletonBlock,
-              { width: scale(65), height: scale(18), borderRadius: scale(10), opacity: animOpacity },
+              {
+                width: scale(65),
+                height: scale(18),
+                borderRadius: scale(10),
+                opacity: animOpacity,
+              },
             ]}
           />
         </View>
@@ -140,7 +159,13 @@ function DealCardSkeleton({ animOpacity }: { animOpacity: Animated.Value }) {
         <Animated.View
           style={[
             styles.skeletonBlock,
-            { width: "100%", height: scale(26), borderRadius: scale(6), marginVertical: scale(8), opacity: animOpacity },
+            {
+              width: "100%",
+              height: scale(26),
+              borderRadius: scale(6),
+              marginVertical: scale(8),
+              opacity: animOpacity,
+            },
           ]}
         />
 
@@ -165,10 +190,11 @@ export default function DealsOfTheDays({
   onSeeAllPress,
 }: DealsOfTheDaysProps) {
   const theme = useTheme();
+  const isDark = theme.mode === "dark";
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { publicProducts, publicLoading } = useAppSelector(
-    (state) => state.product
+    (state) => state.product,
   );
 
   // Smooth Pulse Animation for Skeletons
@@ -187,7 +213,7 @@ export default function DealsOfTheDays({
           duration: 800,
           useNativeDriver: true,
         }),
-      ])
+      ]),
     );
     pulseLoop.start();
 
@@ -221,8 +247,8 @@ export default function DealsOfTheDays({
           p.originalPrice && p.originalPrice > curPrice
             ? p.originalPrice
             : p.discountValue && p.discountValue > 0
-            ? Math.round(curPrice / (1 - p.discountValue / 100))
-            : curPrice;
+              ? Math.round(curPrice / (1 - p.discountValue / 100))
+              : curPrice;
 
         const calculatedDisc =
           origPrice > curPrice
@@ -231,7 +257,7 @@ export default function DealsOfTheDays({
 
         const discountPct = Math.max(
           p.discountValue ? Number(p.discountValue) : 0,
-          calculatedDisc
+          calculatedDisc,
         );
 
         const imgUrl =
@@ -259,7 +285,9 @@ export default function DealsOfTheDays({
       const dealsOver40 = allDeals.filter((item) => item.discountPct >= 40);
 
       // Sort by highest discount
-      return allDeals.sort((a, b) => (b.discountPct || 0) - (a.discountPct || 0)).slice(0, 10);
+      return allDeals
+        .sort((a, b) => (b.discountPct || 0) - (a.discountPct || 0))
+        .slice(0, 10);
     }
 
     // If no deals available from in-range stores, return empty array to avoid showing out-of-range products
@@ -277,7 +305,7 @@ export default function DealsOfTheDays({
         .map((p) =>
           p.images && p.images.length > 0
             ? { uri: p.images[0].url }
-            : require("@/assets/images/Home/product-maggi.png")
+            : require("@/assets/images/Home/product-maggi.png"),
         );
     }
     return [
@@ -309,7 +337,7 @@ export default function DealsOfTheDays({
         });
       }
     },
-    [onProductPress, router]
+    [onProductPress, router],
   );
 
   const handleSeeMorePress = React.useCallback(
@@ -327,7 +355,7 @@ export default function DealsOfTheDays({
         });
       }
     },
-    [onSeeMorePress, router]
+    [onSeeMorePress, router],
   );
 
   const handleSeeAllPress = React.useCallback(() => {
@@ -353,7 +381,7 @@ export default function DealsOfTheDays({
         onSeeMorePress={handleSeeMorePress}
       />
     ),
-    [handleProductPress, handleSeeMorePress]
+    [handleProductPress, handleSeeMorePress],
   );
 
   // ── 1. Skeleton Loading View when fetching from backend ──────────
@@ -362,9 +390,16 @@ export default function DealsOfTheDays({
       <View style={styles.container}>
         {/* Section Header with Side Lines */}
         <View style={styles.headerRow}>
-          <View style={styles.headerLine} />
-          <Text style={styles.sectionTitle}>{title}</Text>
-          <View style={styles.headerLine} />
+          <View style={[styles.headerLine, isDark && { backgroundColor: "#303B45" }]} />
+          <Text
+            style={[
+              styles.sectionTitle,
+              { color: isDark ? "#F8FAFC" : "#2C6E49" },
+            ]}
+          >
+            {title}
+          </Text>
+          <View style={[styles.headerLine, isDark && { backgroundColor: "#303B45" }]} />
         </View>
 
         {/* Skeleton Cards Carousel */}
@@ -386,6 +421,7 @@ export default function DealsOfTheDays({
           style={[
             styles.seeAllBar,
             styles.skeletonBlock,
+            isDark && { backgroundColor: "#151D24", borderColor: "#303B45" },
             { opacity: pulseAnim, height: scale(46) },
           ]}
         />
@@ -403,9 +439,16 @@ export default function DealsOfTheDays({
     <View style={styles.container}>
       {/* Section Header with Side Lines */}
       <View style={styles.headerRow}>
-        <View style={styles.headerLine} />
-        <Text style={styles.sectionTitle}>{title}</Text>
-        <View style={styles.headerLine} />
+        <View style={[styles.headerLine, isDark && { backgroundColor: "#303B45" }]} />
+        <Text
+          style={[
+            styles.sectionTitle,
+            { color: isDark ? "#F8FAFC" : "#2C6E49" },
+          ]}
+        >
+          {title}
+        </Text>
+        <View style={[styles.headerLine, isDark && { backgroundColor: "#303B45" }]} />
       </View>
 
       {/* Horizontal Carousel of Deals */}
@@ -415,7 +458,7 @@ export default function DealsOfTheDays({
         renderItem={renderProductItem}
         horizontal
         showsHorizontalScrollIndicator={false}
-        initialNumToRender={3}
+        initialNumToRender={4}
         maxToRenderPerBatch={4}
         windowSize={3}
         contentContainerStyle={styles.listContent}
@@ -426,7 +469,13 @@ export default function DealsOfTheDays({
       <TouchableOpacity
         activeOpacity={0.85}
         onPress={handleSeeAllPress}
-        style={styles.seeAllBar}
+        style={[
+          styles.seeAllBar,
+          isDark && {
+            backgroundColor: "#151D24",
+            borderColor: "#303B45",
+          },
+        ]}
       >
         {/* 3 Real Product Overlapping Thumbnail Avatars */}
         <View style={styles.avatarGroup}>
@@ -437,6 +486,10 @@ export default function DealsOfTheDays({
                 styles.avatarCircle,
                 idx > 0 && { marginLeft: -scale(10) },
                 { zIndex: 10 - idx },
+                isDark && {
+                  backgroundColor: "#1B252E",
+                  borderColor: "#151D24",
+                },
               ]}
             >
               <Image
@@ -448,8 +501,14 @@ export default function DealsOfTheDays({
           ))}
         </View>
 
-        <Text style={styles.seeAllText}>See all products</Text>
-        <Ionicons name="caret-forward" size={scale(15)} color="#1E3A5F" />
+        <Text style={[styles.seeAllText, isDark && { color: "#F8FAFC" }]}>
+          See all products
+        </Text>
+        <Ionicons
+          name="caret-forward"
+          size={scale(15)}
+          color={isDark ? "#39D353" : "#1E3A5F"}
+        />
       </TouchableOpacity>
     </View>
   );
@@ -476,7 +535,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: moderateScale(20),
     fontWeight: "900",
-    color: "#2C6E49",
     fontStyle: "italic",
     letterSpacing: 0.8,
   },

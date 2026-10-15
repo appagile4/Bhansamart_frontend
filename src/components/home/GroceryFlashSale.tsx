@@ -1,6 +1,6 @@
 import { useCart } from "@/context/cart-context";
 import { useAppSelector } from "@/store/hooks";
-import { moderateScale, scale } from "@/theme";
+import { moderateScale, scale, useTheme } from "@/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
@@ -520,9 +520,13 @@ const FLASH_CATEGORY_MAP: Record<
 // ── Animated Skeleton Card for Flash Sale ─────────────────────────────
 function FlashSaleCardSkeleton({
   animOpacity,
+  isDark = false,
 }: {
   animOpacity: Animated.Value;
+  isDark?: boolean;
 }) {
+  const skelBg = isDark ? "#303B45" : "#E2E8F0";
+
   return (
     <View style={styles.card}>
       {/* Top Image Canvas Skeleton */}
@@ -532,7 +536,7 @@ function FlashSaleCardSkeleton({
           styles.skeletonBlock,
           {
             opacity: animOpacity,
-            backgroundColor: "#FFFFFF",
+            backgroundColor: isDark ? "#1B252E" : "#FFFFFF",
             borderRadius: scale(14),
           },
         ]}
@@ -549,6 +553,7 @@ function FlashSaleCardSkeleton({
               height: scale(9),
               marginBottom: scale(3),
               opacity: animOpacity,
+              backgroundColor: skelBg,
             },
           ]}
         />
@@ -556,7 +561,12 @@ function FlashSaleCardSkeleton({
           style={[
             styles.skeletonBlock,
             styles.skeletonLine,
-            { width: "85%", height: scale(3), opacity: animOpacity },
+            {
+              width: "85%",
+              height: scale(3),
+              opacity: animOpacity,
+              backgroundColor: skelBg,
+            },
           ]}
         />
       </View>
@@ -573,6 +583,7 @@ function FlashSaleCardSkeleton({
                 height: scale(14),
                 borderRadius: scale(4),
                 opacity: animOpacity,
+                backgroundColor: skelBg,
               },
             ]}
           />
@@ -584,6 +595,7 @@ function FlashSaleCardSkeleton({
                 height: scale(14),
                 borderRadius: scale(4),
                 opacity: animOpacity,
+                backgroundColor: skelBg,
               },
             ]}
           />
@@ -599,6 +611,7 @@ function FlashSaleCardSkeleton({
               height: scale(12),
               marginBottom: scale(4),
               opacity: animOpacity,
+              backgroundColor: skelBg,
             },
           ]}
         />
@@ -611,6 +624,7 @@ function FlashSaleCardSkeleton({
               height: scale(12),
               marginBottom: scale(6),
               opacity: animOpacity,
+              backgroundColor: skelBg,
             },
           ]}
         />
@@ -625,6 +639,7 @@ function FlashSaleCardSkeleton({
               height: scale(11),
               marginBottom: scale(6),
               opacity: animOpacity,
+              backgroundColor: skelBg,
             },
           ]}
         />
@@ -635,14 +650,24 @@ function FlashSaleCardSkeleton({
             style={[
               styles.skeletonBlock,
               styles.skeletonLine,
-              { width: scale(46), height: scale(15), opacity: animOpacity },
+              {
+                width: scale(46),
+                height: scale(15),
+                opacity: animOpacity,
+                backgroundColor: skelBg,
+              },
             ]}
           />
           <Animated.View
             style={[
               styles.skeletonBlock,
               styles.skeletonLine,
-              { width: scale(35), height: scale(11), opacity: animOpacity },
+              {
+                width: scale(35),
+                height: scale(11),
+                opacity: animOpacity,
+                backgroundColor: skelBg,
+              },
             ]}
           />
         </View>
@@ -681,6 +706,8 @@ export default function GroceryFlashSale({
   onSeeAllPress,
 }: GroceryFlashSaleProps) {
   const router = useRouter();
+  const theme = useTheme();
+  const isDark = theme.mode === "dark";
   const { addToCart } = useCart();
   const { publicProducts, publicLoading } = useAppSelector(
     (state) => state.product,
@@ -1007,7 +1034,7 @@ export default function GroceryFlashSale({
           preserveAspectRatio="none"
           style={StyleSheet.absoluteFill}
         >
-          <Path d={FLASH_CARD_SVG_PATH} fill="#FFFFFF" />
+          <Path d={FLASH_CARD_SVG_PATH} fill={isDark ? "#1B252E" : "#FFFFFF"} />
         </Svg>
 
         {/* Product Image inside the SVG Canvas */}
@@ -1035,14 +1062,18 @@ export default function GroceryFlashSale({
           >
             <Path
               d={FLASH_ADD_BUTTON_SVG_PATH}
-              fill="#FFFFFF"
-              stroke="#43784A"
+              fill={isDark ? "#151D24" : "#FFFFFF"}
+              stroke={isDark ? "#39D353" : "#43784A"}
               strokeWidth={1.5}
             />
           </Svg>
-          <Text style={styles.addButtonText}>ADD</Text>
+          <Text style={[styles.addButtonText, isDark && { color: "#39D353" }]}>
+            ADD
+          </Text>
           {item.optionsText ? (
-            <Text style={styles.optionsText}>{item.optionsText}</Text>
+            <Text style={[styles.optionsText, isDark && { color: "#A8B2BE" }]}>
+              {item.optionsText}
+            </Text>
           ) : null}
         </TouchableOpacity>
       </View>
@@ -1050,8 +1081,15 @@ export default function GroceryFlashSale({
       {/* Stock Warning Progress Indicator */}
       {item.stockLeftText ? (
         <View style={styles.stockContainer}>
-          <Text style={styles.stockText}>{item.stockLeftText}</Text>
-          <View style={styles.stockProgressBarBg}>
+          <Text style={[styles.stockText, isDark && { color: "#F8FAFC" }]}>
+            {item.stockLeftText}
+          </Text>
+          <View
+            style={[
+              styles.stockProgressBarBg,
+              isDark && { backgroundColor: "#303B45" },
+            ]}
+          >
             <View
               style={[
                 styles.stockProgressBarFill,
@@ -1066,13 +1104,23 @@ export default function GroceryFlashSale({
       <View style={styles.detailsContainer}>
         {/* Tags Row */}
         <View style={styles.tagsRow}>
-          <View style={styles.tagPill}>
-            <Text style={styles.tagText}>{item.weightTag}</Text>
+          <View
+            style={[
+              styles.tagPill,
+              isDark && { backgroundColor: "#1B252E", borderWidth: 1, borderColor: "#303B45" },
+            ]}
+          >
+            <Text style={[styles.tagText, isDark && { color: "#A8B2BE" }]}>
+              {item.weightTag}
+            </Text>
           </View>
         </View>
 
         {/* Title */}
-        <Text style={styles.productTitle} numberOfLines={2}>
+        <Text
+          style={[styles.productTitle, isDark && { color: "#F8FAFC" }]}
+          numberOfLines={2}
+        >
           {item.name}
         </Text>
 
@@ -1093,13 +1141,19 @@ export default function GroceryFlashSale({
               color="#F59E0B"
             />
           </View>
-          <Text style={styles.ratingCount}>({item.ratingCount})</Text>
+          <Text style={[styles.ratingCount, isDark && { color: "#A8B2BE" }]}>
+            ({item.ratingCount})
+          </Text>
         </View>
 
         {/* Price Row */}
         <View style={styles.priceRow}>
-          <Text style={styles.currentPrice}>Rs. {item.price}</Text>
-          <Text style={styles.originalPrice}>Rs. {item.originalPrice}</Text>
+          <Text style={[styles.currentPrice, isDark && { color: "#F8FAFC" }]}>
+            Rs. {item.price}
+          </Text>
+          <Text style={[styles.originalPrice, isDark && { color: "#64748B" }]}>
+            Rs. {item.originalPrice}
+          </Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -1109,12 +1163,22 @@ export default function GroceryFlashSale({
   if (publicLoading && (!publicProducts || publicProducts.length === 0)) {
     return (
       <View style={styles.wrapper}>
-        <View style={styles.peachCard}>
+        <View
+          style={[
+            styles.peachCard,
+            isDark && {
+              backgroundColor: "#151D24",
+              borderWidth: 1,
+              borderColor: "#303B45",
+            },
+          ]}
+        >
           {/* Header Title & Subtitle Skeletons */}
           <Animated.View
             style={[
               styles.skeletonBlock,
               styles.skeletonLine,
+              isDark && { backgroundColor: "#303B45" },
               {
                 width: scale(180),
                 height: scale(22),
@@ -1127,6 +1191,7 @@ export default function GroceryFlashSale({
             style={[
               styles.skeletonBlock,
               styles.skeletonLine,
+              isDark && { backgroundColor: "#303B45" },
               {
                 width: scale(230),
                 height: scale(13),
@@ -1146,6 +1211,7 @@ export default function GroceryFlashSale({
               <FlashSaleCardSkeleton
                 key={`skel-row1-${item}`}
                 animOpacity={pulseAnim}
+                isDark={isDark}
               />
             ))}
           </ScrollView>
@@ -1163,6 +1229,7 @@ export default function GroceryFlashSale({
               <FlashSaleCardSkeleton
                 key={`skel-row2-${item}`}
                 animOpacity={pulseAnim}
+                isDark={isDark}
               />
             ))}
           </ScrollView>
@@ -1172,6 +1239,10 @@ export default function GroceryFlashSale({
             style={[
               styles.seeAllBanner,
               styles.skeletonBlock,
+              isDark && {
+                backgroundColor: "#151D24",
+                borderColor: "#303B45",
+              },
               { opacity: pulseAnim, height: scale(46) },
             ]}
           />
@@ -1188,10 +1259,23 @@ export default function GroceryFlashSale({
   // ── 2. Live Product Data View ─────────────────────────────────
   return (
     <View style={styles.wrapper}>
-      <View style={styles.peachCard}>
+      <View
+        style={[
+          styles.peachCard,
+          isDark && {
+            backgroundColor: "#151D24",
+            borderWidth: 1,
+            borderColor: "#303B45",
+          },
+        ]}
+      >
         {/* Header Title & Subtitle */}
-        <Text style={styles.mainHeader}>{displayTitle}</Text>
-        <Text style={styles.subHeader}>{displaySubtitle}</Text>
+        <Text style={[styles.mainHeader, isDark && { color: "#FF8C32" }]}>
+          {displayTitle}
+        </Text>
+        <Text style={[styles.subHeader, isDark && { color: "#A8B2BE" }]}>
+          {displaySubtitle}
+        </Text>
 
         {/* Row 1 Carousel */}
         <ScrollView
@@ -1218,7 +1302,13 @@ export default function GroceryFlashSale({
         <TouchableOpacity
           activeOpacity={0.88}
           onPress={handleSeeAllPress}
-          style={styles.seeAllBanner}
+          style={[
+            styles.seeAllBanner,
+            isDark && {
+              backgroundColor: "#151D24",
+              borderColor: "#303B45",
+            },
+          ]}
         >
           {/* 3 Real Live Product Overlapping Thumbnail Avatars */}
           <View style={styles.avatarGroup}>
@@ -1229,6 +1319,10 @@ export default function GroceryFlashSale({
                   styles.avatarCircle,
                   idx > 0 && { marginLeft: -scale(10) },
                   { zIndex: 10 - idx },
+                  isDark && {
+                    backgroundColor: "#1B252E",
+                    borderColor: "#151D24",
+                  },
                 ]}
               >
                 <Image
@@ -1240,11 +1334,13 @@ export default function GroceryFlashSale({
             ))}
           </View>
 
-          <Text style={styles.seeAllBannerText}>See all products</Text>
+          <Text style={[styles.seeAllBannerText, isDark && { color: "#F8FAFC" }]}>
+            See all products
+          </Text>
           <Ionicons
             name="caret-forward"
             size={moderateScale(15)}
-            color="#284860"
+            color={isDark ? "#39D353" : "#284860"}
             style={styles.seeAllArrow}
           />
         </TouchableOpacity>

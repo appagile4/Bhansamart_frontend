@@ -1028,6 +1028,8 @@ export default function GrocerySubCategories({
   sections,
   onItemPress,
 }: GrocerySubCategoriesProps) {
+  const theme = useTheme();
+  const isDark = theme.mode === "dark";
   const { publicProducts, publicLoading } = useAppSelector(
     (state) => state.product
   );
@@ -1109,7 +1111,9 @@ export default function GrocerySubCategories({
       {displaySections.map((section) => (
         <View key={section.id} style={styles.sectionContainer}>
           {/* Section Header Title */}
-          <Text style={styles.sectionTitle}>{section.title}</Text>
+          <Text style={[styles.sectionTitle, isDark && { color: "#F8FAFC" }]}>
+            {section.title}
+          </Text>
 
           {/* 3-Column Items Row */}
           <View style={styles.itemsRow}>
