@@ -16,11 +16,10 @@ import {
 import Svg, { Path } from "react-native-svg";
 
 const FLASH_CARD_SVG_PATH =
-  "M18 10C55 8 125 8 162 10 170 11 174 17 174 25 176 55 181.003 135.831 160.753 135.509 88.753 136.152 74.289 131.331 74.61 158.652 74.931 176.652 55 172 18 170 10 169 6 164 6 155 4 125 4 55 6 25 6 17 10 11 18 10Z";
+  "M18 10 C55 8 125 8 162 10 C170 11 174 17 174 25 C176 55 181.003 135.831 160.753 135.509 C88.753 136.152 74.289 131.331 74.61 158.652 C74.931 176.652 55 172 18 170 C10 169 6 164 6 155 C4 125 4 55 6 25 C6 17 10 11 18 10 Z";
 
 const FLASH_ADD_BUTTON_SVG_PATH =
-  "M98 141C98.074 140.009 104.503 139.688 109.967 140.331 127.324 140.009 133.753 139.688 147.896 139.688 153.36 140.652 172.967 137.438 174.253 148.688L174.574 158.009C174.896 172.795 158.181 169.259 150.789 169.902 134.717 168.938 118 171 105 170 100 170 81.039 172.795 80.396 159.295L80.396 150.616C80.396 151.259 82.324 140.009 98 141Z";
-
+  "M92.61 140.652C86.503 141.295 84 142 82 146 80 149 80 153 80 156L80 158C80 166 85 170 93 170 112 171 143 171 162.36 169.581 170 169 174 165 174 158L174 151C174 144 170 141 163.003 140.331 143 140 119 140 98.074 140.331Z";
 export interface FlashSaleProduct {
   id: string;
   name: string;
@@ -1107,7 +1106,11 @@ export default function GroceryFlashSale({
           <View
             style={[
               styles.tagPill,
-              isDark && { backgroundColor: "#1B252E", borderWidth: 1, borderColor: "#303B45" },
+              isDark && {
+                backgroundColor: "#1B252E",
+                borderWidth: 1,
+                borderColor: "#303B45",
+              },
             ]}
           >
             <Text style={[styles.tagText, isDark && { color: "#A8B2BE" }]}>
@@ -1334,7 +1337,9 @@ export default function GroceryFlashSale({
             ))}
           </View>
 
-          <Text style={[styles.seeAllBannerText, isDark && { color: "#F8FAFC" }]}>
+          <Text
+            style={[styles.seeAllBannerText, isDark && { color: "#F8FAFC" }]}
+          >
             See all products
           </Text>
           <Ionicons
@@ -1408,7 +1413,7 @@ const styles = StyleSheet.create({
   svgAddButtonWrapper: {
     position: "absolute",
     bottom: scale(2),
-    right: scale(4),
+    right: scale(10),
     width: scale(72),
     height: scale(30),
     alignItems: "center",

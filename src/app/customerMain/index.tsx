@@ -39,7 +39,13 @@ import { Feather } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -102,7 +108,8 @@ export default function HomeScreen() {
     const horizontalPadding = scale(16);
     const gridGap = scale(12);
     return Math.floor(
-      (windowWidth - horizontalPadding * 2 - gridGap * (numColumns - 1)) / numColumns
+      (windowWidth - horizontalPadding * 2 - gridGap * (numColumns - 1)) /
+        numColumns,
     );
   }, [windowWidth, numColumns]);
 
@@ -149,7 +156,9 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   // Progressive section-by-section component pagination
-  const [visibleSectionsCount, setVisibleSectionsCount] = useState(INITIAL_VISIBLE_SECTIONS);
+  const [visibleSectionsCount, setVisibleSectionsCount] = useState(
+    INITIAL_VISIBLE_SECTIONS,
+  );
   const isSectionLoadingRef = useRef(false);
   const totalSectionsRef = useRef(0);
 
@@ -570,7 +579,10 @@ export default function HomeScreen() {
               })
             }
           />,
-          <CurvedPromoScroller key="all-curved-promo" onPromoPress={handlePromoPress} />,
+          <CurvedPromoScroller
+            key="all-curved-promo"
+            onPromoPress={handlePromoPress}
+          />,
           <GroceryKitchen
             key="all-grocery-kitchen"
             onItemPress={(item) => handleCategoryPress(item.name, item.id)}
@@ -687,7 +699,10 @@ export default function HomeScreen() {
               })
             }
           />,
-          <CurvedPromoScroller key="grocery-curved-promo" onPromoPress={handlePromoPress} />,
+          <CurvedPromoScroller
+            key="grocery-curved-promo"
+            onPromoPress={handlePromoPress}
+          />,
           <SubCategories
             key="grocery-sub-categories"
             category="grocery"
@@ -1084,7 +1099,10 @@ export default function HomeScreen() {
               })
             }
           />,
-          <CurvedPromoScroller key="gifting-curved-promo" onPromoPress={handlePromoPress} />,
+          <CurvedPromoScroller
+            key="gifting-curved-promo"
+            onPromoPress={handlePromoPress}
+          />,
           <SweetTooth
             key="gifting-sweet-tooth"
             onProductPress={handleProductPress}
@@ -1195,10 +1213,7 @@ export default function HomeScreen() {
                 Delivery Unavailable at this Location
               </Text>
               <Text
-                style={[
-                  styles.outsideZoneSub,
-                  isDark && { color: "#A8B2BE" },
-                ]}
+                style={[styles.outsideZoneSub, isDark && { color: "#A8B2BE" }]}
               >
                 None of our active partner stores currently deliver to this
                 selected area.
@@ -1289,23 +1304,17 @@ export default function HomeScreen() {
               <View style={styles.streamHeader}>
                 <View>
                   <Text
-                    style={[
-                      styles.streamTitle,
-                      isDark && { color: "#F8FAFC" },
-                    ]}
+                    style={[styles.streamTitle, isDark && { color: "#F8FAFC" }]}
                   >
                     {selectedCategory === "all"
                       ? "All Products Near You"
                       : "More in this Category"}
                   </Text>
                   <Text
-                    style={[
-                      styles.streamSub,
-                      isDark && { color: "#A8B2BE" },
-                    ]}
+                    style={[styles.streamSub, isDark && { color: "#A8B2BE" }]}
                   >
-                    Showing {publicProducts.length} of {publicTotal} products from
-                    nearby stores
+                    Showing {publicProducts.length} of {publicTotal} products
+                    from nearby stores
                   </Text>
                 </View>
               </View>
@@ -1332,10 +1341,7 @@ export default function HomeScreen() {
               color={isDark ? "#39D353" : "#008080"}
             />
             <Text
-              style={[
-                styles.loadingMoreText,
-                isDark && { color: "#39D353" },
-              ]}
+              style={[styles.loadingMoreText, isDark && { color: "#39D353" }]}
             >
               Loading more products...
             </Text>
@@ -1355,10 +1361,7 @@ export default function HomeScreen() {
                 ]}
               />
               <Text
-                style={[
-                  styles.endOfListText,
-                  isDark && { color: "#A8B2BE" },
-                ]}
+                style={[styles.endOfListText, isDark && { color: "#A8B2BE" }]}
               >
                 ✓ You've viewed all available products from nearby stores
               </Text>
