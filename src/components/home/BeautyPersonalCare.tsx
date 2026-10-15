@@ -58,6 +58,7 @@ export default function BeautyPersonalCare({
   onItemPress,
 }: BeautyPersonalCareProps) {
   const theme = useTheme();
+  const isDark = theme.mode === "dark";
   const router = useRouter();
   const { publicProducts, publicLoading } = useAppSelector(
     (state) => state.product
@@ -107,6 +108,7 @@ export default function BeautyPersonalCare({
         <Animated.View
           style={[
             styles.skeletonBlock,
+            isDark && { backgroundColor: "#303B45" },
             {
               width: scale(190),
               height: scale(22),
@@ -125,12 +127,14 @@ export default function BeautyPersonalCare({
                 style={[
                   styles.skeletonBlock,
                   styles.skeletonImageBox,
+                  isDark && { backgroundColor: "#1B252E", borderColor: "#303B45" },
                   { opacity: pulseAnim },
                 ]}
               />
               <Animated.View
                 style={[
                   styles.skeletonBlock,
+                  isDark && { backgroundColor: "#303B45" },
                   {
                     width: "80%",
                     height: scale(11),
@@ -151,7 +155,10 @@ export default function BeautyPersonalCare({
     <View style={styles.container}>
       {/* Section Title */}
       <Text
-        style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}
+        style={[
+          styles.sectionTitle,
+          { color: isDark ? "#F8FAFC" : theme.colors.textPrimary },
+        ]}
       >
         Beauty & Personal Care
       </Text>

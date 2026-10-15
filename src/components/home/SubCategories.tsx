@@ -1066,6 +1066,7 @@ export default function GrocerySubCategories({
             <Animated.View
               style={[
                 styles.skeletonBlock,
+                isDark && { backgroundColor: "#303B45" },
                 {
                   width: scale(140),
                   height: scale(16),
@@ -1082,12 +1083,14 @@ export default function GrocerySubCategories({
                     style={[
                       styles.cardBox,
                       styles.skeletonBlock,
+                      isDark && { backgroundColor: "#1B252E", borderColor: "#303B45" },
                       { opacity: pulseAnim },
                     ]}
                   />
                   <Animated.View
                     style={[
                       styles.skeletonBlock,
+                      isDark && { backgroundColor: "#303B45" },
                       {
                         width: "70%",
                         height: scale(10),
@@ -1124,18 +1127,32 @@ export default function GrocerySubCategories({
                 onPress={() => onItemPress?.(section, item)}
                 style={styles.itemWrapper}
               >
-                {/* Soft Rounded Card Box */}
-                <View style={styles.cardBox}>
+                {/* Full-bleed Rounded Card Box */}
+                <View
+                  style={[
+                    styles.cardBox,
+                    isDark && {
+                      backgroundColor: "#151D24",
+                      borderColor: "#303B45",
+                    },
+                  ]}
+                >
                   <Image
                     source={item.image}
                     style={styles.productImage}
-                    contentFit="contain"
+                    contentFit="cover"
                     transition={150}
                   />
                 </View>
 
                 {/* Sub-label Underneath */}
-                <Text style={styles.itemTitle} numberOfLines={2}>
+                <Text
+                  style={[
+                    styles.itemTitle,
+                    { color: isDark ? "#F8FAFC" : theme.colors.textPrimary },
+                  ]}
+                  numberOfLines={2}
+                >
                   {item.title}
                 </Text>
               </TouchableOpacity>
@@ -1178,8 +1195,14 @@ const styles = StyleSheet.create({
     borderRadius: moderateScale(14),
     alignItems: "center",
     justifyContent: "center",
-    padding: scale(8),
     overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.03)",
   },
   productImage: {
     width: "100%",

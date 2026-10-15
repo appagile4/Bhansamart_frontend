@@ -16,6 +16,7 @@ export interface CategoryCardProps {
 
 export default function CategoryCard({ item, onPress }: CategoryCardProps) {
   const theme = useTheme();
+  const isDark = theme.mode === "dark";
 
   const imageSource =
     typeof item.imageUrl === "string" ? { uri: item.imageUrl } : item.imageUrl;
@@ -27,7 +28,16 @@ export default function CategoryCard({ item, onPress }: CategoryCardProps) {
       style={styles.container}
     >
       {/* Full-Size Edge-to-Edge Rounded Image Container */}
-      <View style={styles.imageBox}>
+      <View
+        style={[
+          styles.imageBox,
+          isDark && {
+            backgroundColor: "#151D24",
+            borderWidth: 1,
+            borderColor: "#303B45",
+          },
+        ]}
+      >
         <Image
           source={imageSource}
           style={styles.image}
@@ -38,7 +48,10 @@ export default function CategoryCard({ item, onPress }: CategoryCardProps) {
 
       {/* Category Name Label */}
       <Text
-        style={[styles.name, { color: theme.colors.textPrimary }]}
+        style={[
+          styles.name,
+          { color: isDark ? "#F8FAFC" : theme.colors.textPrimary },
+        ]}
         numberOfLines={2}
       >
         {item.name}

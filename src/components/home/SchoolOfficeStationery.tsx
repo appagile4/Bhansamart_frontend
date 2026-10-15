@@ -104,6 +104,7 @@ export default function SchoolOfficeStationery({
   onItemPress,
 }: SchoolOfficeStationeryProps) {
   const theme = useTheme();
+  const isDark = theme.mode === "dark";
   const router = useRouter();
   const { publicProducts, publicLoading } = useAppSelector(
     (state) => state.product,
@@ -151,6 +152,7 @@ export default function SchoolOfficeStationery({
         <Animated.View
           style={[
             styles.skeletonBlock,
+            isDark && { backgroundColor: "#303B45" },
             {
               width: scale(190),
               height: scale(20),
@@ -167,12 +169,14 @@ export default function SchoolOfficeStationery({
                 style={[
                   styles.cardBox,
                   styles.skeletonBlock,
+                  isDark && { backgroundColor: "#1B252E", borderColor: "#303B45" },
                   { opacity: pulseAnim },
                 ]}
               />
               <Animated.View
                 style={[
                   styles.skeletonBlock,
+                  isDark && { backgroundColor: "#303B45" },
                   {
                     width: scale(50),
                     height: scale(12),
@@ -193,7 +197,12 @@ export default function SchoolOfficeStationery({
     <View style={styles.container}>
       <View style={styles.headerRow}>
         <View style={styles.titleContainer}>
-          <Text style={[styles.title, { color: theme.colors.textPrimary }]}>
+          <Text
+            style={[
+              styles.title,
+              { color: isDark ? "#F8FAFC" : theme.colors.textPrimary },
+            ]}
+          >
             {title}
           </Text>
         </View>
@@ -211,7 +220,12 @@ export default function SchoolOfficeStationery({
             })
           }
         >
-          <Text style={[styles.seeAllText, { color: theme.colors.primary }]}>
+          <Text
+            style={[
+              styles.seeAllText,
+              { color: isDark ? "#39D353" : theme.colors.primary },
+            ]}
+          >
             See All
           </Text>
         </TouchableOpacity>
@@ -225,7 +239,13 @@ export default function SchoolOfficeStationery({
             style={styles.itemWrapper}
             onPress={() => handlePress(item)}
           >
-            <View style={[styles.cardBox, { backgroundColor: item.bgColor }]}>
+            <View
+              style={[
+                styles.cardBox,
+                { backgroundColor: isDark ? "#151D24" : item.bgColor },
+                isDark && { borderColor: "#303B45" },
+              ]}
+            >
               {item.image ? (
                 <Image
                   source={item.image}
@@ -237,12 +257,15 @@ export default function SchoolOfficeStationery({
                 <MaterialCommunityIcons
                   name={item.iconName || "book-outline"}
                   size={scale(28)}
-                  color="#475569"
+                  color={isDark ? "#A8B2BE" : "#475569"}
                 />
               )}
             </View>
             <Text
-              style={[styles.name, { color: theme.colors.textPrimary }]}
+              style={[
+                styles.name,
+                { color: isDark ? "#F8FAFC" : theme.colors.textPrimary },
+              ]}
               numberOfLines={2}
             >
               {item.name}
@@ -309,7 +332,7 @@ const styles = StyleSheet.create({
     borderRadius: moderateScale(16),
     alignItems: "center",
     justifyContent: "center",
-    // padding: scale(6),
+    overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -319,8 +342,8 @@ const styles = StyleSheet.create({
     borderColor: "rgba(0,0,0,0.03)",
   },
   image: {
-    width: "82%",
-    height: "82%",
+    width: "100%",
+    height: "100%",
   },
   name: {
     fontSize: moderateScale(10.5),

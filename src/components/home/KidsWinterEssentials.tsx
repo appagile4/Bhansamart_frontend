@@ -60,7 +60,14 @@ export default function KidsWinterEssentials({
   return (
     <View style={styles.container}>
       {/* Section Title */}
-      <Text style={[styles.sectionTitle, isDark && { color: "#F8FAFC" }]}>{title}</Text>
+      <Text
+        style={[
+          styles.sectionTitle,
+          { color: isDark ? "#F8FAFC" : theme.colors.textPrimary },
+        ]}
+      >
+        {title}
+      </Text>
 
       {/* 3-Cards Row */}
       <View style={styles.row}>
@@ -71,18 +78,32 @@ export default function KidsWinterEssentials({
             onPress={() => onItemPress?.(item)}
             style={styles.itemWrapper}
           >
-            {/* Card Graphic Container */}
-            <View style={styles.cardBox}>
+            {/* Card Graphic Container - Full image without padding */}
+            <View
+              style={[
+                styles.cardBox,
+                isDark && {
+                  backgroundColor: "#151D24",
+                  borderColor: "#303B45",
+                },
+              ]}
+            >
               <Image
                 source={typeof item.image === "string" ? { uri: item.image } : item.image}
                 style={styles.cardImage}
-                contentFit="contain"
+                contentFit="cover"
                 transition={200}
               />
             </View>
 
             {/* Title Underneath */}
-            <Text style={styles.itemTitle} numberOfLines={2}>
+            <Text
+              style={[
+                styles.itemTitle,
+                { color: isDark ? "#F8FAFC" : theme.colors.textPrimary },
+              ]}
+              numberOfLines={2}
+            >
               {item.title}
             </Text>
           </TouchableOpacity>
@@ -120,8 +141,14 @@ const styles = StyleSheet.create({
     borderRadius: moderateScale(16),
     alignItems: "center",
     justifyContent: "center",
-    padding: scale(8),
     overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.03)",
   },
   cardImage: {
     width: "100%",

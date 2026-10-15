@@ -205,8 +205,16 @@ export default function KidsSubCategories({
                 onPress={() => onItemPress?.(section, item)}
                 style={styles.itemWrapper}
               >
-                {/* Light Sky Blue Box */}
-                <View style={styles.cardBox}>
+                {/* Full-bleed Rounded Card Box */}
+                <View
+                  style={[
+                    styles.cardBox,
+                    isDark && {
+                      backgroundColor: "#151D24",
+                      borderColor: "#303B45",
+                    },
+                  ]}
+                >
                   <Image
                     source={
                       typeof item.image === "string"
@@ -214,13 +222,19 @@ export default function KidsSubCategories({
                         : item.image
                     }
                     style={styles.productImage}
-                    contentFit="contain"
+                    contentFit="cover"
                     transition={200}
                   />
                 </View>
 
                 {/* Sub-label Below */}
-                <Text style={styles.itemTitle} numberOfLines={1}>
+                <Text
+                  style={[
+                    styles.itemTitle,
+                    { color: isDark ? "#F8FAFC" : theme.colors.textPrimary },
+                  ]}
+                  numberOfLines={1}
+                >
                   {item.title}
                 </Text>
               </TouchableOpacity>
@@ -263,8 +277,14 @@ const styles = StyleSheet.create({
     borderRadius: moderateScale(14),
     alignItems: "center",
     justifyContent: "center",
-    padding: scale(8),
     overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.03)",
   },
   productImage: {
     width: "100%",
