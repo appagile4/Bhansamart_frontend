@@ -39,7 +39,7 @@ import { Feather } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -55,6 +55,8 @@ import {
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const PAGE_SIZE = 12;
+const INITIAL_VISIBLE_SECTIONS = 3;
+const SECTIONS_BATCH_SIZE = 2;
 
 const normalizeDealProduct = (p: any): DealProduct => {
   const curPrice = Number(p.price) || 0;
@@ -131,6 +133,17 @@ export default function HomeScreen() {
   const [isNearbyStoresModalVisible, setIsNearbyStoresModalVisible] =
     useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Progressive section-by-section component pagination
+  const [visibleSectionsCount, setVisibleSectionsCount] = useState(INITIAL_VISIBLE_SECTIONS);
+  const isSectionLoadingRef = useRef(false);
+  const totalSectionsRef = useRef(0);
+
+  // Reset visible component sections when active category changes
+  useEffect(() => {
+    setVisibleSectionsCount(INITIAL_VISIBLE_SECTIONS);
+    isSectionLoadingRef.current = false;
+  }, [selectedCategory]);
 
   // Concurrency guard to strictly prevent duplicate API requests
   const isFetchingMoreRef = useRef(false);
@@ -244,28 +257,43 @@ export default function HomeScreen() {
     dispatch,
   ]);
 
-  // ── 3. Scroll Listener: Detects Approaching Bottom of Screen ─────────
+  // ── 3. Scroll Listener: Progressively Reveal Components Then Stream Products ─
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       const { layoutMeasurement, contentOffset, contentSize } =
         event.nativeEvent;
-      // Trigger threshold: 220px before bottom for seamless infinite loading
+      // Trigger threshold: 220px before bottom for seamless progressive loading
       const threshold = 220;
       const isCloseToBottom =
         layoutMeasurement.height + contentOffset.y >=
         contentSize.height - threshold;
 
       if (isCloseToBottom) {
-        handleLoadMore();
+        const total = totalSectionsRef.current;
+        if (visibleSectionsCount < total) {
+          if (!isSectionLoadingRef.current) {
+            isSectionLoadingRef.current = true;
+            setTimeout(() => {
+              setVisibleSectionsCount((prev) =>
+                Math.min(total, prev + SECTIONS_BATCH_SIZE),
+              );
+              isSectionLoadingRef.current = false;
+            }, 100);
+          }
+        } else {
+          handleLoadMore();
+        }
       }
     },
-    [handleLoadMore],
+    [visibleSectionsCount, handleLoadMore],
   );
 
   // ── 4. Pull to Refresh ───────────────────────────────────────────────
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     isFetchingMoreRef.current = false;
+    isSectionLoadingRef.current = false;
+    setVisibleSectionsCount(INITIAL_VISIBLE_SECTIONS);
     await dispatch(
       fetchPublicProducts({
         category: selectedCategory === "all" ? undefined : selectedCategory,
@@ -471,596 +499,593 @@ export default function HomeScreen() {
     console.log("Promo clicked:", promo.title);
   }, []);
 
-  // ── Memoized Category-Specific Views ─────────────────────────────────
-  const categoryContent = useMemo(() => {
+  // ── Memoized Category-Specific Sections Array (for progressive pagination) ──
+  const categorySections = useMemo((): React.ReactNode[] => {
     switch (selectedCategory) {
       case "all":
-        return (
-          <>
-            {/* 2. Fast Flash Sale Banner & Quick Categories */}
-            <FastSales
-              onBannerPress={() =>
-                handleNavigateCategoryExpand({
-                  category: "Snacks & Drinks",
-                  title: "Flash Sale",
-                })
-              }
-              onCategoryPress={(cat: any) =>
-                handleNavigateCategoryExpand({
-                  category: cat.category || "Snacks & Drinks",
-                  subCategory: cat.subCategory || cat.name,
-                  title: cat.name || cat.title || "Flash Sale",
-                })
-              }
-            />
-
-            {/* 4. Deals of the Day Triple Showcase Grid */}
-            <DealsOfTheDays
-              onProductPress={handleDealsOfTheDaysProductPress}
-              onSeeMorePress={(deal: any) =>
-                handleNavigateCategoryExpand({
-                  category: deal.category || "Grocery & Kitchen",
-                  subCategory: deal.subCategory || deal.category,
-                  title: deal.name,
-                })
-              }
-              onSeeAllPress={() =>
-                handleNavigateSeeAll({
-                  title: "Deals of the Day",
-                  filter: "deals",
-                  minDiscount: "40",
-                })
-              }
-            />
-
-            {/* 5. Top Deals Double-Row Trending Carousel */}
-            <TopDeals
-              title="Top Deals & Trending Picks"
-              isDoubleRow={true}
-              onProductPress={handleProductPress}
-              onAddPress={handleAddToCart}
-              onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
-              onSeeAllPress={() =>
-                handleNavigateSeeAll({
-                  title: "Top Deals & Trending Picks",
-                  filter: "trending",
-                  minDiscount: "50",
-                })
-              }
-            />
-
-            {/* 6. Fluid Curved Promo Banner Carousel */}
-            <CurvedPromoScroller onPromoPress={handlePromoPress} />
-
-            {/* 7. Grocery & Kitchen Category Grid */}
-            <GroceryKitchen
-              onItemPress={(item) => handleCategoryPress(item.name, item.id)}
-            />
-
-            {/* 8. Live Grocery Flash Sale (Peach Alert Card + Stock Bars) */}
-            <GroceryFlashSale
-              category={selectedCategory}
-              onProductPress={handleProductPress}
-              onAddPress={handleAddToCart}
-              onSeeAllPress={() =>
-                handleNavigateSeeAll({
-                  title: "Flash Sale & Low Stock Deals",
-                  category: "all",
-                  filter: "flash-sale",
-                  minDiscount: "20",
-                })
-              }
-            />
-
-            {/* 3. New Arrivals (2x3 Dual Product Green Tiles) */}
-            <NewArrivals
-              category={selectedCategory}
-              onCategoryPress={(cat) =>
-                handleCategoryPress(cat.title, cat.category)
-              }
-            />
-
-            {/* 9. Snacks & Cold Drinks Category Grid */}
-            <SnacksDrinks
-              onItemPress={(item) => handleCategoryPress(item.name, item.id)}
-            />
-
-            {/* 10. Sweet Tooth Chocolate Delights Slider */}
-            <SweetTooth
-              onProductPress={handleProductPress}
-              onAddPress={handleAddToCart}
-              onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
-              onSeeAllPress={() =>
-                handleNavigateSeeAll({
-                  title: "Sweet Tooth Delights",
-                  filter: "sweet-tooth",
-                  minDiscount: "30",
-                })
-              }
-            />
-
-            {/* 11. Beauty & Personal Care Category Grid */}
-            <BeautyPersonalCare
-              onItemPress={(item) => handleCategoryPress(item.name, item.id)}
-            />
-
-            {/* 12. Double-Row Super Deals ("Find Your Favorites") */}
-            <TopDeals
-              title="Find Your Favorites"
-              isDoubleRow={true}
-              onProductPress={handleProductPress}
-              onAddPress={handleAddToCart}
-              onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
-              onSeeAllPress={() =>
-                handleNavigateSeeAll({
-                  title: "Find Your Favorites",
-                  filter: "favorites",
-                  minDiscount: "40",
-                })
-              }
-            />
-
-            {/* 13. School & Office Stationery Category Grid */}
-            <SchoolOfficeStationery
-              onItemPress={(item) => handleCategoryPress(item.name, item.id)}
-            />
-
-            {/* 14. Kids Winter Essentials (3 Icy Blue Category Cards) */}
-            <KidsWinterEssentials
-              onItemPress={(item) =>
-                handleCategoryPress(item.title, item.category)
-              }
-            />
-
-            {/* 15. Instant & Frozen Food Product Showcase */}
-            <InstantFrozenFood
-              onProductPress={handleProductPress}
-              onAddPress={handleAddToCart}
-              onSeeAllPress={() =>
-                handleNavigateSeeAll({
-                  title: "Instant & Frozen Food",
-                  filter: "instant-frozen",
-                  minDiscount: "30",
-                })
-              }
-            />
-
-            {/* 16. Comprehensive Multi-Section Catalog Explorer */}
-            <SubCategories
-              category="grocery"
-              onItemPress={(section, item) =>
-                handleCategoryPress(item.title, item.id)
-              }
-            />
-          </>
-        );
+        return [
+          <FastSales
+            key="all-fast-sales"
+            onBannerPress={() =>
+              handleNavigateCategoryExpand({
+                category: "Snacks & Drinks",
+                title: "Flash Sale",
+              })
+            }
+            onCategoryPress={(cat: any) =>
+              handleNavigateCategoryExpand({
+                category: cat.category || "Snacks & Drinks",
+                subCategory: cat.subCategory || cat.name,
+                title: cat.name || cat.title || "Flash Sale",
+              })
+            }
+          />,
+          <DealsOfTheDays
+            key="all-deals-of-the-days"
+            onProductPress={handleDealsOfTheDaysProductPress}
+            onSeeMorePress={(deal: any) =>
+              handleNavigateCategoryExpand({
+                category: deal.category || "Grocery & Kitchen",
+                subCategory: deal.subCategory || deal.category,
+                title: deal.name,
+              })
+            }
+            onSeeAllPress={() =>
+              handleNavigateSeeAll({
+                title: "Deals of the Day",
+                filter: "deals",
+                minDiscount: "40",
+              })
+            }
+          />,
+          <TopDeals
+            key="all-top-deals-1"
+            title="Top Deals & Trending Picks"
+            isDoubleRow={true}
+            onProductPress={handleProductPress}
+            onAddPress={handleAddToCart}
+            onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
+            onSeeAllPress={() =>
+              handleNavigateSeeAll({
+                title: "Top Deals & Trending Picks",
+                filter: "trending",
+                minDiscount: "50",
+              })
+            }
+          />,
+          <CurvedPromoScroller key="all-curved-promo" onPromoPress={handlePromoPress} />,
+          <GroceryKitchen
+            key="all-grocery-kitchen"
+            onItemPress={(item) => handleCategoryPress(item.name, item.id)}
+          />,
+          <GroceryFlashSale
+            key="all-grocery-flash-sale"
+            category={selectedCategory}
+            onProductPress={handleProductPress}
+            onAddPress={handleAddToCart}
+            onSeeAllPress={() =>
+              handleNavigateSeeAll({
+                title: "Flash Sale & Low Stock Deals",
+                category: "all",
+                filter: "flash-sale",
+                minDiscount: "20",
+              })
+            }
+          />,
+          <NewArrivals
+            key="all-new-arrivals"
+            category={selectedCategory}
+            onCategoryPress={(cat) =>
+              handleCategoryPress(cat.title, cat.category)
+            }
+          />,
+          <SnacksDrinks
+            key="all-snacks-drinks"
+            onItemPress={(item) => handleCategoryPress(item.name, item.id)}
+          />,
+          <SweetTooth
+            key="all-sweet-tooth"
+            onProductPress={handleProductPress}
+            onAddPress={handleAddToCart}
+            onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
+            onSeeAllPress={() =>
+              handleNavigateSeeAll({
+                title: "Sweet Tooth Delights",
+                filter: "sweet-tooth",
+                minDiscount: "30",
+              })
+            }
+          />,
+          <BeautyPersonalCare
+            key="all-beauty-personal-care"
+            onItemPress={(item) => handleCategoryPress(item.name, item.id)}
+          />,
+          <TopDeals
+            key="all-top-deals-2"
+            title="Find Your Favorites"
+            isDoubleRow={true}
+            onProductPress={handleProductPress}
+            onAddPress={handleAddToCart}
+            onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
+            onSeeAllPress={() =>
+              handleNavigateSeeAll({
+                title: "Find Your Favorites",
+                filter: "favorites",
+                minDiscount: "40",
+              })
+            }
+          />,
+          <SchoolOfficeStationery
+            key="all-school-office-stationery"
+            onItemPress={(item) => handleCategoryPress(item.name, item.id)}
+          />,
+          <KidsWinterEssentials
+            key="all-kids-winter-essentials"
+            onItemPress={(item) =>
+              handleCategoryPress(item.title, item.category)
+            }
+          />,
+          <InstantFrozenFood
+            key="all-instant-frozen-food"
+            onProductPress={handleProductPress}
+            onAddPress={handleAddToCart}
+            onSeeAllPress={() =>
+              handleNavigateSeeAll({
+                title: "Instant & Frozen Food",
+                filter: "instant-frozen",
+                minDiscount: "30",
+              })
+            }
+          />,
+          <SubCategories
+            key="all-sub-categories"
+            category="grocery"
+            onItemPress={(section, item) =>
+              handleCategoryPress(item.title, item.id)
+            }
+          />,
+        ];
 
       case "grocery":
-        return (
-          <>
-            {/* 1. Featured Brands Carousel */}
-            <FeaturedBrands
-              onItemPress={(item) =>
-                handleCategoryPress(item.title, item.category)
-              }
-            />
-
-            {/* 2. Creamy Delights for Every Bite */}
-            <TopDeals
-              category="grocery"
-              title="Creamy Delights for Every Bite"
-              onProductPress={handleProductPress}
-              onAddPress={handleAddToCart}
-              onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
-              onSeeAllPress={() =>
-                handleNavigateSeeAll({
-                  title: "Creamy Delights",
-                  category: "grocery-kitchen",
-                  filter: "creamy-delights",
-                  minDiscount: "20",
-                })
-              }
-            />
-
-            {/* 3. Curved Promo Banner Carousel */}
-            <CurvedPromoScroller onPromoPress={handlePromoPress} />
-
-            {/* 4. 8-Section Comprehensive Grocery Catalog Grid */}
-            <SubCategories
-              category="grocery"
-              onItemPress={(section, item) =>
-                handleCategoryPress(item.title, item.id)
-              }
-            />
-
-            {/* 5. New Arrivals (2x3 Green Duo Category Tiles) */}
-            <NewArrivals
-              category="grocery"
-              onCategoryPress={(cat) =>
-                handleCategoryPress(cat.title, cat.category)
-              }
-            />
-
-            {/* 6. Grocery Flash Sale (Peach Alert Banner + Stock Bars) */}
-            <GroceryFlashSale
-              category="grocery"
-              onProductPress={handleProductPress}
-              onAddPress={handleAddToCart}
-              onSeeAllPress={() =>
-                handleNavigateSeeAll({
-                  title: "Grocery Flash Sale",
-                  category: "grocery-kitchen",
-                  filter: "grocery-flash-sale",
-                  minDiscount: "30",
-                })
-              }
-            />
-
-            {/* 7. Find Your Favorites (Double-Row Deals + See all products) */}
-            <TopDeals
-              category="grocery"
-              title="Find Your Favorites"
-              isDoubleRow={true}
-              onProductPress={handleProductPress}
-              onAddPress={handleAddToCart}
-              onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
-              onSeeAllPress={() =>
-                handleNavigateSeeAll({
-                  title: "Find Your Favorites",
-                  category: "grocery-kitchen",
-                  filter: "favorites",
-                  minDiscount: "30",
-                })
-              }
-            />
-          </>
-        );
+        return [
+          <FeaturedBrands
+            key="grocery-featured-brands"
+            onItemPress={(item) =>
+              handleCategoryPress(item.title, item.category)
+            }
+          />,
+          <TopDeals
+            key="grocery-top-deals-1"
+            category="grocery"
+            title="Creamy Delights for Every Bite"
+            onProductPress={handleProductPress}
+            onAddPress={handleAddToCart}
+            onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
+            onSeeAllPress={() =>
+              handleNavigateSeeAll({
+                title: "Creamy Delights",
+                category: "grocery-kitchen",
+                filter: "creamy-delights",
+                minDiscount: "20",
+              })
+            }
+          />,
+          <CurvedPromoScroller key="grocery-curved-promo" onPromoPress={handlePromoPress} />,
+          <SubCategories
+            key="grocery-sub-categories"
+            category="grocery"
+            onItemPress={(section, item) =>
+              handleCategoryPress(item.title, item.id)
+            }
+          />,
+          <NewArrivals
+            key="grocery-new-arrivals"
+            category="grocery"
+            onCategoryPress={(cat) =>
+              handleCategoryPress(cat.title, cat.category)
+            }
+          />,
+          <GroceryFlashSale
+            key="grocery-flash-sale"
+            category="grocery"
+            onProductPress={handleProductPress}
+            onAddPress={handleAddToCart}
+            onSeeAllPress={() =>
+              handleNavigateSeeAll({
+                title: "Grocery Flash Sale",
+                category: "grocery-kitchen",
+                filter: "grocery-flash-sale",
+                minDiscount: "30",
+              })
+            }
+          />,
+          <TopDeals
+            key="grocery-top-deals-2"
+            category="grocery"
+            title="Find Your Favorites"
+            isDoubleRow={true}
+            onProductPress={handleProductPress}
+            onAddPress={handleAddToCart}
+            onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
+            onSeeAllPress={() =>
+              handleNavigateSeeAll({
+                title: "Find Your Favorites",
+                category: "grocery-kitchen",
+                filter: "favorites",
+                minDiscount: "30",
+              })
+            }
+          />,
+        ];
 
       case "snacks":
-        return (
-          <>
-            <FeaturedBrands
-              category="snacks"
-              onItemPress={(item) =>
-                handleCategoryPress(item.title, item.category)
-              }
-            />
-            <TopDeals
-              category="snacks"
-              title="Top Snack Deals"
-              onProductPress={handleProductPress}
-              onAddPress={handleAddToCart}
-              onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
-              onSeeAllPress={() =>
-                handleNavigateSeeAll({
-                  title: "Top Snack Deals",
-                  category: "snacks-drinks",
-                  filter: "deals",
-                  minDiscount: "20",
-                })
-              }
-            />
-            <SubCategories
-              category="snacks"
-              onItemPress={(section, item) =>
-                handleCategoryPress(item.title, item.id)
-              }
-            />
-            <SnacksDrinks
-              onItemPress={(item) =>
-                handleCategoryPress(item.name, item.subCategory)
-              }
-            />
-            <NewArrivals
-              category="snacks"
-              onCategoryPress={(cat) =>
-                handleCategoryPress(cat.title, cat.category)
-              }
-            />
-            <GroceryFlashSale
-              category="snacks"
-              onProductPress={handleProductPress}
-              onAddPress={handleAddToCart}
-              onSeeAllPress={() =>
-                handleNavigateSeeAll({
-                  title: "Snacks & Drinks Flash Sale",
-                  category: "snacks-drinks",
-                  filter: "snacks-flash-sale",
-                  minDiscount: "20",
-                })
-              }
-            />
-            <SweetTooth
-              onProductPress={handleProductPress}
-              onAddPress={handleAddToCart}
-              onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
-              onSeeAllPress={() =>
-                handleNavigateSeeAll({
-                  title: "Sweet Tooth Delights",
-                  filter: "sweet-tooth",
-                  minDiscount: "30",
-                })
-              }
-            />
-          </>
-        );
+        return [
+          <FeaturedBrands
+            key="snacks-featured-brands"
+            category="snacks"
+            onItemPress={(item) =>
+              handleCategoryPress(item.title, item.category)
+            }
+          />,
+          <TopDeals
+            key="snacks-top-deals"
+            category="snacks"
+            title="Top Snack Deals"
+            onProductPress={handleProductPress}
+            onAddPress={handleAddToCart}
+            onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
+            onSeeAllPress={() =>
+              handleNavigateSeeAll({
+                title: "Top Snack Deals",
+                category: "snacks-drinks",
+                filter: "deals",
+                minDiscount: "20",
+              })
+            }
+          />,
+          <SubCategories
+            key="snacks-sub-categories"
+            category="snacks"
+            onItemPress={(section, item) =>
+              handleCategoryPress(item.title, item.id)
+            }
+          />,
+          <SnacksDrinks
+            key="snacks-drinks"
+            onItemPress={(item) =>
+              handleCategoryPress(item.name, item.subCategory)
+            }
+          />,
+          <NewArrivals
+            key="snacks-new-arrivals"
+            category="snacks"
+            onCategoryPress={(cat) =>
+              handleCategoryPress(cat.title, cat.category)
+            }
+          />,
+          <GroceryFlashSale
+            key="snacks-flash-sale"
+            category="snacks"
+            onProductPress={handleProductPress}
+            onAddPress={handleAddToCart}
+            onSeeAllPress={() =>
+              handleNavigateSeeAll({
+                title: "Snacks & Drinks Flash Sale",
+                category: "snacks-drinks",
+                filter: "snacks-flash-sale",
+                minDiscount: "20",
+              })
+            }
+          />,
+          <SweetTooth
+            key="snacks-sweet-tooth"
+            onProductPress={handleProductPress}
+            onAddPress={handleAddToCart}
+            onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
+            onSeeAllPress={() =>
+              handleNavigateSeeAll({
+                title: "Sweet Tooth Delights",
+                filter: "sweet-tooth",
+                minDiscount: "30",
+              })
+            }
+          />,
+        ];
 
       case "beauty":
-        return (
-          <>
-            <FeaturedBrands
-              category="beauty"
-              onItemPress={(item) =>
-                handleCategoryPress(item.title, item.category)
-              }
-            />
-            <TopDeals
-              category="beauty"
-              title="Beauty & Care Deals"
-              onProductPress={handleProductPress}
-              onAddPress={handleAddToCart}
-              onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
-              onSeeAllPress={() =>
-                handleNavigateSeeAll({
-                  title: "Beauty & Care Deals",
-                  category: "beauty-personal-care",
-                  filter: "deals",
-                  minDiscount: "25",
-                })
-              }
-            />
-            <SubCategories
-              category="beauty"
-              onItemPress={(section, item) =>
-                handleCategoryPress(item.title, item.id)
-              }
-            />
-            <BeautyPersonalCare
-              onItemPress={(item) => handleCategoryPress(item.name, item.id)}
-            />
-            <NewArrivals
-              category="beauty"
-              onCategoryPress={(cat) =>
-                handleCategoryPress(cat.title, cat.category)
-              }
-              onSeeAllPress={() =>
-                handleNavigateSeeAll({
-                  title: "Beauty New Arrivals",
-                  category: "beauty-personal-care",
-                  filter: "new_arrival",
-                })
-              }
-            />
-            <GroceryFlashSale
-              category="beauty"
-              onProductPress={handleProductPress}
-              onAddPress={handleAddToCart}
-              onSeeAllPress={() =>
-                handleNavigateSeeAll({
-                  title: "Beauty & Care Flash Sale",
-                  category: "beauty-personal-care",
-                  filter: "beauty-flash-sale",
-                  minDiscount: "20",
-                })
-              }
-            />
-          </>
-        );
+        return [
+          <FeaturedBrands
+            key="beauty-featured-brands"
+            category="beauty"
+            onItemPress={(item) =>
+              handleCategoryPress(item.title, item.category)
+            }
+          />,
+          <TopDeals
+            key="beauty-top-deals"
+            category="beauty"
+            title="Beauty & Care Deals"
+            onProductPress={handleProductPress}
+            onAddPress={handleAddToCart}
+            onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
+            onSeeAllPress={() =>
+              handleNavigateSeeAll({
+                title: "Beauty & Care Deals",
+                category: "beauty-personal-care",
+                filter: "deals",
+                minDiscount: "25",
+              })
+            }
+          />,
+          <SubCategories
+            key="beauty-sub-categories"
+            category="beauty"
+            onItemPress={(section, item) =>
+              handleCategoryPress(item.title, item.id)
+            }
+          />,
+          <BeautyPersonalCare
+            key="beauty-personal-care"
+            onItemPress={(item) => handleCategoryPress(item.name, item.id)}
+          />,
+          <NewArrivals
+            key="beauty-new-arrivals"
+            category="beauty"
+            onCategoryPress={(cat) =>
+              handleCategoryPress(cat.title, cat.category)
+            }
+            onSeeAllPress={() =>
+              handleNavigateSeeAll({
+                title: "Beauty New Arrivals",
+                category: "beauty-personal-care",
+                filter: "new_arrival",
+              })
+            }
+          />,
+          <GroceryFlashSale
+            key="beauty-flash-sale"
+            category="beauty"
+            onProductPress={handleProductPress}
+            onAddPress={handleAddToCart}
+            onSeeAllPress={() =>
+              handleNavigateSeeAll({
+                title: "Beauty & Care Flash Sale",
+                category: "beauty-personal-care",
+                filter: "beauty-flash-sale",
+                minDiscount: "20",
+              })
+            }
+          />,
+        ];
 
       case "stationery":
-        return (
-          <>
-            <FeaturedBrands
-              category="stationery"
-              onItemPress={(item) =>
-                handleCategoryPress(item.title, item.category)
-              }
-            />
-            <SchoolOfficeStationery
-              onItemPress={(item) =>
-                handleCategoryPress(item.name, item.subCategory)
-              }
-            />
-            <TopDeals
-              category="stationery"
-              title="Top Stationery Deals"
-              onProductPress={handleProductPress}
-              onAddPress={handleAddToCart}
-              onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
-              onSeeAllPress={() =>
-                handleNavigateSeeAll({
-                  title: "Stationery Deals",
-                  category: "office-stationery",
-                  filter: "deals",
-                  minDiscount: "20",
-                })
-              }
-            />
-            <SubCategories
-              category="stationery"
-              onItemPress={(section, item) =>
-                handleCategoryPress(item.title, item.id)
-              }
-            />
-            <NewArrivals
-              category="stationery"
-              onCategoryPress={(cat) =>
-                handleCategoryPress(cat.title, cat.category)
-              }
-              onSeeAllPress={() =>
-                handleNavigateSeeAll({
-                  title: "Stationery New Arrivals",
-                  category: "office-stationery",
-                  filter: "new_arrival",
-                })
-              }
-            />
-            <GroceryFlashSale
-              category="stationery"
-              onProductPress={handleProductPress}
-              onAddPress={handleAddToCart}
-              onSeeAllPress={() =>
-                handleNavigateSeeAll({
-                  title: "Stationery & Office Flash Sale",
-                  category: "office-stationery",
-                  filter: "stationery-flash-sale",
-                  minDiscount: "20",
-                })
-              }
-            />
-          </>
-        );
+        return [
+          <FeaturedBrands
+            key="stationery-featured-brands"
+            category="stationery"
+            onItemPress={(item) =>
+              handleCategoryPress(item.title, item.category)
+            }
+          />,
+          <SchoolOfficeStationery
+            key="stationery-school-office"
+            onItemPress={(item) =>
+              handleCategoryPress(item.name, item.subCategory)
+            }
+          />,
+          <TopDeals
+            key="stationery-top-deals"
+            category="stationery"
+            title="Top Stationery Deals"
+            onProductPress={handleProductPress}
+            onAddPress={handleAddToCart}
+            onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
+            onSeeAllPress={() =>
+              handleNavigateSeeAll({
+                title: "Stationery Deals",
+                category: "office-stationery",
+                filter: "deals",
+                minDiscount: "20",
+              })
+            }
+          />,
+          <SubCategories
+            key="stationery-sub-categories"
+            category="stationery"
+            onItemPress={(section, item) =>
+              handleCategoryPress(item.title, item.id)
+            }
+          />,
+          <NewArrivals
+            key="stationery-new-arrivals"
+            category="stationery"
+            onCategoryPress={(cat) =>
+              handleCategoryPress(cat.title, cat.category)
+            }
+            onSeeAllPress={() =>
+              handleNavigateSeeAll({
+                title: "Stationery New Arrivals",
+                category: "office-stationery",
+                filter: "new_arrival",
+              })
+            }
+          />,
+          <GroceryFlashSale
+            key="stationery-flash-sale"
+            category="stationery"
+            onProductPress={handleProductPress}
+            onAddPress={handleAddToCart}
+            onSeeAllPress={() =>
+              handleNavigateSeeAll({
+                title: "Stationery & Office Flash Sale",
+                category: "office-stationery",
+                filter: "stationery-flash-sale",
+                minDiscount: "20",
+              })
+            }
+          />,
+        ];
 
       case "baby":
       case "kids":
-        return (
-          <>
-            <FeaturedBrands
-              category="baby"
-              onItemPress={(item) =>
-                handleCategoryPress(item.title, item.category)
-              }
-            />
-            <BabyCategories
-              onItemPress={(item) =>
-                handleCategoryPress(item.name, item.subCategory)
-              }
-            />
-            <KidsWinterEssentials
-              onItemPress={(item) =>
-                handleCategoryPress(item.title, item.category)
-              }
-            />
-            <TopDeals
-              category="baby"
-              title="Top Baby Deals"
-              onProductPress={handleProductPress}
-              onAddPress={handleAddToCart}
-              onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
-              onSeeAllPress={() =>
-                handleNavigateSeeAll({
-                  title: "Baby Deals & Picks",
-                  category: "baby",
-                  filter: "deals",
-                  minDiscount: "20",
-                })
-              }
-            />
-            <SubCategories
-              category="baby"
-              onItemPress={(section, item) =>
-                handleCategoryPress(item.title, item.id)
-              }
-            />
-            <NewArrivals
-              category="baby"
-              onCategoryPress={(cat) =>
-                handleCategoryPress(cat.title, cat.category)
-              }
-              onSeeAllPress={() =>
-                handleNavigateSeeAll({
-                  title: "Baby New Arrivals",
-                  category: "baby",
-                  filter: "new_arrival",
-                })
-              }
-            />
-            <GroceryFlashSale
-              category="baby"
-              onProductPress={handleProductPress}
-              onAddPress={handleAddToCart}
-              onSeeAllPress={() =>
-                handleNavigateSeeAll({
-                  title: "Baby Flash Sale",
-                  category: "baby",
-                  filter: "baby-flash-sale",
-                  minDiscount: "20",
-                })
-              }
-            />
-          </>
-        );
+        return [
+          <FeaturedBrands
+            key="baby-featured-brands"
+            category="baby"
+            onItemPress={(item) =>
+              handleCategoryPress(item.title, item.category)
+            }
+          />,
+          <BabyCategories
+            key="baby-categories"
+            onItemPress={(item) =>
+              handleCategoryPress(item.name, item.subCategory)
+            }
+          />,
+          <KidsWinterEssentials
+            key="baby-kids-winter"
+            onItemPress={(item) =>
+              handleCategoryPress(item.title, item.category)
+            }
+          />,
+          <TopDeals
+            key="baby-top-deals"
+            category="baby"
+            title="Top Baby Deals"
+            onProductPress={handleProductPress}
+            onAddPress={handleAddToCart}
+            onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
+            onSeeAllPress={() =>
+              handleNavigateSeeAll({
+                title: "Baby Deals & Picks",
+                category: "baby",
+                filter: "deals",
+                minDiscount: "20",
+              })
+            }
+          />,
+          <SubCategories
+            key="baby-sub-categories"
+            category="baby"
+            onItemPress={(section, item) =>
+              handleCategoryPress(item.title, item.id)
+            }
+          />,
+          <NewArrivals
+            key="baby-new-arrivals"
+            category="baby"
+            onCategoryPress={(cat) =>
+              handleCategoryPress(cat.title, cat.category)
+            }
+            onSeeAllPress={() =>
+              handleNavigateSeeAll({
+                title: "Baby New Arrivals",
+                category: "baby",
+                filter: "new_arrival",
+              })
+            }
+          />,
+          <GroceryFlashSale
+            key="baby-flash-sale"
+            category="baby"
+            onProductPress={handleProductPress}
+            onAddPress={handleAddToCart}
+            onSeeAllPress={() =>
+              handleNavigateSeeAll({
+                title: "Baby Flash Sale",
+                category: "baby",
+                filter: "baby-flash-sale",
+                minDiscount: "20",
+              })
+            }
+          />,
+        ];
 
       case "gifting":
-        return (
-          <>
-            <FeaturedBrands
-              category="gifting"
-              onItemPress={(item) =>
-                handleCategoryPress(item.title, item.category)
-              }
-            />
-            <GiftingCategories
-              onItemPress={(item) =>
-                handleCategoryPress(item.name, item.subCategory)
-              }
-            />
-            <TopDeals
-              category="gifting"
-              title="Delightful Gift Deals"
-              onProductPress={handleProductPress}
-              onAddPress={handleAddToCart}
-              onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
-              onSeeAllPress={() =>
-                handleNavigateSeeAll({
-                  title: "Gift & Celebration Deals",
-                  category: "gifting",
-                  filter: "deals",
-                  minDiscount: "20",
-                })
-              }
-            />
-            <SubCategories
-              category="gifting"
-              onItemPress={(section, item) =>
-                handleCategoryPress(item.title, item.id)
-              }
-            />
-            <NewArrivals
-              category="gifting"
-              onCategoryPress={(cat) =>
-                handleCategoryPress(cat.title, cat.category)
-              }
-              onSeeAllPress={() =>
-                handleNavigateSeeAll({
-                  title: "Gifting New Arrivals",
-                  category: "gifting",
-                  filter: "new_arrival",
-                })
-              }
-            />
-            <GroceryFlashSale
-              category="gifting"
-              onProductPress={handleProductPress}
-              onAddPress={handleAddToCart}
-              onSeeAllPress={() =>
-                handleNavigateSeeAll({
-                  title: "Gifting Flash Sale",
-                  category: "gifting",
-                  filter: "gifting-flash-sale",
-                  minDiscount: "20",
-                })
-              }
-            />
-            <CurvedPromoScroller onPromoPress={handlePromoPress} />
-            <SweetTooth
-              onProductPress={handleProductPress}
-              onAddPress={handleAddToCart}
-              onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
-              onSeeAllPress={() =>
-                handleNavigateSeeAll({
-                  title: "Sweet Tooth Delights",
-                  category: "gifting",
-                  filter: "sweet-tooth",
-                  minDiscount: "30",
-                })
-              }
-            />
-          </>
-        );
+        return [
+          <FeaturedBrands
+            key="gifting-featured-brands"
+            category="gifting"
+            onItemPress={(item) =>
+              handleCategoryPress(item.title, item.category)
+            }
+          />,
+          <GiftingCategories
+            key="gifting-categories"
+            onItemPress={(item) =>
+              handleCategoryPress(item.name, item.subCategory)
+            }
+          />,
+          <TopDeals
+            key="gifting-top-deals"
+            category="gifting"
+            title="Delightful Gift Deals"
+            onProductPress={handleProductPress}
+            onAddPress={handleAddToCart}
+            onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
+            onSeeAllPress={() =>
+              handleNavigateSeeAll({
+                title: "Gift & Celebration Deals",
+                category: "gifting",
+                filter: "deals",
+                minDiscount: "20",
+              })
+            }
+          />,
+          <SubCategories
+            key="gifting-sub-categories"
+            category="gifting"
+            onItemPress={(section, item) =>
+              handleCategoryPress(item.title, item.id)
+            }
+          />,
+          <NewArrivals
+            key="gifting-new-arrivals"
+            category="gifting"
+            onCategoryPress={(cat) =>
+              handleCategoryPress(cat.title, cat.category)
+            }
+            onSeeAllPress={() =>
+              handleNavigateSeeAll({
+                title: "Gifting New Arrivals",
+                category: "gifting",
+                filter: "new_arrival",
+              })
+            }
+          />,
+          <GroceryFlashSale
+            key="gifting-flash-sale"
+            category="gifting"
+            onProductPress={handleProductPress}
+            onAddPress={handleAddToCart}
+            onSeeAllPress={() =>
+              handleNavigateSeeAll({
+                title: "Gifting Flash Sale",
+                category: "gifting",
+                filter: "gifting-flash-sale",
+                minDiscount: "20",
+              })
+            }
+          />,
+          <CurvedPromoScroller key="gifting-curved-promo" onPromoPress={handlePromoPress} />,
+          <SweetTooth
+            key="gifting-sweet-tooth"
+            onProductPress={handleProductPress}
+            onAddPress={handleAddToCart}
+            onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
+            onSeeAllPress={() =>
+              handleNavigateSeeAll({
+                title: "Sweet Tooth Delights",
+                category: "gifting",
+                filter: "sweet-tooth",
+                minDiscount: "30",
+              })
+            }
+          />,
+        ];
 
       default:
-        return null;
+        return [];
     }
   }, [
     selectedCategory,
@@ -1072,6 +1097,18 @@ export default function HomeScreen() {
     handleNavigateSeeAll,
     handlePromoPress,
   ]);
+
+  // Keep totalSectionsRef synchronized with current category sections count
+  useEffect(() => {
+    totalSectionsRef.current = categorySections.length;
+  }, [categorySections.length]);
+
+  const visibleSections = useMemo(
+    () => categorySections.slice(0, visibleSectionsCount),
+    [categorySections, visibleSectionsCount],
+  );
+
+  const hasMoreSections = visibleSectionsCount < categorySections.length;
 
   return (
     <View style={containerStyle}>
@@ -1147,42 +1184,58 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Dynamically Memoized Category Content */}
-        {!isOutsideDeliveryZone && categoryContent}
+        {/* ── Progressively Rendered Category Components ── */}
+        {!isOutsideDeliveryZone && (
+          <>
+            {visibleSections.map((sectionNode) => sectionNode)}
 
-        {/* ── Paginated Infinite Stream of Nearby Products ──────────── */}
-        {!isOutsideDeliveryZone && publicProducts.length > 0 && (
-          <View style={styles.streamSection}>
-            <View style={styles.streamHeader}>
-              <View>
-                <Text style={styles.streamTitle}>
-                  {selectedCategory === "all"
-                    ? "All Products Near You"
-                    : "More in this Category"}
-                </Text>
-                <Text style={styles.streamSub}>
-                  Showing {publicProducts.length} of {publicTotal} products from
-                  nearby stores
+            {/* Section Pagination Loader (shows when user reaches bottom of current sections) */}
+            {hasMoreSections && (
+              <View style={styles.loadingMoreContainer}>
+                <ActivityIndicator size="small" color="#008080" />
+                <Text style={styles.loadingMoreText}>
+                  Loading more recommendations...
                 </Text>
               </View>
-            </View>
-
-            <View style={styles.streamGrid}>
-              {publicProducts.map((prod, idx) => (
-                <ProductCard
-                  key={prod._id || prod.id || idx}
-                  product={normalizeDealProduct(prod)}
-                  cardWidth={(SCREEN_WIDTH - scale(44)) / 2}
-                  onPress={handleProductPress}
-                  onAddPress={handleAddToCart}
-                />
-              ))}
-            </View>
-          </View>
+            )}
+          </>
         )}
 
+        {/* ── Paginated Infinite Stream of Nearby Products ──────────── */}
+        {!isOutsideDeliveryZone &&
+          !hasMoreSections &&
+          publicProducts.length > 0 && (
+            <View style={styles.streamSection}>
+              <View style={styles.streamHeader}>
+                <View>
+                  <Text style={styles.streamTitle}>
+                    {selectedCategory === "all"
+                      ? "All Products Near You"
+                      : "More in this Category"}
+                  </Text>
+                  <Text style={styles.streamSub}>
+                    Showing {publicProducts.length} of {publicTotal} products from
+                    nearby stores
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.streamGrid}>
+                {publicProducts.map((prod, idx) => (
+                  <ProductCard
+                    key={prod._id || prod.id || idx}
+                    product={normalizeDealProduct(prod)}
+                    cardWidth={(SCREEN_WIDTH - scale(44)) / 2}
+                    onPress={handleProductPress}
+                    onAddPress={handleAddToCart}
+                  />
+                ))}
+              </View>
+            </View>
+          )}
+
         {/* Infinite Scroll Activity Indicator */}
-        {publicLoadingMore && (
+        {!hasMoreSections && publicLoadingMore && (
           <View style={styles.loadingMoreContainer}>
             <ActivityIndicator size="small" color="#008080" />
             <Text style={styles.loadingMoreText}>Loading more products...</Text>
@@ -1190,7 +1243,8 @@ export default function HomeScreen() {
         )}
 
         {/* End of List Confirmation Badge */}
-        {!publicHasMore &&
+        {!hasMoreSections &&
+          !publicHasMore &&
           publicProducts.length > 0 &&
           !isOutsideDeliveryZone && (
             <View style={styles.endOfListContainer}>

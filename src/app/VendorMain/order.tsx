@@ -1,4 +1,5 @@
 import VendorHeader from "@/components/VendorComponent/header";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { moderateScale, scale } from "@/theme";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
@@ -25,14 +26,15 @@ import {
 } from "@/store/slices/orderSlice";
 import socketService from "@/store/services/socketService";
 
-const FILTER_TABS = ["All", "New", "Preparing", "Ready", "Delivered", "Cancelled"] as const;
+const FILTER_TABS = ["All", "Pending", "Preparing", "Ready", "Completed", "Cancelled"] as const;
 type FilterTab = (typeof FILTER_TABS)[number];
 
 const getStatusColor = (status: string) => {
   switch (status) {
     case "PLACED":
     case "New":
-      return { bg: "#EFF6FF", text: "#1D4ED8", border: "#BFDBFE", label: "New Order" };
+    case "Pending":
+      return { bg: "#EFF6FF", text: "#1D4ED8", border: "#BFDBFE", label: "Pending" };
     case "ACCEPTED":
     case "PREPARING":
     case "Preparing":
@@ -44,7 +46,8 @@ const getStatusColor = (status: string) => {
       return { bg: "#F5F3FF", text: "#7C3AED", border: "#DDD6FE", label: "Out for Delivery" };
     case "DELIVERED":
     case "Delivered":
-      return { bg: "#F8FAFC", text: "#475569", border: "#E2E8F0", label: "Delivered" };
+    case "Completed":
+      return { bg: "#F0FDF4", text: "#15803D", border: "#BBF7D0", label: "Completed" };
     case "REJECTED":
     case "CANCELLED":
     case "Cancelled":
@@ -63,6 +66,7 @@ const VendorOrderItemCard = memo(function VendorOrderItemCard({
   actionLoading: boolean;
   onUpdateStatus: (id: string, newStatus: string, reason?: string) => void;
 }) {
+  const router = useRouter();
   const statusStyle = getStatusColor(item.orderStatus);
   const formattedTime = item.createdAt
     ? new Date(item.createdAt).toLocaleTimeString([], {
@@ -81,12 +85,26 @@ const VendorOrderItemCard = memo(function VendorOrderItemCard({
   const address =
     item.deliveryAddress?.addressLine || (item as any).address || "Kathmandu";
 
+  const handleOpenDetails = () => {
+    router.push({
+      pathname: "/Screens/vendorScreens/orderdetails",
+      params: { orderId: item._id, orderNumber: item.orderNumber },
+    } as any);
+  };
+
   return (
-    <View style={styles.orderCard}>
+    <TouchableOpacity
+      activeOpacity={0.92}
+      onPress={handleOpenDetails}
+      style={styles.orderCard}
+    >
       {/* Header */}
       <View style={styles.cardHeader}>
-        <View>
-          <Text style={styles.orderId}>{item.orderNumber}</Text>
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: scale(6) }}>
+            <Text style={styles.orderId}>{item.orderNumber}</Text>
+            <Feather name="chevron-right" size={scale(15)} color="#94A3B8" />
+          </View>
           <Text style={styles.orderTime}>{formattedTime}</Text>
         </View>
         <View
@@ -223,17 +241,38 @@ const VendorOrderItemCard = memo(function VendorOrderItemCard({
           </View>
         )}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 });
 
 export default function VendorOrderScreen() {
   const dispatch = useAppDispatch();
+  const params = useLocalSearchParams<{ status?: string; filter?: string }>();
   const { vendorOrders, vendorPendingCount, vendorLoading, actionLoading } =
     useAppSelector((state) => state.order);
 
   const [selectedFilter, setSelectedFilter] = useState<FilterTab>("All");
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Sync route params (e.g. from SideMenu: pending, completed, all)
+  useEffect(() => {
+    const raw = (params.status || params.filter || "").toLowerCase().trim();
+    if (!raw) return;
+
+    if (raw === "pending" || raw === "new") {
+      setSelectedFilter("Pending");
+    } else if (raw === "completed" || raw === "delivered") {
+      setSelectedFilter("Completed");
+    } else if (raw === "preparing") {
+      setSelectedFilter("Preparing");
+    } else if (raw === "ready") {
+      setSelectedFilter("Ready");
+    } else if (raw === "cancelled" || raw === "rejected") {
+      setSelectedFilter("Cancelled");
+    } else if (raw === "all") {
+      setSelectedFilter("All");
+    }
+  }, [params.status, params.filter]);
 
   // ── 1. Fetch live orders & Connect Real-Time Socket ─────────────────
   useEffect(() => {
@@ -291,14 +330,18 @@ export default function VendorOrderScreen() {
   const filteredOrders = useMemo(() => {
     return vendorOrders.filter((order) => {
       // Filter by tab
-      if (selectedFilter === "New") {
+      if (selectedFilter === "Pending") {
         if (order.orderStatus !== "PLACED") return false;
       } else if (selectedFilter === "Preparing") {
         if (order.orderStatus !== "ACCEPTED" && order.orderStatus !== "PREPARING")
           return false;
       } else if (selectedFilter === "Ready") {
-        if (order.orderStatus !== "READY_FOR_PICKUP") return false;
-      } else if (selectedFilter === "Delivered") {
+        if (
+          order.orderStatus !== "READY_FOR_PICKUP" &&
+          order.orderStatus !== "OUT_FOR_DELIVERY"
+        )
+          return false;
+      } else if (selectedFilter === "Completed") {
         if (order.orderStatus !== "DELIVERED") return false;
       } else if (selectedFilter === "Cancelled") {
         if (order.orderStatus !== "CANCELLED" && order.orderStatus !== "REJECTED")
@@ -348,7 +391,7 @@ export default function VendorOrderScreen() {
           {vendorPendingCount > 0 && (
             <View style={styles.pendingBadge}>
               <Text style={styles.pendingBadgeText}>
-                {vendorPendingCount} New
+                {vendorPendingCount} Pending
               </Text>
             </View>
           )}
@@ -426,8 +469,10 @@ export default function VendorOrderScreen() {
             />
             <Text style={styles.emptyTitle}>No Orders Found</Text>
             <Text style={styles.emptySubtitle}>
-              {selectedFilter === "New"
-                ? "Waiting for new customer orders..."
+              {selectedFilter === "Pending"
+                ? "Waiting for incoming customer orders..."
+                : selectedFilter === "Completed"
+                ? "No completed orders found."
                 : "There are no orders matching your current filter."}
             </Text>
           </View>

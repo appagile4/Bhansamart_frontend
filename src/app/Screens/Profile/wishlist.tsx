@@ -18,7 +18,7 @@ import {
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, memo } from "react";
 import {
   Alert,
   Dimensions,
@@ -32,6 +32,241 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = (width - scale(44)) / 2;
+
+interface WishlistItemCardProps {
+  item: WishlistItem;
+  quantity: number;
+  primaryColor: string;
+  onPress: (item: WishlistItem, imgUrl: string) => void;
+  onRemove: (productId: string, name: string) => void;
+  onAddToCart: (item: WishlistItem, imgUrl: string) => void;
+  onUpdateQuantity: (productId: string, delta: number) => void;
+}
+
+const WishlistItemCard = memo(function WishlistItemCard({
+  item,
+  quantity,
+  primaryColor,
+  onPress,
+  onRemove,
+  onAddToCart,
+  onUpdateQuantity,
+}: WishlistItemCardProps) {
+  const discountPercent =
+    item.discountPct !== undefined && item.discountPct > 0
+      ? item.discountPct
+      : item.originalPrice && item.originalPrice > item.price
+      ? Math.round(
+          ((item.originalPrice - item.price) / item.originalPrice) * 100
+        )
+      : 0;
+
+  const imageSource =
+    typeof item.image === "number"
+      ? item.image
+      : item.imageUrl
+      ? { uri: item.imageUrl }
+      : typeof item.image === "string" && item.image.startsWith("http")
+      ? { uri: item.image }
+      : item.image?.uri
+      ? { uri: item.image.uri }
+      : {
+          uri: "https://images.unsplash.com/photo-1542838132-92c53300491e?w=300&q=80",
+        };
+
+  const imgUri =
+    typeof imageSource === "object" && "uri" in imageSource
+      ? (imageSource as any).uri
+      : "";
+
+  const handlePress = useCallback(() => {
+    onPress(item, imgUri);
+  }, [onPress, item, imgUri]);
+
+  const handleAdd = useCallback(() => {
+    onAddToCart(item, imgUri);
+  }, [onAddToCart, item, imgUri]);
+
+  const handleMinus = useCallback(() => {
+    onUpdateQuantity(item.productId, -1);
+  }, [onUpdateQuantity, item.productId]);
+
+  const handlePlus = useCallback(() => {
+    onUpdateQuantity(item.productId, 1);
+  }, [onUpdateQuantity, item.productId]);
+
+  const handleRemove = useCallback(() => {
+    onRemove(item.productId, item.name);
+  }, [onRemove, item.productId, item.name]);
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.92}
+      onPress={handlePress}
+      style={styles.cardContainer}
+    >
+      {/* Image Container */}
+      <View style={styles.imageContainer}>
+        <Image
+          source={imageSource}
+          style={styles.productImage}
+          contentFit="cover"
+          transition={150}
+        />
+
+        {/* Discount Badge */}
+        {discountPercent > 0 && (
+          <View style={styles.discountBadge}>
+            <Text style={styles.discountBadgeText}>
+              {discountPercent}% OFF
+            </Text>
+          </View>
+        )}
+
+        {/* Remove / Heart Button */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={handleRemove}
+          style={styles.heartBtn}
+        >
+          <Ionicons name="heart" size={scale(15)} color="#DC2626" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Details */}
+      <View style={styles.cardBody}>
+        {/* Title */}
+        <Text numberOfLines={2} style={styles.titleText}>
+          {item.name}
+        </Text>
+
+        {/* Subtitle / Weight */}
+        <Text numberOfLines={1} style={styles.weightText}>
+          {[item.subCategory || item.category, item.weight || "1 unit"]
+            .filter(Boolean)
+            .join(" • ")}
+        </Text>
+
+        {/* Rating and Veg status */}
+        <View style={styles.metaRow}>
+          <View style={styles.ratingBox}>
+            <FontAwesome
+              name="star"
+              size={scale(9.5)}
+              color="#F59E0B"
+              style={{ marginRight: scale(2) }}
+            />
+            <Text style={styles.ratingScore}>
+              {Number(item.rating || 4.5).toFixed(1)}
+            </Text>
+          </View>
+
+          {item.isVeg !== undefined && (
+            <View
+              style={[
+                styles.vegTag,
+                {
+                  backgroundColor: item.isVeg
+                    ? "rgba(22, 163, 74, 0.12)"
+                    : "rgba(220, 38, 38, 0.12)",
+                },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name={item.isVeg ? "leaf" : "circle"}
+                size={item.isVeg ? scale(9) : scale(6)}
+                color={item.isVeg ? "#16A34A" : "#DC2626"}
+                style={{ marginRight: scale(2) }}
+              />
+              <Text
+                style={[
+                  styles.vegTagText,
+                  { color: item.isVeg ? "#16A34A" : "#DC2626" },
+                ]}
+              >
+                {item.isVeg ? "Veg" : "Non-Veg"}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Price Row */}
+        <View style={styles.priceRow}>
+          <Text style={styles.currencySymbol}>Rs. </Text>
+          <Text style={styles.mainPrice}>{item.price}</Text>
+
+          {item.originalPrice && item.originalPrice > item.price ? (
+            <Text style={styles.strikePrice}>Rs. {item.originalPrice}</Text>
+          ) : null}
+        </View>
+
+        {/* Add to Cart or Stepper Button */}
+        <View style={styles.actionBtnRow}>
+          {quantity === 0 ? (
+            <TouchableOpacity
+              activeOpacity={0.88}
+              onPress={handleAdd}
+              style={[
+                styles.addToCartBtn,
+                {
+                  backgroundColor: primaryColor,
+                  shadowColor: primaryColor,
+                },
+              ]}
+            >
+              <Feather
+                name="shopping-cart"
+                size={scale(12)}
+                color="#FFFFFF"
+                style={{ marginRight: scale(4) }}
+              />
+              <Text style={styles.addToCartBtnText}>Add to Cart</Text>
+            </TouchableOpacity>
+          ) : (
+            <View
+              style={[
+                styles.quantityStepperRow,
+                {
+                  backgroundColor: primaryColor,
+                  shadowColor: primaryColor,
+                },
+              ]}
+            >
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={handleMinus}
+                style={styles.stepperActionBtn}
+              >
+                <Feather name="minus" size={scale(11)} color="#FFFFFF" />
+              </TouchableOpacity>
+
+              <Text style={styles.stepperCountText}>{quantity}</Text>
+
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={handlePlus}
+                style={styles.stepperActionBtn}
+              >
+                <Feather name="plus" size={scale(11)} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}, (prevProps, nextProps) => {
+  return (
+    prevProps.item.productId === nextProps.item.productId &&
+    prevProps.quantity === nextProps.quantity &&
+    prevProps.item.price === nextProps.item.price &&
+    prevProps.primaryColor === nextProps.primaryColor &&
+    prevProps.onPress === nextProps.onPress &&
+    prevProps.onRemove === nextProps.onRemove &&
+    prevProps.onAddToCart === nextProps.onAddToCart &&
+    prevProps.onUpdateQuantity === nextProps.onUpdateQuantity
+  );
+});
 
 export default function WishlistScreen() {
   const router = useRouter();
@@ -111,229 +346,74 @@ export default function WishlistScreen() {
     );
   }, [items, getItemQuantity, addToCart, router]);
 
+  const keyExtractor = useCallback(
+    (item: WishlistItem) => String(item.productId),
+    []
+  );
+
+  const handlePressWishlistProduct = useCallback(
+    (item: WishlistItem, imgUrl: string) => {
+      router.push({
+        pathname: "/Screens/Product/productdetailscreen" as any,
+        params: {
+          id: item.productId,
+          name: item.name,
+          weight: item.weight,
+          price: String(item.price),
+          originalPrice: String(item.originalPrice || item.price),
+          rating: String(item.rating || 4.5),
+          category: item.category,
+          subCategory: item.subCategory,
+          image: imgUrl,
+        },
+      });
+    },
+    [router]
+  );
+
+  const handleAddToCartWishlist = useCallback(
+    (item: WishlistItem, imgUrl: string) => {
+      addToCart({
+        id: item.productId,
+        name: item.name,
+        price: item.price,
+        originalPrice: item.originalPrice,
+        imageUrl: imgUrl,
+        weight: item.weight || "1 unit",
+      });
+    },
+    [addToCart]
+  );
+
+  const handleUpdateQuantityWishlist = useCallback(
+    (productId: string, delta: number) => {
+      updateQuantity(productId, delta);
+    },
+    [updateQuantity]
+  );
+
   const renderWishlistItem = useCallback(
     ({ item }: { item: WishlistItem }) => {
       const qty = getItemQuantity(item.productId);
-      const discountPercent =
-        item.discountPct !== undefined && item.discountPct > 0
-          ? item.discountPct
-          : item.originalPrice && item.originalPrice > item.price
-          ? Math.round(
-              ((item.originalPrice - item.price) / item.originalPrice) * 100
-            )
-          : 0;
-
-      const imageSource =
-        typeof item.image === "number"
-          ? item.image
-          : item.imageUrl
-          ? { uri: item.imageUrl }
-          : typeof item.image === "string" && item.image.startsWith("http")
-          ? { uri: item.image }
-          : item.image?.uri
-          ? { uri: item.image.uri }
-          : {
-              uri: "https://images.unsplash.com/photo-1542838132-92c53300491e?w=300&q=80",
-            };
-
-      const handlePressCard = () => {
-        router.push({
-          pathname: "/Screens/Product/productdetailscreen" as any,
-          params: {
-            id: item.productId,
-            name: item.name,
-            weight: item.weight,
-            price: String(item.price),
-            originalPrice: String(item.originalPrice || item.price),
-            rating: String(item.rating || 4.5),
-            category: item.category,
-            subCategory: item.subCategory,
-            image:
-              typeof imageSource === "object" && "uri" in imageSource
-                ? (imageSource as any).uri
-                : "",
-          },
-        });
-      };
-
-      const handleAddToCart = () => {
-        addToCart({
-          id: item.productId,
-          name: item.name,
-          price: item.price,
-          originalPrice: item.originalPrice,
-          imageUrl:
-            typeof imageSource === "object" && "uri" in imageSource
-              ? (imageSource as any).uri
-              : "",
-          weight: item.weight || "1 unit",
-        });
-      };
-
       return (
-        <TouchableOpacity
-          activeOpacity={0.92}
-          onPress={handlePressCard}
-          style={styles.cardContainer}
-        >
-          {/* Image Container */}
-          <View style={styles.imageContainer}>
-            <Image
-              source={imageSource}
-              style={styles.productImage}
-              contentFit="cover"
-              transition={150}
-            />
-
-            {/* Discount Badge */}
-            {discountPercent > 0 && (
-              <View style={styles.discountBadge}>
-                <Text style={styles.discountBadgeText}>
-                  {discountPercent}% OFF
-                </Text>
-              </View>
-            )}
-
-            {/* Remove / Heart Button */}
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => handleRemoveItem(item.productId, item.name)}
-              style={styles.heartBtn}
-            >
-              <Ionicons name="heart" size={scale(15)} color="#DC2626" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Details */}
-          <View style={styles.cardBody}>
-            {/* Title */}
-            <Text numberOfLines={2} style={styles.titleText}>
-              {item.name}
-            </Text>
-
-            {/* Subtitle / Weight */}
-            <Text numberOfLines={1} style={styles.weightText}>
-              {[item.subCategory || item.category, item.weight || "1 unit"]
-                .filter(Boolean)
-                .join(" • ")}
-            </Text>
-
-            {/* Rating and Veg status */}
-            <View style={styles.metaRow}>
-              <View style={styles.ratingBox}>
-                <FontAwesome
-                  name="star"
-                  size={scale(9.5)}
-                  color="#F59E0B"
-                  style={{ marginRight: scale(2) }}
-                />
-                <Text style={styles.ratingScore}>
-                  {Number(item.rating || 4.5).toFixed(1)}
-                </Text>
-              </View>
-
-              {item.isVeg !== undefined && (
-                <View
-                  style={[
-                    styles.vegTag,
-                    {
-                      backgroundColor: item.isVeg
-                        ? "rgba(22, 163, 74, 0.12)"
-                        : "rgba(220, 38, 38, 0.12)",
-                    },
-                  ]}
-                >
-                  <MaterialCommunityIcons
-                    name={item.isVeg ? "leaf" : "circle"}
-                    size={item.isVeg ? scale(9) : scale(6)}
-                    color={item.isVeg ? "#16A34A" : "#DC2626"}
-                    style={{ marginRight: scale(2) }}
-                  />
-                  <Text
-                    style={[
-                      styles.vegTagText,
-                      { color: item.isVeg ? "#16A34A" : "#DC2626" },
-                    ]}
-                  >
-                    {item.isVeg ? "Veg" : "Non-Veg"}
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            {/* Price Row */}
-            <View style={styles.priceRow}>
-              <Text style={styles.currencySymbol}>Rs. </Text>
-              <Text style={styles.mainPrice}>{item.price}</Text>
-
-              {item.originalPrice && item.originalPrice > item.price ? (
-                <Text style={styles.strikePrice}>Rs. {item.originalPrice}</Text>
-              ) : null}
-            </View>
-
-            {/* Add to Cart or Stepper Button */}
-            <View style={styles.actionBtnRow}>
-              {qty === 0 ? (
-                <TouchableOpacity
-                  activeOpacity={0.88}
-                  onPress={handleAddToCart}
-                  style={[
-                    styles.addToCartBtn,
-                    {
-                      backgroundColor: primaryColor,
-                      shadowColor: primaryColor,
-                    },
-                  ]}
-                >
-                  <Feather
-                    name="shopping-cart"
-                    size={scale(12)}
-                    color="#FFFFFF"
-                    style={{ marginRight: scale(4) }}
-                  />
-                  <Text style={styles.addToCartBtnText}>Add to Cart</Text>
-                </TouchableOpacity>
-              ) : (
-                <View
-                  style={[
-                    styles.quantityStepperRow,
-                    {
-                      backgroundColor: primaryColor,
-                      shadowColor: primaryColor,
-                    },
-                  ]}
-                >
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={() => updateQuantity(item.productId, -1)}
-                    style={styles.stepperActionBtn}
-                  >
-                    <Feather name="minus" size={scale(11)} color="#FFFFFF" />
-                  </TouchableOpacity>
-
-                  <Text style={styles.stepperCountText}>{qty}</Text>
-
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={() => updateQuantity(item.productId, 1)}
-                    style={styles.stepperActionBtn}
-                  >
-                    <Feather name="plus" size={scale(11)} color="#FFFFFF" />
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-          </View>
-        </TouchableOpacity>
+        <WishlistItemCard
+          item={item}
+          quantity={qty}
+          primaryColor={primaryColor}
+          onPress={handlePressWishlistProduct}
+          onRemove={handleRemoveItem}
+          onAddToCart={handleAddToCartWishlist}
+          onUpdateQuantity={handleUpdateQuantityWishlist}
+        />
       );
     },
     [
       getItemQuantity,
       primaryColor,
-      router,
+      handlePressWishlistProduct,
       handleRemoveItem,
-      addToCart,
-      updateQuantity,
+      handleAddToCartWishlist,
+      handleUpdateQuantityWishlist,
     ]
   );
 
@@ -406,15 +486,16 @@ export default function WishlistScreen() {
       ) : (
         <FlatList
           data={items}
-          keyExtractor={(item) => String(item.productId)}
+          keyExtractor={keyExtractor}
           numColumns={2}
           renderItem={renderWishlistItem}
           contentContainerStyle={styles.listContent}
           columnWrapperStyle={styles.columnWrapper}
           showsVerticalScrollIndicator={false}
           initialNumToRender={8}
-          maxToRenderPerBatch={10}
-          windowSize={7}
+          maxToRenderPerBatch={8}
+          windowSize={5}
+          updateCellsBatchingPeriod={50}
           removeClippedSubviews={true}
           ListHeaderComponent={
             <View style={styles.listHeaderBox}>

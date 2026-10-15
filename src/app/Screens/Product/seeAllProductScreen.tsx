@@ -184,6 +184,18 @@ const SeeAllProductCard = memo(function SeeAllProductCard({
       </View>
     </TouchableOpacity>
   );
+}, (prevProps, nextProps) => {
+  return (
+    (prevProps.product._id || prevProps.product.id) ===
+      (nextProps.product._id || nextProps.product.id) &&
+    prevProps.quantity === nextProps.quantity &&
+    prevProps.product.price === nextProps.product.price &&
+    prevProps.product.inStock === nextProps.product.inStock &&
+    prevProps.product.name === nextProps.product.name &&
+    prevProps.onPress === nextProps.onPress &&
+    prevProps.onAddToCart === nextProps.onAddToCart &&
+    prevProps.onUpdateQuantity === nextProps.onUpdateQuantity
+  );
 });
 
 function SeeAllProductSkeleton({ animOpacity }: { animOpacity: Animated.Value }) {
@@ -313,13 +325,21 @@ export default function SeeAllProductScreen() {
     inStockOnly: false,
   });
 
-  const {
-    publicProducts,
-    publicLoading,
-    publicLoadingMore,
-    publicHasMore,
-    publicCurrentPage,
-  } = useAppSelector((state) => state.product);
+  const publicProducts = useAppSelector(
+    (state) => state.product?.publicProducts || []
+  );
+  const publicLoading = useAppSelector(
+    (state) => state.product?.publicLoading
+  );
+  const publicLoadingMore = useAppSelector(
+    (state) => state.product?.publicLoadingMore
+  );
+  const publicHasMore = useAppSelector(
+    (state) => state.product?.publicHasMore
+  );
+  const publicCurrentPage = useAppSelector(
+    (state) => state.product?.publicCurrentPage || 1
+  );
 
   const pulseAnim = useRef(new Animated.Value(0.35)).current;
 
@@ -864,7 +884,7 @@ export default function SeeAllProductScreen() {
         renderItem={renderItem}
         numColumns={2}
         columnWrapperStyle={styles.columnWrapper}
-        initialNumToRender={6}
+        initialNumToRender={8}
         maxToRenderPerBatch={8}
         windowSize={5}
         updateCellsBatchingPeriod={50}

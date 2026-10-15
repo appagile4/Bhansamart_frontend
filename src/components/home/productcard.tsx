@@ -12,11 +12,11 @@ import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { memo, useMemo } from "react";
 import {
+  Dimensions,
   ImageSourcePropType,
   StyleSheet,
   Text,
   TouchableOpacity,
-  useWindowDimensions,
   View,
 } from "react-native";
 
@@ -59,24 +59,29 @@ function ProductCardComponent({
   const router = useRouter();
   const theme = useTheme();
   const primaryColor = theme.colors.primary || "#004d5d";
-  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const dispatch = useAppDispatch();
   const { addToCart, updateQuantity, getItemQuantity } = useCart();
   const targetProductId = String(
     product.id || (product as any)._id || (product as any).productId || ""
   ).trim();
 
-  const isWishlisted = useAppSelector((state) =>
-    state.wishlist.items.some((item) => {
+  const isWishlisted = useAppSelector((state) => {
+    const list = state.wishlist?.items;
+    if (!list || list.length === 0) return false;
+    for (let i = 0; i < list.length; i++) {
+      const it = list[i];
       const savedId = String(
-        item.productId || (item as any).id || (item as any)._id || ""
+        it.productId || (it as any).id || (it as any)._id || ""
       ).trim();
-      return (
+      if (
         (savedId.length > 0 && savedId === targetProductId) ||
-        (item.name && product.name && item.name === product.name)
-      );
-    })
-  );
+        (it.name && product.name && it.name === product.name)
+      ) {
+        return true;
+      }
+    }
+    return false;
+  });
 
   const handleToggleWishlist = () => {
     dispatch(
@@ -93,6 +98,7 @@ function ProductCardComponent({
   // ── Extra Compact Dynamic Sizing Calculation ─────────────────────────
   const dynamicWidth = useMemo(() => {
     if (cardWidth) return cardWidth;
+    const { width: windowWidth } = Dimensions.get("window");
     if (windowWidth >= 768) {
       // Tablets: sleek compact card size
       return Math.min(Math.round(windowWidth * 0.2), 175);
@@ -103,14 +109,15 @@ function ProductCardComponent({
     }
     // Standard smartphones: compact ~38% of screen width (around 140-158px)
     return Math.min(Math.max(Math.round(windowWidth * 0.38), 138), 158);
-  }, [cardWidth, windowWidth]);
+  }, [cardWidth]);
 
   const dynamicImageHeight = useMemo(() => {
     const calculated = Math.round(dynamicWidth * 0.7);
+    const { height: windowHeight } = Dimensions.get("window");
     const maxHeight = Math.round(windowHeight * 0.17);
     const minHeight = scale(95);
     return Math.min(Math.max(calculated, minHeight), maxHeight);
-  }, [dynamicWidth, windowHeight]);
+  }, [dynamicWidth]);
 
   const discountPercent =
     product.discountPct !== undefined
@@ -807,5 +814,16 @@ const styles = StyleSheet.create({
   },
 });
 
-const ProductCard = memo(ProductCardComponent);
+const ProductCard = memo(ProductCardComponent, (prevProps, nextProps) => {
+  return (
+    prevProps.product.id === nextProps.product.id &&
+    prevProps.cardWidth === nextProps.cardWidth &&
+    prevProps.product.price === nextProps.product.price &&
+    prevProps.product.originalPrice === nextProps.product.originalPrice &&
+    prevProps.product.name === nextProps.product.name &&
+    prevProps.onPress === nextProps.onPress &&
+    prevProps.onAddPress === nextProps.onAddPress &&
+    prevProps.onSeeMorePress === nextProps.onSeeMorePress
+  );
+});
 export default ProductCard;

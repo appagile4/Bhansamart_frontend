@@ -510,7 +510,7 @@ export default function VendorDashboardScreen() {
               },
             ]}
             activeOpacity={0.7}
-            onPress={() => router.push("/VendorMain/order" as any)}
+            onPress={() => router.push("/VendorMain/order?status=pending" as any)}
           >
             <View style={[styles.metricIcon, { backgroundColor: "#FFFBEB" }]}>
               <Feather name="clock" size={scale(15)} color="#D97706" />
@@ -525,7 +525,7 @@ export default function VendorDashboardScreen() {
           <TouchableOpacity
             style={styles.metricCard}
             activeOpacity={0.7}
-            onPress={() => router.push("/VendorMain/order" as any)}
+            onPress={() => router.push("/VendorMain/order?status=preparing" as any)}
           >
             <View style={[styles.metricIcon, { backgroundColor: "#F5F3FF" }]}>
               <MaterialCommunityIcons
@@ -541,7 +541,11 @@ export default function VendorDashboardScreen() {
           </TouchableOpacity>
 
           {/* Card 5: Completed */}
-          <View style={styles.metricCard}>
+          <TouchableOpacity
+            style={styles.metricCard}
+            activeOpacity={0.7}
+            onPress={() => router.push("/VendorMain/order?status=completed" as any)}
+          >
             <View style={[styles.metricIcon, { backgroundColor: "#ECFDF5" }]}>
               <Ionicons
                 name="checkmark-done-circle"
@@ -553,10 +557,14 @@ export default function VendorDashboardScreen() {
               {metrics.completedOrders} Delivered
             </Text>
             <Text style={styles.metricLabel}>Successfully Handed Over</Text>
-          </View>
+          </TouchableOpacity>
 
           {/* Card 6: Cancelled / Rejected */}
-          <View style={styles.metricCard}>
+          <TouchableOpacity
+            style={styles.metricCard}
+            activeOpacity={0.7}
+            onPress={() => router.push("/VendorMain/order?status=cancelled" as any)}
+          >
             <View style={[styles.metricIcon, { backgroundColor: "#FEF2F2" }]}>
               <Feather name="x-circle" size={scale(15)} color="#EF4444" />
             </View>
@@ -564,7 +572,7 @@ export default function VendorDashboardScreen() {
               {metrics.cancelledOrders} Cancelled
             </Text>
             <Text style={styles.metricLabel}>Declined / Cancelled</Text>
-          </View>
+          </TouchableOpacity>
         </View>
 
         {/* Quick Operations */}

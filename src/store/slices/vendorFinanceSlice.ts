@@ -310,6 +310,47 @@ export const updatePaymentQr = createAsyncThunk(
   }
 );
 
+export const uploadPaymentQrImageAction = createAsyncThunk(
+  "vendorFinance/uploadPaymentQrImage",
+  async (imageUri: string, { rejectWithValue }) => {
+    try {
+      const formData = new FormData();
+      const filename = imageUri.split("/").pop() || "payment_qr.jpg";
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+      formData.append("qrCode", {
+        uri: imageUri,
+        name: filename,
+        type,
+      } as any);
+
+      const response = await api.post("/vendor/payment-qr/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      return response.data.data;
+    } catch (err: any) {
+      return rejectWithValue(
+        err.response?.data?.message || err.message || "Failed to upload payment QR code"
+      );
+    }
+  }
+);
+
+export const removePaymentQrImageAction = createAsyncThunk(
+  "vendorFinance/removePaymentQrImage",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.put("/vendor/payment-qr", { qrCodeUrl: "" });
+      return response.data.data;
+    } catch (err: any) {
+      return rejectWithValue(
+        err.response?.data?.message || err.message || "Failed to remove payment QR code"
+      );
+    }
+  }
+);
+
 export const updateVendorDeliveryRadius = createAsyncThunk(
   "vendorFinance/updateVendorDeliveryRadius",
   async (deliveryRadiusKm: number, { rejectWithValue }) => {
@@ -540,6 +581,30 @@ const vendorFinanceSlice = createSlice({
       })
       .addCase(updatePaymentQr.fulfilled, (state, action) => {
         state.paymentQr = action.payload;
+      })
+      .addCase(uploadPaymentQrImageAction.pending, (state) => {
+        state.qrLoading = true;
+        state.error = null;
+      })
+      .addCase(uploadPaymentQrImageAction.fulfilled, (state, action) => {
+        state.qrLoading = false;
+        state.paymentQr = action.payload;
+      })
+      .addCase(uploadPaymentQrImageAction.rejected, (state, action) => {
+        state.qrLoading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(removePaymentQrImageAction.pending, (state) => {
+        state.qrLoading = true;
+        state.error = null;
+      })
+      .addCase(removePaymentQrImageAction.fulfilled, (state, action) => {
+        state.qrLoading = false;
+        state.paymentQr = action.payload;
+      })
+      .addCase(removePaymentQrImageAction.rejected, (state, action) => {
+        state.qrLoading = false;
+        state.error = action.payload as string;
       });
 
     // Delivery Radius

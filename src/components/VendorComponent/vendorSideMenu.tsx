@@ -8,7 +8,7 @@ import {
   SimpleLineIcons,
 } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { usePathname, useRouter } from "expo-router";
+import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -59,9 +59,9 @@ const MAIN_MENU_ITEMS: MenuItem[] = [
     route: "/VendorMain/order",
     hasDropdown: true,
     subItems: [
-      { id: "all_orders", title: "All Orders", route: "/VendorMain/order" },
-      { id: "pending_orders", title: "Pending Orders", route: "/VendorMain/order" },
-      { id: "completed_orders", title: "Completed Orders", route: "/VendorMain/order" },
+      { id: "all_orders", title: "All Orders", route: "/VendorMain/order?status=all" },
+      { id: "pending_orders", title: "Pending Orders", route: "/VendorMain/order?status=pending" },
+      { id: "completed_orders", title: "Completed Orders", route: "/VendorMain/order?status=completed" },
     ],
   },
   {
@@ -73,7 +73,7 @@ const MAIN_MENU_ITEMS: MenuItem[] = [
     hasDropdown: true,
     subItems: [
       { id: "product_list", title: "Product List", route: "/VendorMain/product" },
-      { id: "add_product", title: "Add New Product", route: "/VendorMain/product" },
+      { id: "add_product", title: "Add New Product", route: "/Screens/vendorScreens/addProduct" },
       { id: "categories", title: "Categories", route: "/VendorMain/product" },
     ],
   },
@@ -114,10 +114,11 @@ const MAIN_MENU_ITEMS: MenuItem[] = [
     title: "Inventory Management",
     iconName: "bottle-tonic-outline",
     iconType: "mci",
+    route: "/Screens/vendorScreens/stocks",
     hasDropdown: true,
     subItems: [
-      { id: "stock_alert", title: "Low Stock Alerts", route: "/VendorMain/product" },
-      { id: "bulk_update", title: "Stock Overview", route: "/VendorMain/product" },
+      { id: "stock_overview", title: "Stock Overview", route: "/Screens/vendorScreens/stocks?filter=all" },
+      { id: "stock_alert", title: "Low Stock Alerts", route: "/Screens/vendorScreens/stocks?filter=low_stock" },
     ],
   },
   {
@@ -187,6 +188,7 @@ export default function VendorSideMenu({
 }: VendorSideMenuProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useLocalSearchParams<{ status?: string; filter?: string }>();
   const dispatch = useAppDispatch();
   const { vendorUser, vendorDetails } = useAppSelector(
     (state) => state.vendorAuth
@@ -195,7 +197,18 @@ export default function VendorSideMenu({
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({
     orders: false,
     products: false,
+    inventory: false,
   });
+
+  // Auto-expand orders or inventory if on those screens
+  useEffect(() => {
+    if (pathname.includes("/VendorMain/order")) {
+      setExpandedItems((prev) => ({ ...prev, orders: true }));
+    }
+    if (pathname.includes("/Screens/vendorScreens/stocks")) {
+      setExpandedItems((prev) => ({ ...prev, inventory: true }));
+    }
+  }, [pathname]);
 
   const slideAnim = useRef(new Animated.Value(-MENU_WIDTH)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -252,12 +265,39 @@ export default function VendorSideMenu({
   };
 
   const handleNavigate = (route?: string) => {
-    if (route) {
-      handleClose();
-      setTimeout(() => {
-        router.push(route as any);
-      }, 150);
-    }
+    if (!route) return;
+    handleClose();
+    setTimeout(() => {
+      if (route.includes("?")) {
+        const [path, queryString] = route.split("?");
+        const params: Record<string, string> = {};
+        const pairs = queryString.split("&");
+        for (const pair of pairs) {
+          const [k, v] = pair.split("=");
+          if (k) params[decodeURIComponent(k)] = decodeURIComponent(v || "");
+        }
+
+        if (pathname === path) {
+          router.setParams(params as any);
+          return;
+        }
+
+        router.push({
+          pathname: path as any,
+          params: params as any,
+        } as any);
+        return;
+      }
+
+      if (pathname === route) {
+        if (searchParams.status || searchParams.filter) {
+          router.setParams({ status: "all", filter: "all" } as any);
+        }
+        return;
+      }
+
+      router.push(route as any);
+    }, 150);
   };
 
   const handleLogout = () => {
@@ -281,8 +321,45 @@ export default function VendorSideMenu({
 
   const isCurrentActive = (item: MenuItem) => {
     const current = activeRoute || pathname;
-    if (item.route && current.includes(item.route)) return true;
+    if (item.route) {
+      const base = item.route.split("?")[0];
+      if (current.includes(base)) return true;
+    }
     return false;
+  };
+
+  const isSubItemActive = (sub: { id: string; route?: string }) => {
+    if (!sub.route) return false;
+
+    if (pathname.includes("/VendorMain/order")) {
+      const currentStatus = (searchParams.status || searchParams.filter || "").toLowerCase().trim();
+      if (sub.id === "pending_orders") {
+        return currentStatus === "pending" || currentStatus === "new";
+      }
+      if (sub.id === "completed_orders") {
+        return currentStatus === "completed" || currentStatus === "delivered";
+      }
+      if (sub.id === "all_orders") {
+        return !currentStatus || currentStatus === "all";
+      }
+    }
+
+    if (pathname.includes("/Screens/vendorScreens/stocks")) {
+      const currentFilter = (searchParams.filter || "").toLowerCase().trim();
+      if (sub.id === "stock_alert") {
+        return currentFilter === "low_stock";
+      }
+      if (sub.id === "stock_overview") {
+        return !currentFilter || currentFilter === "all";
+      }
+    }
+
+    if (sub.route.includes("?")) {
+      const [base] = sub.route.split("?");
+      return pathname === base;
+    }
+
+    return pathname === sub.route;
   };
 
   const renderIcon = (item: MenuItem, isActive: boolean) => {
@@ -338,7 +415,7 @@ export default function VendorSideMenu({
 
           {item.hasDropdown && (
             <Feather
-              name={isExpanded ? "chevron-down" : "chevron-down"}
+              name="chevron-down"
               size={scale(16)}
               color={isActive ? "#016073" : "#64748B"}
               style={{
@@ -351,17 +428,35 @@ export default function VendorSideMenu({
         {/* Sub Items Dropdown */}
         {item.hasDropdown && isExpanded && item.subItems && (
           <View style={styles.subItemsContainer}>
-            {item.subItems.map((sub) => (
-              <TouchableOpacity
-                key={sub.id}
-                activeOpacity={0.7}
-                onPress={() => handleNavigate(sub.route || item.route)}
-                style={styles.subItemRow}
-              >
-                <View style={styles.subItemBullet} />
-                <Text style={styles.subItemTitle}>{sub.title}</Text>
-              </TouchableOpacity>
-            ))}
+            {item.subItems.map((sub) => {
+              const isSubActive = isSubItemActive(sub);
+              return (
+                <TouchableOpacity
+                  key={sub.id}
+                  activeOpacity={0.7}
+                  onPress={() => handleNavigate(sub.route || item.route)}
+                  style={[
+                    styles.subItemRow,
+                    isSubActive && styles.subItemRowActive,
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.subItemBullet,
+                      isSubActive && styles.subItemBulletActive,
+                    ]}
+                  />
+                  <Text
+                    style={[
+                      styles.subItemTitle,
+                      isSubActive && styles.subItemTitleActive,
+                    ]}
+                  >
+                    {sub.title}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         )}
       </View>
@@ -546,13 +641,18 @@ const styles = StyleSheet.create({
   subItemsContainer: {
     paddingLeft: scale(42),
     paddingVertical: moderateScale(4),
-    gap: moderateScale(6),
+    gap: moderateScale(4),
   },
   subItemRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: moderateScale(6),
+    paddingVertical: moderateScale(6.5),
+    paddingHorizontal: scale(8),
+    borderRadius: scale(6),
     gap: scale(8),
+  },
+  subItemRowActive: {
+    backgroundColor: "#F0F9FF",
   },
   subItemBullet: {
     width: scale(5),
@@ -560,10 +660,20 @@ const styles = StyleSheet.create({
     borderRadius: scale(2.5),
     backgroundColor: "#94A3B8",
   },
+  subItemBulletActive: {
+    backgroundColor: "#016073",
+    width: scale(7),
+    height: scale(7),
+    borderRadius: scale(3.5),
+  },
   subItemTitle: {
     fontSize: moderateScale(12.5),
     color: "#64748B",
     fontWeight: "500",
+  },
+  subItemTitleActive: {
+    color: "#016073",
+    fontWeight: "700",
   },
   logoutRow: {
     flexDirection: "row",

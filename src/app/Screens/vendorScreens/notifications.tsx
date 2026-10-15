@@ -1,4 +1,3 @@
-import VendorHeader from "@/components/VendorComponent/header";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   fetchNotifications,
@@ -7,10 +6,10 @@ import {
   VendorNotificationRecord,
 } from "@/store/slices/vendorFinanceSlice";
 import { moderateScale, scale } from "@/theme";
-import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -28,7 +27,7 @@ export default function VendorNotificationsScreen() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { notifications, notificationsLoading, unreadCount } = useAppSelector(
-    (state) => state.vendorFinance
+    (state) => state.vendorFinance,
   );
 
   const [activeFilter, setActiveFilter] = useState<NotifFilter>("ALL");
@@ -112,18 +111,21 @@ export default function VendorNotificationsScreen() {
       <TouchableOpacity
         activeOpacity={0.7}
         onPress={() => handleNotificationPress(item)}
-        style={[
-          styles.notifCard,
-          !item.isRead && styles.unreadCard,
-        ]}
+        style={[styles.notifCard, !item.isRead && styles.unreadCard]}
       >
         <View style={[styles.iconWrap, { backgroundColor: iconConfig.bg }]}>
-          <Feather name={iconConfig.icon as any} size={scale(18)} color={iconConfig.color} />
+          <Feather
+            name={iconConfig.icon as any}
+            size={scale(18)}
+            color={iconConfig.color}
+          />
         </View>
 
         <View style={styles.cardContent}>
           <View style={styles.cardTopRow}>
-            <Text style={[styles.cardTitle, !item.isRead && styles.unreadTitle]}>
+            <Text
+              style={[styles.cardTitle, !item.isRead && styles.unreadTitle]}
+            >
               {item.title}
             </Text>
             <Text style={styles.cardTime}>
@@ -150,17 +152,11 @@ export default function VendorNotificationsScreen() {
     <SafeAreaView style={styles.root} edges={["top"]}>
       <StatusBar style="dark" />
 
-      {/* Unified Header */}
-      <VendorHeader
-        title="Notifications"
-        subtitle={`${unreadCount} unread`}
-        unreadCount={unreadCount}
-        showNotification={false}
-      />
-
       {/* Sub Header & Mark All as Read */}
       <View style={styles.topBar}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: scale(8) }}>
+        <View
+          style={{ flexDirection: "row", alignItems: "center", gap: scale(8) }}
+        >
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() => {
@@ -204,7 +200,10 @@ export default function VendorNotificationsScreen() {
             key={tab.key}
             activeOpacity={0.7}
             onPress={() => setActiveFilter(tab.key)}
-            style={[styles.filterChip, activeFilter === tab.key && styles.filterChipActive]}
+            style={[
+              styles.filterChip,
+              activeFilter === tab.key && styles.filterChipActive,
+            ]}
           >
             <Text
               style={[
@@ -240,10 +239,15 @@ export default function VendorNotificationsScreen() {
             </View>
           ) : (
             <View style={styles.emptyWrap}>
-              <Ionicons name="notifications-off-outline" size={scale(40)} color="#CBD5E1" />
+              <Ionicons
+                name="notifications-off-outline"
+                size={scale(40)}
+                color="#CBD5E1"
+              />
               <Text style={styles.emptyTitle}>No Notifications</Text>
               <Text style={styles.emptyText}>
-                You're all caught up! New orders and payment updates will appear here.
+                You're all caught up! New orders and payment updates will appear
+                here.
               </Text>
             </View>
           )

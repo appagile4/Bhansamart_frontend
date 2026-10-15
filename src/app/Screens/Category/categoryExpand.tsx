@@ -195,6 +195,18 @@ const CategoryExpandProductCard = memo(function CategoryExpandProductCard({
       </View>
     </TouchableOpacity>
   );
+}, (prevProps, nextProps) => {
+  return (
+    (prevProps.product._id || prevProps.product.id) ===
+      (nextProps.product._id || nextProps.product.id) &&
+    prevProps.quantity === nextProps.quantity &&
+    prevProps.product.price === nextProps.product.price &&
+    prevProps.product.inStock === nextProps.product.inStock &&
+    prevProps.product.name === nextProps.product.name &&
+    prevProps.onPress === nextProps.onPress &&
+    prevProps.onAddToCart === nextProps.onAddToCart &&
+    prevProps.onUpdateQuantity === nextProps.onUpdateQuantity
+  );
 });
 
 function CategoryProductSkeleton({ animOpacity }: { animOpacity: Animated.Value }) {
@@ -945,14 +957,22 @@ export default function CategoryExpandScreen() {
     ];
   }, [parentCategory]);
 
-  // Redux Category Products State (Isolated from global home store catalog)
-  const {
-    categoryProducts,
-    categoryLoading,
-    categoryLoadingMore,
-    categoryHasMore,
-    categoryCurrentPage,
-  } = useAppSelector((state) => state.product);
+  // Redux Category Products State (Fine-grained selectors prevent unrelated home catalog re-renders)
+  const categoryProducts = useAppSelector(
+    (state) => state.product?.categoryProducts || []
+  );
+  const categoryLoading = useAppSelector(
+    (state) => state.product?.categoryLoading
+  );
+  const categoryLoadingMore = useAppSelector(
+    (state) => state.product?.categoryLoadingMore
+  );
+  const categoryHasMore = useAppSelector(
+    (state) => state.product?.categoryHasMore
+  );
+  const categoryCurrentPage = useAppSelector(
+    (state) => state.product?.categoryCurrentPage || 1
+  );
 
   // 4. Fetch Products from Redux / Backend API
   const loadProducts = useCallback(
@@ -1391,9 +1411,9 @@ export default function CategoryExpandScreen() {
             renderItem={renderItem}
             numColumns={2}
             columnWrapperStyle={styles.columnWrapper}
-            initialNumToRender={6}
-            maxToRenderPerBatch={6}
-            windowSize={4}
+            initialNumToRender={8}
+            maxToRenderPerBatch={8}
+            windowSize={5}
             updateCellsBatchingPeriod={50}
             removeClippedSubviews={Platform.OS === "android"}
             showsVerticalScrollIndicator={false}
