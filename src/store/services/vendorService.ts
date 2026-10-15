@@ -57,3 +57,31 @@ export const getNearbyStoresApi = async (
   );
   return response.data;
 };
+
+export interface VendorCustomer {
+  _id: string;
+  customerId: string;
+  name: string;
+  email: string;
+  phone: string;
+  avatar: string;
+  orderCount: number;
+  productCount: number;
+  cancelledCount: number;
+  deliveredCount: number;
+  totalSpent: number;
+  lastOrderDate?: string;
+  lastAddress?: string;
+}
+
+export interface VendorCustomersResponse {
+  success: boolean;
+  count: number;
+  data: VendorCustomer[];
+}
+
+export const getVendorCustomersApi = async (): Promise<VendorCustomersResponse> => {
+  const response = await api.get<VendorCustomersResponse>("/vendor/customers");
+  return response.data;
+};
+

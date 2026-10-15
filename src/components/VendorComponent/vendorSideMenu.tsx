@@ -130,19 +130,23 @@ const MAIN_MENU_ITEMS: MenuItem[] = [
   {
     id: "customer",
     title: "Customer",
-    iconName: "user",
+    iconName: "users",
     iconType: "feather",
+    route: "/Screens/vendorScreens/cusotmer",
   },
   {
     id: "finance",
     title: "Finance & Expense",
     iconName: "trending-up",
     iconType: "feather",
-    route: "/VendorMain/transaction",
+    route: "/Screens/vendorScreens/Finance",
     hasDropdown: true,
     subItems: [
-      { id: "payouts", title: "Bank Settlements", route: "/VendorMain/transaction" },
-      { id: "earnings", title: "Earnings Ledger", route: "/VendorMain/transaction" },
+      { id: "finance_overview", title: "Finance Overview", route: "/Screens/vendorScreens/Finance" },
+      { id: "withdrawals", title: "Withdrawal Requests", route: "/Screens/vendorScreens/Finance?tab=withdrawals" },
+      { id: "settlements", title: "Settled Orders", route: "/Screens/vendorScreens/Finance?tab=settlements" },
+      { id: "delivery_cod", title: "Delivery Boy Cash", route: "/Screens/vendorScreens/Finance?tab=delivery" },
+      { id: "earnings_ledger", title: "All Transactions", route: "/VendorMain/transaction" },
     ],
   },
   {
