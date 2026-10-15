@@ -18,6 +18,7 @@ export { default as InstantProductCard } from "./InstantProductCard";
 export { default as KidsSubCategories } from "./KidsSubCategories";
 export { default as KidsWinterEssentials } from "./KidsWinterEssentials";
 export { default as ProductCard } from "./productcard";
+export * from "./productcard";
 export { default as SchoolOfficeStationery } from "./SchoolOfficeStationery";
 export { default as SearchBar } from "./search-bar";
 export { default as SnacksDrinks } from "./SnacksDrinks";

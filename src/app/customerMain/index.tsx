@@ -3,6 +3,7 @@ import {
   BabyCategories,
   BeautyPersonalCare,
   CurvedPromoScroller,
+  DealProduct,
   DealsOfTheDays,
   FastSales,
   FeaturedBrands,
@@ -12,8 +13,9 @@ import {
   Header,
   InstantFrozenFood,
   KidsWinterEssentials,
-  NewArrivals,
   NearbyStoresModal,
+  NewArrivals,
+  ProductCard,
   SchoolOfficeStationery,
   SelectLocationModal,
   SnacksDrinks,
@@ -23,19 +25,68 @@ import {
 } from "@/components/home";
 import { useCart } from "@/context/cart-context";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { fetchAddresses, setUserCoordinates } from "@/store/slices/addressSlice";
+import socketService from "@/store/services/socketService";
+import {
+  fetchAddresses,
+  setUserCoordinates,
+} from "@/store/slices/addressSlice";
 import {
   fetchPublicProducts,
   setSelectedCategory,
 } from "@/store/slices/productSlice";
-import socketService from "@/store/services/socketService";
 import { moderateScale, scale, useTheme } from "@/theme";
 import { Feather } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Dimensions,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const PAGE_SIZE = 12;
+
+const normalizeDealProduct = (p: any): DealProduct => {
+  const curPrice = Number(p.price) || 0;
+  const origPrice =
+    p.originalPrice && Number(p.originalPrice) > curPrice
+      ? Number(p.originalPrice)
+      : curPrice;
+  const disc =
+    origPrice > curPrice
+      ? Math.round(((origPrice - curPrice) / origPrice) * 100)
+      : p.discountValue || 0;
+  const imgUrl =
+    p.images && p.images.length > 0
+      ? p.images[0].url
+      : "https://images.unsplash.com/photo-1542838132-92c53300491e?w=500&q=80";
+
+  return {
+    id: String(p._id || p.id),
+    name: p.name || "Product",
+    weight: p.unit || "1 unit",
+    category: p.category || "Grocery",
+    subCategory: p.subCategory || "",
+    rating: p.ratingsAverage || 4.5,
+    reviewsCount: p.ratingsCount || 20,
+    price: curPrice,
+    originalPrice: origPrice,
+    image: { uri: imgUrl },
+    discountPct: disc,
+    ordersCount: p.ordersCount || 10,
+    tags: p.tags || [],
+  };
+};
 
 export default function HomeScreen() {
   const theme = useTheme();
@@ -46,22 +97,50 @@ export default function HomeScreen() {
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
   const isInitialized = useAppSelector((state) => state.auth.isInitialized);
   const selectedCategory = useAppSelector(
-    (state) => state.product?.selectedCategory || "all"
+    (state) => state.product?.selectedCategory || "all",
   );
   const activeDisplayLocation = useAppSelector(
-    (state) => state.address?.activeDisplayLocation
+    (state) => state.address?.activeDisplayLocation,
   );
   const customerLat = useAppSelector((state) => state.address?.latitude);
   const customerLng = useAppSelector((state) => state.address?.longitude);
   const isOutsideDeliveryZone = useAppSelector(
-    (state) => state.product?.isOutsideDeliveryZone
+    (state) => state.product?.isOutsideDeliveryZone,
   );
   const eligibleVendorsCount = useAppSelector(
-    (state) => state.product?.eligibleVendorsCount
+    (state) => state.product?.eligibleVendorsCount,
+  );
+
+  // Redux Pagination & Product Catalog Selectors
+  const publicProducts = useAppSelector(
+    (state) => state.product?.publicProducts || [],
+  );
+  const publicTotal = useAppSelector(
+    (state) => state.product?.publicTotal || 0,
+  );
+  const publicLoading = useAppSelector((state) => state.product?.publicLoading);
+  const publicLoadingMore = useAppSelector(
+    (state) => state.product?.publicLoadingMore,
+  );
+  const publicHasMore = useAppSelector((state) => state.product?.publicHasMore);
+  const publicCurrentPage = useAppSelector(
+    (state) => state.product?.publicCurrentPage || 1,
   );
 
   const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
-  const [isNearbyStoresModalVisible, setIsNearbyStoresModalVisible] = useState(false);
+  const [isNearbyStoresModalVisible, setIsNearbyStoresModalVisible] =
+    useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Concurrency guard to strictly prevent duplicate API requests
+  const isFetchingMoreRef = useRef(false);
+
+  // Sync ref with Redux loading state
+  useEffect(() => {
+    if (!publicLoadingMore) {
+      isFetchingMoreRef.current = false;
+    }
+  }, [publicLoadingMore]);
 
   // ── Auto-Detect Live Device GPS on Startup ─────────────────────────────
   useEffect(() => {
@@ -82,7 +161,12 @@ export default function HomeScreen() {
             let readable = "Current Location";
             if (geocode && geocode.length > 0) {
               const g = geocode[0];
-              const parts = [g.name, g.street, g.subregion || g.district, g.city].filter(Boolean);
+              const parts = [
+                g.name,
+                g.street,
+                g.subregion || g.district,
+                g.city,
+              ].filter(Boolean);
               readable = parts.join(", ") || "Current Location";
             }
             dispatch(
@@ -90,14 +174,14 @@ export default function HomeScreen() {
                 latitude: loc.coords.latitude,
                 longitude: loc.coords.longitude,
                 addressLine: readable,
-              })
+              }),
             );
           } catch {
             dispatch(
               setUserCoordinates({
                 latitude: loc.coords.latitude,
                 longitude: loc.coords.longitude,
-              })
+              }),
             );
           }
         }
@@ -110,16 +194,88 @@ export default function HomeScreen() {
     };
   }, [dispatch]);
 
-  // ── Data Fetching Effects with Location-Based Delivery Radius Filtering ─
+  // ── 1. Initial Load & Category/Location Change (Page 1) ─────────────
   useEffect(() => {
+    isFetchingMoreRef.current = false;
     dispatch(
       fetchPublicProducts({
         category: selectedCategory === "all" ? undefined : selectedCategory,
         lat: customerLat || undefined,
         lng: customerLng || undefined,
-        limit: 50,
-      })
+        page: 1,
+        limit: PAGE_SIZE,
+      }),
     );
+  }, [dispatch, selectedCategory, customerLat, customerLng]);
+
+  // ── 2. Infinite Scroll: Fetch Next Batch of Records ──────────────────
+  const handleLoadMore = useCallback(() => {
+    if (
+      isOutsideDeliveryZone ||
+      publicLoading ||
+      publicLoadingMore ||
+      !publicHasMore ||
+      isFetchingMoreRef.current
+    ) {
+      return;
+    }
+
+    isFetchingMoreRef.current = true;
+    const nextPage = publicCurrentPage + 1;
+
+    dispatch(
+      fetchPublicProducts({
+        category: selectedCategory === "all" ? undefined : selectedCategory,
+        lat: customerLat || undefined,
+        lng: customerLng || undefined,
+        page: nextPage,
+        limit: PAGE_SIZE,
+      }),
+    );
+  }, [
+    isOutsideDeliveryZone,
+    publicLoading,
+    publicLoadingMore,
+    publicHasMore,
+    publicCurrentPage,
+    selectedCategory,
+    customerLat,
+    customerLng,
+    dispatch,
+  ]);
+
+  // ── 3. Scroll Listener: Detects Approaching Bottom of Screen ─────────
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const { layoutMeasurement, contentOffset, contentSize } =
+        event.nativeEvent;
+      // Trigger threshold: 220px before bottom for seamless infinite loading
+      const threshold = 220;
+      const isCloseToBottom =
+        layoutMeasurement.height + contentOffset.y >=
+        contentSize.height - threshold;
+
+      if (isCloseToBottom) {
+        handleLoadMore();
+      }
+    },
+    [handleLoadMore],
+  );
+
+  // ── 4. Pull to Refresh ───────────────────────────────────────────────
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    isFetchingMoreRef.current = false;
+    await dispatch(
+      fetchPublicProducts({
+        category: selectedCategory === "all" ? undefined : selectedCategory,
+        lat: customerLat || undefined,
+        lng: customerLng || undefined,
+        page: 1,
+        limit: PAGE_SIZE,
+      }),
+    );
+    setRefreshing(false);
   }, [dispatch, selectedCategory, customerLat, customerLng]);
 
   // ── Real-Time Socket Connection & Radius Change Listeners ──────────────
@@ -130,27 +286,31 @@ export default function HomeScreen() {
       }
     });
 
-    // When any vendor updates their delivery radius, refresh product availability
+    // When any vendor updates their delivery radius, refresh product availability from page 1
     const unsubRadius = socketService.onDeliveryRadiusUpdated(() => {
+      isFetchingMoreRef.current = false;
       dispatch(
         fetchPublicProducts({
           category: selectedCategory === "all" ? undefined : selectedCategory,
           lat: customerLat || undefined,
           lng: customerLng || undefined,
-          limit: 50,
-        })
+          page: 1,
+          limit: PAGE_SIZE,
+        }),
       );
     });
 
-    // When any vendor opens or closes their store, refresh product availability
+    // When any vendor opens or closes their store, refresh product availability from page 1
     const unsubAvail = socketService.onVendorAvailabilityChanged(() => {
+      isFetchingMoreRef.current = false;
       dispatch(
         fetchPublicProducts({
           category: selectedCategory === "all" ? undefined : selectedCategory,
           lat: customerLat || undefined,
           lng: customerLng || undefined,
-          limit: 50,
-        })
+          page: 1,
+          limit: PAGE_SIZE,
+        }),
       );
     });
 
@@ -173,12 +333,12 @@ export default function HomeScreen() {
   // ── Memoized Values ─────────────────────────────────────────────────
   const displayLocation = useMemo(
     () => activeDisplayLocation || "Baneshwor, Kathmandu, Bagmati, Nepal",
-    [activeDisplayLocation]
+    [activeDisplayLocation],
   );
 
   const containerStyle = useMemo(
     () => [styles.container, { backgroundColor: theme.colors.background }],
-    [theme.colors.background]
+    [theme.colors.background],
   );
 
   // ── Memoized Navigation & Action Callbacks ──────────────────────────
@@ -186,7 +346,7 @@ export default function HomeScreen() {
     (catId: string) => {
       dispatch(setSelectedCategory(catId));
     },
-    [dispatch]
+    [dispatch],
   );
 
   const handleOpenLocationModal = useCallback(() => {
@@ -228,7 +388,7 @@ export default function HomeScreen() {
         },
       });
     },
-    []
+    [],
   );
 
   const handleProductPress = useCallback((prod: any) => {
@@ -279,7 +439,7 @@ export default function HomeScreen() {
         weight: prod.weight || prod.volume || "1 unit",
       });
     },
-    [addToCart]
+    [addToCart],
   );
 
   const handleNavigateCategoryExpand = useCallback(
@@ -289,7 +449,7 @@ export default function HomeScreen() {
         params,
       });
     },
-    []
+    [],
   );
 
   const handleNavigateSeeAll = useCallback(
@@ -304,7 +464,7 @@ export default function HomeScreen() {
         params,
       });
     },
-    []
+    [],
   );
 
   const handlePromoPress = useCallback((promo: any) => {
@@ -917,10 +1077,20 @@ export default function HomeScreen() {
     <View style={containerStyle}>
       <FloatingCartBar />
 
-      {/* Scrollable Home Screen Body */}
+      {/* Scrollable Home Screen Body with Infinite Scrolling */}
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        onScroll={handleScroll}
+        scrollEventThrottle={32}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={["#008080"]}
+            tintColor="#008080"
+          />
+        }
       >
         <StatusBar style="dark" />
 
@@ -944,9 +1114,12 @@ export default function HomeScreen() {
               <Feather name="map-pin" size={scale(20)} color="#DC2626" />
             </View>
             <View style={{ flex: 1, marginLeft: scale(10) }}>
-              <Text style={styles.outsideZoneTitle}>Delivery Unavailable at this Location</Text>
+              <Text style={styles.outsideZoneTitle}>
+                Delivery Unavailable at this Location
+              </Text>
               <Text style={styles.outsideZoneSub}>
-                None of our active partner stores currently deliver to this selected area.
+                None of our active partner stores currently deliver to this
+                selected area.
               </Text>
               <TouchableOpacity
                 style={styles.changeLocBtn}
@@ -954,7 +1127,9 @@ export default function HomeScreen() {
                 onPress={handleOpenLocationModal}
               >
                 <Feather name="navigation" size={scale(13)} color="#FFFFFF" />
-                <Text style={styles.changeLocBtnText}>Change Delivery Address</Text>
+                <Text style={styles.changeLocBtnText}>
+                  Change Delivery Address
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -964,7 +1139,9 @@ export default function HomeScreen() {
             <Text style={styles.deliveryAvailableText}>
               ⚡ Delivering within 15-25 mins from{" "}
               <Text style={{ fontWeight: "700" }}>
-                {eligibleVendorsCount > 0 ? `${eligibleVendorsCount} nearby stores` : "partner stores"}
+                {eligibleVendorsCount > 0
+                  ? `${eligibleVendorsCount} nearby stores`
+                  : "partner stores"}
               </Text>
             </Text>
           </View>
@@ -972,6 +1149,58 @@ export default function HomeScreen() {
 
         {/* Dynamically Memoized Category Content */}
         {!isOutsideDeliveryZone && categoryContent}
+
+        {/* ── Paginated Infinite Stream of Nearby Products ──────────── */}
+        {!isOutsideDeliveryZone && publicProducts.length > 0 && (
+          <View style={styles.streamSection}>
+            <View style={styles.streamHeader}>
+              <View>
+                <Text style={styles.streamTitle}>
+                  {selectedCategory === "all"
+                    ? "All Products Near You"
+                    : "More in this Category"}
+                </Text>
+                <Text style={styles.streamSub}>
+                  Showing {publicProducts.length} of {publicTotal} products from
+                  nearby stores
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.streamGrid}>
+              {publicProducts.map((prod, idx) => (
+                <ProductCard
+                  key={prod._id || prod.id || idx}
+                  product={normalizeDealProduct(prod)}
+                  cardWidth={(SCREEN_WIDTH - scale(44)) / 2}
+                  onPress={handleProductPress}
+                  onAddPress={handleAddToCart}
+                />
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Infinite Scroll Activity Indicator */}
+        {publicLoadingMore && (
+          <View style={styles.loadingMoreContainer}>
+            <ActivityIndicator size="small" color="#008080" />
+            <Text style={styles.loadingMoreText}>Loading more products...</Text>
+          </View>
+        )}
+
+        {/* End of List Confirmation Badge */}
+        {!publicHasMore &&
+          publicProducts.length > 0 &&
+          !isOutsideDeliveryZone && (
+            <View style={styles.endOfListContainer}>
+              <View style={styles.endOfListLine} />
+              <Text style={styles.endOfListText}>
+                ✓ You've viewed all available products from nearby stores
+              </Text>
+              <View style={styles.endOfListLine} />
+            </View>
+          )}
       </ScrollView>
 
       {/* Select Location Bottom Sheet Modal */}
@@ -1087,5 +1316,62 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(12.5),
     fontWeight: "700",
     color: "#008080",
+  },
+  streamSection: {
+    marginTop: moderateScale(18),
+    paddingHorizontal: scale(16),
+  },
+  streamHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: moderateScale(12),
+  },
+  streamTitle: {
+    fontSize: moderateScale(16),
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+  streamSub: {
+    fontSize: moderateScale(11.5),
+    color: "#64748B",
+    marginTop: moderateScale(2),
+  },
+  streamGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    gap: scale(12),
+  },
+  loadingMoreContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: moderateScale(18),
+    gap: scale(8),
+  },
+  loadingMoreText: {
+    fontSize: moderateScale(12.5),
+    color: "#008080",
+    fontWeight: "600",
+  },
+  endOfListContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: moderateScale(20),
+    paddingHorizontal: scale(20),
+    gap: scale(10),
+  },
+  endOfListLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#E2E8F0",
+  },
+  endOfListText: {
+    fontSize: moderateScale(11),
+    color: "#94A3B8",
+    fontWeight: "500",
+    textAlign: "center",
   },
 });
