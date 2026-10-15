@@ -154,7 +154,13 @@ const MAIN_MENU_ITEMS: MenuItem[] = [
     title: "Referral & Rewards",
     iconName: "gift",
     iconType: "feather",
+    route: "/Screens/Profile/refer-and-earned",
     hasDropdown: true,
+    subItems: [
+      { id: "refer_earn", title: "Refer & Earn", route: "/Screens/Profile/refer-and-earned" },
+      { id: "my_referrals", title: "My Referrals", route: "/Screens/Profile/my-referrals" },
+      { id: "reward_wallet", title: "Rewards Wallet", route: "/Screens/Profile/loyalty" },
+    ],
   },
   {
     id: "reports",

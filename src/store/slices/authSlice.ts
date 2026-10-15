@@ -21,6 +21,8 @@ export interface UserProfile {
   dateOfBirth?: string;
   gender?: string;
   role?: string;
+  referralCode?: string;
+  rewardPoints?: number;
   isEmailVerified: boolean;
 }
 
@@ -209,6 +211,21 @@ export const changePassword = createAsyncThunk(
       return response;
     } catch (error: any) {
       return rejectWithValue(error.message || "Failed to change password");
+    }
+  }
+);
+
+// Fetch latest user profile from backend
+export const fetchUserProfile = createAsyncThunk(
+  "auth/fetchProfile",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await authService.getMe();
+      const liveUser = response.data.user;
+      await storage.setItem("bhansa_user", JSON.stringify(liveUser));
+      return liveUser;
+    } catch (error: any) {
+      return rejectWithValue(error.message || "Failed to fetch user profile");
     }
   }
 );
@@ -446,6 +463,13 @@ const authSlice = createSlice({
       .addCase(changePassword.rejected, (state, action) => {
         state.isLoading = false;
         state.error = (action.payload as string) || "Failed to change password";
+      });
+
+    // Fetch Profile
+    builder
+      .addCase(fetchUserProfile.fulfilled, (state, action) => {
+        state.user = action.payload;
+        state.isAuthenticated = true;
       });
 
     // 10. Update Profile

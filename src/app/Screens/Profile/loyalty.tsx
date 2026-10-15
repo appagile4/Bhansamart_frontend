@@ -1,369 +1,509 @@
-import { Image } from "expo-image";
-import { moderateScale, scale, useTheme } from "@/theme";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
+  fetchRewardsWallet,
+  fetchRewardTransactions,
+} from "@/store/slices/referralSlice";
+import { RewardTransactionItem } from "@/store/services/referralService";
+import { moderateScale, scale } from "@/theme";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { memo, useCallback, useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-interface RedeemItem {
-  id: string;
-  title: string;
-  pointsCost: number;
-  description: string;
-  imageUrl: string;
-}
+// ── Transaction Item Card ──────────────────────────────────────────────
+const TransactionCard = memo(function TransactionCard({
+  item,
+}: {
+  item: RewardTransactionItem;
+}) {
+  const isCredit = item.type === "CREDIT";
+  const isReversal = item.type === "REVERSAL";
 
-const REDEEM_ITEMS: RedeemItem[] = [
-  {
-    id: "item-1",
-    title: "FREE WAI WAI FOR 500 POINTS!",
-    pointsCost: 500,
-    description: "Redeem 500 points and enjoy your favorite snack for free!",
-    imageUrl:
-      "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=300&q=80",
-  },
-  {
-    id: "item-2",
-    title: "FREE WAI WAI FOR 500 POINTS!",
-    pointsCost: 500,
-    description: "Redeem 500 points and enjoy your favorite snack for free!",
-    imageUrl:
-      "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=300&q=80",
-  },
-  {
-    id: "item-3",
-    title: "FREE WAI WAI FOR 500 POINTS!",
-    pointsCost: 500,
-    description: "Redeem 500 points and enjoy your favorite snack for free!",
-    imageUrl:
-      "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=300&q=80",
-  },
-  {
-    id: "item-4",
-    title: "FREE WAI WAI FOR 500 POINTS!",
-    pointsCost: 500,
-    description: "Redeem 500 points and enjoy your favorite snack for free!",
-    imageUrl:
-      "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=300&q=80",
-  },
-];
+  const dateFormatted = item.createdAt
+    ? new Date(item.createdAt).toLocaleDateString([], {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : "Recently";
+
+  return (
+    <View style={styles.txnCard}>
+      <View style={styles.txnLeft}>
+        <View
+          style={[
+            styles.txnIconWrap,
+            {
+              backgroundColor: isCredit
+                ? "#DCFCE7"
+                : isReversal
+                ? "#FEF2F2"
+                : "#EFF6FF",
+            },
+          ]}
+        >
+          {isCredit ? (
+            <Feather name="arrow-down-left" size={scale(18)} color="#15803D" />
+          ) : isReversal ? (
+            <Feather name="rotate-ccw" size={scale(18)} color="#DC2626" />
+          ) : (
+            <Feather name="arrow-up-right" size={scale(18)} color="#1D4ED8" />
+          )}
+        </View>
+
+        <View style={styles.txnInfo}>
+          <Text style={styles.txnReason} numberOfLines={1}>
+            {item.reason}
+          </Text>
+          <Text style={styles.txnDate}>{dateFormatted}</Text>
+        </View>
+      </View>
+
+      <View style={styles.txnRight}>
+        <Text
+          style={[
+            styles.txnPoints,
+            { color: isCredit ? "#15803D" : "#DC2626" },
+          ]}
+        >
+          {isCredit ? "+" : "-"}
+          {item.points} Pts
+        </Text>
+        <Text style={styles.balanceAfterText}>
+          Bal: {item.balanceAfter} Pts
+        </Text>
+      </View>
+    </View>
+  );
+});
 
 export default function LoyaltyScreen() {
   const router = useRouter();
-  const theme = useTheme();
+  const dispatch = useAppDispatch();
 
-  const [points, setPoints] = useState(900.55);
+  const {
+    wallet,
+    walletLoading,
+    transactions,
+    transactionsTotal,
+    transactionsPage,
+    transactionsTotalPages,
+    transactionsLoading,
+  } = useAppSelector((state) => state.referral);
 
-  const handleRedeem = (item: RedeemItem) => {
-    if (points >= item.pointsCost) {
-      Alert.alert(
-        "Redeem Reward",
-        `Would you like to redeem "${item.title}" for ${item.pointsCost} RP?`,
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Redeem Now",
-            onPress: () => {
-              setPoints((p) => Number((p - item.pointsCost).toFixed(2)));
-              Alert.alert(
-                "Redemption Successful!",
-                `You have redeemed ${item.title}. The free item has been added to your rewards wallet!`
-              );
-            },
-          },
-        ]
-      );
-    } else {
-      Alert.alert(
-        "Insufficient Points",
-        `You need ${item.pointsCost} points to redeem this item. Keep shopping to earn more points!`
-      );
-    }
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadData = useCallback(() => {
+    dispatch(fetchRewardsWallet());
+    dispatch(fetchRewardTransactions({ page: 1, limit: 20 }));
+  }, [dispatch]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([
+      dispatch(fetchRewardsWallet()),
+      dispatch(fetchRewardTransactions({ page: 1, limit: 20 })),
+    ]);
+    setRefreshing(false);
   };
 
+  const handleLoadMore = () => {
+    if (transactionsLoading || transactionsPage >= transactionsTotalPages) return;
+    dispatch(
+      fetchRewardTransactions({
+        page: transactionsPage + 1,
+        limit: 20,
+      })
+    );
+  };
+
+  const availablePoints = wallet?.availablePoints || 0;
+  const lifetimeEarned = wallet?.lifetimeEarned || availablePoints;
+  const lifetimeRedeemed = wallet?.lifetimeRedeemed || 0;
+
+  const renderHeader = () => (
+    <View style={styles.headerContainer}>
+      {/* Hero Points Card */}
+      <View style={styles.heroCard}>
+        <View style={styles.heroTop}>
+          <View style={styles.heroIconCircle}>
+            <Ionicons name="sparkles" size={scale(20)} color="#FFFFFF" />
+          </View>
+          <View style={styles.pointsPill}>
+            <Text style={styles.pointsPillText}>Authoritative Ledger</Text>
+          </View>
+        </View>
+
+        <Text style={styles.heroLabel}>Available Reward Points</Text>
+        <Text style={styles.heroPointsVal}>{availablePoints.toLocaleString()}</Text>
+
+        <View style={styles.heroStatsRow}>
+          <View style={styles.heroStatItem}>
+            <Text style={styles.heroStatLabel}>Lifetime Earned</Text>
+            <Text style={styles.heroStatVal}>+{lifetimeEarned.toLocaleString()}</Text>
+          </View>
+          <View style={styles.heroStatDivider} />
+          <View style={styles.heroStatItem}>
+            <Text style={styles.heroStatLabel}>Redeemed</Text>
+            <Text style={styles.heroStatVal}>{lifetimeRedeemed.toLocaleString()}</Text>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={styles.earnMoreBtn}
+          onPress={() => router.push("/Screens/Profile/refer-and-earned" as any)}
+          activeOpacity={0.85}
+        >
+          <Feather name="gift" size={scale(16)} color="#016073" />
+          <Text style={styles.earnMoreBtnText}>Earn More Points via Referrals</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Transactions Section Title */}
+      <View style={styles.sectionHeaderRow}>
+        <Text style={styles.sectionTitle}>Points Ledger History</Text>
+        <Text style={styles.sectionCount}>
+          {transactionsTotal} transaction{transactionsTotal === 1 ? "" : "s"}
+        </Text>
+      </View>
+    </View>
+  );
+
   return (
-    <View style={styles.root}>
+    <SafeAreaView style={styles.root} edges={["top"]}>
       <StatusBar style="dark" />
 
-      {/* 1. Header with SafeAreaView */}
-      <SafeAreaView edges={["top"]} style={styles.safeAreaHeader}>
-        <View style={styles.navBar}>
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => router.back()}
-            style={styles.backButton}
-          >
-            <Feather name="arrow-left" size={scale(22)} color="#1E293B" />
-          </TouchableOpacity>
-          <Text style={styles.navTitle}>Loyalty</Text>
+      {/* Top Nav */}
+      <View style={styles.topNav}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => router.back()}
+          activeOpacity={0.7}
+        >
+          <Feather name="arrow-left" size={scale(20)} color="#016073" />
+        </TouchableOpacity>
+        <View style={styles.topNavCenter}>
+          <Text style={styles.navTitle}>Rewards Wallet</Text>
+          <Text style={styles.navSub}>Points Balance & Transaction Ledger</Text>
         </View>
-        <View style={styles.headerDivider} />
-      </SafeAreaView>
+        <TouchableOpacity
+          style={styles.referNavBtn}
+          onPress={() => router.push("/Screens/Profile/refer-and-earned" as any)}
+          activeOpacity={0.7}
+        >
+          <Feather name="share-2" size={scale(16)} color="#016073" />
+        </TouchableOpacity>
+      </View>
 
-      {/* 2. Scrollable Body */}
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {/* Your Points Hero Card */}
-        <View style={styles.pointsCard}>
-          <View style={styles.pointsTopRow}>
-            <View>
-              <Text style={styles.yourPointsLabel}>Your Points</Text>
-              <Text style={styles.pointsValueText}>{points.toFixed(2)}</Text>
+      {walletLoading && !wallet ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#016073" />
+          <Text style={styles.loadingText}>Loading rewards wallet...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={transactions}
+          keyExtractor={(item) => item._id || item.idempotencyKey}
+          renderItem={({ item }) => <TransactionCard item={item} />}
+          ListHeaderComponent={renderHeader}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.3}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={["#016073"]}
+            />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="receipt-outline" size={scale(48)} color="#94A3B8" />
+              <Text style={styles.emptyTitle}>No Transactions Recorded</Text>
+              <Text style={styles.emptySubtitle}>
+                Invite your friends or participate in loyalty campaigns to earn bonus points!
+              </Text>
+              <TouchableOpacity
+                style={styles.emptyActionBtn}
+                onPress={() => router.push("/Screens/Profile/refer-and-earned" as any)}
+                activeOpacity={0.8}
+              >
+                <Feather name="gift" size={scale(16)} color="#FFFFFF" />
+                <Text style={styles.emptyActionBtnText}>Invite & Earn Points</Text>
+              </TouchableOpacity>
             </View>
-
-            {/* Blue Ribbon/Medal Badge */}
-            <View style={styles.ribbonBadge}>
-              <Ionicons name="ribbon-outline" size={scale(24)} color="#ffffff" />
-            </View>
-          </View>
-
-          {/* Progress Bar */}
-          <View style={styles.progressTrack}>
-            <View style={styles.progressFill} />
-          </View>
-
-          <Text style={styles.earnSubtitle}>Earn points on every purchase</Text>
-
-          {/* View points history link */}
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() =>
-              Alert.alert(
-                "Points History",
-                "+150.00 pts - Order #ODR999999999\n+250.55 pts - Order #ODR888888888\n+500.00 pts - Signup Bonus"
-              )
-            }
-            style={styles.historyLinkRow}
-          >
-            <Text style={styles.historyLinkText}>View points history</Text>
-            <Feather name="arrow-right" size={scale(16)} color="#2563EB" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Section Heading */}
-        <Text style={styles.sectionTitle}>Redeem points</Text>
-
-        {/* 2-Column Grid of Loyalty Redeem Cards */}
-        <View style={styles.grid}>
-          {REDEEM_ITEMS.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              activeOpacity={0.85}
-              onPress={() =>
-                router.push({
-                  pathname: "/Screens/Profile/offer-details" as any,
-                  params: {
-                    id: item.id,
-                    title: item.title,
-                    pointsCost: String(item.pointsCost),
-                    description: item.description,
-                    imageUrl: item.imageUrl,
-                  },
-                })
-              }
-              style={styles.card}
-            >
-              {/* Product Thumbnail Container */}
-              <View style={styles.imageBox}>
-                <Image
-                  source={{ uri: item.imageUrl }}
-                  style={styles.productImage}
-                  contentFit="contain"
-                />
-
-                {/* Points Cost Pill Badge */}
-                <View style={styles.pointsPill}>
-                  <Ionicons
-                    name="ribbon-outline"
-                    size={scale(11)}
-                    color="#1E293B"
-                  />
-                  <Text style={styles.pointsPillText}>
-                    {item.pointsCost} RP
-                  </Text>
-                </View>
-              </View>
-
-              {/* Card Body Text */}
-              <View style={styles.cardBody}>
-                <Text style={styles.itemTitle}>{item.title}</Text>
-                <Text style={styles.itemDescription}>
-                  {item.description}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </ScrollView>
-    </View>
+          }
+        />
+      )}
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#F8FAFC",
   },
-  safeAreaHeader: {
-    backgroundColor: "#ffffff",
-  },
-  navBar: {
-    height: moderateScale(48),
+  topNav: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: scale(16),
+    paddingTop: moderateScale(8),
+    paddingBottom: moderateScale(12),
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+    gap: scale(12),
   },
-  backButton: {
-    width: scale(36),
-    height: scale(36),
+  backBtn: {
+    width: scale(38),
+    height: scale(38),
+    borderRadius: scale(19),
+    backgroundColor: "#E6F4F6",
+    alignItems: "center",
     justifyContent: "center",
-    marginRight: scale(6),
+  },
+  topNavCenter: {
+    flex: 1,
   },
   navTitle: {
-    fontSize: moderateScale(18),
-    fontWeight: "700",
-    color: "#1E293B",
+    fontSize: moderateScale(16),
+    fontWeight: "800",
+    color: "#0F172A",
   },
-  headerDivider: {
-    height: 1,
-    backgroundColor: "#F1F5F9",
+  navSub: {
+    fontSize: moderateScale(11),
+    color: "#64748B",
+    marginTop: scale(1),
   },
-  scrollContent: {
+  referNavBtn: {
+    width: scale(38),
+    height: scale(38),
+    borderRadius: scale(19),
+    backgroundColor: "#E6F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: scale(10),
+  },
+  loadingText: {
+    fontSize: moderateScale(13),
+    color: "#64748B",
+  },
+  listContent: {
     padding: scale(16),
     paddingBottom: moderateScale(40),
   },
-  pointsCard: {
-    backgroundColor: "#ffffff",
-    borderRadius: scale(14),
-    padding: scale(16),
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    marginBottom: moderateScale(22),
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 2,
+  headerContainer: {
+    marginBottom: moderateScale(12),
   },
-  pointsTopRow: {
+  heroCard: {
+    backgroundColor: "#016073",
+    borderRadius: scale(16),
+    padding: scale(18),
+    shadowColor: "#016073",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 4,
+    marginBottom: moderateScale(16),
+  },
+  heroTop: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: moderateScale(10),
   },
-  yourPointsLabel: {
-    fontSize: moderateScale(13),
-    color: "#2563EB",
-    fontWeight: "700",
-    marginBottom: moderateScale(2),
-  },
-  pointsValueText: {
-    fontSize: moderateScale(26),
-    fontWeight: "900",
-    color: "#1E293B",
-  },
-  ribbonBadge: {
-    width: scale(44),
-    height: scale(44),
-    borderRadius: scale(22),
-    backgroundColor: "#2563EB",
+  heroIconCircle: {
+    width: scale(38),
+    height: scale(38),
+    borderRadius: scale(19),
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
     alignItems: "center",
     justifyContent: "center",
   },
-  progressTrack: {
-    height: scale(5),
-    backgroundColor: "#E2E8F0",
-    borderRadius: scale(2.5),
-    overflow: "hidden",
-    marginBottom: moderateScale(10),
+  pointsPill: {
+    backgroundColor: "rgba(255, 255, 255, 0.25)",
+    paddingHorizontal: scale(10),
+    paddingVertical: moderateScale(4),
+    borderRadius: scale(12),
   },
-  progressFill: {
-    width: "25%",
-    height: "100%",
-    backgroundColor: "#2563EB",
-    borderRadius: scale(2.5),
+  pointsPillText: {
+    color: "#FFFFFF",
+    fontSize: moderateScale(10.5),
+    fontWeight: "700",
   },
-  earnSubtitle: {
-    fontSize: moderateScale(12.5),
+  heroLabel: {
+    color: "rgba(255, 255, 255, 0.85)",
+    fontSize: moderateScale(12),
     fontWeight: "600",
-    color: "#1E293B",
-    marginBottom: moderateScale(14),
+    marginTop: moderateScale(12),
   },
-  historyLinkRow: {
+  heroPointsVal: {
+    color: "#FFFFFF",
+    fontSize: moderateScale(32),
+    fontWeight: "900",
+    marginTop: scale(2),
+    letterSpacing: -0.5,
+  },
+  heroStatsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.12)",
+    borderRadius: scale(10),
+    paddingVertical: moderateScale(10),
+    paddingHorizontal: scale(12),
+    marginTop: moderateScale(14),
+  },
+  heroStatItem: {
+    flex: 1,
+    alignItems: "center",
+  },
+  heroStatLabel: {
+    color: "rgba(255, 255, 255, 0.75)",
+    fontSize: moderateScale(10.5),
+    fontWeight: "600",
+  },
+  heroStatVal: {
+    color: "#FFFFFF",
+    fontSize: moderateScale(14),
+    fontWeight: "800",
+    marginTop: scale(2),
+  },
+  heroStatDivider: {
+    width: 1,
+    height: "60%",
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+  },
+  earnMoreBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: scale(6),
+    backgroundColor: "#FFFFFF",
+    paddingVertical: moderateScale(10),
+    borderRadius: scale(8),
+    marginTop: moderateScale(14),
+  },
+  earnMoreBtnText: {
+    color: "#016073",
+    fontSize: moderateScale(13),
+    fontWeight: "800",
+  },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: moderateScale(4),
+  },
+  sectionTitle: {
+    fontSize: moderateScale(14.5),
+    fontWeight: "800",
+    color: "#0F172A",
+  },
+  sectionCount: {
+    fontSize: moderateScale(11.5),
+    color: "#64748B",
+  },
+  txnCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#FFFFFF",
+    padding: scale(12),
+    borderRadius: scale(10),
+    marginBottom: moderateScale(8),
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  txnLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    gap: scale(10),
+  },
+  txnIconWrap: {
+    width: scale(36),
+    height: scale(36),
+    borderRadius: scale(18),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  txnInfo: {
+    flex: 1,
+  },
+  txnReason: {
+    fontSize: moderateScale(13),
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+  txnDate: {
+    fontSize: moderateScale(10.5),
+    color: "#64748B",
+    marginTop: scale(1),
+  },
+  txnRight: {
+    alignItems: "flex-end",
+    gap: scale(2),
+  },
+  txnPoints: {
+    fontSize: moderateScale(14),
+    fontWeight: "800",
+  },
+  balanceAfterText: {
+    fontSize: moderateScale(10),
+    color: "#94A3B8",
+  },
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: moderateScale(50),
+    paddingHorizontal: scale(24),
+  },
+  emptyTitle: {
+    fontSize: moderateScale(15),
+    fontWeight: "800",
+    color: "#0F172A",
+    marginTop: moderateScale(10),
+  },
+  emptySubtitle: {
+    fontSize: moderateScale(12),
+    color: "#64748B",
+    textAlign: "center",
+    marginTop: scale(4),
+    lineHeight: scale(16),
+    marginBottom: moderateScale(18),
+  },
+  emptyActionBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: scale(6),
+    backgroundColor: "#016073",
+    paddingHorizontal: scale(18),
+    paddingVertical: moderateScale(10),
+    borderRadius: scale(8),
   },
-  historyLinkText: {
-    fontSize: moderateScale(13.5),
-    fontWeight: "700",
-    color: "#2563EB",
-  },
-  sectionTitle: {
-    fontSize: moderateScale(16),
+  emptyActionBtnText: {
+    color: "#FFFFFF",
+    fontSize: moderateScale(12.5),
     fontWeight: "800",
-    color: "#1E293B",
-    marginBottom: moderateScale(14),
-  },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    gap: scale(10),
-  },
-  card: {
-    width: "48%",
-    marginBottom: moderateScale(12),
-  },
-  imageBox: {
-    width: "100%",
-    height: scale(115),
-    backgroundColor: "#E0F2FE",
-    borderRadius: scale(12),
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
-    padding: scale(6),
-  },
-  productImage: {
-    width: "80%",
-    height: "80%",
-  },
-  pointsPill: {
-    position: "absolute",
-    top: scale(6),
-    right: scale(6),
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-    paddingHorizontal: scale(6),
-    paddingVertical: scale(2),
-    borderRadius: scale(6),
-    gap: scale(2),
-  },
-  pointsPillText: {
-    fontSize: moderateScale(9.5),
-    fontWeight: "700",
-    color: "#1E293B",
-  },
-  cardBody: {
-    paddingVertical: moderateScale(6),
-    paddingHorizontal: scale(2),
-  },
-  itemTitle: {
-    fontSize: moderateScale(10.5),
-    fontWeight: "800",
-    color: "#1E293B",
-    lineHeight: moderateScale(13.5),
-    marginBottom: moderateScale(2),
-  },
-  itemDescription: {
-    fontSize: moderateScale(10),
-    color: "#475569",
-    lineHeight: moderateScale(13),
   },
 });

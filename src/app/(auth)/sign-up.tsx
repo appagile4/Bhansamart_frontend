@@ -2,9 +2,10 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { clearAuthError, registerUser } from "@/store/slices/authSlice";
 import { moderateScale, scale } from "@/theme";
 import { Feather, FontAwesome } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
+import { referralService } from "@/store/services/referralService";
 import {
   ActivityIndicator,
   Alert,
@@ -58,6 +59,17 @@ export default function SignUpScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // Referral Code State & Deep Link integration
+  const params = useLocalSearchParams<{
+    referralCode?: string;
+    ref?: string;
+    code?: string;
+  }>();
+  const [referralCode, setReferralCode] = useState("");
+  const [validatingRef, setValidatingRef] = useState(false);
+  const [refValidationMessage, setRefValidationMessage] = useState<string | null>(null);
+  const [isRefValid, setIsRefValid] = useState<boolean | null>(null);
+
   // Picker Modal State
   const [pickerType, setPickerType] = useState<
     "month" | "day" | "year" | "gender" | null
@@ -68,6 +80,46 @@ export default function SignUpScreen() {
       dispatch(clearAuthError());
     };
   }, [dispatch]);
+
+  // Deep Link referral code extraction & validation
+  useEffect(() => {
+    const incoming = (params.referralCode || params.ref || params.code || "")
+      .trim()
+      .toUpperCase();
+    if (incoming) {
+      setReferralCode(incoming);
+      verifyCode(incoming);
+    }
+  }, [params.referralCode, params.ref, params.code]);
+
+  const verifyCode = async (codeToVerify?: string) => {
+    const target = (codeToVerify || referralCode).trim().toUpperCase();
+    if (!target) {
+      Alert.alert("Referral Code", "Please enter a referral code to verify.");
+      return;
+    }
+
+    try {
+      setValidatingRef(true);
+      setRefValidationMessage(null);
+      const res = await referralService.validateReferralCode(target);
+      if (res && res.success) {
+        setIsRefValid(true);
+        setRefValidationMessage(
+          `✓ Valid code from ${res.data.referrerName}! You'll earn ${res.data.campaign.newCustomerWelcomePoints} bonus points.`
+        );
+      }
+    } catch (err: any) {
+      setIsRefValid(false);
+      setRefValidationMessage(
+        err.response?.data?.message ||
+          err.message ||
+          "Invalid or inactive referral code."
+      );
+    } finally {
+      setValidatingRef(false);
+    }
+  };
 
   const handleSignUp = async () => {
     if (!name.trim()) {
@@ -112,6 +164,7 @@ export default function SignUpScreen() {
           gender: selectedGender,
           password,
           confirmPassword,
+          referralCode: referralCode.trim().toUpperCase() || undefined,
         }),
       ).unwrap();
 
@@ -325,6 +378,65 @@ export default function SignUpScreen() {
                 />
               </TouchableOpacity>
             </View>
+          </View>
+
+          {/* Referral Code (Optional) */}
+          <View style={styles.inputGroup}>
+            <View style={styles.refLabelRow}>
+              <Text style={styles.inputLabel}>Referral Code (Optional)</Text>
+              <Text style={styles.refBonusBadge}>Get 50 Welcome Points</Text>
+            </View>
+            <View style={styles.inputBox}>
+              <TextInput
+                value={referralCode}
+                onChangeText={(text) => {
+                  setReferralCode(text.toUpperCase());
+                  setIsRefValid(null);
+                  setRefValidationMessage(null);
+                }}
+                placeholder="Enter friend's code (e.g. BM12AB)"
+                placeholderTextColor="#94A3B8"
+                autoCapitalize="characters"
+                style={[
+                  styles.textInput,
+                  referralCode.length > 0 && styles.refTextInputActive,
+                ]}
+              />
+              <TouchableOpacity
+                onPress={() => verifyCode()}
+                disabled={validatingRef || !referralCode.trim()}
+                style={[
+                  styles.verifyBtn,
+                  (!referralCode.trim() || validatingRef) && { opacity: 0.6 },
+                  isRefValid === true && styles.verifyBtnSuccess,
+                  isRefValid === false && styles.verifyBtnError,
+                ]}
+              >
+                {validatingRef ? (
+                  <ActivityIndicator size="small" color="#016073" />
+                ) : (
+                  <Text
+                    style={[
+                      styles.verifyBtnText,
+                      isRefValid === true && styles.verifyBtnTextSuccess,
+                      isRefValid === false && styles.verifyBtnTextError,
+                    ]}
+                  >
+                    {isRefValid === true ? "Verified" : "Verify"}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+            {refValidationMessage && (
+              <Text
+                style={[
+                  styles.refMessage,
+                  { color: isRefValid ? "#15803D" : "#DC2626" },
+                ]}
+              >
+                {refValidationMessage}
+              </Text>
+            )}
           </View>
 
           {/* Sign Up Button */}
@@ -685,5 +797,53 @@ const styles = StyleSheet.create({
   modalOptionTextActive: {
     fontWeight: "700",
     color: "#008080",
+  },
+  refLabelRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: scale(5),
+  },
+  refBonusBadge: {
+    fontSize: moderateScale(11),
+    color: "#016073",
+    fontWeight: "700",
+  },
+  refTextInputActive: {
+    letterSpacing: 1.5,
+    fontWeight: "800",
+    color: "#016073",
+  },
+  verifyBtn: {
+    backgroundColor: "#E6F4F6",
+    paddingHorizontal: scale(10),
+    paddingVertical: moderateScale(5),
+    borderRadius: scale(6),
+    borderWidth: 1,
+    borderColor: "#86C4CB",
+  },
+  verifyBtnSuccess: {
+    backgroundColor: "#DCFCE7",
+    borderColor: "#16A34A",
+  },
+  verifyBtnError: {
+    backgroundColor: "#FEF2F2",
+    borderColor: "#DC2626",
+  },
+  verifyBtnText: {
+    fontSize: moderateScale(11),
+    fontWeight: "800",
+    color: "#016073",
+  },
+  verifyBtnTextSuccess: {
+    color: "#15803D",
+  },
+  verifyBtnTextError: {
+    color: "#DC2626",
+  },
+  refMessage: {
+    fontSize: moderateScale(11),
+    fontWeight: "600",
+    marginTop: scale(4),
   },
 });

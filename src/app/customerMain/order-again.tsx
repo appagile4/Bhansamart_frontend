@@ -3,15 +3,18 @@ import { SelectLocationModal } from "@/components/home";
 import ProductCard, { DealProduct } from "@/components/home/productcard";
 import { useCart } from "@/context/cart-context";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { fetchCustomerOrders, OrderItem } from "@/store/slices/orderSlice";
 import { fetchPublicProducts } from "@/store/slices/productSlice";
 import { moderateScale, scale, useTheme } from "@/theme";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Dimensions,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -24,172 +27,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = (width - scale(38)) / 2;
 
-// Top 9 curated bestselling products across all categories with highest sales
-const TOP_9_BESTSELLERS: DealProduct[] = [
-  {
-    id: "top-sale-1",
-    name: "Maggi Masala - 2 Minutes Instant Noodles",
-    category: "Grocery & Kitchen",
-    subCategory: "Instant Food",
-    weight: "280g (Pack of 4)",
-    price: 120,
-    originalPrice: 140,
-    discountPct: 14,
-    rating: 4.9,
-    reviewsCount: 1250,
-    ordersCount: 4500,
-    isVeg: true,
-    image: {
-      uri: "https://images.unsplash.com/photo-1612927601601-6638404737ce?w=400&q=80",
-    },
-    tags: ["Bestseller", "Instant Food"],
-  },
-  {
-    id: "top-sale-2",
-    name: "Fortune Sunlite Refined Sunflower Oil",
-    category: "Grocery & Kitchen",
-    subCategory: "Oil, Ghee & Masala",
-    weight: "1 Litre Pouch",
-    price: 185,
-    originalPrice: 220,
-    discountPct: 16,
-    rating: 4.8,
-    reviewsCount: 980,
-    ordersCount: 3800,
-    isVeg: true,
-    image: {
-      uri: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400&q=80",
-    },
-    tags: ["Cooking Oil", "Popular"],
-  },
-  {
-    id: "top-sale-3",
-    name: "Amul Pure Cow Milk Desi Ghee",
-    category: "Grocery & Kitchen",
-    subCategory: "Oil, Ghee & Masala",
-    weight: "1 Litre Tin",
-    price: 590,
-    originalPrice: 650,
-    discountPct: 9,
-    rating: 4.9,
-    reviewsCount: 890,
-    ordersCount: 3200,
-    isVeg: true,
-    image: {
-      uri: "https://images.unsplash.com/photo-1589927986089-35812388d1f4?w=400&q=80",
-    },
-    tags: ["Pure Ghee", "Top Rated"],
-  },
-  {
-    id: "top-sale-4",
-    name: "Wai Wai Ready To Eat Chicken Masala Noodles",
-    category: "Snacks & Drinks",
-    subCategory: "Instant Noodles",
-    weight: "375g (Pack of 5)",
-    price: 110,
-    originalPrice: 130,
-    discountPct: 15,
-    rating: 4.8,
-    reviewsCount: 870,
-    ordersCount: 2950,
-    isVeg: false,
-    image: {
-      uri: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400&q=80",
-    },
-    tags: ["Non-Veg", "Snacks"],
-  },
-  {
-    id: "top-sale-5",
-    name: "Aashirvaad Superior MP Sharbati Atta",
-    category: "Grocery & Kitchen",
-    subCategory: "Atta, Rice & Dal",
-    weight: "5 kg Bag",
-    price: 325,
-    originalPrice: 375,
-    discountPct: 13,
-    rating: 4.9,
-    reviewsCount: 840,
-    ordersCount: 2800,
-    isVeg: true,
-    image: {
-      uri: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400&q=80",
-    },
-    tags: ["Fresh Atta", "Staple"],
-  },
-  {
-    id: "top-sale-6",
-    name: "Lay's Spanish Tomato Tango Potato Chips",
-    category: "Snacks & Drinks",
-    subCategory: "Chips & Namkeen",
-    weight: "115g Pack",
-    price: 50,
-    originalPrice: 60,
-    discountPct: 17,
-    rating: 4.7,
-    reviewsCount: 790,
-    ordersCount: 2600,
-    isVeg: true,
-    image: {
-      uri: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=400&q=80",
-    },
-    tags: ["Crispy", "Trending"],
-  },
-  {
-    id: "top-sale-7",
-    name: "Dettol Original Liquid Handwash Refill",
-    category: "Beauty & Personal Care",
-    subCategory: "Bath & Body",
-    weight: "750 ml Refill",
-    price: 135,
-    originalPrice: 160,
-    discountPct: 16,
-    rating: 4.9,
-    reviewsCount: 750,
-    ordersCount: 2450,
-    isVeg: undefined,
-    image: {
-      uri: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&q=80",
-    },
-    tags: ["Hygiene", "Protection"],
-  },
-  {
-    id: "top-sale-8",
-    name: "Tata Tea Gold Pure Darjeeling Long Leaf",
-    category: "Grocery & Kitchen",
-    subCategory: "Tea & Coffee",
-    weight: "500g Pouch",
-    price: 290,
-    originalPrice: 340,
-    discountPct: 15,
-    rating: 4.8,
-    reviewsCount: 710,
-    ordersCount: 2300,
-    isVeg: true,
-    image: {
-      uri: "https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=400&q=80",
-    },
-    tags: ["Rich Aroma", "Premium"],
-  },
-  {
-    id: "top-sale-9",
-    name: "Cadbury Dairy Milk Silk Chocolate Bar",
-    category: "Snacks & Drinks",
-    subCategory: "Chocolates & Candies",
-    weight: "150g Bar",
-    price: 175,
-    originalPrice: 195,
-    discountPct: 10,
-    rating: 4.9,
-    reviewsCount: 690,
-    ordersCount: 2150,
-    isVeg: true,
-    image: {
-      uri: "https://images.unsplash.com/photo-1549007994-cb92caebd54b?w=400&q=80",
-    },
-    tags: ["Smooth Silk", "Sweet Cravings"],
-  },
-];
-
 export default function OrderAgainScreen() {
   const router = useRouter();
   const theme = useTheme();
@@ -198,74 +35,171 @@ export default function OrderAgainScreen() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
   const { activeDisplayLocation } = useAppSelector((state) => state.address);
   const currentLocation =
-    activeDisplayLocation || "Baneshwor, Kathmandu, Bagmati, Nepal";
+    activeDisplayLocation || "Sector 24, Rohini, Delhi, India";
 
-  // Fetch live bestsellers from backend on mount
-  useEffect(() => {
-    dispatch(
-      fetchPublicProducts({
-        sortBy: "popularity",
-        limit: 9,
-      }),
-    );
+  // Redux state
+  const { publicProducts, publicLoading } = useAppSelector(
+    (state) => state.product
+  );
+  const { customerOrders, customerLoading } = useAppSelector(
+    (state) => state.order
+  );
+
+  // Fetch real data from backend
+  const loadData = useCallback(async () => {
+    try {
+      await Promise.allSettled([
+        dispatch(
+          fetchPublicProducts({
+            sortBy: "popularity",
+            limit: 30,
+          })
+        ),
+        dispatch(fetchCustomerOrders({ page: 1, limit: 30 })),
+      ]);
+    } catch (e) {
+      console.warn("Failed to load order-again data:", e);
+    }
   }, [dispatch]);
 
-  // Live products from Redux state
-  const { publicProducts } = useAppSelector((state) => state.product);
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
-  // Top 9 products normalized for ProductCard
-  const topProducts: DealProduct[] = useMemo(() => {
-    if (publicProducts && publicProducts.length >= 9) {
-      return publicProducts.slice(0, 9).map((prod, index) => {
-        const pId = String(prod._id || prod.id || `live-${index}`);
-        const pImg =
-          prod.images && prod.images.length > 0
-            ? { uri: prod.images[0].url }
-            : TOP_9_BESTSELLERS[index]?.image || {
-                uri: "https://images.unsplash.com/photo-1612927601601-6638404737ce?w=400&q=80",
-              };
-        const pOrigPrice =
-          Number(prod.originalPrice) || Number(prod.price) || 200;
-        const pPrice = Number(prod.price) || 150;
-        const discount =
-          pOrigPrice > pPrice
-            ? Math.round(((pOrigPrice - pPrice) / pOrigPrice) * 100)
-            : 0;
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  }, [loadData]);
 
-        return {
-          id: pId,
-          name: prod.name,
-          category: prod.category || "Grocery",
-          subCategory: prod.subCategory || "",
-          weight: prod.unit || "1 unit",
-          price: pPrice,
-          originalPrice: pOrigPrice,
-          discountPct: discount,
-          rating: prod.ratingsAverage || 4.8,
-          reviewsCount: prod.ratingsCount || 250,
-          ordersCount: prod.ordersCount || 1000,
-          image: pImg,
-          images: prod.images,
-          tags: prod.tags && prod.tags.length > 0 ? prod.tags : ["Top Sale"],
-        };
-      });
+  // 1. Previously ordered products extracted from customer's actual order history
+  const previousOrderedProducts: DealProduct[] = useMemo(() => {
+    if (!customerOrders || customerOrders.length === 0) return [];
+
+    const itemMap = new Map<
+      string,
+      { item: OrderItem; count: number; lastOrderedAt?: string }
+    >();
+
+    for (const order of customerOrders) {
+      if (!order.items || !Array.isArray(order.items)) continue;
+      for (const item of order.items) {
+        const id = String(
+          item.productId || item.product || item._id || item.name
+        );
+        if (itemMap.has(id)) {
+          const entry = itemMap.get(id)!;
+          entry.count += item.quantity || 1;
+        } else {
+          itemMap.set(id, {
+            item,
+            count: item.quantity || 1,
+            lastOrderedAt: order.createdAt,
+          });
+        }
+      }
     }
-    return TOP_9_BESTSELLERS;
+
+    return Array.from(itemMap.values()).map(({ item, count }) => {
+      const pId = String(
+        item.productId || item.product || item._id || item.name
+      );
+      const pPrice = Number(item.price) || 0;
+      const pOrigPrice = Number(item.originalPrice) || pPrice;
+      const discount =
+        pOrigPrice > pPrice
+          ? Math.round(((pOrigPrice - pPrice) / pOrigPrice) * 100)
+          : 0;
+
+      return {
+        id: pId,
+        name: item.name || "Product",
+        category: item.category || "Grocery",
+        weight: item.weight || "1 unit",
+        price: pPrice,
+        originalPrice: pOrigPrice,
+        discountPct: discount,
+        rating: 4.8,
+        reviewsCount: 150,
+        ordersCount: count,
+        image: item.imageUrl
+          ? { uri: item.imageUrl }
+          : {
+              uri: "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&q=80",
+            },
+        tags: [`Ordered ${count}x`],
+      };
+    });
+  }, [customerOrders]);
+
+  // 2. Real live bestselling products fetched from MongoDB backend
+  const liveBestsellers: DealProduct[] = useMemo(() => {
+    if (!publicProducts || publicProducts.length === 0) return [];
+
+    return publicProducts.map((prod) => {
+      const pId = String(prod._id || prod.id);
+      const imgUrl =
+        prod.images && prod.images.length > 0 && prod.images[0].url
+          ? prod.images[0].url
+          : "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&q=80";
+
+      const pPrice = Number(prod.price) || 0;
+      const pOrigPrice = Number(prod.originalPrice) || pPrice;
+      const discount =
+        pOrigPrice > pPrice
+          ? Math.round(((pOrigPrice - pPrice) / pOrigPrice) * 100)
+          : 0;
+
+      return {
+        id: pId,
+        name: prod.name,
+        category: prod.category || "Grocery",
+        subCategory: prod.subCategory || "",
+        weight: prod.unit || "1 unit",
+        price: pPrice,
+        originalPrice: pOrigPrice,
+        discountPct: discount,
+        rating: prod.ratingsAverage || 4.8,
+        reviewsCount: prod.ratingsCount || 0,
+        ordersCount: prod.ordersCount || 0,
+        image: { uri: imgUrl },
+        images: prod.images,
+        tags:
+          prod.tags && prod.tags.length > 0
+            ? prod.tags
+            : prod.visibility?.isBestSeller
+            ? ["Bestseller"]
+            : ["Popular"],
+      };
+    });
   }, [publicProducts]);
 
-  // Filtered products based on search bar input
-  const filteredProducts = useMemo(() => {
-    if (!searchQuery.trim()) return topProducts;
+  // Search filtering
+  const filteredPastProducts = useMemo(() => {
+    if (!searchQuery.trim()) return previousOrderedProducts;
     const query = searchQuery.toLowerCase().trim();
-    return topProducts.filter(
+    return previousOrderedProducts.filter(
       (p) =>
         p.name.toLowerCase().includes(query) ||
         p.category.toLowerCase().includes(query) ||
-        (p.subCategory && p.subCategory.toLowerCase().includes(query)),
+        (p.subCategory && p.subCategory.toLowerCase().includes(query))
     );
-  }, [topProducts, searchQuery]);
+  }, [previousOrderedProducts, searchQuery]);
+
+  const filteredBestsellers = useMemo(() => {
+    if (!searchQuery.trim()) return liveBestsellers;
+    const query = searchQuery.toLowerCase().trim();
+    return liveBestsellers.filter(
+      (p) =>
+        p.name.toLowerCase().includes(query) ||
+        p.category.toLowerCase().includes(query) ||
+        (p.subCategory && p.subCategory.toLowerCase().includes(query))
+    );
+  }, [liveBestsellers, searchQuery]);
 
   const handleProductPress = (product: DealProduct) => {
     router.push({
@@ -300,6 +234,8 @@ export default function OrderAgainScreen() {
       weight: product.weight,
     });
   };
+
+  const hasPastOrders = previousOrderedProducts.length > 0;
 
   return (
     <View style={styles.root}>
@@ -345,7 +281,7 @@ export default function OrderAgainScreen() {
             <TextInput
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholder="Search top bestselling products..."
+              placeholder="Search products to order again..."
               placeholderTextColor="#94A3B8"
               style={styles.searchInput}
             />
@@ -370,70 +306,163 @@ export default function OrderAgainScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#003844"]}
+            tintColor="#003844"
+          />
+        }
       >
-        {/* Reordering Illustration & Hero Banner Section */}
-        <View style={styles.illustrationSection}>
-          <View style={styles.bagIllustrationWrapper}>
-            <View style={styles.cloudLeft} />
-            <View style={styles.cloudRight} />
-
-            <View style={styles.groceryBag}>
-              <MaterialCommunityIcons
-                name="shopping"
-                size={scale(64)}
-                color="#D97706"
-              />
-              <View style={styles.foodBadges}>
-                <MaterialCommunityIcons
-                  name="food-apple"
-                  size={scale(22)}
-                  color="#DC2626"
-                />
-                <MaterialCommunityIcons
-                  name="bottle-soda-classic"
-                  size={scale(22)}
-                  color="#0284C7"
-                />
-                <MaterialCommunityIcons
-                  name="carrot"
-                  size={scale(22)}
-                  color="#EA580C"
-                />
+        {/* Previously Ordered Items Section (When Customer Has Past Orders) */}
+        {hasPastOrders ? (
+          <View style={styles.bestsellersSection}>
+            <View style={styles.sectionHeaderRow}>
+              <View>
+                <Text style={styles.bestsellersTitle}>Previously Ordered</Text>
+                <Text style={styles.bestsellersSubtitle}>
+                  Quickly reorder items from your past deliveries
+                </Text>
+              </View>
+              <View style={styles.topRankPill}>
+                <Feather name="repeat" size={scale(12)} color="#DC2626" />
+                <Text style={styles.topRankText}>
+                  {previousOrderedProducts.length} Items
+                </Text>
               </View>
             </View>
+
+            {filteredPastProducts.length > 0 ? (
+              <View style={styles.productsGrid}>
+                {filteredPastProducts.map((item) => (
+                  <View key={`past-${item.id}`} style={styles.productCardWrapper}>
+                    <ProductCard
+                      product={item}
+                      cardWidth={CARD_WIDTH}
+                      onPress={handleProductPress}
+                      onAddPress={handleAddToCart}
+                    />
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <View style={styles.noSearchBox}>
+                <Text style={styles.noSearchText}>
+                  No past items match "{searchQuery}"
+                </Text>
+              </View>
+            )}
           </View>
+        ) : (
+          /* Reordering Illustration & Hero Banner Section (Shown when no past orders) */
+          <View style={styles.illustrationSection}>
+            <View style={styles.bagIllustrationWrapper}>
+              <View style={styles.cloudLeft} />
+              <View style={styles.cloudRight} />
 
-          <Text style={styles.reorderingTitle}>Reordering Will Be Easy</Text>
-          <Text style={styles.reorderingSubtitle}>
-            Items you order most frequently show up here so you can reorder with
-            one tap.
-          </Text>
-        </View>
+              <View style={styles.groceryBag}>
+                <MaterialCommunityIcons
+                  name="shopping"
+                  size={scale(64)}
+                  color="#D97706"
+                />
+                <View style={styles.foodBadges}>
+                  <MaterialCommunityIcons
+                    name="food-apple"
+                    size={scale(22)}
+                    color="#DC2626"
+                  />
+                  <MaterialCommunityIcons
+                    name="bottle-soda-classic"
+                    size={scale(22)}
+                    color="#0284C7"
+                  />
+                  <MaterialCommunityIcons
+                    name="carrot"
+                    size={scale(22)}
+                    color="#EA580C"
+                  />
+                </View>
+              </View>
+            </View>
 
-        {/* 3. Top 9 Most Sold Products Section (Using ProductCard) */}
+            <Text style={styles.reorderingTitle}>Reordering Will Be Easy</Text>
+            <Text style={styles.reorderingSubtitle}>
+              Items you order most frequently will show up here for fast 1-tap
+              reordering. Explore our popular store products below to get
+              started!
+            </Text>
+          </View>
+        )}
+
+        {/* 3. Live Store Bestsellers Section (Real Products from Backend) */}
         <View style={styles.bestsellersSection}>
           <View style={styles.sectionHeaderRow}>
             <View>
-              <Text style={styles.bestsellersTitle}>Best sellers</Text>
+              <Text style={styles.bestsellersTitle}>
+                {hasPastOrders ? "Popular Products" : "Best sellers"}
+              </Text>
               <Text style={styles.bestsellersSubtitle}>
-                Highest selling items across all categories
+                {hasPastOrders
+                  ? "Explore trending essentials from nearby stores"
+                  : "Highest selling items across all categories"}
               </Text>
             </View>
+            {liveBestsellers.length > 0 && (
+              <View
+                style={[
+                  styles.topRankPill,
+                  { backgroundColor: "#DCFCE7" },
+                ]}
+              >
+                <Ionicons name="sparkles" size={scale(12)} color="#16A34A" />
+                <Text style={[styles.topRankText, { color: "#16A34A" }]}>
+                  {liveBestsellers.length} Live
+                </Text>
+              </View>
+            )}
           </View>
 
-          {/* 2-Column Responsive Grid with ProductCard */}
-          <View style={styles.productsGrid}>
-            {filteredProducts.map((item) => (
-              <View key={item.id} style={styles.productCardWrapper}>
-                <ProductCard
-                  product={item}
-                  cardWidth={CARD_WIDTH}
-                  onPress={handleProductPress}
-                  onAddPress={handleAddToCart}
-                />
-              </View>
-            ))}
-          </View>
+          {/* Loading Indicator */}
+          {publicLoading && liveBestsellers.length === 0 ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#003844" />
+              <Text style={styles.loadingText}>
+                Loading fresh products from store...
+              </Text>
+            </View>
+          ) : filteredBestsellers.length > 0 ? (
+            /* 2-Column Responsive Grid with ProductCard */
+            <View style={styles.productsGrid}>
+              {filteredBestsellers.map((item) => (
+                <View
+                  key={`best-${item.id}`}
+                  style={styles.productCardWrapper}
+                >
+                  <ProductCard
+                    product={item}
+                    cardWidth={CARD_WIDTH}
+                    onPress={handleProductPress}
+                    onAddPress={handleAddToCart}
+                  />
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.noSearchBox}>
+              <MaterialCommunityIcons
+                name="package-variant"
+                size={scale(40)}
+                color="#94A3B8"
+              />
+              <Text style={styles.noSearchText}>
+                {searchQuery.trim()
+                  ? `No products found matching "${searchQuery}"`
+                  : "No store products currently available."}
+              </Text>
+            </View>
+          )}
         </View>
       </ScrollView>
 
@@ -595,6 +624,7 @@ const styles = StyleSheet.create({
   bestsellersSection: {
     paddingHorizontal: scale(14),
     paddingTop: scale(8),
+    marginBottom: scale(14),
   },
   sectionHeaderRow: {
     flexDirection: "row",
@@ -621,7 +651,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(8),
     paddingVertical: scale(4),
     borderRadius: scale(10),
-    gap: scale(3),
+    gap: scale(4),
   },
   topRankText: {
     fontSize: moderateScale(11),
@@ -636,5 +666,28 @@ const styles = StyleSheet.create({
   },
   productCardWrapper: {
     width: CARD_WIDTH,
+  },
+  loadingContainer: {
+    paddingVertical: scale(40),
+    alignItems: "center",
+    justifyContent: "center",
+    gap: scale(10),
+  },
+  loadingText: {
+    fontSize: moderateScale(12.5),
+    color: "#64748B",
+    fontWeight: "500",
+  },
+  noSearchBox: {
+    paddingVertical: scale(30),
+    alignItems: "center",
+    justifyContent: "center",
+    gap: scale(8),
+  },
+  noSearchText: {
+    fontSize: moderateScale(13),
+    color: "#94A3B8",
+    fontWeight: "500",
+    textAlign: "center",
   },
 });

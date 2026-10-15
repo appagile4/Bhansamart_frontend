@@ -8,6 +8,7 @@ export interface RegisterPayload {
   address?: string;
   dateOfBirth: string;
   gender: string;
+  referralCode?: string;
 }
 
 export interface LoginPayload {

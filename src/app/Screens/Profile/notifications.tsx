@@ -1,15 +1,19 @@
-import { moderateScale, scale, useTheme } from "@/theme";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
-  Feather,
-  Ionicons,
-  MaterialCommunityIcons,
-} from "@expo/vector-icons";
+  fetchCustomerNotifications,
+  markCustomerNotificationRead,
+  markAllCustomerNotificationsRead,
+} from "@/store/slices/referralSlice";
+import { CustomerNotificationItem } from "@/store/services/referralService";
+import { moderateScale, scale } from "@/theme";
+import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useCallback, useState } from "react";
+import React, { memo, useCallback, useEffect, useState } from "react";
 import {
-  Alert,
+  ActivityIndicator,
   FlatList,
+  RefreshControl,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -17,309 +21,195 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-export interface NotificationItem {
-  id: string;
-  type: "order" | "offer" | "reward" | "system";
-  title: string;
-  message: string;
-  timestamp: string;
-  read: boolean;
-  route?: string;
-}
-
-const INITIAL_NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: "notif-1",
-    type: "order",
-    title: "Order Delivered! 📦",
-    message:
-      "Your order #BM-992817 with 3 items has been delivered successfully to Baneshwor. Enjoy your fresh groceries!",
-    timestamp: "10 mins ago",
-    read: false,
-    route: "/Screens/Profile/your-orders",
-  },
-  {
-    id: "notif-2",
-    type: "offer",
-    title: "20% Flash Coupon Added 🎉",
-    message:
-      "Exclusive voucher: Get 20% OFF on all Snacks & Juices orders above Rs.999. Valid till midnight!",
-    timestamp: "2 hours ago",
-    read: false,
-    route: "/Screens/Profile/collected-coupons",
-  },
-  {
-    id: "notif-3",
-    type: "reward",
-    title: "Loyalty Points Credited 🌟",
-    message:
-      "You earned +50.00 Reward Points (RP) from your previous order. Check your balance now.",
-    timestamp: "Yesterday",
-    read: true,
-    route: "/Screens/Profile/loyalty",
-  },
-  {
-    id: "notif-4",
-    type: "order",
-    title: "Order Out for Delivery 🚴",
-    message:
-      "Rider Bijay is on the way with your order #BM-992817. Delivery expected within 15 minutes.",
-    timestamp: "Yesterday",
-    read: true,
-    route: "/Screens/Profile/your-orders",
-  },
-  {
-    id: "notif-5",
-    type: "offer",
-    title: "Weekend Grocery Bonanza 🍎",
-    message:
-      "Fresh farm vegetables and seasonal fruits at up to 30% discount this Saturday and Sunday.",
-    timestamp: "3 days ago",
-    read: true,
-    route: "/Screens/Category/categoryExpand",
-  },
-  {
-    id: "notif-6",
-    type: "system",
-    title: "Account Security Verified 🔒",
-    message:
-      "Your mobile number 9860412256 and login credentials were verified successfully.",
-    timestamp: "5 days ago",
-    read: true,
-  },
-];
-
-const getIconForType = (type: NotificationItem["type"]) => {
-  switch (type) {
-    case "order":
-      return {
-        icon: <Ionicons name="cube-outline" size={scale(20)} color="#0284C7" />,
-        bg: "#E0F2FE",
-      };
-    case "offer":
-      return {
-        icon: (
-          <MaterialCommunityIcons
-            name="ticket-percent-outline"
-            size={scale(20)}
-            color="#16A34A"
-          />
-        ),
-        bg: "#DCFCE7",
-      };
-    case "reward":
-      return {
-        icon: <Ionicons name="star-outline" size={scale(20)} color="#D97706" />,
-        bg: "#FEF3C7",
-      };
-    case "system":
-    default:
-      return {
-        icon: (
-          <MaterialCommunityIcons
-            name="shield-check-outline"
-            size={scale(20)}
-            color="#7C3AED"
-          />
-        ),
-        bg: "#EDE9FE",
-      };
-  }
-};
-
-const NotificationCardItem = React.memo(function NotificationCardItem({
+// ── Notification Item Row ──────────────────────────────────────────────
+const NotificationRow = memo(function NotificationRow({
   item,
   onPress,
 }: {
-  item: NotificationItem;
-  onPress: (item: NotificationItem) => void;
+  item: CustomerNotificationItem;
+  onPress: (item: CustomerNotificationItem) => void;
 }) {
-  const iconConfig = getIconForType(item.type);
+  const isReferralReward =
+    item.type === "referral_reward" || item.type === "referral_success";
+  const isWelcomeReward = item.type === "welcome_reward";
+  const isReward = item.type === "reward" || isReferralReward || isWelcomeReward;
+  const isOrder = item.type === "order";
+
+  const dateFormatted = item.createdAt
+    ? new Date(item.createdAt).toLocaleDateString([], {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "Recently";
 
   return (
     <TouchableOpacity
-      activeOpacity={0.82}
+      style={[styles.notifCard, !item.isRead && styles.notifCardUnread]}
+      activeOpacity={0.8}
       onPress={() => onPress(item)}
-      style={[
-        styles.notificationCard,
-        !item.read && styles.notificationCardUnread,
-      ]}
     >
-      {/* Left Icon Container */}
-      <View style={[styles.iconBox, { backgroundColor: iconConfig.bg }]}>
-        {iconConfig.icon}
+      <View
+        style={[
+          styles.notifIconWrap,
+          {
+            backgroundColor: isReferralReward
+              ? "#E6F4F6"
+              : isWelcomeReward
+              ? "#DCFCE7"
+              : isOrder
+              ? "#FEF3C7"
+              : "#F1F5F9",
+          },
+        ]}
+      >
+        {isReferralReward ? (
+          <Feather name="gift" size={scale(18)} color="#016073" />
+        ) : isWelcomeReward ? (
+          <Ionicons name="sparkles" size={scale(18)} color="#15803D" />
+        ) : isOrder ? (
+          <Feather name="package" size={scale(18)} color="#B45309" />
+        ) : (
+          <Feather name="bell" size={scale(18)} color="#64748B" />
+        )}
       </View>
 
-      {/* Content Column */}
-      <View style={styles.cardContentCol}>
-        <View style={styles.cardHeaderRow}>
-          <Text
-            style={[
-              styles.itemTitle,
-              !item.read && styles.itemTitleUnread,
-            ]}
-            numberOfLines={1}
-          >
+      <View style={styles.notifContent}>
+        <View style={styles.notifTopRow}>
+          <Text style={styles.notifTitle} numberOfLines={1}>
             {item.title}
           </Text>
-          {!item.read && <View style={styles.unreadDot} />}
+          {!item.isRead && <View style={styles.unreadDot} />}
         </View>
 
-        <Text style={styles.itemMessageText}>{item.message}</Text>
+        <Text style={styles.notifMessage} numberOfLines={3}>
+          {item.message}
+        </Text>
 
-        <View style={styles.footerRow}>
-          <Text style={styles.timestampText}>{item.timestamp}</Text>
-          {item.route && (
-            <View style={styles.actionPrompt}>
-              <Text style={styles.actionPromptText}>View Details</Text>
-              <Feather name="chevron-right" size={scale(13)} color="#008080" />
-            </View>
-          )}
-        </View>
+        <Text style={styles.notifTime}>{dateFormatted}</Text>
       </View>
     </TouchableOpacity>
   );
 });
 
-export default function NotificationsScreen() {
+export default function CustomerNotificationsScreen() {
   const router = useRouter();
-  const theme = useTheme();
+  const dispatch = useAppDispatch();
 
-  const [notifications, setNotifications] =
-    useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
-  const [activeFilter, setActiveFilter] = useState<
-    "all" | "order" | "offer" | "reward"
-  >("all");
+  const {
+    notifications,
+    unreadNotificationsCount,
+    notificationsLoading,
+  } = useAppSelector((state) => state.referral);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const [refreshing, setRefreshing] = useState(false);
 
-  const filteredNotifications = notifications.filter((item) => {
-    if (activeFilter === "all") return true;
-    return item.type === activeFilter;
-  });
+  const loadData = useCallback(() => {
+    dispatch(fetchCustomerNotifications({ page: 1, limit: 30 }));
+  }, [dispatch]);
 
-  const handleMarkAllRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-    Alert.alert("All Read", "All notifications marked as read.");
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await dispatch(fetchCustomerNotifications({ page: 1, limit: 30 }));
+    setRefreshing(false);
   };
 
-  const handleNotificationPress = useCallback((item: NotificationItem) => {
-    // Mark as read
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === item.id ? { ...n, read: true } : n))
-    );
-
-    if (item.route) {
-      router.push(item.route as any);
-    } else {
-      Alert.alert(item.title, item.message);
+  const handleNotificationPress = async (item: CustomerNotificationItem) => {
+    if (!item.isRead) {
+      dispatch(markCustomerNotificationRead(item._id));
     }
-  }, [router]);
 
-  const renderItem = useCallback(
-    ({ item }: { item: NotificationItem }) => (
-      <NotificationCardItem
-        item={item}
-        onPress={handleNotificationPress}
-      />
-    ),
-    [handleNotificationPress]
-  );
+    // Contextual routing based on notification type
+    if (
+      item.type === "referral_reward" ||
+      item.type === "referral_success" ||
+      item.type === "welcome_reward" ||
+      item.type === "reward"
+    ) {
+      router.push("/Screens/Profile/loyalty" as any);
+    } else if (item.type === "order") {
+      router.push("/Screens/Profile/your-orders" as any);
+    }
+  };
+
+  const handleMarkAllRead = () => {
+    if (unreadNotificationsCount === 0) return;
+    dispatch(markAllCustomerNotificationsRead());
+  };
 
   return (
-    <View style={styles.root}>
+    <SafeAreaView style={styles.root} edges={["top"]}>
       <StatusBar style="dark" />
 
-      {/* 1. Header with SafeAreaView */}
-      <SafeAreaView edges={["top"]} style={styles.safeAreaHeader}>
-        <View style={styles.navBar}>
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => router.back()}
-            style={styles.backButton}
-          >
-            <Feather name="arrow-left" size={scale(22)} color="#1E293B" />
-          </TouchableOpacity>
-
-          <View style={styles.titleWrapper}>
-            <Text style={styles.navTitle}>Notifications</Text>
-            {unreadCount > 0 && (
-              <View style={styles.headerBadge}>
-                <Text style={styles.headerBadgeText}>{unreadCount}</Text>
-              </View>
-            )}
-          </View>
-
-          {unreadCount > 0 ? (
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={handleMarkAllRead}
-              style={styles.markAllBtn}
-            >
-              <Text style={styles.markAllText}>Mark all read</Text>
-            </TouchableOpacity>
-          ) : (
-            <View style={{ width: scale(36) }} />
-          )}
+      {/* Top Nav */}
+      <View style={styles.topNav}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => router.back()}
+          activeOpacity={0.7}
+        >
+          <Feather name="arrow-left" size={scale(20)} color="#016073" />
+        </TouchableOpacity>
+        <View style={styles.topNavCenter}>
+          <Text style={styles.navTitle}>Notifications</Text>
+          <Text style={styles.navSub}>
+            {unreadNotificationsCount > 0
+              ? `${unreadNotificationsCount} unread update${unreadNotificationsCount === 1 ? "" : "s"}`
+              : "All caught up"}
+          </Text>
         </View>
-        <View style={styles.headerDivider} />
-      </SafeAreaView>
 
-      {/* 2. Filter Tabs */}
-      <View style={styles.filterTabsRow}>
-        {[
-          { key: "all", label: "All" },
-          { key: "order", label: "Orders" },
-          { key: "offer", label: "Offers" },
-          { key: "reward", label: "Rewards" },
-        ].map((tab) => {
-          const isActive = activeFilter === tab.key;
-          return (
-            <TouchableOpacity
-              key={tab.key}
-              activeOpacity={0.8}
-              onPress={() => setActiveFilter(tab.key as any)}
-              style={[
-                styles.tabPill,
-                isActive && styles.tabPillActive,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.tabPillText,
-                  isActive && styles.tabPillTextActive,
-                ]}
-              >
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+        {unreadNotificationsCount > 0 && (
+          <TouchableOpacity
+            style={styles.markAllBtn}
+            onPress={handleMarkAllRead}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.markAllBtnText}>Read All</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
-      {/* 3. Notifications List */}
-      <FlatList
-        data={filteredNotifications}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <MaterialCommunityIcons
-              name="bell-sleep-outline"
-              size={scale(60)}
-              color="#CBD5E1"
+      {notificationsLoading && notifications.length === 0 ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#016073" />
+          <Text style={styles.loadingText}>Loading notifications...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={notifications}
+          keyExtractor={(item) => item._id}
+          renderItem={({ item }) => (
+            <NotificationRow item={item} onPress={handleNotificationPress} />
+          )}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={["#016073"]}
             />
-            <Text style={styles.emptyTitle}>No notifications</Text>
-            <Text style={styles.emptySubtitle}>
-              You are all caught up! We will alert you when you have updates or
-              discounts.
-            </Text>
-          </View>
-        }
-      />
-    </View>
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyIconCircle}>
+                <Ionicons name="notifications-outline" size={scale(40)} color="#016073" />
+              </View>
+              <Text style={styles.emptyTitle}>No Notifications Yet</Text>
+              <Text style={styles.emptySubtitle}>
+                You will receive updates here about order status, referral rewards, and special promotions.
+              </Text>
+            </View>
+          }
+        />
+      )}
+    </SafeAreaView>
   );
 }
 
@@ -328,190 +218,144 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F8FAFC",
   },
-  safeAreaHeader: {
-    backgroundColor: "#FFFFFF",
-  },
-  navBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: scale(16),
-    paddingVertical: scale(12),
-  },
-  backButton: {
-    width: scale(36),
-    height: scale(36),
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  titleWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: scale(8),
-  },
-  navTitle: {
-    fontSize: moderateScale(17),
-    fontWeight: "700",
-    color: "#0F172A",
-  },
-  headerBadge: {
-    backgroundColor: "#EF4444",
-    paddingHorizontal: scale(7),
-    paddingVertical: scale(2),
-    borderRadius: scale(10),
-  },
-  headerBadgeText: {
-    color: "#FFFFFF",
-    fontSize: moderateScale(11),
-    fontWeight: "700",
-  },
-  markAllBtn: {
-    paddingVertical: scale(4),
-    paddingHorizontal: scale(6),
-  },
-  markAllText: {
-    fontSize: moderateScale(12.5),
-    fontWeight: "600",
-    color: "#008080",
-  },
-  headerDivider: {
-    height: 1,
-    backgroundColor: "#F1F5F9",
-  },
-  filterTabsRow: {
+  topNav: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: scale(16),
-    paddingVertical: scale(10),
-    gap: scale(8),
+    paddingTop: moderateScale(8),
+    paddingBottom: moderateScale(12),
     backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
     borderBottomColor: "#F1F5F9",
+    gap: scale(12),
   },
-  tabPill: {
-    paddingHorizontal: scale(14),
-    paddingVertical: scale(6),
-    borderRadius: scale(8),
-    backgroundColor: "#F1F5F9",
-    borderWidth: 1,
-    borderColor: "transparent",
+  backBtn: {
+    width: scale(38),
+    height: scale(38),
+    borderRadius: scale(19),
+    backgroundColor: "#E6F4F6",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  tabPillActive: {
-    backgroundColor: "#F0FDF4",
-    borderColor: "#86EFAC",
+  topNavCenter: {
+    flex: 1,
   },
-  tabPillText: {
-    fontSize: moderateScale(12.5),
-    fontWeight: "600",
+  navTitle: {
+    fontSize: moderateScale(16),
+    fontWeight: "800",
+    color: "#0F172A",
+  },
+  navSub: {
+    fontSize: moderateScale(11),
     color: "#64748B",
+    marginTop: scale(1),
   },
-  tabPillTextActive: {
-    color: "#16A34A",
+  markAllBtn: {
+    backgroundColor: "#E6F4F6",
+    paddingHorizontal: scale(10),
+    paddingVertical: moderateScale(5),
+    borderRadius: scale(12),
+  },
+  markAllBtnText: {
+    fontSize: moderateScale(11.5),
     fontWeight: "700",
+    color: "#016073",
   },
-  listContent: {
-    paddingHorizontal: scale(16),
-    paddingTop: scale(12),
-    paddingBottom: scale(40),
+  loadingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
     gap: scale(10),
   },
-  notificationCard: {
+  loadingText: {
+    fontSize: moderateScale(13),
+    color: "#64748B",
+  },
+  listContent: {
+    padding: scale(16),
+    paddingBottom: moderateScale(40),
+  },
+  notifCard: {
     flexDirection: "row",
     alignItems: "flex-start",
     backgroundColor: "#FFFFFF",
-    borderRadius: scale(14),
     padding: scale(14),
+    borderRadius: scale(12),
+    marginBottom: moderateScale(10),
     borderWidth: 1,
-    borderColor: "#E2E8F0",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    borderColor: "#F1F5F9",
     gap: scale(12),
   },
-  notificationCardUnread: {
-    backgroundColor: "#FFFFFF",
-    borderColor: "#BFDBFE",
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
+  notifCardUnread: {
+    backgroundColor: "#F8FCFC",
+    borderColor: "#86C4CB",
+    borderWidth: 1.5,
   },
-  iconBox: {
-    width: scale(42),
-    height: scale(42),
-    borderRadius: scale(21),
+  notifIconWrap: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
     alignItems: "center",
     justifyContent: "center",
     marginTop: scale(2),
   },
-  cardContentCol: {
+  notifContent: {
     flex: 1,
   },
-  cardHeaderRow: {
+  notifTopRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: scale(4),
   },
-  itemTitle: {
-    fontSize: moderateScale(14),
-    fontWeight: "600",
-    color: "#1E293B",
-    flex: 1,
-  },
-  itemTitleUnread: {
-    fontWeight: "700",
+  notifTitle: {
+    fontSize: moderateScale(13.5),
+    fontWeight: "800",
     color: "#0F172A",
+    flex: 1,
   },
   unreadDot: {
     width: scale(8),
     height: scale(8),
     borderRadius: scale(4),
-    backgroundColor: "#2563EB",
+    backgroundColor: "#016073",
     marginLeft: scale(6),
   },
-  itemMessageText: {
-    fontSize: moderateScale(12.5),
+  notifMessage: {
+    fontSize: moderateScale(12),
     color: "#475569",
-    lineHeight: moderateScale(18),
-    marginBottom: scale(8),
+    marginTop: scale(4),
+    lineHeight: scale(17),
   },
-  footerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  timestampText: {
-    fontSize: moderateScale(11),
+  notifTime: {
+    fontSize: moderateScale(10.5),
     color: "#94A3B8",
-    fontWeight: "500",
-  },
-  actionPrompt: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: scale(2),
-  },
-  actionPromptText: {
-    fontSize: moderateScale(11.5),
-    color: "#008080",
-    fontWeight: "600",
+    marginTop: scale(6),
   },
   emptyContainer: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: scale(80),
-    gap: scale(10),
+    paddingVertical: moderateScale(60),
+    paddingHorizontal: scale(24),
+  },
+  emptyIconCircle: {
+    width: scale(72),
+    height: scale(72),
+    borderRadius: scale(36),
+    backgroundColor: "#E6F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: moderateScale(14),
   },
   emptyTitle: {
     fontSize: moderateScale(16),
-    fontWeight: "700",
-    color: "#475569",
+    fontWeight: "800",
+    color: "#0F172A",
+    marginBottom: moderateScale(6),
   },
   emptySubtitle: {
-    fontSize: moderateScale(13),
-    color: "#94A3B8",
+    fontSize: moderateScale(12.5),
+    color: "#64748B",
     textAlign: "center",
-    paddingHorizontal: scale(32),
+    lineHeight: scale(18),
   },
 });

@@ -5,12 +5,14 @@ import {
   MaterialCommunityIcons,
   MaterialIcons,
 } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
+  RefreshControl,
   ScrollView,
   Share,
   StyleSheet,
@@ -21,7 +23,14 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { logoutUser } from "@/store/slices/authSlice";
+import { fetchUserProfile, logoutUser } from "@/store/slices/authSlice";
+import { fetchAddresses } from "@/store/slices/addressSlice";
+import { fetchCustomerOrders } from "@/store/slices/orderSlice";
+import {
+  fetchCustomerNotifications,
+  fetchMyReferral,
+  fetchRewardsWallet,
+} from "@/store/slices/referralSlice";
 
 interface MenuItem {
   id: string;
@@ -43,9 +52,69 @@ export default function ProfileScreen() {
   const router = useRouter();
   const theme = useTheme();
   const dispatch = useAppDispatch();
+
+  // Redux state selectors (Live data from backend)
   const { user } = useAppSelector((state) => state.auth);
   const wishlistItems = useAppSelector((state) => state.wishlist.items);
   const wishlistCount = wishlistItems.length;
+
+  const { customerOrders } = useAppSelector((state) => state.order);
+  const { addresses } = useAppSelector((state) => state.address);
+  const { wallet, summary, unreadNotificationsCount } = useAppSelector(
+    (state) => state.referral
+  );
+
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Authoritative live calculations
+  const availablePoints = wallet?.availablePoints ?? user?.rewardPoints ?? 0;
+
+  const activeOrdersCount = customerOrders.filter((o) =>
+    [
+      "PLACED",
+      "ACCEPTED",
+      "PREPARING",
+      "READY_FOR_PICKUP",
+      "OUT_FOR_DELIVERY",
+    ].includes(o.orderStatus)
+  ).length;
+
+  const referrerBonus = summary?.campaign?.referrerRewardPoints;
+
+  // Concurrent loader for real backend data
+  const loadProfileData = useCallback(async () => {
+    try {
+      await Promise.allSettled([
+        dispatch(fetchUserProfile()),
+        dispatch(fetchRewardsWallet()),
+        dispatch(fetchMyReferral()),
+        dispatch(fetchCustomerNotifications({ page: 1, limit: 10 })),
+        dispatch(fetchCustomerOrders({ page: 1, limit: 20 })),
+        dispatch(fetchAddresses()),
+      ]);
+    } catch (e) {
+      console.warn("Failed to refresh profile backend data:", e);
+    }
+  }, [dispatch]);
+
+  // Initial load
+  useEffect(() => {
+    loadProfileData();
+  }, [loadProfileData]);
+
+  // Refresh whenever screen regains focus
+  useFocusEffect(
+    useCallback(() => {
+      loadProfileData();
+    }, [loadProfileData])
+  );
+
+  // Pull-to-refresh
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadProfileData();
+    setRefreshing(false);
+  }, [loadProfileData]);
 
   const handleLogout = () => {
     Alert.alert(
@@ -74,9 +143,12 @@ export default function ProfileScreen() {
 
   const handleShareApp = async () => {
     try {
+      const shareMessage = summary?.referralCode
+        ? `Order fresh groceries, snacks and daily essentials with instant delivery on Bhansa Mart! Use my invite code ${summary.referralCode} to get reward points on signup: https://bhansamart.com`
+        : "Order fresh groceries, snacks and daily essentials with instant delivery on Bhansa Mart! Download now: https://bhansamart.com";
+
       await Share.share({
-        message:
-          "Order fresh groceries, snacks and daily essentials with instant delivery on Bhansa Mart! Download now: https://bhansamart.com",
+        message: shareMessage,
       });
     } catch {
       // ignore
@@ -121,8 +193,13 @@ export default function ProfileScreen() {
           ),
           iconBg: "#DCFCE7",
           label: "Your orders",
-          badge: "Active Orders",
-          badgeColor: "#16A34A",
+          badge:
+            activeOrdersCount > 0
+              ? `${activeOrdersCount} Active`
+              : customerOrders.length > 0
+              ? `${customerOrders.length} Total`
+              : undefined,
+          badgeColor: activeOrdersCount > 0 ? "#16A34A" : "#64748B",
           onPress: () => router.push("/Screens/Profile/your-orders" as any),
         },
         {
@@ -132,6 +209,8 @@ export default function ProfileScreen() {
           ),
           iconBg: "#FEF3C7",
           label: "Address Book",
+          badge: addresses.length > 0 ? `${addresses.length} Saved` : undefined,
+          badgeColor: "#0284C7",
           onPress: () => router.push("/Screens/Profile/address" as any),
         },
       ],
@@ -146,7 +225,7 @@ export default function ProfileScreen() {
           ),
           iconBg: "#FEF9C3",
           label: "Loyalty Points",
-          badge: "900.55 RP",
+          badge: `${availablePoints} Pts`,
           badgeColor: "#CA8A04",
           onPress: () => router.push("/Screens/Profile/loyalty" as any),
         },
@@ -161,7 +240,7 @@ export default function ProfileScreen() {
           ),
           iconBg: "#F3E8FF",
           label: "Collected Coupons",
-          badge: "2 Active",
+          badge: undefined,
           badgeColor: "#9333EA",
           onPress: () =>
             router.push("/Screens/Profile/collected-coupons" as any),
@@ -173,7 +252,7 @@ export default function ProfileScreen() {
           ),
           iconBg: "#FCE7F3",
           label: "Refer & Earn",
-          badge: "Get Rs.100",
+          badge: referrerBonus ? `Get ${referrerBonus} Pts` : undefined,
           badgeColor: "#DB2777",
           onPress: () =>
             router.push("/Screens/Profile/refer-and-earned" as any),
@@ -255,30 +334,48 @@ export default function ProfileScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#003844"]}
+            tintColor="#003844"
+          />
+        }
       >
         {/* User Profile Hero Card */}
         <View style={styles.userProfileCard}>
           <View style={styles.userProfileRow}>
             {/* Avatar Circle */}
             <View style={styles.avatarContainer}>
-              <LinearGradient
-                colors={["#003844", "#005C70"]}
-                style={styles.avatarGradient}
-              >
-                <Text style={styles.avatarInitials}>
-                  {user?.name
-                    ? user.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .substring(0, 2)
-                        .toUpperCase()
-                    : "BM"}
-                </Text>
-              </LinearGradient>
-              <View style={styles.verifiedBadge}>
-                <Ionicons name="checkmark" size={scale(10)} color="#FFFFFF" />
-              </View>
+              {user?.avatar ? (
+                <Image
+                  source={{ uri: user.avatar }}
+                  style={styles.avatarImage}
+                  contentFit="cover"
+                />
+              ) : (
+                <LinearGradient
+                  colors={["#003844", "#005C70"]}
+                  style={styles.avatarGradient}
+                >
+                  <Text style={styles.avatarInitials}>
+                    {user?.name
+                      ? user.name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .substring(0, 2)
+                          .toUpperCase()
+                      : "BM"}
+                  </Text>
+                </LinearGradient>
+              )}
+              {Boolean(user?.isEmailVerified) && (
+                <View style={styles.verifiedBadge}>
+                  <Ionicons name="checkmark" size={scale(10)} color="#FFFFFF" />
+                </View>
+              )}
             </View>
 
             {/* Name & Email / Phone */}
@@ -289,12 +386,12 @@ export default function ProfileScreen() {
                 </Text>
                 <View style={styles.goldMemberPill}>
                   <Text style={styles.goldMemberText}>
-                    👑 {user?.role === "admin" ? "Admin" : "Member"}
+                    👑 {user?.role === "admin" ? "Admin" : user?.role === "vendor" ? "Vendor" : "Member"}
                   </Text>
                 </View>
               </View>
               <Text style={styles.userPhoneText}>
-                {user?.email || "user@bhansamart.com"}
+                {user?.phone ? user.phone : user?.email || "No contact info registered"}
               </Text>
             </View>
 
@@ -317,7 +414,7 @@ export default function ProfileScreen() {
             >
               <Ionicons name="star" size={scale(16)} color="#F59E0B" />
               <View>
-                <Text style={styles.walletValueText}>900.55 RP</Text>
+                <Text style={styles.walletValueText}>{availablePoints} RP</Text>
                 <Text style={styles.walletSubText}>Reward Points</Text>
               </View>
             </TouchableOpacity>
@@ -337,8 +434,8 @@ export default function ProfileScreen() {
                 color="#10B981"
               />
               <View>
-                <Text style={styles.walletValueText}>2 Coupons</Text>
-                <Text style={styles.walletSubText}>Available</Text>
+                <Text style={styles.walletValueText}>Discounts</Text>
+                <Text style={styles.walletSubText}>Collected Coupons</Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -360,6 +457,11 @@ export default function ProfileScreen() {
                 size={scale(22)}
                 color="#0284C7"
               />
+              {addresses.length > 0 && (
+                <View style={[styles.notifBadge, { backgroundColor: "#0284C7" }]}>
+                  <Text style={styles.notifBadgeText}>{addresses.length}</Text>
+                </View>
+              )}
             </View>
             <Text style={styles.tileLabel}>Address Book</Text>
           </TouchableOpacity>
@@ -378,9 +480,15 @@ export default function ProfileScreen() {
                 size={scale(22)}
                 color="#16A34A"
               />
-              <View style={styles.notifBadge}>
-                <Text style={styles.notifBadgeText}>2</Text>
-              </View>
+              {unreadNotificationsCount > 0 && (
+                <View style={styles.notifBadge}>
+                  <Text style={styles.notifBadgeText}>
+                    {unreadNotificationsCount > 99
+                      ? "99+"
+                      : unreadNotificationsCount}
+                  </Text>
+                </View>
+              )}
             </View>
             <Text style={styles.tileLabel}>Notifications</Text>
           </TouchableOpacity>
@@ -548,6 +656,11 @@ const styles = StyleSheet.create({
   avatarContainer: {
     position: "relative",
     marginRight: scale(14),
+  },
+  avatarImage: {
+    width: scale(52),
+    height: scale(52),
+    borderRadius: scale(26),
   },
   avatarGradient: {
     width: scale(52),

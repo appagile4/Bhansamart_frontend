@@ -1,348 +1,630 @@
-import { Image } from "expo-image";
-import { moderateScale, scale, useTheme } from "@/theme";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { fetchMyReferral } from "@/store/slices/referralSlice";
+import { moderateScale, scale } from "@/theme";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+import * as Clipboard from "expo-clipboard";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useCallback, useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-interface RewardCard {
-  id: string;
-  title: string;
-  pointsText: string;
-  costPoints: number;
-  gradientColors: [string, string, ...string[]];
-  textColor?: string;
-  alignImage: "left" | "right";
-  imageUrl: string;
-}
-
-const REWARD_CARDS: RewardCard[] = [
-  {
-    id: "rew-1",
-    title: "Snickers",
-    pointsText: "100 point / piece",
-    costPoints: 100,
-    gradientColors: ["#8B4513", "#A0522D", "#6F3714"],
-    textColor: "#6F3714",
-    alignImage: "right",
-    imageUrl:
-      "https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?w=400&q=80",
-  },
-  {
-    id: "rew-2",
-    title: "Hand sanitizer",
-    pointsText: "100 point /Kg",
-    costPoints: 100,
-    gradientColors: ["#1B4332", "#2D6A4F", "#40916C"],
-    textColor: "#2D6A4F",
-    alignImage: "left",
-    imageUrl:
-      "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&q=80",
-  },
-  {
-    id: "rew-3",
-    title: "Upto 50% OFF",
-    pointsText: "100 point /Kg",
-    costPoints: 100,
-    gradientColors: ["#A21CAF", "#C026D3", "#7E22CE"],
-    textColor: "#A21CAF",
-    alignImage: "right",
-    imageUrl:
-      "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&q=80",
-  },
-  {
-    id: "rew-4",
-    title: "Hand sanitizer",
-    pointsText: "100 point /Kg",
-    costPoints: 100,
-    gradientColors: ["#1B4332", "#2D6A4F", "#40916C"],
-    textColor: "#2D6A4F",
-    alignImage: "left",
-    imageUrl:
-      "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&q=80",
-  },
-];
-
-export default function ReferAndEarnedScreen() {
+export default function ReferAndEarnScreen() {
   const router = useRouter();
-  const theme = useTheme();
-  const [userPoints, setUserPoints] = useState(50);
+  const dispatch = useAppDispatch();
 
-  const handleRedeem = (reward: RewardCard) => {
-    if (userPoints >= reward.costPoints) {
-      Alert.alert(
-        "Confirm Redemption",
-        `Redeem ${reward.title} for ${reward.costPoints} points?`,
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Redeem",
-            onPress: () => {
-              setUserPoints((prev) => prev - reward.costPoints);
-              Alert.alert("Success", `You redeemed ${reward.title}!`);
-            },
-          },
-        ]
-      );
-    } else {
-      Alert.alert(
-        "Insufficient Points",
-        `You currently have ${userPoints} points. You need ${
-          reward.costPoints - userPoints
-        } more points to redeem ${reward.title}. Share your referral link to earn points!`,
-        [
-          { text: "OK", style: "cancel" },
-          {
-            text: "Invite Friends",
-            onPress: () => {
-              Alert.alert(
-                "Referral Code",
-                "Your referral link: https://ecommerce.app/refer/BHANSA50"
-              );
-            },
-          },
-        ]
-      );
+  const { summary, summaryLoading, error } = useAppSelector(
+    (state) => state.referral
+  );
+
+  const [refreshing, setRefreshing] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const loadData = useCallback(() => {
+    dispatch(fetchMyReferral());
+  }, [dispatch]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await dispatch(fetchMyReferral());
+    setRefreshing(false);
+  };
+
+  const referralCode = summary?.referralCode || "";
+  const referrerReward = summary?.campaign?.referrerRewardPoints || 100;
+  const friendReward = summary?.campaign?.newCustomerRewardPoints || 50;
+
+  // Deep link format: dc://(auth)/sign-up?referralCode=XXXXXX
+  const deepLink = `dc://(auth)/sign-up?referralCode=${referralCode}`;
+  const webLink = `https://bhansamart.com/refer?code=${referralCode}`;
+
+  const handleCopyCode = async () => {
+    if (!referralCode) return;
+    await Clipboard.setStringAsync(referralCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+    Alert.alert(
+      "Copied to Clipboard",
+      `Referral code "${referralCode}" has been copied. Share it with your friends!`
+    );
+  };
+
+  const handleShare = async () => {
+    if (!referralCode) return;
+    const shareMessage =
+      `Join me on Bhansa Mart for instant, fresh grocery delivery! 🛒\n\n` +
+      `Use my referral code "${referralCode}" during sign up to get ${friendReward} FREE reward points!\n\n` +
+      `Download or open the app: ${deepLink}\n` +
+      `Or visit: ${webLink}`;
+
+    try {
+      await Share.share({
+        message: shareMessage,
+        title: "Join Bhansa Mart and Get Free Reward Points!",
+      });
+    } catch (shareErr: any) {
+      console.error("[Share Error]:", shareErr);
     }
   };
 
   return (
-    <View style={styles.root}>
+    <SafeAreaView style={styles.root} edges={["top"]}>
       <StatusBar style="dark" />
 
-      {/* 1. Header with SafeAreaView */}
-      <SafeAreaView edges={["top"]} style={styles.safeAreaHeader}>
-        <View style={styles.navBar}>
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => router.back()}
-            style={styles.backButton}
-          >
-            <Feather name="arrow-left" size={scale(22)} color="#1E293B" />
-          </TouchableOpacity>
-          <Text style={styles.navTitle}>Refer and Earned</Text>
+      {/* Top Header */}
+      <View style={styles.topNav}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => router.back()}
+          activeOpacity={0.7}
+        >
+          <Feather name="arrow-left" size={scale(20)} color="#016073" />
+        </TouchableOpacity>
+        <View style={styles.topNavCenter}>
+          <Text style={styles.navTitle}>Refer & Earn</Text>
+          <Text style={styles.navSub}>Invite Friends & Earn Free Points</Text>
         </View>
-        <View style={styles.headerDivider} />
-      </SafeAreaView>
+        <TouchableOpacity
+          style={styles.historyNavBtn}
+          onPress={() => router.push("/Screens/Profile/my-referrals" as any)}
+          activeOpacity={0.7}
+        >
+          <Feather name="users" size={scale(16)} color="#016073" />
+        </TouchableOpacity>
+      </View>
 
-      {/* 2. Scrollable Body */}
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {/* Hero Points Section */}
-        <View style={styles.heroSection}>
-          <Text style={styles.youHaveText}>You have</Text>
-          <Text style={styles.pointsNumber}>{userPoints} Points</Text>
-
-          <Text style={styles.descriptionParagraph}>
-            Gorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc
-            vulputate libero et velit interdum, ac aliquet odio mattis. Class
-            aptent taciti sociosqu ad litora torquent per conubia nostra, per
-            inceptos himenaeos.
-          </Text>
+      {summaryLoading && !summary ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#016073" />
+          <Text style={styles.loadingText}>Loading referral program...</Text>
         </View>
+      ) : (
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={["#016073"]}
+            />
+          }
+        >
+          {/* Hero Banner Card */}
+          <View style={styles.heroCard}>
+            <View style={styles.heroIconCircle}>
+              <Ionicons name="gift" size={scale(32)} color="#016073" />
+            </View>
+            <Text style={styles.heroTitle}>Invite Friends & Get Rewards</Text>
+            <Text style={styles.heroSubtitle}>
+              Give friends <Text style={styles.boldText}>{friendReward} points</Text> when they sign up, and you’ll get{" "}
+              <Text style={styles.boldText}>{referrerReward} points</Text> credited directly to your wallet!
+            </Text>
 
-        {/* Reward Redeem Cards List */}
-        <View style={styles.rewardsList}>
-          {REWARD_CARDS.map((reward, index) => {
-            const isImageLeft = reward.alignImage === "left";
-            return (
-              <LinearGradient
-                key={`${reward.id}-${index}`}
-                colors={reward.gradientColors}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.rewardCard}
+            {/* Referral Code Box */}
+            <View style={styles.codeContainer}>
+              <View style={styles.codeTextCol}>
+                <Text style={styles.codeSubLabel}>YOUR UNIQUE REFERRAL CODE</Text>
+                <Text style={styles.codeDisplay}>
+                  {referralCode || "LOADING..."}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.copyBtn, copied && styles.copyBtnSuccess]}
+                onPress={handleCopyCode}
+                activeOpacity={0.8}
               >
-                {/* Organic wavy decorative circle */}
-                <View style={styles.decorCircle} />
-
-                <View
+                <Feather
+                  name={copied ? "check" : "copy"}
+                  size={scale(16)}
+                  color={copied ? "#FFFFFF" : "#016073"}
+                />
+                <Text
                   style={[
-                    styles.cardInnerRow,
-                    isImageLeft && styles.cardInnerRowReverse,
+                    styles.copyBtnText,
+                    copied && styles.copyBtnTextSuccess,
                   ]}
                 >
-                  {/* Text Column */}
-                  <View
-                    style={[
-                      styles.textCol,
-                      isImageLeft && { alignItems: "flex-end" },
-                    ]}
-                  >
-                    <Text style={styles.rewardTitle}>{reward.title}</Text>
-                    <Text style={styles.rewardSubtitle}>
-                      {reward.pointsText}
-                    </Text>
+                  {copied ? "Copied!" : "Copy"}
+                </Text>
+              </TouchableOpacity>
+            </View>
 
-                    <TouchableOpacity
-                      activeOpacity={0.85}
-                      onPress={() => handleRedeem(reward)}
-                      style={styles.redeemBtn}
-                    >
-                      <Text
-                        style={[
-                          styles.redeemBtnText,
-                          { color: reward.textColor || "#1E293B" },
-                        ]}
-                      >
-                        Redeem
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
+            {/* Share Invitation Button */}
+            <TouchableOpacity
+              style={styles.shareBtn}
+              activeOpacity={0.85}
+              onPress={handleShare}
+            >
+              <Feather name="share-2" size={scale(18)} color="#FFFFFF" />
+              <Text style={styles.shareBtnText}>Share Invitation Link</Text>
+            </TouchableOpacity>
+          </View>
 
-                  {/* Product Image Column */}
-                  <View style={styles.imageCol}>
-                    <Image
-                      source={{ uri: reward.imageUrl }}
-                      style={styles.rewardImage}
-                      contentFit="contain"
-                    />
-                  </View>
+          {/* Quick Action Navigation Bar */}
+          <View style={styles.quickNavRow}>
+            <TouchableOpacity
+              style={styles.quickNavCard}
+              onPress={() => router.push("/Screens/Profile/my-referrals" as any)}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.quickNavIconWrap, { backgroundColor: "#E6F4F6" }]}>
+                <Feather name="users" size={scale(16)} color="#016073" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.quickNavTitle}>My Referrals</Text>
+                <Text style={styles.quickNavSub}>View invited friends list</Text>
+              </View>
+              <Feather name="chevron-right" size={scale(16)} color="#94A3B8" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.quickNavCard}
+              onPress={() => router.push("/Screens/Profile/loyalty" as any)}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.quickNavIconWrap, { backgroundColor: "#FEF3C7" }]}>
+                <Ionicons name="wallet-outline" size={scale(16)} color="#B45309" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.quickNavTitle}>Points Wallet</Text>
+                <Text style={styles.quickNavSub}>
+                  {summary?.rewardPointsBalance || 0} Points Available
+                </Text>
+              </View>
+              <Feather name="chevron-right" size={scale(16)} color="#94A3B8" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Real Metrics Grid */}
+          <View style={styles.statsSection}>
+            <Text style={styles.sectionHeader}>Your Referral Progress</Text>
+            <View style={styles.statsGrid}>
+              <View style={styles.statCard}>
+                <View style={[styles.statIconWrap, { backgroundColor: "#E6F4F6" }]}>
+                  <Feather name="user-plus" size={scale(15)} color="#016073" />
                 </View>
-              </LinearGradient>
-            );
-          })}
-        </View>
-      </ScrollView>
-    </View>
+                <Text style={styles.statVal}>{summary?.totalInvited || 0}</Text>
+                <Text style={styles.statLabel}>Total Invited</Text>
+              </View>
+
+              <View style={styles.statCard}>
+                <View style={[styles.statIconWrap, { backgroundColor: "#DCFCE7" }]}>
+                  <Feather name="check-circle" size={scale(15)} color="#15803D" />
+                </View>
+                <Text style={[styles.statVal, { color: "#15803D" }]}>
+                  {summary?.successfulReferrals || 0}
+                </Text>
+                <Text style={styles.statLabel}>Successful</Text>
+              </View>
+
+              <View style={styles.statCard}>
+                <View style={[styles.statIconWrap, { backgroundColor: "#FEF3C7" }]}>
+                  <Feather name="clock" size={scale(15)} color="#B45309" />
+                </View>
+                <Text style={[styles.statVal, { color: "#B45309" }]}>
+                  {summary?.pendingReferrals || 0}
+                </Text>
+                <Text style={styles.statLabel}>Pending</Text>
+              </View>
+
+              <View style={styles.statCard}>
+                <View style={[styles.statIconWrap, { backgroundColor: "#F3E8FF" }]}>
+                  <Ionicons name="star-outline" size={scale(15)} color="#7E22CE" />
+                </View>
+                <Text style={[styles.statVal, { color: "#7E22CE" }]}>
+                  {summary?.totalPointsEarned || 0}
+                </Text>
+                <Text style={styles.statLabel}>Points Earned</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Step-by-Step How It Works */}
+          <View style={styles.howItWorksCard}>
+            <Text style={styles.sectionHeader}>How It Works</Text>
+
+            <View style={styles.stepRow}>
+              <View style={styles.stepBadge}>
+                <Text style={styles.stepBadgeText}>1</Text>
+              </View>
+              <View style={styles.stepInfo}>
+                <Text style={styles.stepTitle}>Share your unique link or code</Text>
+                <Text style={styles.stepSub}>
+                  Send your referral invitation to friends and family via WhatsApp, SMS, or social apps.
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.stepRow}>
+              <View style={styles.stepBadge}>
+                <Text style={styles.stepBadgeText}>2</Text>
+              </View>
+              <View style={styles.stepInfo}>
+                <Text style={styles.stepTitle}>Friend signs up with your code</Text>
+                <Text style={styles.stepSub}>
+                  When your friend creates an account, they instantly receive {friendReward} welcome reward points.
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.stepRow}>
+              <View style={styles.stepBadge}>
+                <Text style={styles.stepBadgeText}>3</Text>
+              </View>
+              <View style={styles.stepInfo}>
+                <Text style={styles.stepTitle}>You earn {referrerReward} points</Text>
+                <Text style={styles.stepSub}>
+                  Your wallet is credited atomically with {referrerReward} points. Use points for store rewards and discounts!
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Terms & Conditions Accordion / Box */}
+          <View style={styles.termsCard}>
+            <View style={styles.termsHeaderRow}>
+              <Feather name="shield" size={scale(16)} color="#64748B" />
+              <Text style={styles.termsHeading}>Terms & Conditions</Text>
+            </View>
+            <Text style={styles.termsText}>
+              • Both the referrer and referred customer receive points upon successful, verified account registration.
+            </Text>
+            <Text style={styles.termsText}>
+              • Referral rewards are strictly limited to one welcome attribution per newly registered customer account.
+            </Text>
+            <Text style={styles.termsText}>
+              • Self-referrals and duplicate accounts are strictly prohibited and automatically detected by our anti-abuse system.
+            </Text>
+            <Text style={styles.termsText}>
+              • Reward points are non-transferable and can be redeemed for promotional discounts and perks on Bhansa Mart.
+            </Text>
+          </View>
+        </ScrollView>
+      )}
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#F8FAFC",
   },
-  safeAreaHeader: {
-    backgroundColor: "#ffffff",
-  },
-  navBar: {
-    height: moderateScale(48),
+  topNav: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: scale(16),
+    paddingTop: moderateScale(8),
+    paddingBottom: moderateScale(12),
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+    gap: scale(12),
   },
-  backButton: {
-    width: scale(36),
-    height: scale(36),
+  backBtn: {
+    width: scale(38),
+    height: scale(38),
+    borderRadius: scale(19),
+    backgroundColor: "#E6F4F6",
+    alignItems: "center",
     justifyContent: "center",
-    marginRight: scale(6),
+  },
+  topNavCenter: {
+    flex: 1,
   },
   navTitle: {
-    fontSize: moderateScale(18),
-    fontWeight: "700",
-    color: "#1E293B",
+    fontSize: moderateScale(16),
+    fontWeight: "800",
+    color: "#0F172A",
   },
-  headerDivider: {
-    height: 1,
-    backgroundColor: "#F1F5F9",
+  navSub: {
+    fontSize: moderateScale(11),
+    color: "#64748B",
+    marginTop: scale(1),
+  },
+  historyNavBtn: {
+    width: scale(38),
+    height: scale(38),
+    borderRadius: scale(19),
+    backgroundColor: "#E6F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: scale(10),
+  },
+  loadingText: {
+    fontSize: moderateScale(13),
+    color: "#64748B",
   },
   scrollContent: {
-    paddingHorizontal: scale(16),
-    paddingTop: moderateScale(20),
+    padding: scale(16),
     paddingBottom: moderateScale(40),
+    gap: scale(14),
   },
-  heroSection: {
+  heroCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: scale(16),
+    padding: scale(18),
     alignItems: "center",
-    paddingHorizontal: scale(8),
-    marginBottom: moderateScale(24),
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  youHaveText: {
-    fontSize: moderateScale(26),
-    fontWeight: "800",
-    color: "#1E293B",
-    marginBottom: moderateScale(2),
+  heroIconCircle: {
+    width: scale(58),
+    height: scale(58),
+    borderRadius: scale(29),
+    backgroundColor: "#E6F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: moderateScale(12),
   },
-  pointsNumber: {
-    fontSize: moderateScale(30),
-    fontWeight: "800",
-    color: "#2563EB",
-    marginBottom: moderateScale(14),
+  heroTitle: {
+    fontSize: moderateScale(18),
+    fontWeight: "900",
+    color: "#0F172A",
+    textAlign: "center",
   },
-  descriptionParagraph: {
+  heroSubtitle: {
     fontSize: moderateScale(12.5),
     color: "#64748B",
     textAlign: "center",
-    lineHeight: moderateScale(19),
-    paddingHorizontal: scale(6),
+    marginTop: moderateScale(6),
+    lineHeight: scale(18),
+    paddingHorizontal: scale(10),
   },
-  rewardsList: {
-    gap: moderateScale(14),
+  boldText: {
+    fontWeight: "800",
+    color: "#016073",
   },
-  rewardCard: {
-    borderRadius: scale(16),
-    padding: scale(16),
-    minHeight: scale(115),
-    justifyContent: "center",
-    position: "relative",
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  decorCircle: {
-    position: "absolute",
-    width: scale(200),
-    height: scale(200),
-    borderRadius: scale(100),
-    backgroundColor: "rgba(255, 255, 255, 0.07)",
-    top: -scale(60),
-    right: -scale(40),
-  },
-  cardInnerRow: {
+  codeContainer: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-  },
-  cardInnerRowReverse: {
-    flexDirection: "row-reverse",
-  },
-  textCol: {
-    flex: 1,
-    gap: moderateScale(4),
-  },
-  rewardTitle: {
-    fontSize: moderateScale(18),
-    fontWeight: "800",
-    color: "#ffffff",
-  },
-  rewardSubtitle: {
-    fontSize: moderateScale(12.5),
-    color: "rgba(255, 255, 255, 0.9)",
-    fontWeight: "500",
-    marginBottom: moderateScale(6),
-  },
-  redeemBtn: {
-    alignSelf: "flex-start",
-    backgroundColor: "#ffffff",
+    backgroundColor: "#F8FAFC",
+    borderRadius: scale(12),
+    borderWidth: 1.5,
+    borderColor: "#86C4CB",
+    borderStyle: "dashed",
     paddingHorizontal: scale(16),
-    paddingVertical: scale(6),
-    borderRadius: scale(8),
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    paddingVertical: moderateScale(12),
+    width: "100%",
+    marginTop: moderateScale(16),
   },
-  redeemBtnText: {
-    fontSize: moderateScale(11.5),
+  codeTextCol: {
+    flex: 1,
+  },
+  codeSubLabel: {
+    fontSize: moderateScale(9.5),
+    fontWeight: "800",
+    color: "#016073",
+    letterSpacing: 0.8,
+  },
+  codeDisplay: {
+    fontSize: moderateScale(20),
+    fontWeight: "900",
+    color: "#0F172A",
+    marginTop: scale(2),
+    letterSpacing: 2,
+  },
+  copyBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(4),
+    backgroundColor: "#E6F4F6",
+    paddingHorizontal: scale(14),
+    paddingVertical: moderateScale(8),
+    borderRadius: scale(8),
+    borderWidth: 1,
+    borderColor: "#86C4CB",
+  },
+  copyBtnSuccess: {
+    backgroundColor: "#16A34A",
+    borderColor: "#16A34A",
+  },
+  copyBtnText: {
+    fontSize: moderateScale(12),
+    fontWeight: "800",
+    color: "#016073",
+  },
+  copyBtnTextSuccess: {
+    color: "#FFFFFF",
+  },
+  shareBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: scale(8),
+    backgroundColor: "#016073",
+    width: "100%",
+    paddingVertical: moderateScale(12),
+    borderRadius: scale(10),
+    marginTop: moderateScale(14),
+  },
+  shareBtnText: {
+    color: "#FFFFFF",
+    fontSize: moderateScale(14),
     fontWeight: "800",
   },
-  imageCol: {
-    width: scale(110),
-    height: scale(80),
+  quickNavRow: {
+    flexDirection: "row",
+    gap: scale(10),
+  },
+  quickNavCard: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    padding: scale(12),
+    borderRadius: scale(12),
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+    gap: scale(8),
+  },
+  quickNavIconWrap: {
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(16),
     alignItems: "center",
     justifyContent: "center",
   },
-  rewardImage: {
-    width: "100%",
-    height: "100%",
+  quickNavTitle: {
+    fontSize: moderateScale(12.5),
+    fontWeight: "800",
+    color: "#0F172A",
+  },
+  quickNavSub: {
+    fontSize: moderateScale(10),
+    color: "#64748B",
+    marginTop: scale(1),
+  },
+  statsSection: {
+    gap: scale(10),
+  },
+  sectionHeader: {
+    fontSize: moderateScale(14.5),
+    fontWeight: "800",
+    color: "#0F172A",
+  },
+  statsGrid: {
+    flexDirection: "row",
+    gap: scale(8),
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+    borderRadius: scale(12),
+    padding: scale(10),
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  statIconWrap: {
+    width: scale(28),
+    height: scale(28),
+    borderRadius: scale(14),
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: scale(4),
+  },
+  statVal: {
+    fontSize: moderateScale(15),
+    fontWeight: "900",
+    color: "#0F172A",
+  },
+  statLabel: {
+    fontSize: moderateScale(9.5),
+    color: "#64748B",
+    marginTop: scale(2),
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  howItWorksCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: scale(14),
+    padding: scale(16),
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+    gap: scale(14),
+  },
+  stepRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: scale(12),
+  },
+  stepBadge: {
+    width: scale(26),
+    height: scale(26),
+    borderRadius: scale(13),
+    backgroundColor: "#016073",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: scale(2),
+  },
+  stepBadgeText: {
+    color: "#FFFFFF",
+    fontSize: moderateScale(12),
+    fontWeight: "800",
+  },
+  stepInfo: {
+    flex: 1,
+  },
+  stepTitle: {
+    fontSize: moderateScale(13),
+    fontWeight: "800",
+    color: "#0F172A",
+  },
+  stepSub: {
+    fontSize: moderateScale(11.5),
+    color: "#64748B",
+    marginTop: scale(2),
+    lineHeight: scale(16),
+  },
+  termsCard: {
+    backgroundColor: "#F1F5F9",
+    borderRadius: scale(12),
+    padding: scale(14),
+    gap: scale(6),
+  },
+  termsHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(6),
+    marginBottom: scale(4),
+  },
+  termsHeading: {
+    fontSize: moderateScale(12.5),
+    fontWeight: "800",
+    color: "#475569",
+  },
+  termsText: {
+    fontSize: moderateScale(11),
+    color: "#64748B",
+    lineHeight: scale(15),
   },
 });
