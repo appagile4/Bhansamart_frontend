@@ -17,6 +17,8 @@ export { default as InstantFrozenFood } from "./InstantFrozenFood";
 export { default as InstantProductCard } from "./InstantProductCard";
 export { default as KidsSubCategories } from "./KidsSubCategories";
 export { default as KidsWinterEssentials } from "./KidsWinterEssentials";
+export { default as CompactProductCard } from "./CompactProductCard";
+export * from "./CompactProductCard";
 export { default as ProductCard } from "./productcard";
 export * from "./productcard";
 export { default as SchoolOfficeStationery } from "./SchoolOfficeStationery";

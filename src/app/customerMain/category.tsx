@@ -1,14 +1,23 @@
-import { Image } from "expo-image";
 import { FloatingCartBar } from "@/components/cart";
 import { SelectLocationModal } from "@/components/home";
 import { useAppSelector } from "@/store/hooks";
 import { moderateScale, scale, useTheme } from "@/theme";
 import { Feather, Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { memo, useCallback, useMemo, useState } from "react";
-import { Alert, Dimensions, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  Dimensions,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
@@ -34,6 +43,9 @@ const CategoryGridCardItem = memo(function CategoryGridCardItem({
   sectionTitle: string;
   onPress: (item: CategoryCardData, sectionTitle: string) => void;
 }) {
+  const theme = useTheme();
+  const isDark = theme.mode === "dark";
+
   const handlePress = useCallback(() => {
     onPress(item, sectionTitle);
   }, [onPress, item, sectionTitle]);
@@ -44,15 +56,27 @@ const CategoryGridCardItem = memo(function CategoryGridCardItem({
       onPress={handlePress}
       style={styles.cardWrapper}
     >
-      <View style={styles.imageBox}>
+      <View
+        style={[
+          styles.imageBox,
+          isDark && {
+            backgroundColor: "#152028",
+            borderColor: "#263542",
+            borderWidth: 1,
+          },
+        ]}
+      >
         <Image
           source={{ uri: item.imageUrl }}
           style={styles.categoryImage}
-          contentFit="contain"
+          contentFit="cover"
           transition={100}
         />
       </View>
-      <Text numberOfLines={2} style={styles.categoryNameText}>
+      <Text
+        numberOfLines={2}
+        style={[styles.categoryNameText, isDark && { color: "#E2E8F0" }]}
+      >
         {item.name}
       </Text>
     </TouchableOpacity>
@@ -383,6 +407,7 @@ const ALL_CATEGORY_SECTIONS: SectionCategoryData[] = [
 export default function CategoryScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const isDark = theme.mode === "dark";
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
@@ -426,7 +451,7 @@ export default function CategoryScreen() {
         },
       });
     },
-    [router]
+    [router],
   );
 
   const handleVoiceSearch = () => {
@@ -444,15 +469,19 @@ export default function CategoryScreen() {
   };
 
   return (
-    <View style={styles.root}>
-      <StatusBar style="dark" />
+    <View style={[styles.root, isDark && { backgroundColor: "#080D0F" }]}>
+      <StatusBar style="light" />
 
       {/* Floating Cart Bar */}
       <FloatingCartBar />
 
-      {/* 1. Sky Blue Gradient Top Header */}
+      {/* 1. Sky Blue / Dark Teal Gradient Top Header */}
       <LinearGradient
-        colors={["#003844", "#004d5d", "#016073"]}
+        colors={
+          isDark
+            ? ["#07161A", "#0C2329", "#0F2E36"]
+            : ["#003844", "#004d5d", "#016073"]
+        }
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.gradientHeader}
@@ -484,25 +513,45 @@ export default function CategoryScreen() {
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => router.push("/Screens/Profile/profile" as any)}
-              style={styles.profileAvatar}
+              style={[
+                styles.profileAvatar,
+                isDark && {
+                  backgroundColor: "#152028",
+                  borderColor: "#263542",
+                  borderWidth: 1,
+                },
+              ]}
             >
-              <Ionicons name="person" size={scale(18)} color="#003844" />
+              <Ionicons
+                name="person"
+                size={scale(18)}
+                color={isDark ? "#39D353" : "#003844"}
+              />
             </TouchableOpacity>
           </View>
 
           {/* Search Bar - In-Page Category Filter */}
-          <View style={styles.searchBarWrapper}>
+          <View
+            style={[
+              styles.searchBarWrapper,
+              isDark && {
+                backgroundColor: "#152028",
+                borderColor: "#263542",
+                borderWidth: 1,
+              },
+            ]}
+          >
             <Feather
               name="search"
               size={scale(19)}
-              color="#64748B"
+              color={isDark ? "#94A3B8" : "#64748B"}
               style={styles.searchIcon}
             />
 
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, isDark && { color: "#F8FAFC" }]}
               placeholder='Search "Product"'
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
               value={searchQuery}
               onChangeText={setSearchQuery}
               returnKeyType="search"
@@ -514,18 +563,31 @@ export default function CategoryScreen() {
                 onPress={() => setSearchQuery("")}
                 style={styles.clearBtn}
               >
-                <Feather name="x" size={scale(16)} color="#94A3B8" />
+                <Feather
+                  name="x"
+                  size={scale(16)}
+                  color={isDark ? "#64748B" : "#94A3B8"}
+                />
               </TouchableOpacity>
             )}
 
-            <View style={styles.searchDivider} />
+            <View
+              style={[
+                styles.searchDivider,
+                isDark && { backgroundColor: "#263542" },
+              ]}
+            />
 
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={handleVoiceSearch}
               style={styles.micBtn}
             >
-              <Feather name="mic" size={scale(18)} color="#0F172A" />
+              <Feather
+                name="mic"
+                size={scale(18)}
+                color={isDark ? "#39D353" : "#0F172A"}
+              />
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -540,7 +602,11 @@ export default function CategoryScreen() {
           filteredSections.map((section) => (
             <View key={section.id} style={styles.sectionContainer}>
               {/* Section Heading */}
-              <Text style={styles.sectionTitle}>{section.title}</Text>
+              <Text
+                style={[styles.sectionTitle, isDark && { color: "#F8FAFC" }]}
+              >
+                {section.title}
+              </Text>
 
               {/* 4-Column Subcategory Grid */}
               <View style={styles.categoryGrid}>
@@ -557,9 +623,17 @@ export default function CategoryScreen() {
           ))
         ) : (
           <View style={styles.emptyContainer}>
-            <Feather name="search" size={scale(48)} color="#CBD5E1" />
-            <Text style={styles.emptyTitle}>No matching categories</Text>
-            <Text style={styles.emptySubtitle}>
+            <Feather
+              name="search"
+              size={scale(48)}
+              color={isDark ? "#334155" : "#CBD5E1"}
+            />
+            <Text style={[styles.emptyTitle, isDark && { color: "#CBD5E1" }]}>
+              No matching categories
+            </Text>
+            <Text
+              style={[styles.emptySubtitle, isDark && { color: "#64748B" }]}
+            >
               Try searching with different keywords like "Fruits", "Drinks", or
               "Care".
             </Text>
@@ -702,9 +776,10 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     backgroundColor: "#E6F7F8",
     borderRadius: scale(14),
+    overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
-    padding: scale(6),
+    padding: 0,
     marginBottom: scale(6),
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
@@ -713,8 +788,8 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   categoryImage: {
-    width: "88%",
-    height: "88%",
+    width: "100%",
+    height: "100%",
   },
   categoryNameText: {
     fontSize: moderateScale(10.5),

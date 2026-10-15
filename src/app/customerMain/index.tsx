@@ -2,6 +2,7 @@ import { FloatingCartBar } from "@/components/cart";
 import {
   BabyCategories,
   BeautyPersonalCare,
+  CompactProductCard,
   CurvedPromoScroller,
   DealProduct,
   DealsOfTheDays,
@@ -100,13 +101,13 @@ const normalizeDealProduct = (p: any): DealProduct => {
 export default function HomeScreen() {
   const theme = useTheme();
   const isDark = theme.mode === "dark";
-  const { width: windowWidth } = useWindowDimensions();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const isTablet = windowWidth >= 768;
-  const numColumns = isTablet ? 3 : 2;
+  const numColumns = isTablet ? 4 : 3;
 
   const gridCardWidth = useMemo(() => {
-    const horizontalPadding = scale(16);
-    const gridGap = scale(12);
+    const horizontalPadding = scale(12);
+    const gridGap = scale(8);
     return Math.floor(
       (windowWidth - horizontalPadding * 2 - gridGap * (numColumns - 1)) /
         numColumns,
@@ -1321,7 +1322,7 @@ export default function HomeScreen() {
 
               <View style={styles.streamGrid}>
                 {publicProducts.map((prod, idx) => (
-                  <ProductCard
+                  <CompactProductCard
                     key={prod._id || prod.id || idx}
                     product={normalizeDealProduct(prod)}
                     cardWidth={gridCardWidth}
@@ -1491,7 +1492,7 @@ const styles = StyleSheet.create({
   },
   streamSection: {
     marginTop: moderateScale(18),
-    paddingHorizontal: scale(16),
+    paddingHorizontal: scale(12),
   },
   streamHeader: {
     flexDirection: "row",
@@ -1512,8 +1513,7 @@ const styles = StyleSheet.create({
   streamGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "space-between",
-    gap: scale(12),
+    gap: scale(8),
   },
   loadingMoreContainer: {
     flexDirection: "row",
