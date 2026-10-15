@@ -509,7 +509,7 @@ export default function GroceryNewArrivals({
       ARRIVALS_CATEGORY_MAP[activeCategory] || ARRIVALS_CATEGORY_MAP.all;
 
     if (!publicProducts || publicProducts.length === 0) {
-      return fallbackList;
+      return [];
     }
 
     // 1. Filter products where isNewArrival === true (or tags contain 'new' / recently created)
@@ -533,9 +533,9 @@ export default function GroceryNewArrivals({
       });
     }
 
-    // If category has no specific new arrivals, use category fallback
+    // If category has no specific new arrivals, return empty
     if (newArrivals.length === 0) {
-      return fallbackList;
+      return [];
     }
 
     // 3. Group into 6 Duo Cards
@@ -561,12 +561,12 @@ export default function GroceryNewArrivals({
       const img1 =
         p1?.images && p1.images.length > 0
           ? { uri: p1.images[0].url }
-          : fallbackList[idx % fallbackList.length]?.imageLeft;
+          : undefined;
 
       const img2 =
         p2?.images && p2.images.length > 0
           ? { uri: p2.images[0].url }
-          : fallbackList[idx % fallbackList.length]?.imageRight;
+          : undefined;
 
       dynamicCards.push({
         id: `dyn-new-arr-${idx}-${key}`,
@@ -577,13 +577,6 @@ export default function GroceryNewArrivals({
         subCategory: key,
       });
     });
-
-    // If we have fewer than 6 duo cards, complement from fallbackList to maintain a perfect 2x3 grid
-    if (dynamicCards.length < 6) {
-      const needed = 6 - dynamicCards.length;
-      const complements = fallbackList.slice(0, needed);
-      return [...dynamicCards, ...complements].slice(0, 6);
-    }
 
     return dynamicCards.slice(0, 6);
   }, [items, activeCategory, publicProducts]);
@@ -658,6 +651,11 @@ export default function GroceryNewArrivals({
         </View>
       </View>
     );
+  }
+
+  // Gracefully hide section if no in-range arrivals exist
+  if (displayItems.length === 0) {
+    return null;
   }
 
   // ── 2. Live Data View ────────────────────────────────────────

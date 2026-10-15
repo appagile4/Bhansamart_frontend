@@ -350,8 +350,8 @@ export default function TopDeals({
       );
     }
 
-    // 3. Fallback ONLY if publicProducts is completely empty
-    return DEFAULT_FALLBACK_DEALS;
+    // 3. If no in-range products match, return empty array to prevent showing out-of-range products
+    return [];
   }, [items, publicProducts, category, title]);
 
   const allItems = displayItems;

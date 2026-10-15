@@ -262,7 +262,8 @@ export default function DealsOfTheDays({
       return allDeals.sort((a, b) => (b.discountPct || 0) - (a.discountPct || 0)).slice(0, 10);
     }
 
-    return DEFAULT_DEALS_FALLBACK;
+    // If no deals available from in-range stores, return empty array to avoid showing out-of-range products
+    return [];
   }, [products, publicProducts]);
 
   // Extract first 3 real product images for the bottom "See all products" bar

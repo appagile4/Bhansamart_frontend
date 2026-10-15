@@ -23,7 +23,7 @@ import {
 } from "@/components/home";
 import { useCart } from "@/context/cart-context";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { fetchAddresses } from "@/store/slices/addressSlice";
+import { fetchAddresses, setUserCoordinates } from "@/store/slices/addressSlice";
 import {
   fetchPublicProducts,
   setSelectedCategory,
@@ -31,6 +31,7 @@ import {
 import socketService from "@/store/services/socketService";
 import { moderateScale, scale, useTheme } from "@/theme";
 import { Feather } from "@expo/vector-icons";
+import * as Location from "expo-location";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -61,6 +62,53 @@ export default function HomeScreen() {
 
   const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
   const [isNearbyStoresModalVisible, setIsNearbyStoresModalVisible] = useState(false);
+
+  // ── Auto-Detect Live Device GPS on Startup ─────────────────────────────
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const { status } = await Location.getForegroundPermissionsAsync();
+        if (status === "granted") {
+          const loc = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          if (!isMounted) return;
+          try {
+            const geocode = await Location.reverseGeocodeAsync({
+              latitude: loc.coords.latitude,
+              longitude: loc.coords.longitude,
+            });
+            let readable = "Current Location";
+            if (geocode && geocode.length > 0) {
+              const g = geocode[0];
+              const parts = [g.name, g.street, g.subregion || g.district, g.city].filter(Boolean);
+              readable = parts.join(", ") || "Current Location";
+            }
+            dispatch(
+              setUserCoordinates({
+                latitude: loc.coords.latitude,
+                longitude: loc.coords.longitude,
+                addressLine: readable,
+              })
+            );
+          } catch {
+            dispatch(
+              setUserCoordinates({
+                latitude: loc.coords.latitude,
+                longitude: loc.coords.longitude,
+              })
+            );
+          }
+        }
+      } catch (err) {
+        console.warn("[HomeScreen Auto GPS]", err);
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, [dispatch]);
 
   // ── Data Fetching Effects with Location-Based Delivery Radius Filtering ─
   useEffect(() => {

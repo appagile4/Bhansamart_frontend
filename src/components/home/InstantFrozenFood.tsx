@@ -310,8 +310,7 @@ function InstantFrozenFoodComponent({
       }
     }
 
-    // 3. Fallback to curated instant food catalog
-    return DEFAULT_INSTANT_PRODUCTS;
+    return [];
   }, [products, publicProducts]);
 
   // 3 Overlapping Preview Avatars matching DealsOfTheDays

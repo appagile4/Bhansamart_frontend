@@ -47,8 +47,36 @@ api.interceptors.request.use(
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
       }
+
+      // Geo-fencing: Automatically attach customer delivery coordinates to all product catalog queries
+      if (
+        config.method?.toLowerCase() === "get" &&
+        (config.url === "/products" ||
+          config.url?.startsWith("/products?") ||
+          config.url?.startsWith("/products/")) &&
+        !config.url.includes("/my-products")
+      ) {
+        config.params = config.params || {};
+        if (config.params.lat == null && config.params.latitude == null) {
+          const storedCoords = await storage.getItem("bhansa_user_coords");
+          if (storedCoords) {
+            try {
+              const parsed = JSON.parse(storedCoords);
+              if (parsed?.lat != null && parsed?.lng != null) {
+                config.params.lat = parsed.lat;
+                config.params.lng = parsed.lng;
+              }
+            } catch {}
+          }
+          if (config.params.lat == null) {
+            // Default to Rohini Sector 24 coordinates
+            config.params.lat = 28.7208;
+            config.params.lng = 77.1042;
+          }
+        }
+      }
     } catch (error) {
-      console.warn("[API Interceptor] Failed to read token from storage", error);
+      console.warn("[API Interceptor] Failed to read token/coords from storage", error);
     }
     return config;
   },

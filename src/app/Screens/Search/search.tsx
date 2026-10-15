@@ -86,10 +86,15 @@ function normalizeToDealProduct(prod: ProductItem, index = 0): DealProduct {
   };
 }
 
+import { useAppSelector } from "@/store/hooks";
+
 export default function SearchScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { addToCart } = useCart();
+
+  const customerLat = useAppSelector((state) => state.address?.latitude);
+  const customerLng = useAppSelector((state) => state.address?.longitude);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategoryFilter, setActiveCategoryFilter] = useState("All");
@@ -167,7 +172,12 @@ export default function SearchScreen() {
     const fetchDiscovery = async () => {
       try {
         setIsDiscoveryLoading(true);
-        const res = await getAllProductsApi({ limit: 30, sortBy: "popularity" });
+        const res = await getAllProductsApi({
+          limit: 30,
+          sortBy: "popularity",
+          lat: customerLat || undefined,
+          lng: customerLng || undefined,
+        });
         if (isMounted && res?.products) {
           setDiscoveryProducts(res.products);
         }
@@ -181,7 +191,7 @@ export default function SearchScreen() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [customerLat, customerLng]);
 
   // 5. Live Search API Execution (Across all categories)
   const executeSearch = useCallback(
@@ -201,6 +211,8 @@ export default function SearchScreen() {
         const response = await getAllProductsApi({
           search: trimmed,
           limit: 50,
+          lat: customerLat || undefined,
+          lng: customerLng || undefined,
         });
 
         if (response?.products) {

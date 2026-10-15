@@ -314,8 +314,7 @@ function SweetToothComponent({
       }
     }
 
-    // 3. Guaranteed sweet fallback products
-    return DEFAULT_SWEET_TOOTH;
+    return [];
   }, [products, publicProducts]);
 
   // 3 Overlapping Preview Avatars matching DealsOfTheDays

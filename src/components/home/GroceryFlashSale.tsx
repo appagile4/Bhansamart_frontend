@@ -905,21 +905,17 @@ export default function GroceryFlashSale({
           return {
             displayTitle: title || defaultTitle,
             displaySubtitle: subtitle || defaultSubtitle,
-            displayRow1: r1.length > 0 ? r1 : GROCERY_ROW1,
-            displayRow2: r2.length > 0 ? r2 : r1.length > 0 ? r1 : GROCERY_ROW2,
+            displayRow1: r1,
+            displayRow2: r2.length > 0 ? r2 : r1.length > 1 ? r1.slice(1) : [],
           };
         }
       }
 
-      // 3. Fallback to category mock configuration
-      const catConfig =
-        FLASH_CATEGORY_MAP[normalizedCat] || FLASH_CATEGORY_MAP.all;
-
       return {
-        displayTitle: title || catConfig.title,
-        displaySubtitle: subtitle || catConfig.subtitle,
-        displayRow1: catConfig.row1,
-        displayRow2: catConfig.row2,
+        displayTitle: title || "Flash Sale Deals",
+        displaySubtitle: subtitle || "Limited stock deals from nearby stores.",
+        displayRow1: [],
+        displayRow2: [],
       };
     }, [publicProducts, category, row1Data, row2Data, title, subtitle]);
 
@@ -1182,6 +1178,11 @@ export default function GroceryFlashSale({
         </View>
       </View>
     );
+  }
+
+  // Gracefully hide section if no in-range products exist
+  if (displayRow1.length === 0 && displayRow2.length === 0) {
+    return null;
   }
 
   // ── 2. Live Product Data View ─────────────────────────────────

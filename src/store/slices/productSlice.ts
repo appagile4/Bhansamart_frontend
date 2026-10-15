@@ -213,9 +213,19 @@ export const fetchVendorProducts = createAsyncThunk(
 // 3. Fetch Global Public Products Thunk (For Customer Home Screens)
 export const fetchPublicProducts = createAsyncThunk(
   "product/fetchPublicProducts",
-  async (params: GetPublicProductsParams | undefined, { rejectWithValue }) => {
+  async (params: GetPublicProductsParams | undefined, { rejectWithValue, getState }) => {
     try {
-      const response = await getAllProductsApi(params);
+      const state = getState() as any;
+      const userLat = params?.lat !== undefined ? params.lat : state.address?.latitude;
+      const userLng = params?.lng !== undefined ? params.lng : state.address?.longitude;
+
+      const mergedParams: GetPublicProductsParams = {
+        ...params,
+        lat: userLat != null ? userLat : undefined,
+        lng: userLng != null ? userLng : undefined,
+      };
+
+      const response = await getAllProductsApi(mergedParams);
       return response;
     } catch (error: any) {
       return rejectWithValue(
@@ -228,9 +238,19 @@ export const fetchPublicProducts = createAsyncThunk(
 // 4. Fetch Category Products Thunk (Isolated for Category Expand Screen)
 export const fetchCategoryProducts = createAsyncThunk(
   "product/fetchCategoryProducts",
-  async (params: GetPublicProductsParams | undefined, { rejectWithValue }) => {
+  async (params: GetPublicProductsParams | undefined, { rejectWithValue, getState }) => {
     try {
-      const response = await getAllProductsApi(params);
+      const state = getState() as any;
+      const userLat = params?.lat !== undefined ? params.lat : state.address?.latitude;
+      const userLng = params?.lng !== undefined ? params.lng : state.address?.longitude;
+
+      const mergedParams: GetPublicProductsParams = {
+        ...params,
+        lat: userLat != null ? userLat : undefined,
+        lng: userLng != null ? userLng : undefined,
+      };
+
+      const response = await getAllProductsApi(mergedParams);
       return response;
     } catch (error: any) {
       return rejectWithValue(

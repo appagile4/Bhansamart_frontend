@@ -26,15 +26,15 @@ export interface AddressState {
   initialized: boolean;
 }
 
-const DEFAULT_FALLBACK_LOCATION = "Baneshwor, Kathmandu, Bagmati, Nepal";
+const DEFAULT_FALLBACK_LOCATION = "Sector 24, Rohini, Delhi, India";
 
 const initialState: AddressState = {
   addresses: [],
   selectedAddress: null,
   currentGpsLocation: null,
   activeDisplayLocation: DEFAULT_FALLBACK_LOCATION,
-  latitude: 27.7172,
-  longitude: 85.3240,
+  latitude: 28.7208,
+  longitude: 77.1042,
   loading: false,
   error: null,
   initialized: false,
@@ -187,6 +187,12 @@ export const makeDefaultAddress = createAsyncThunk(
   }
 );
 
+const saveCoordsToStorage = (lat: number | null, lng: number | null) => {
+  if (lat != null && lng != null) {
+    storage.setItem("bhansa_user_coords", JSON.stringify({ lat, lng })).catch(() => {});
+  }
+};
+
 export const addressSlice = createSlice({
   name: "address",
   initialState,
@@ -199,6 +205,7 @@ export const addressSlice = createSlice({
       if (action.payload?.latitude != null && action.payload?.longitude != null) {
         state.latitude = action.payload.latitude;
         state.longitude = action.payload.longitude;
+        saveCoordsToStorage(state.latitude, state.longitude);
       }
       saveSelectedAddressToStorage(state.selectedAddress, state.activeDisplayLocation);
     },
@@ -211,6 +218,8 @@ export const addressSlice = createSlice({
       if (action.payload.addressLine) {
         state.activeDisplayLocation = action.payload.addressLine;
       }
+      saveCoordsToStorage(state.latitude, state.longitude);
+      saveSelectedAddressToStorage(state.selectedAddress, state.activeDisplayLocation);
     },
     setCurrentGpsLocation: (
       state,
@@ -226,8 +235,8 @@ export const addressSlice = createSlice({
           type: "Other",
           addressLine: action.payload,
           phone: "",
-          latitude: state.latitude || 27.7172,
-          longitude: state.longitude || 85.3240,
+          latitude: state.latitude || 28.7208,
+          longitude: state.longitude || 77.1042,
         };
       } else {
         state.currentGpsLocation = action.payload.addressLine;
@@ -243,6 +252,7 @@ export const addressSlice = createSlice({
           longitude: action.payload.longitude,
         };
       }
+      saveCoordsToStorage(state.latitude, state.longitude);
       saveSelectedAddressToStorage(state.selectedAddress, state.activeDisplayLocation);
     },
     setActiveDisplayLocation: (state, action: PayloadAction<string>) => {
