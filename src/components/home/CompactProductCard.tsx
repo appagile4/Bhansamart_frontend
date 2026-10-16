@@ -24,7 +24,9 @@ export const CompactProductCard = memo(function CompactProductCard({
   const theme = useTheme();
   const isDark = theme.mode === "dark";
   const dispatch = useAppDispatch();
-  const { addToCart } = useCart();
+  const { addToCart, updateQuantity, getItemQuantity } = useCart();
+  const targetId = String(product.id || (product as any)._id || "").trim();
+  const qty = getItemQuantity(targetId);
 
   const isWishlisted = useAppSelector((state) =>
     state.wishlist.items.some(
@@ -63,12 +65,20 @@ export const CompactProductCard = memo(function CompactProductCard({
       if (onAddPress) {
         onAddPress(product);
       } else {
-        const imgUrl =
-          typeof product.image === "object" && product.image && "uri" in product.image
-            ? (product.image as any).uri
-            : "";
+        let imgUrl = "";
+        if (typeof (product as any).imageUrl === "string" && (product as any).imageUrl) {
+          imgUrl = (product as any).imageUrl;
+        } else if (typeof product.image === "string") {
+          imgUrl = product.image;
+        } else if (
+          product.image &&
+          typeof product.image === "object" &&
+          "uri" in product.image
+        ) {
+          imgUrl = (product.image as any).uri;
+        }
         addToCart({
-          id: product.id,
+          id: targetId,
           name: product.name,
           price: product.price,
           originalPrice: product.originalPrice,
@@ -77,7 +87,7 @@ export const CompactProductCard = memo(function CompactProductCard({
         });
       }
     },
-    [addToCart, onAddPress, product]
+    [addToCart, onAddPress, product, targetId]
   );
 
   const hasDiscount =
@@ -141,7 +151,7 @@ export const CompactProductCard = memo(function CompactProductCard({
           {product.name}
         </Text>
 
-        {/* Price Row with Quick Add Button */}
+        {/* Price Row with Quick Add Button or Quantity Stepper */}
         <View style={styles.priceRow}>
           <View style={styles.priceTextGroup}>
             <Text
@@ -163,24 +173,62 @@ export const CompactProductCard = memo(function CompactProductCard({
             ) : null}
           </View>
 
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={handleQuickAdd}
-            style={[
-              styles.addBtn,
-              isDark && {
-                backgroundColor: "rgba(57, 211, 83, 0.15)",
-                borderColor: "#39D353",
-              },
-            ]}
-            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-          >
-            <Ionicons
-              name="add"
-              size={scale(14)}
-              color={isDark ? "#39D353" : "#059669"}
-            />
-          </TouchableOpacity>
+          {qty === 0 ? (
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={handleQuickAdd}
+              style={[
+                styles.addBtn,
+                isDark && {
+                  backgroundColor: "rgba(57, 211, 83, 0.15)",
+                  borderColor: "#39D353",
+                },
+              ]}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            >
+              <Ionicons
+                name="add"
+                size={scale(14)}
+                color={isDark ? "#39D353" : "#059669"}
+              />
+            </TouchableOpacity>
+          ) : (
+            <View
+              style={[
+                styles.stepperContainer,
+                isDark && {
+                  backgroundColor: "#059669",
+                  borderColor: "#059669",
+                },
+              ]}
+            >
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={(e) => {
+                  e?.stopPropagation?.();
+                  updateQuantity(targetId, -1);
+                }}
+                style={styles.stepperBtn}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              >
+                <Ionicons name="remove" size={scale(11)} color="#FFFFFF" />
+              </TouchableOpacity>
+
+              <Text style={styles.stepperQtyText}>{qty}</Text>
+
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={(e) => {
+                  e?.stopPropagation?.();
+                  updateQuantity(targetId, 1);
+                }}
+                style={styles.stepperBtn}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              >
+                <Ionicons name="add" size={scale(11)} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </View>
     </TouchableOpacity>
@@ -281,5 +329,26 @@ const styles = StyleSheet.create({
     borderColor: "#059669",
     alignItems: "center",
     justifyContent: "center",
+  },
+  stepperContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#059669",
+    borderRadius: scale(11),
+    height: scale(22),
+    paddingHorizontal: scale(4),
+    minWidth: scale(48),
+  },
+  stepperBtn: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: scale(2),
+  },
+  stepperQtyText: {
+    fontSize: moderateScale(11),
+    fontWeight: "700",
+    color: "#FFFFFF",
+    marginHorizontal: scale(2),
   },
 });

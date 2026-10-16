@@ -30,6 +30,7 @@ import socketService from "@/store/services/socketService";
 export default function YourOrdersScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const isDark = theme.mode === "dark";
   const dispatch = useAppDispatch();
 
   const { customerOrders, customerLoading } = useAppSelector(
@@ -89,24 +90,43 @@ export default function YourOrdersScreen() {
     ]);
   };
 
+  const rootBg = isDark ? "#080D0F" : "#F8FAFC";
+  const headerBg = isDark ? "#080D0F" : "#FFFFFF";
+  const navTitleColor = isDark ? "#F8FAFC" : "#1E293B";
+  const backIconColor = isDark ? "#F8FAFC" : "#1E293B";
+  const dividerColor = isDark ? "#1E252E" : "#F1F5F9";
+  const cardBg = isDark ? "#151D24" : "#FFFFFF";
+  const cardBorder = isDark ? "#303B45" : "#E2E8F0";
+  const statusTitleColor = isDark ? "#F8FAFC" : "#1E293B";
+  const statusSubtitleColor = isDark ? "#A8B2BE" : "#64748B";
+  const thumbBg = isDark ? "#1B252E" : "#F8FAFC";
+  const thumbBorder = isDark ? "#303B45" : "#F1F5F9";
+  const trackBtnBg = isDark ? "rgba(0, 128, 128, 0.16)" : "#F0FDFA";
+  const trackBtnBorder = isDark ? "rgba(0, 128, 128, 0.3)" : "#CCFBF1";
+  const trackBtnText = isDark ? "#2DD4BF" : "#008080";
+  const summaryBtnText = isDark ? "#A8B2BE" : "#475569";
+  const reorderBtnBg = isDark ? "rgba(0, 128, 128, 0.16)" : "#F0FDFA";
+  const reorderBtnText = isDark ? "#2DD4BF" : "#008080";
+  const refreshColor = isDark ? "#39D353" : "#008080";
+
   return (
-    <View style={styles.root}>
-      <StatusBar style="dark" />
+    <View style={[styles.root, { backgroundColor: rootBg }]}>
+      <StatusBar style={isDark ? "light" : "dark"} />
 
       {/* 1. Header with SafeAreaView */}
-      <SafeAreaView edges={["top"]} style={styles.safeAreaHeader}>
+      <SafeAreaView edges={["top"]} style={[styles.safeAreaHeader, { backgroundColor: headerBg }]}>
         <View style={styles.navBar}>
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() => router.back()}
             style={styles.backButton}
           >
-            <Feather name="arrow-left" size={scale(22)} color="#1E293B" />
+            <Feather name="arrow-left" size={scale(22)} color={backIconColor} />
           </TouchableOpacity>
-          <Text style={styles.navTitle}>Your Orders</Text>
+          <Text style={[styles.navTitle, { color: navTitleColor }]}>Your Orders</Text>
           <View style={{ width: scale(36) }} />
         </View>
-        <View style={styles.headerDivider} />
+        <View style={[styles.headerDivider, { backgroundColor: dividerColor }]} />
       </SafeAreaView>
 
       {/* 2. Orders Cards List */}
@@ -117,22 +137,27 @@ export default function YourOrdersScreen() {
           <RefreshControl
             refreshing={customerLoading}
             onRefresh={onRefresh}
-            colors={["#008080"]}
+            colors={[refreshColor]}
+            tintColor={refreshColor}
           />
         }
       >
         {customerOrders.length === 0 && !customerLoading ? (
           <View style={styles.emptyContainer}>
-            <Ionicons name="receipt-outline" size={scale(56)} color="#94A3B8" />
-            <Text style={styles.emptyTitle}>No Orders Placed Yet</Text>
-            <Text style={styles.emptySubtitle}>
+            <Ionicons name="receipt-outline" size={scale(56)} color={isDark ? "#64748B" : "#94A3B8"} />
+            <Text style={[styles.emptyTitle, { color: isDark ? "#F8FAFC" : "#334155" }]}>
+              No Orders Placed Yet
+            </Text>
+            <Text style={[styles.emptySubtitle, { color: isDark ? "#A8B2BE" : "#64748B" }]}>
               When you place an order, you can track its live status right here.
             </Text>
             <TouchableOpacity
-              style={styles.shopBtn}
+              style={[styles.shopBtn, { backgroundColor: isDark ? "#39D353" : "#008080" }]}
               onPress={() => router.push("/customerMain/home" as any)}
             >
-              <Text style={styles.shopBtnText}>Explore Products</Text>
+              <Text style={[styles.shopBtnText, isDark && { color: "#080D0F", fontWeight: "800" }]}>
+                Explore Products
+              </Text>
             </TouchableOpacity>
           </View>
         ) : null}
@@ -144,7 +169,13 @@ export default function YourOrdersScreen() {
           const isActive = !isCancelled && !isDelivered;
 
           return (
-            <View key={order._id} style={styles.orderCard}>
+            <View
+              key={order._id}
+              style={[
+                styles.orderCard,
+                { backgroundColor: cardBg, borderColor: cardBorder },
+              ]}
+            >
               {/* Top Order Status Row */}
               <View style={styles.cardHeaderRow}>
                 {/* Left Icon */}
@@ -152,10 +183,10 @@ export default function YourOrdersScreen() {
                   style={[
                     styles.statusIconBox,
                     isCancelled
-                      ? styles.statusIconCancelled
+                      ? { backgroundColor: isDark ? "rgba(239, 68, 68, 0.18)" : "#FEE2E2" }
                       : isDelivered
-                      ? styles.statusIconDelivered
-                      : styles.statusIconPlaced,
+                      ? { backgroundColor: isDark ? "rgba(16, 185, 129, 0.18)" : "#D1FAE5" }
+                      : { backgroundColor: isDark ? "rgba(245, 158, 11, 0.18)" : "#FEF3C7" },
                   ]}
                 >
                   {isCancelled ? (
@@ -164,20 +195,20 @@ export default function YourOrdersScreen() {
                     <Ionicons
                       name="checkmark-done"
                       size={scale(24)}
-                      color="#059669"
+                      color={isDark ? "#4ADE80" : "#059669"}
                     />
                   ) : (
                     <MaterialCommunityIcons
                       name="shopping"
                       size={scale(26)}
-                      color="#D97706"
+                      color={isDark ? "#FBBF24" : "#D97706"}
                     />
                   )}
                 </View>
 
                 {/* Middle Title & Subtitle */}
                 <View style={styles.statusTextCol}>
-                  <Text style={styles.statusTitle}>
+                  <Text style={[styles.statusTitle, { color: statusTitleColor }]}>
                     {order.orderStatus === "PLACED"
                       ? "Order Placed"
                       : order.orderStatus === "ACCEPTED"
@@ -192,7 +223,7 @@ export default function YourOrdersScreen() {
                       ? "Order Delivered"
                       : "Order Cancelled"}
                   </Text>
-                  <Text style={styles.statusSubtitle}>
+                  <Text style={[styles.statusSubtitle, { color: statusSubtitleColor }]}>
                     Rs.{order.totalAmount} &bull; {order.orderNumber}
                   </Text>
                 </View>
@@ -201,8 +232,20 @@ export default function YourOrdersScreen() {
                 {isActive ? (
                   <View style={styles.activeBadgeContainer}>
                     <View style={styles.blueDot} />
-                    <View style={styles.activePill}>
-                      <Text style={styles.activePillText}>Live</Text>
+                    <View
+                      style={[
+                        styles.activePill,
+                        isDark && { backgroundColor: "rgba(16, 185, 129, 0.2)" },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.activePillText,
+                          isDark && { color: "#34D399" },
+                        ]}
+                      >
+                        Live
+                      </Text>
                     </View>
                   </View>
                 ) : (
@@ -214,7 +257,7 @@ export default function YourOrdersScreen() {
                     <Feather
                       name="more-vertical"
                       size={scale(20)}
-                      color="#64748B"
+                      color={isDark ? "#94A3B8" : "#64748B"}
                     />
                   </TouchableOpacity>
                 )}
@@ -223,7 +266,13 @@ export default function YourOrdersScreen() {
               {/* Products Thumbnails Preview Row */}
               <View style={styles.productsThumbRow}>
                 {order.items?.slice(0, 4).map((it, i) => (
-                  <View key={i} style={styles.thumbSquare}>
+                  <View
+                    key={i}
+                    style={[
+                      styles.thumbSquare,
+                      { backgroundColor: thumbBg, borderColor: thumbBorder },
+                    ]}
+                  >
                     <Image
                       source={{
                         uri:
@@ -237,20 +286,27 @@ export default function YourOrdersScreen() {
                 ))}
               </View>
 
-              <View style={styles.cardDivider} />
+              <View
+                style={[styles.cardDivider, { backgroundColor: dividerColor }]}
+              />
 
               {/* Bottom Action CTA Button */}
               {isActive ? (
                 <TouchableOpacity
                   activeOpacity={0.8}
                   onPress={() => handleOrderSummary(order)}
-                  style={styles.trackOrderBtn}
+                  style={[
+                    styles.trackOrderBtn,
+                    { backgroundColor: trackBtnBg, borderColor: trackBtnBorder },
+                  ]}
                 >
-                  <Text style={styles.trackOrderText}>Track Order Status</Text>
+                  <Text style={[styles.trackOrderText, { color: trackBtnText }]}>
+                    Track Order Status
+                  </Text>
                   <Feather
                     name="chevron-right"
                     size={scale(16)}
-                    color="#008080"
+                    color={trackBtnText}
                   />
                 </TouchableOpacity>
               ) : (
@@ -260,25 +316,42 @@ export default function YourOrdersScreen() {
                     onPress={() => handleOrderSummary(order)}
                     style={styles.summaryBtn}
                   >
-                    <Text style={styles.summaryBtnText}>Order Summary</Text>
+                    <Text
+                      style={[
+                        styles.summaryBtnText,
+                        { color: summaryBtnText },
+                      ]}
+                    >
+                      Order Summary
+                    </Text>
                     <Feather
                       name="chevron-right"
                       size={scale(16)}
-                      color="#475569"
+                      color={isDark ? "#94A3B8" : "#475569"}
                     />
                   </TouchableOpacity>
 
                   <TouchableOpacity
                     activeOpacity={0.8}
                     onPress={() => handleReorder(order)}
-                    style={styles.reorderBtn}
+                    style={[
+                      styles.reorderBtn,
+                      { backgroundColor: reorderBtnBg },
+                    ]}
                   >
                     <Ionicons
                       name="repeat"
                       size={scale(16)}
-                      color="#008080"
+                      color={reorderBtnText}
                     />
-                    <Text style={styles.reorderBtnText}>Reorder</Text>
+                    <Text
+                      style={[
+                        styles.reorderBtnText,
+                        { color: reorderBtnText },
+                      ]}
+                    >
+                      Reorder
+                    </Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -293,11 +366,8 @@ export default function YourOrdersScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
   },
-  safeAreaHeader: {
-    backgroundColor: "#ffffff",
-  },
+  safeAreaHeader: {},
   navBar: {
     height: moderateScale(44),
     paddingHorizontal: scale(16),
@@ -313,11 +383,9 @@ const styles = StyleSheet.create({
   navTitle: {
     fontSize: moderateScale(17),
     fontWeight: "700",
-    color: "#1E293B",
   },
   headerDivider: {
     height: 1,
-    backgroundColor: "#F1F5F9",
   },
   scrollContent: {
     padding: scale(16),
@@ -333,16 +401,13 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: moderateScale(17),
     fontWeight: "700",
-    color: "#334155",
   },
   emptySubtitle: {
     fontSize: moderateScale(13),
-    color: "#64748B",
     textAlign: "center",
     paddingHorizontal: scale(32),
   },
   shopBtn: {
-    backgroundColor: "#008080",
     paddingHorizontal: scale(20),
     paddingVertical: moderateScale(10),
     borderRadius: scale(10),
@@ -354,11 +419,9 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(13.5),
   },
   orderCard: {
-    backgroundColor: "#ffffff",
     borderRadius: scale(14),
     padding: scale(14),
     borderWidth: 1,
-    borderColor: "#E2E8F0",
   },
   cardHeaderRow: {
     flexDirection: "row",
@@ -372,26 +435,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: scale(12),
   },
-  statusIconPlaced: {
-    backgroundColor: "#FEF3C7",
-  },
-  statusIconDelivered: {
-    backgroundColor: "#D1FAE5",
-  },
-  statusIconCancelled: {
-    backgroundColor: "#FEE2E2",
-  },
   statusTextCol: {
     flex: 1,
   },
   statusTitle: {
     fontSize: moderateScale(14.5),
     fontWeight: "700",
-    color: "#1E293B",
   },
   statusSubtitle: {
     fontSize: moderateScale(12),
-    color: "#64748B",
     marginTop: scale(2),
   },
   activeBadgeContainer: {
@@ -428,11 +480,9 @@ const styles = StyleSheet.create({
     width: scale(46),
     height: scale(46),
     borderRadius: scale(8),
-    backgroundColor: "#F8FAFC",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#F1F5F9",
     overflow: "hidden",
   },
   thumbImage: {
@@ -441,24 +491,20 @@ const styles = StyleSheet.create({
   },
   cardDivider: {
     height: 1,
-    backgroundColor: "#F1F5F9",
     marginVertical: moderateScale(12),
   },
   trackOrderBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#F0FDFA",
     paddingHorizontal: scale(12),
     paddingVertical: moderateScale(9),
     borderRadius: scale(8),
     borderWidth: 1,
-    borderColor: "#CCFBF1",
   },
   trackOrderText: {
     fontSize: moderateScale(13),
     fontWeight: "700",
-    color: "#008080",
   },
   cardActionsRow: {
     flexDirection: "row",
@@ -473,13 +519,11 @@ const styles = StyleSheet.create({
   summaryBtnText: {
     fontSize: moderateScale(13),
     fontWeight: "600",
-    color: "#475569",
   },
   reorderBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: scale(4),
-    backgroundColor: "#F0FDFA",
     paddingHorizontal: scale(10),
     paddingVertical: scale(5),
     borderRadius: scale(6),
@@ -487,6 +531,5 @@ const styles = StyleSheet.create({
   reorderBtnText: {
     fontSize: moderateScale(12.5),
     fontWeight: "700",
-    color: "#008080",
   },
 });

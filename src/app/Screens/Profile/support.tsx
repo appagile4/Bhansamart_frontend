@@ -1,5 +1,5 @@
 import { moderateScale, scale, useTheme } from "@/theme";
-import { Feather, Ionicons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React from "react";
@@ -70,6 +70,7 @@ const FAQ_LIST: FAQItem[] = [
 export default function SupportScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const isDark = theme.mode === "dark";
 
   const handleCall = (phoneNumber: string) => {
     Linking.openURL(`tel:${phoneNumber}`).catch(() => {
@@ -84,22 +85,49 @@ export default function SupportScreen() {
   };
 
   return (
-    <View style={styles.root}>
-      <StatusBar style="dark" />
+    <View
+      style={[
+        styles.root,
+        isDark && { backgroundColor: "#080D0F" },
+      ]}
+    >
+      <StatusBar style={isDark ? "light" : "dark"} />
 
       {/* 1. Header with SafeAreaView for Status Bar Coverage */}
-      <SafeAreaView edges={["top"]} style={styles.safeAreaHeader}>
+      <SafeAreaView
+        edges={["top"]}
+        style={[
+          styles.safeAreaHeader,
+          isDark && { backgroundColor: "#080D0F" },
+        ]}
+      >
         <View style={styles.navBar}>
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() => router.back()}
             style={styles.backButton}
           >
-            <Feather name="arrow-left" size={scale(22)} color="#1E293B" />
+            <Feather
+              name="arrow-left"
+              size={scale(22)}
+              color={isDark ? "#F8FAFC" : "#1E293B"}
+            />
           </TouchableOpacity>
-          <Text style={styles.navTitle}>Help and Support</Text>
+          <Text
+            style={[
+              styles.navTitle,
+              isDark && { color: "#F8FAFC" },
+            ]}
+          >
+            Help and Support
+          </Text>
         </View>
-        <View style={styles.headerDivider} />
+        <View
+          style={[
+            styles.headerDivider,
+            isDark && { backgroundColor: "#1E252E" },
+          ]}
+        />
       </SafeAreaView>
 
       {/* 2. Scrollable Content */}
@@ -108,21 +136,64 @@ export default function SupportScreen() {
         contentContainerStyle={styles.scrollContent}
       >
         {/* Help & FAQs Card */}
-        <View style={styles.card}>
-          <Text style={styles.cardHeading}>Help & FAQs</Text>
+        <View
+          style={[
+            styles.card,
+            isDark && {
+              backgroundColor: "#151D24",
+              borderColor: "#303B45",
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.cardHeading,
+              isDark && { color: "#F8FAFC" },
+            ]}
+          >
+            Help & FAQs
+          </Text>
 
           <View style={styles.faqList}>
             {FAQ_LIST.map((faq) => (
               <View key={faq.id} style={styles.faqItem}>
-                <Text style={styles.faqQuestion}>{faq.question}</Text>
+                <Text
+                  style={[
+                    styles.faqQuestion,
+                    isDark && { color: "#F8FAFC" },
+                  ]}
+                >
+                  {faq.question}
+                </Text>
                 {faq.subtitle && (
-                  <Text style={styles.faqSubtitle}>{faq.subtitle}</Text>
+                  <Text
+                    style={[
+                      styles.faqSubtitle,
+                      isDark && { color: "#94A3B8" },
+                    ]}
+                  >
+                    {faq.subtitle}
+                  </Text>
                 )}
                 <View style={styles.pointsList}>
                   {faq.points.map((pt, i) => (
                     <View key={i} style={styles.pointRow}>
-                      <Text style={styles.bulletDot}>•</Text>
-                      <Text style={styles.pointText}>{pt}</Text>
+                      <Text
+                        style={[
+                          styles.bulletDot,
+                          isDark && { color: "#38BDF8" },
+                        ]}
+                      >
+                        •
+                      </Text>
+                      <Text
+                        style={[
+                          styles.pointText,
+                          isDark && { color: "#A8B2BE" },
+                        ]}
+                      >
+                        {pt}
+                      </Text>
                     </View>
                   ))}
                 </View>
@@ -132,51 +203,135 @@ export default function SupportScreen() {
         </View>
 
         {/* Grievance & Support Info Card */}
-        <View style={styles.card}>
-          <Text style={styles.grievanceIntro}>
+        <View
+          style={[
+            styles.card,
+            isDark && {
+              backgroundColor: "#151D24",
+              borderColor: "#303B45",
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.grievanceIntro,
+              isDark && { color: "#94A3B8" },
+            ]}
+          >
             If your issue remains unresolved or you are unsatisfied with the
             resolution process, please feel free to contact our grievance officer
             for further assistance.
           </Text>
 
           <View style={styles.contactDetailsGroup}>
-            <Text style={styles.officerRole}>Grievance Officer</Text>
-            <Text style={styles.officerName}>Ram Bahadur</Text>
+            <Text
+              style={[
+                styles.officerRole,
+                isDark && { color: "#F8FAFC" },
+              ]}
+            >
+              Grievance Officer
+            </Text>
+            <Text
+              style={[
+                styles.officerName,
+                isDark && { color: "#A8B2BE" },
+              ]}
+            >
+              Ram Bahadur
+            </Text>
 
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Contact: </Text>
+              <Text
+                style={[
+                  styles.infoLabel,
+                  isDark && { color: "#F8FAFC" },
+                ]}
+              >
+                Contact:{" "}
+              </Text>
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => handleCall("9860454545")}
               >
-                <Text style={styles.linkGreen}>9860454545</Text>
+                <Text
+                  style={[
+                    styles.linkGreen,
+                    isDark && { color: "#39D353" },
+                  ]}
+                >
+                  9860454545
+                </Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Email: </Text>
+              <Text
+                style={[
+                  styles.infoLabel,
+                  isDark && { color: "#F8FAFC" },
+                ]}
+              >
+                Email:{" "}
+              </Text>
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => handleEmail("Damion_Davis93@hotmail.com")}
               >
-                <Text style={styles.linkGreen}>Damion_Davis93@hotmail.com</Text>
+                <Text
+                  style={[
+                    styles.linkGreen,
+                    isDark && { color: "#39D353" },
+                  ]}
+                >
+                  Damion_Davis93@hotmail.com
+                </Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Customer support: </Text>
+              <Text
+                style={[
+                  styles.infoLabel,
+                  isDark && { color: "#F8FAFC" },
+                ]}
+              >
+                Customer support:{" "}
+              </Text>
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => handleCall("9899668888")}
               >
-                <Text style={styles.linkGreen}>9899668888</Text>
+                <Text
+                  style={[
+                    styles.linkGreen,
+                    isDark && { color: "#39D353" },
+                  ]}
+                >
+                  9899668888
+                </Text>
               </TouchableOpacity>
-              <Text style={styles.separatorBar}> | </Text>
+              <Text
+                style={[
+                  styles.separatorBar,
+                  isDark && { color: "#303B45" },
+                ]}
+              >
+                {" "}
+                |{" "}
+              </Text>
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => handleCall("9899668898")}
               >
-                <Text style={styles.linkGreen}>9899668898</Text>
+                <Text
+                  style={[
+                    styles.linkGreen,
+                    isDark && { color: "#39D353" },
+                  ]}
+                >
+                  9899668898
+                </Text>
               </TouchableOpacity>
             </View>
           </View>

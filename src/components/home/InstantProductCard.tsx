@@ -33,17 +33,35 @@ export default function InstantProductCard({
 }: InstantProductCardProps) {
   const router = useRouter();
   const theme = useTheme();
-  const { addToCart } = useCart();
+  const { addToCart, updateQuantity, getItemQuantity } = useCart();
+  const targetId = String(product.id || (product as any)._id || "").trim();
+  const qty = getItemQuantity(targetId);
 
   const handleAdd = () => {
-    onAddPress?.(product);
-    addToCart({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      originalPrice: product.originalPrice,
-      weight: product.weight,
-    });
+    if (onAddPress) {
+      onAddPress(product);
+    } else {
+      let imgUrl = "";
+      if (typeof (product as any).imageUrl === "string" && (product as any).imageUrl) {
+        imgUrl = (product as any).imageUrl;
+      } else if (typeof product.image === "string") {
+        imgUrl = product.image;
+      } else if (
+        product.image &&
+        typeof product.image === "object" &&
+        "uri" in product.image
+      ) {
+        imgUrl = (product.image as any).uri;
+      }
+      addToCart({
+        id: targetId,
+        name: product.name,
+        price: product.price,
+        originalPrice: product.originalPrice,
+        imageUrl: imgUrl,
+        weight: product.weight,
+      });
+    }
   };
 
   const handlePress = () => {
@@ -114,17 +132,39 @@ export default function InstantProductCard({
           contentFit="contain"
         />
 
-        {/* ADD Capsule Button */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={handleAdd}
-          style={styles.addBtn}
-        >
-          <Text style={styles.addBtnText}>ADD</Text>
-          {product.optionsText ? (
-            <Text style={styles.optionsText}>{product.optionsText}</Text>
-          ) : null}
-        </TouchableOpacity>
+        {/* ADD Capsule Button or Stepper */}
+        {qty === 0 ? (
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={handleAdd}
+            style={styles.addBtn}
+          >
+            <Text style={styles.addBtnText}>ADD</Text>
+            {product.optionsText ? (
+              <Text style={styles.optionsText}>{product.optionsText}</Text>
+            ) : null}
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.stepperBox}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => updateQuantity(targetId, -1)}
+              style={styles.stepperAction}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            >
+              <Ionicons name="remove" size={scale(12)} color="#004D5D" />
+            </TouchableOpacity>
+            <Text style={styles.stepperQtyText}>{qty}</Text>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => updateQuantity(targetId, 1)}
+              style={styles.stepperAction}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            >
+              <Ionicons name="add" size={scale(12)} color="#004D5D" />
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {/* Content Body */}
@@ -208,6 +248,34 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 2,
     elevation: 2,
+  },
+  stepperBox: {
+    position: "absolute",
+    bottom: -scale(1),
+    right: -scale(1),
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1.2,
+    borderColor: "#004D5D",
+    borderRadius: scale(8),
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: scale(5),
+    paddingVertical: scale(2),
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  stepperAction: {
+    paddingHorizontal: scale(3),
+    paddingVertical: scale(1),
+  },
+  stepperQtyText: {
+    fontSize: moderateScale(11.5),
+    fontWeight: "800",
+    color: "#004D5D",
+    marginHorizontal: scale(4),
   },
   addBtnText: {
     fontSize: moderateScale(11),

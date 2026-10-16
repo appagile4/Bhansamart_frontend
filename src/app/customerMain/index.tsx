@@ -480,8 +480,30 @@ export default function HomeScreen() {
 
   const handleAddToCart = useCallback(
     (prod: any) => {
+      const targetId = String(
+        prod.id || prod._id || prod.productId || prod.key || ""
+      ).trim() || `item-${Date.now()}`;
+
+      let imgUrl = "";
+      if (typeof prod.imageUrl === "string" && prod.imageUrl) {
+        imgUrl = prod.imageUrl;
+      } else if (typeof prod.image === "string" && prod.image) {
+        imgUrl = prod.image;
+      } else if (
+        prod.image &&
+        typeof prod.image === "object" &&
+        "uri" in prod.image
+      ) {
+        imgUrl = prod.image.uri;
+      } else if (Array.isArray(prod.images) && prod.images.length > 0) {
+        imgUrl =
+          typeof prod.images[0] === "string"
+            ? prod.images[0]
+            : prod.images[0]?.url || "";
+      }
+
       addToCart({
-        id: prod.id || `item-${Date.now()}`,
+        id: targetId,
         name: prod.name || prod.title || "Product",
         price:
           typeof prod.price === "number"
@@ -490,8 +512,10 @@ export default function HomeScreen() {
         originalPrice: prod.originalPrice
           ? Number(prod.originalPrice)
           : undefined,
-        imageUrl: prod.imageUrl || prod.image || "",
-        weight: prod.weight || prod.volume || "1 unit",
+        imageUrl: imgUrl,
+        weight: prod.weight || prod.weightTag || prod.unit || prod.volume || "1 unit",
+        category: prod.category || "Grocery",
+        subCategory: prod.subCategory || prod.subcategory || "",
       });
     },
     [addToCart],

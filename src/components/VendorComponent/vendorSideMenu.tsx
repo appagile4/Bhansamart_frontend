@@ -1,15 +1,10 @@
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { logoutVendorAction } from "@/store/slices/vendorAuthSlice";
 import { moderateScale, scale } from "@/theme";
-import {
-  Feather,
-  Ionicons,
-  MaterialCommunityIcons,
-  SimpleLineIcons,
-} from "@expo/vector-icons";
+import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Animated,
@@ -59,9 +54,21 @@ const MAIN_MENU_ITEMS: MenuItem[] = [
     route: "/VendorMain/order",
     hasDropdown: true,
     subItems: [
-      { id: "all_orders", title: "All Orders", route: "/VendorMain/order?status=all" },
-      { id: "pending_orders", title: "Pending Orders", route: "/VendorMain/order?status=pending" },
-      { id: "completed_orders", title: "Completed Orders", route: "/VendorMain/order?status=completed" },
+      {
+        id: "all_orders",
+        title: "All Orders",
+        route: "/VendorMain/order?status=all",
+      },
+      {
+        id: "pending_orders",
+        title: "Pending Orders",
+        route: "/VendorMain/order?status=pending",
+      },
+      {
+        id: "completed_orders",
+        title: "Completed Orders",
+        route: "/VendorMain/order?status=completed",
+      },
     ],
   },
   {
@@ -72,8 +79,16 @@ const MAIN_MENU_ITEMS: MenuItem[] = [
     route: "/VendorMain/product",
     hasDropdown: true,
     subItems: [
-      { id: "product_list", title: "Product List", route: "/VendorMain/product" },
-      { id: "add_product", title: "Add New Product", route: "/Screens/vendorScreens/addProduct" },
+      {
+        id: "product_list",
+        title: "Product List",
+        route: "/VendorMain/product",
+      },
+      {
+        id: "add_product",
+        title: "Add New Product",
+        route: "/Screens/vendorScreens/addProduct",
+      },
       { id: "categories", title: "Categories", route: "/VendorMain/product" },
     ],
   },
@@ -85,9 +100,21 @@ const MAIN_MENU_ITEMS: MenuItem[] = [
     route: "/VendorMain/transaction",
     hasDropdown: true,
     subItems: [
-      { id: "all_txns", title: "Transaction History", route: "/VendorMain/transaction" },
-      { id: "cod_handover", title: "COD Cash Handover", route: "/Screens/vendorScreens/cod-handover" },
-      { id: "payment_qr", title: "Payment QR & UPI", route: "/Screens/vendorScreens/payment-qr" },
+      {
+        id: "all_txns",
+        title: "Transaction History",
+        route: "/VendorMain/transaction",
+      },
+      {
+        id: "cod_handover",
+        title: "COD Cash Handover",
+        route: "/Screens/vendorScreens/cod-handover",
+      },
+      {
+        id: "payment_qr",
+        title: "Payment QR & UPI",
+        route: "/Screens/vendorScreens/payment-qr",
+      },
     ],
   },
   {
@@ -105,8 +132,16 @@ const MAIN_MENU_ITEMS: MenuItem[] = [
     route: "/VendorMain/delivery",
     hasDropdown: true,
     subItems: [
-      { id: "active_riders", title: "Active Dispatches", route: "/VendorMain/delivery" },
-      { id: "delivery_history", title: "Delivery History", route: "/VendorMain/delivery" },
+      {
+        id: "active_riders",
+        title: "Active Dispatches",
+        route: "/VendorMain/delivery",
+      },
+      {
+        id: "delivery_history",
+        title: "Delivery History",
+        route: "/VendorMain/delivery",
+      },
     ],
   },
   {
@@ -117,8 +152,16 @@ const MAIN_MENU_ITEMS: MenuItem[] = [
     route: "/Screens/vendorScreens/stocks",
     hasDropdown: true,
     subItems: [
-      { id: "stock_overview", title: "Stock Overview", route: "/Screens/vendorScreens/stocks?filter=all" },
-      { id: "stock_alert", title: "Low Stock Alerts", route: "/Screens/vendorScreens/stocks?filter=low_stock" },
+      {
+        id: "stock_overview",
+        title: "Stock Overview",
+        route: "/Screens/vendorScreens/stocks?filter=all",
+      },
+      {
+        id: "stock_alert",
+        title: "Low Stock Alerts",
+        route: "/Screens/vendorScreens/stocks?filter=low_stock",
+      },
     ],
   },
   {
@@ -142,26 +185,34 @@ const MAIN_MENU_ITEMS: MenuItem[] = [
     route: "/Screens/vendorScreens/Finance",
     hasDropdown: true,
     subItems: [
-      { id: "finance_overview", title: "Finance Overview", route: "/Screens/vendorScreens/Finance" },
-      { id: "withdrawals", title: "Withdrawal Requests", route: "/Screens/vendorScreens/Finance?tab=withdrawals" },
-      { id: "settlements", title: "Settled Orders", route: "/Screens/vendorScreens/Finance?tab=settlements" },
-      { id: "delivery_cod", title: "Delivery Boy Cash", route: "/Screens/vendorScreens/Finance?tab=delivery" },
-      { id: "earnings_ledger", title: "All Transactions", route: "/VendorMain/transaction" },
+      {
+        id: "finance_overview",
+        title: "Finance Overview",
+        route: "/Screens/vendorScreens/Finance",
+      },
+      {
+        id: "withdrawals",
+        title: "Withdrawal Requests",
+        route: "/Screens/vendorScreens/Finance?tab=withdrawals",
+      },
+      {
+        id: "settlements",
+        title: "Settled Orders",
+        route: "/Screens/vendorScreens/Finance?tab=settlements",
+      },
+      {
+        id: "delivery_cod",
+        title: "Delivery Boy Cash",
+        route: "/Screens/vendorScreens/Finance?tab=delivery",
+      },
+      {
+        id: "earnings_ledger",
+        title: "All Transactions",
+        route: "/VendorMain/transaction",
+      },
     ],
   },
-  {
-    id: "referral",
-    title: "Referral & Rewards",
-    iconName: "gift",
-    iconType: "feather",
-    route: "/Screens/Profile/refer-and-earned",
-    hasDropdown: true,
-    subItems: [
-      { id: "refer_earn", title: "Refer & Earn", route: "/Screens/Profile/refer-and-earned" },
-      { id: "my_referrals", title: "My Referrals", route: "/Screens/Profile/my-referrals" },
-      { id: "reward_wallet", title: "Rewards Wallet", route: "/Screens/Profile/loyalty" },
-    ],
-  },
+
   {
     id: "reports",
     title: "Reports",
@@ -185,8 +236,16 @@ const SETTINGS_MENU_ITEMS: MenuItem[] = [
     iconType: "feather",
     hasDropdown: true,
     subItems: [
-      { id: "store_settings", title: "Store Profile", route: "/VendorMain/dashboard" },
-      { id: "bank_settings", title: "Bank Account", route: "/VendorMain/transaction" },
+      {
+        id: "store_settings",
+        title: "Store Profile",
+        route: "/VendorMain/dashboard",
+      },
+      {
+        id: "bank_settings",
+        title: "Bank Account",
+        route: "/VendorMain/transaction",
+      },
     ],
   },
 ];
@@ -198,10 +257,13 @@ export default function VendorSideMenu({
 }: VendorSideMenuProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useLocalSearchParams<{ status?: string; filter?: string }>();
+  const searchParams = useLocalSearchParams<{
+    status?: string;
+    filter?: string;
+  }>();
   const dispatch = useAppDispatch();
   const { vendorUser, vendorDetails } = useAppSelector(
-    (state) => state.vendorAuth
+    (state) => state.vendorAuth,
   );
 
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({
@@ -325,7 +387,7 @@ export default function VendorSideMenu({
             router.replace("/(auth)/vendorAuth/login/vendorlogin" as any);
           },
         },
-      ]
+      ],
     );
   };
 
@@ -342,7 +404,9 @@ export default function VendorSideMenu({
     if (!sub.route) return false;
 
     if (pathname.includes("/VendorMain/order")) {
-      const currentStatus = (searchParams.status || searchParams.filter || "").toLowerCase().trim();
+      const currentStatus = (searchParams.status || searchParams.filter || "")
+        .toLowerCase()
+        .trim();
       if (sub.id === "pending_orders") {
         return currentStatus === "pending" || currentStatus === "new";
       }
@@ -378,7 +442,9 @@ export default function VendorSideMenu({
 
     switch (item.iconType) {
       case "feather":
-        return <Feather name={item.iconName as any} size={size} color={color} />;
+        return (
+          <Feather name={item.iconName as any} size={size} color={color} />
+        );
       case "mci":
         return (
           <MaterialCommunityIcons
@@ -388,7 +454,9 @@ export default function VendorSideMenu({
           />
         );
       case "ionicons":
-        return <Ionicons name={item.iconName as any} size={size} color={color} />;
+        return (
+          <Ionicons name={item.iconName as any} size={size} color={color} />
+        );
       default:
         return <Feather name="circle" size={size} color={color} />;
     }
@@ -509,7 +577,11 @@ export default function VendorSideMenu({
                 onPress={handleClose}
                 style={styles.headerMoreBtn}
               >
-                <Feather name="more-vertical" size={scale(20)} color="#64748B" />
+                <Feather
+                  name="more-vertical"
+                  size={scale(20)}
+                  color="#64748B"
+                />
               </TouchableOpacity>
             </View>
 
@@ -528,7 +600,9 @@ export default function VendorSideMenu({
               </View>
 
               {/* SETTINGS SECTION */}
-              <Text style={[styles.sectionHeader, { marginTop: moderateScale(16) }]}>
+              <Text
+                style={[styles.sectionHeader, { marginTop: moderateScale(16) }]}
+              >
                 SETTINGS
               </Text>
               <View style={styles.itemsGroup}>

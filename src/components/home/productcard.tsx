@@ -93,7 +93,7 @@ function ProductCardComponent({
     );
   };
 
-  const qty = getItemQuantity(product.id);
+  const qty = getItemQuantity(targetProductId || product.id);
 
   // ── Extra Compact Dynamic Sizing Calculation ─────────────────────────
   const dynamicWidth = useMemo(() => {
@@ -376,12 +376,23 @@ function ProductCardComponent({
     if (onAddPress) {
       onAddPress(product);
     } else {
-      const imgUrl =
-        typeof product.image === "object" && "uri" in product.image
-          ? (product.image as any).uri
-          : "";
+      let imgUrl = "";
+      if (
+        typeof (product as any).imageUrl === "string" &&
+        (product as any).imageUrl
+      ) {
+        imgUrl = (product as any).imageUrl;
+      } else if (typeof product.image === "string") {
+        imgUrl = product.image;
+      } else if (
+        product.image &&
+        typeof product.image === "object" &&
+        "uri" in product.image
+      ) {
+        imgUrl = (product.image as any).uri;
+      }
       addToCart({
-        id: product.id,
+        id: targetProductId || product.id,
         name: product.name,
         price: product.price,
         originalPrice: product.originalPrice || product.price,
@@ -607,14 +618,14 @@ function ProductCardComponent({
             style={[
               styles.quantityStepperRow,
               {
-                backgroundColor: primaryColor,
+                backgroundColor: "#004d5d",
                 shadowColor: primaryColor,
               },
             ]}
           >
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={() => updateQuantity(product.id, -1)}
+              onPress={() => updateQuantity(targetProductId || product.id, -1)}
               style={styles.stepperActionBtn}
             >
               <Feather name="minus" size={scale(11)} color="#FFFFFF" />
@@ -624,7 +635,7 @@ function ProductCardComponent({
 
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={() => updateQuantity(product.id, 1)}
+              onPress={() => updateQuantity(targetProductId || product.id, 1)}
               style={styles.stepperActionBtn}
             >
               <Feather name="plus" size={scale(11)} color="#FFFFFF" />

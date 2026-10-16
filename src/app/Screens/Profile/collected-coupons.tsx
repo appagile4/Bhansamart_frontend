@@ -71,72 +71,160 @@ const COUPONS_DATA: CouponItem[] = [
   },
 ];
 
-const CouponCardItem = React.memo(function CouponCardItem({
-  item,
-  onUseNow,
-  onShowTerms,
-}: {
-  item: CouponItem;
-  onUseNow: (item: CouponItem) => void;
-  onShowTerms: (item: CouponItem) => void;
-}) {
-  return (
-    <View style={styles.couponCard}>
-      {/* Upper Content Box */}
-      <View style={styles.cardTopContent}>
-        {/* Top Header Row: Icon + Discount + T&C */}
-        <View style={styles.cardHeaderRow}>
-          <View style={styles.discountBadgeGroup}>
-            <View style={styles.couponIconBox}>
-              <MaterialCommunityIcons
-                name="ticket-percent-outline"
-                size={scale(16)}
-                color="#64748B"
-              />
+const CouponCardItem = React.memo(
+  function CouponCardItem({
+    item,
+    isDark,
+    onUseNow,
+    onShowTerms,
+  }: {
+    item: CouponItem;
+    isDark: boolean;
+    onUseNow: (item: CouponItem) => void;
+    onShowTerms: (item: CouponItem) => void;
+  }) {
+    return (
+      <View
+        style={[
+          styles.couponCard,
+          isDark && {
+            backgroundColor: "#151D24",
+            borderColor: "#303B45",
+          },
+        ]}
+      >
+        {/* Upper Content Box */}
+        <View style={styles.cardTopContent}>
+          {/* Top Header Row: Icon + Discount + T&C */}
+          <View style={styles.cardHeaderRow}>
+            <View style={styles.discountBadgeGroup}>
+              <View
+                style={[
+                  styles.couponIconBox,
+                  isDark && { backgroundColor: "#1E252E" },
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name="ticket-percent-outline"
+                  size={scale(16)}
+                  color={isDark ? "#94A3B8" : "#64748B"}
+                />
+              </View>
+              <Text
+                style={[
+                  styles.discountText,
+                  isDark && { color: "#39D353" },
+                ]}
+              >
+                {item.discount}
+              </Text>
             </View>
-            <Text style={styles.discountText}>{item.discount}</Text>
+
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => onShowTerms(item)}
+              style={[
+                styles.tcBadge,
+                isDark && {
+                  backgroundColor: "rgba(57, 211, 83, 0.12)",
+                  borderColor: "rgba(57, 211, 83, 0.3)",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.tcText,
+                  isDark && { color: "#39D353" },
+                ]}
+              >
+                T&C
+              </Text>
+            </TouchableOpacity>
           </View>
 
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => onShowTerms(item)}
-            style={styles.tcBadge}
+          {/* Condition Text */}
+          <Text
+            style={[
+              styles.conditionText,
+              isDark && { color: "#F8FAFC" },
+            ]}
           >
-            <Text style={styles.tcText}>T&C</Text>
-          </TouchableOpacity>
+            {item.condition}
+          </Text>
+
+          {/* Validity Text */}
+          <Text
+            style={[
+              styles.validityText,
+              isDark && { color: "#94A3B8" },
+            ]}
+          >
+            Valid till : {item.validTill}
+          </Text>
         </View>
 
-        {/* Condition Text */}
-        <Text style={styles.conditionText}>{item.condition}</Text>
+        {/* Ticket Cutout Notch and Dashed Divider */}
+        <View style={styles.dividerWrapper}>
+          <View
+            style={[
+              styles.notchLeft,
+              isDark && {
+                backgroundColor: "#080D0F",
+                borderColor: "#303B45",
+              },
+            ]}
+          />
+          <View
+            style={[
+              styles.dashedLine,
+              isDark && { borderColor: "#303B45" },
+            ]}
+          />
+          <View
+            style={[
+              styles.notchRight,
+              isDark && {
+                backgroundColor: "#080D0F",
+                borderColor: "#303B45",
+              },
+            ]}
+          />
+        </View>
 
-        {/* Validity Text */}
-        <Text style={styles.validityText}>Valid till :  {item.validTill}</Text>
+        {/* Bottom CTA Box */}
+        <View style={styles.cardBottomContent}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => onUseNow(item)}
+            style={[
+              styles.useNowButton,
+              isDark && {
+                backgroundColor: "rgba(57, 211, 83, 0.12)",
+                borderColor: "rgba(57, 211, 83, 0.35)",
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.useNowText,
+                isDark && { color: "#39D353" },
+              ]}
+            >
+              Use Now
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
-
-      {/* Ticket Cutout Notch and Dashed Divider */}
-      <View style={styles.dividerWrapper}>
-        <View style={styles.notchLeft} />
-        <View style={styles.dashedLine} />
-        <View style={styles.notchRight} />
-      </View>
-
-      {/* Bottom CTA Box */}
-      <View style={styles.cardBottomContent}>
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() => onUseNow(item)}
-          style={styles.useNowButton}
-        >
-          <Text style={styles.useNowText}>Use Now</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-});
+    );
+  },
+  (prev, next) =>
+    prev.item.id === next.item.id && prev.isDark === next.isDark
+);
 
 export default function CollectedCouponScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const isDark = theme.mode === "dark";
 
   const [activeTab, setActiveTab] = useState<"recently" | "expiring">("recently");
 
@@ -174,46 +262,91 @@ export default function CollectedCouponScreen() {
     ({ item }: { item: CouponItem }) => (
       <CouponCardItem
         item={item}
+        isDark={isDark}
         onUseNow={handleUseNow}
         onShowTerms={handleShowTerms}
       />
     ),
-    [handleUseNow, handleShowTerms]
+    [isDark, handleUseNow, handleShowTerms]
   );
 
   return (
-    <View style={styles.root}>
-      <StatusBar style="dark" />
+    <View
+      style={[
+        styles.root,
+        isDark && { backgroundColor: "#080D0F" },
+      ]}
+    >
+      <StatusBar style={isDark ? "light" : "dark"} />
 
       {/* 1. Header with SafeAreaView */}
-      <SafeAreaView edges={["top"]} style={styles.safeAreaHeader}>
+      <SafeAreaView
+        edges={["top"]}
+        style={[
+          styles.safeAreaHeader,
+          isDark && { backgroundColor: "#080D0F" },
+        ]}
+      >
         <View style={styles.navBar}>
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() => router.back()}
             style={styles.backButton}
           >
-            <Feather name="arrow-left" size={scale(22)} color="#0F172A" />
+            <Feather
+              name="arrow-left"
+              size={scale(22)}
+              color={isDark ? "#F8FAFC" : "#0F172A"}
+            />
           </TouchableOpacity>
-          <Text style={styles.navTitle}>Collected coupon</Text>
+          <Text
+            style={[
+              styles.navTitle,
+              isDark && { color: "#F8FAFC" },
+            ]}
+          >
+            Collected coupon
+          </Text>
         </View>
-        <View style={styles.headerDivider} />
+        <View
+          style={[
+            styles.headerDivider,
+            isDark && { backgroundColor: "#1E252E" },
+          ]}
+        />
       </SafeAreaView>
 
       {/* 2. Filter Pills Container */}
-      <View style={styles.tabsContainer}>
+      <View
+        style={[
+          styles.tabsContainer,
+          isDark && { backgroundColor: "#080D0F" },
+        ]}
+      >
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={() => setActiveTab("recently")}
           style={[
             styles.tabPill,
-            activeTab === "recently" ? styles.tabPillActive : styles.tabPillInactive,
+            activeTab === "recently"
+              ? isDark
+                ? styles.tabPillActiveDark
+                : styles.tabPillActive
+              : isDark
+              ? styles.tabPillInactiveDark
+              : styles.tabPillInactive,
           ]}
         >
           <Text
             style={[
               styles.tabText,
-              activeTab === "recently" ? styles.tabTextActive : styles.tabTextInactive,
+              activeTab === "recently"
+                ? isDark
+                  ? styles.tabTextActiveDark
+                  : styles.tabTextActive
+                : isDark
+                ? styles.tabTextInactiveDark
+                : styles.tabTextInactive,
             ]}
           >
             Recently Collected
@@ -225,13 +358,25 @@ export default function CollectedCouponScreen() {
           onPress={() => setActiveTab("expiring")}
           style={[
             styles.tabPill,
-            activeTab === "expiring" ? styles.tabPillActive : styles.tabPillInactive,
+            activeTab === "expiring"
+              ? isDark
+                ? styles.tabPillActiveDark
+                : styles.tabPillActive
+              : isDark
+              ? styles.tabPillInactiveDark
+              : styles.tabPillInactive,
           ]}
         >
           <Text
             style={[
               styles.tabText,
-              activeTab === "expiring" ? styles.tabTextActive : styles.tabTextInactive,
+              activeTab === "expiring"
+                ? isDark
+                  ? styles.tabTextActiveDark
+                  : styles.tabTextActive
+                : isDark
+                ? styles.tabTextInactiveDark
+                : styles.tabTextInactive,
             ]}
           >
             Expiring
@@ -251,10 +396,22 @@ export default function CollectedCouponScreen() {
             <MaterialCommunityIcons
               name="ticket-percent-outline"
               size={scale(56)}
-              color="#CBD5E1"
+              color={isDark ? "#303B45" : "#CBD5E1"}
             />
-            <Text style={styles.emptyTitle}>No coupons found</Text>
-            <Text style={styles.emptySubtitle}>
+            <Text
+              style={[
+                styles.emptyTitle,
+                isDark && { color: "#94A3B8" },
+              ]}
+            >
+              No coupons found
+            </Text>
+            <Text
+              style={[
+                styles.emptySubtitle,
+                isDark && { color: "#64748B" },
+              ]}
+            >
               You don't have any coupons in this tab right now.
             </Text>
           </View>
@@ -313,9 +470,17 @@ const styles = StyleSheet.create({
     backgroundColor: "#F0FDF4",
     borderColor: "#4ADE80",
   },
+  tabPillActiveDark: {
+    backgroundColor: "rgba(57, 211, 83, 0.15)",
+    borderColor: "#39D353",
+  },
   tabPillInactive: {
     backgroundColor: "#FFFFFF",
     borderColor: "#E2E8F0",
+  },
+  tabPillInactiveDark: {
+    backgroundColor: "#151D24",
+    borderColor: "#303B45",
   },
   tabText: {
     fontSize: moderateScale(13),
@@ -324,8 +489,14 @@ const styles = StyleSheet.create({
   tabTextActive: {
     color: "#16A34A",
   },
+  tabTextActiveDark: {
+    color: "#39D353",
+  },
   tabTextInactive: {
     color: "#64748B",
+  },
+  tabTextInactiveDark: {
+    color: "#94A3B8",
   },
   listContent: {
     paddingHorizontal: scale(16),

@@ -7,7 +7,7 @@ import {
 } from "@/store/slices/addressSlice";
 import { SavedAddress } from "@/store/services/addressService";
 import { moderateScale, scale, useTheme } from "@/theme";
-import { Feather, Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useState } from "react";
@@ -28,6 +28,7 @@ export default function AddressScreen() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const theme = useTheme();
+  const isDark = theme.mode === "dark";
 
   const { addresses, loading, selectedAddress } = useAppSelector(
     (state) => state.address
@@ -98,10 +99,7 @@ export default function AddressScreen() {
   const handleMoreOptions = (addr: SavedAddress) => {
     const isAlreadyDefault = addr.isDefault;
     const options: any[] = [
-      {
-        text: "Edit Address",
-        onPress: () => handleEdit(addr),
-      },
+      { text: "Edit Address", onPress: () => handleEdit(addr) },
     ];
 
     if (!isAlreadyDefault) {
@@ -113,7 +111,7 @@ export default function AddressScreen() {
 
     options.push(
       {
-        text: "Delete Address",
+        text: "Delete",
         style: "destructive",
         onPress: () => handleDelete(addr),
       },
@@ -136,41 +134,80 @@ export default function AddressScreen() {
   const getAddressIcon = (type: string) => {
     switch (type) {
       case "Work":
-        return <Feather name="briefcase" size={scale(20)} color="#0284C7" />;
+        return (
+          <Feather
+            name="briefcase"
+            size={scale(20)}
+            color={isDark ? "#38BDF8" : "#0284C7"}
+          />
+        );
       case "Other":
-        return <Feather name="map-pin" size={scale(20)} color="#7C3AED" />;
+        return (
+          <Feather
+            name="map-pin"
+            size={scale(20)}
+            color={isDark ? "#A78BFA" : "#7C3AED"}
+          />
+        );
       default:
-        return <Feather name="home" size={scale(20)} color="#2D6A4F" />;
+        return (
+          <Feather
+            name="home"
+            size={scale(20)}
+            color={isDark ? "#39D353" : "#2D6A4F"}
+          />
+        );
     }
   };
 
   const getIconBg = (type: string) => {
     switch (type) {
       case "Work":
-        return "#E0F2FE";
+        return isDark ? "rgba(2, 132, 199, 0.16)" : "#E0F2FE";
       case "Other":
-        return "#EDE9FE";
+        return isDark ? "rgba(124, 58, 237, 0.16)" : "#EDE9FE";
       default:
-        return "#F4FBEA";
+        return isDark ? "rgba(57, 211, 83, 0.16)" : "#F4FBEA";
     }
   };
 
+  const rootBg = isDark ? "#080D0F" : "#F8FAF9";
+  const headerBg = isDark ? "#080D0F" : "#FFFFFF";
+  const navTitleColor = isDark ? "#F8FAFC" : "#1E293B";
+  const backIconColor = isDark ? "#F8FAFC" : "#1E293B";
+  const dividerColor = isDark ? "#1E252E" : "#F1F5F9";
+  const cardBg = isDark ? "#151D24" : "#FFFFFF";
+  const cardBorder = isDark ? "#303B45" : "#F1F5F9";
+  const cardSelectedBorder = isDark ? "#39D353" : "#008080";
+  const cardSelectedBg = isDark ? "rgba(57, 211, 83, 0.08)" : "#FAFFFD";
+  const textPrimary = isDark ? "#F8FAFC" : "#1E293B";
+  const textSecondary = isDark ? "#A8B2BE" : "#475569";
+  const circleBtnBg = isDark ? "#1B252E" : "#FFFFFF";
+  const circleBtnBorder = isDark ? "#303B45" : "#E2E8F0";
+  const circleBtnIcon = isDark ? "#94A3B8" : "#64748B";
+  const greenBrand = isDark ? "#39D353" : "#2D6A4F";
+
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
-    >
-      <StatusBar style="dark" />
+    <SafeAreaView style={[styles.container, { backgroundColor: rootBg }]}>
+      <StatusBar style={isDark ? "light" : "dark"} />
 
       {/* Top Navbar Header */}
-      <View style={styles.navBar}>
+      <View
+        style={[
+          styles.navBar,
+          { backgroundColor: headerBg, borderBottomColor: dividerColor },
+        ]}
+      >
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={() => router.back()}
           style={styles.backButton}
         >
-          <Feather name="arrow-left" size={scale(24)} color="#1E293B" />
+          <Feather name="arrow-left" size={scale(24)} color={backIconColor} />
         </TouchableOpacity>
-        <Text style={styles.navTitle}>Address book</Text>
+        <Text style={[styles.navTitle, { color: navTitleColor }]}>
+          Address book
+        </Text>
       </View>
 
       <ScrollView
@@ -180,8 +217,8 @@ export default function AddressScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={["#008080"]}
-            tintColor="#008080"
+            colors={[greenBrand]}
+            tintColor={greenBrand}
           />
         }
       >
@@ -189,18 +226,30 @@ export default function AddressScreen() {
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={handleAddNew}
-          style={styles.addNewCard}
+          style={[
+            styles.addNewCard,
+            { backgroundColor: cardBg, borderColor: cardBorder },
+          ]}
         >
           <View style={styles.addNewLeft}>
-            <Feather name="plus" size={scale(20)} color="#2D6A4F" />
-            <Text style={styles.addNewText}>Add new address</Text>
+            <Feather name="plus" size={scale(20)} color={greenBrand} />
+            <Text style={[styles.addNewText, { color: greenBrand }]}>
+              Add new address
+            </Text>
           </View>
-          <Feather name="chevron-right" size={scale(20)} color="#2D6A4F" />
+          <Feather name="chevron-right" size={scale(20)} color={greenBrand} />
         </TouchableOpacity>
 
         {/* Section Heading */}
         <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionHeader}>Your saved addresses</Text>
+          <Text
+            style={[
+              styles.sectionHeader,
+              { color: isDark ? "#94A3B8" : "#64748B" },
+            ]}
+          >
+            Your saved addresses
+          </Text>
           {addresses.length > 0 && (
             <Text style={styles.addressCountBadge}>
               {addresses.length} {addresses.length === 1 ? "address" : "addresses"}
@@ -211,28 +260,74 @@ export default function AddressScreen() {
         {/* Loading State */}
         {loading && addresses.length === 0 && (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#008080" />
-            <Text style={styles.loadingText}>Loading saved addresses...</Text>
+            <ActivityIndicator size="large" color={greenBrand} />
+            <Text
+              style={[
+                styles.loadingText,
+                { color: isDark ? "#A8B2BE" : "#64748B" },
+              ]}
+            >
+              Loading saved addresses...
+            </Text>
           </View>
         )}
 
         {/* Empty State */}
         {!loading && addresses.length === 0 && (
           <View style={styles.emptyContainer}>
-            <View style={styles.emptyIconCircle}>
-              <Ionicons name="location-outline" size={scale(48)} color="#008080" />
+            <View
+              style={[
+                styles.emptyIconCircle,
+                {
+                  backgroundColor: isDark
+                    ? "rgba(57, 211, 83, 0.16)"
+                    : "#F0FDFA",
+                },
+              ]}
+            >
+              <Ionicons
+                name="location-outline"
+                size={scale(48)}
+                color={greenBrand}
+              />
             </View>
-            <Text style={styles.emptyTitle}>No Saved Addresses</Text>
-            <Text style={styles.emptySubtitle}>
+            <Text
+              style={[
+                styles.emptyTitle,
+                { color: isDark ? "#F8FAFC" : "#0F172A" },
+              ]}
+            >
+              No Saved Addresses
+            </Text>
+            <Text
+              style={[
+                styles.emptySubtitle,
+                { color: isDark ? "#A8B2BE" : "#64748B" },
+              ]}
+            >
               You haven't saved any delivery addresses yet. Add one now for instant checkout.
             </Text>
             <TouchableOpacity
               activeOpacity={0.85}
               onPress={handleAddNew}
-              style={styles.emptyAddBtn}
+              style={[
+                styles.emptyAddBtn,
+                { backgroundColor: greenBrand },
+              ]}
             >
-              <Feather name="plus" size={scale(18)} color="#FFFFFF" />
-              <Text style={styles.emptyAddBtnText}>Add Address</Text>
+              <Feather
+                name="plus"
+                size={scale(18)}
+                color={isDark ? "#080D0F" : "#FFFFFF"}
+              />
+              <Text
+                style={[
+                  styles.emptyAddBtnText,
+                  isDark && { color: "#080D0F", fontWeight: "800" },
+                ]}
+              >
+                Add Address
+              </Text>
             </TouchableOpacity>
           </View>
         )}
@@ -253,7 +348,11 @@ export default function AddressScreen() {
                 onPress={() => handleSelectAddress(item)}
                 style={[
                   styles.addressCard,
-                  isCurrentSelected && styles.addressCardSelected,
+                  { backgroundColor: cardBg, borderColor: cardBorder },
+                  isCurrentSelected && {
+                    borderColor: cardSelectedBorder,
+                    backgroundColor: cardSelectedBg,
+                  },
                 ]}
               >
                 {/* Left Badge Icon */}
@@ -269,19 +368,51 @@ export default function AddressScreen() {
                 {/* Middle Address Details */}
                 <View style={styles.cardDetails}>
                   <View style={styles.typeHeaderRow}>
-                    <Text style={styles.addressType}>{item.type}</Text>
+                    <Text
+                      style={[
+                        styles.addressType,
+                        { color: textPrimary },
+                      ]}
+                    >
+                      {item.type}
+                    </Text>
                     {isItemDefault && (
-                      <View style={styles.defaultPill}>
-                        <Text style={styles.defaultPillText}>DEFAULT</Text>
+                      <View
+                        style={[
+                          styles.defaultPill,
+                          isDark && {
+                            backgroundColor: "rgba(34, 197, 94, 0.2)",
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.defaultPillText,
+                            isDark && { color: "#34D399" },
+                          ]}
+                        >
+                          DEFAULT
+                        </Text>
                       </View>
                     )}
                   </View>
 
-                  <Text style={styles.addressLine}>{item.addressLine}</Text>
+                  <Text
+                    style={[styles.addressLine, { color: textSecondary }]}
+                  >
+                    {item.addressLine}
+                  </Text>
 
-                  <Text style={styles.phoneText}>
+                  <Text style={[styles.phoneText, { color: textSecondary }]}>
                     Phone number:{" "}
-                    <Text style={styles.phoneBold}>{item.phone}</Text>
+                    <Text
+                      style={[
+                        styles.phoneBold,
+                        { color: textPrimary },
+                      ]}
+                    >
+                      {item.phone}
+                    </Text>
                   </Text>
 
                   {/* Bottom Action Icon Buttons (More & Share) */}
@@ -290,12 +421,18 @@ export default function AddressScreen() {
                     <TouchableOpacity
                       activeOpacity={0.7}
                       onPress={() => handleMoreOptions(item)}
-                      style={styles.circleActionBtn}
+                      style={[
+                        styles.circleActionBtn,
+                        {
+                          backgroundColor: circleBtnBg,
+                          borderColor: circleBtnBorder,
+                        },
+                      ]}
                     >
                       <Ionicons
                         name="ellipsis-horizontal"
                         size={scale(16)}
-                        color="#64748B"
+                        color={circleBtnIcon}
                       />
                     </TouchableOpacity>
 
@@ -303,12 +440,18 @@ export default function AddressScreen() {
                     <TouchableOpacity
                       activeOpacity={0.7}
                       onPress={() => handleShare(item)}
-                      style={styles.circleActionBtn}
+                      style={[
+                        styles.circleActionBtn,
+                        {
+                          backgroundColor: circleBtnBg,
+                          borderColor: circleBtnBorder,
+                        },
+                      ]}
                     >
                       <Feather
                         name="share-2"
                         size={scale(15)}
-                        color="#64748B"
+                        color={circleBtnIcon}
                       />
                     </TouchableOpacity>
                   </View>
@@ -332,7 +475,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(16),
     paddingVertical: moderateScale(12),
     borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
   },
   backButton: {
     padding: scale(4),
@@ -341,7 +483,6 @@ const styles = StyleSheet.create({
   navTitle: {
     fontSize: moderateScale(18),
     fontWeight: "700",
-    color: "#1E293B",
   },
   scrollContent: {
     paddingHorizontal: scale(16),
@@ -352,7 +493,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#ffffff",
     borderRadius: scale(14),
     paddingVertical: moderateScale(16),
     paddingHorizontal: scale(16),
@@ -363,7 +503,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
     borderWidth: 1,
-    borderColor: "#F1F5F9",
   },
   addNewLeft: {
     flexDirection: "row",
@@ -373,7 +512,6 @@ const styles = StyleSheet.create({
   addNewText: {
     fontSize: moderateScale(14.5),
     fontWeight: "600",
-    color: "#2D6A4F",
   },
   sectionHeaderRow: {
     flexDirection: "row",
@@ -384,7 +522,6 @@ const styles = StyleSheet.create({
   sectionHeader: {
     fontSize: moderateScale(14.5),
     fontWeight: "700",
-    color: "#64748B",
   },
   addressCountBadge: {
     fontSize: moderateScale(12),
@@ -399,7 +536,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: moderateScale(13),
-    color: "#64748B",
     fontWeight: "500",
   },
   emptyContainer: {
@@ -412,7 +548,6 @@ const styles = StyleSheet.create({
     width: scale(80),
     height: scale(80),
     borderRadius: scale(40),
-    backgroundColor: "#F0FDFA",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: moderateScale(16),
@@ -420,12 +555,10 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: moderateScale(17),
     fontWeight: "800",
-    color: "#0F172A",
     marginBottom: scale(6),
   },
   emptySubtitle: {
     fontSize: moderateScale(13),
-    color: "#64748B",
     textAlign: "center",
     lineHeight: moderateScale(18),
     marginBottom: moderateScale(20),
@@ -434,7 +567,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: scale(6),
-    backgroundColor: "#008080",
     paddingHorizontal: scale(20),
     paddingVertical: moderateScale(11),
     borderRadius: scale(10),
@@ -449,7 +581,6 @@ const styles = StyleSheet.create({
   },
   addressCard: {
     flexDirection: "row",
-    backgroundColor: "#ffffff",
     borderRadius: scale(16),
     padding: scale(16),
     shadowColor: "#000000",
@@ -458,12 +589,7 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 2,
     borderWidth: 1.5,
-    borderColor: "#F1F5F9",
     alignItems: "flex-start",
-  },
-  addressCardSelected: {
-    borderColor: "#008080",
-    backgroundColor: "#FAFFFD",
   },
   iconBox: {
     width: scale(40),
@@ -486,7 +612,6 @@ const styles = StyleSheet.create({
   addressType: {
     fontSize: moderateScale(15.5),
     fontWeight: "700",
-    color: "#1E293B",
   },
   defaultPill: {
     backgroundColor: "#DCFCE7",
@@ -502,18 +627,15 @@ const styles = StyleSheet.create({
   },
   addressLine: {
     fontSize: moderateScale(13),
-    color: "#475569",
     lineHeight: moderateScale(18),
     marginBottom: moderateScale(8),
   },
   phoneText: {
     fontSize: moderateScale(13),
-    color: "#475569",
     marginBottom: moderateScale(10),
   },
   phoneBold: {
     fontWeight: "600",
-    color: "#1E293B",
   },
   actionsRow: {
     flexDirection: "row",
@@ -525,10 +647,7 @@ const styles = StyleSheet.create({
     height: scale(32),
     borderRadius: scale(16),
     borderWidth: 1,
-    borderColor: "#E2E8F0",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#ffffff",
   },
 });
-

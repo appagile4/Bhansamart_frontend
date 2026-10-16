@@ -4,7 +4,7 @@ import {
   fetchRewardTransactions,
 } from "@/store/slices/referralSlice";
 import { RewardTransactionItem } from "@/store/services/referralService";
-import { moderateScale, scale } from "@/theme";
+import { moderateScale, scale, useTheme } from "@/theme";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -23,8 +23,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 // ── Transaction Item Card ──────────────────────────────────────────────
 const TransactionCard = memo(function TransactionCard({
   item,
+  isDark,
 }: {
   item: RewardTransactionItem;
+  isDark: boolean;
 }) {
   const isCredit = item.type === "CREDIT";
   const isReversal = item.type === "REVERSAL";
@@ -37,35 +39,69 @@ const TransactionCard = memo(function TransactionCard({
       })
     : "Recently";
 
+  const iconWrapBg = isCredit
+    ? isDark
+      ? "rgba(34, 197, 94, 0.18)"
+      : "#DCFCE7"
+    : isReversal
+    ? isDark
+      ? "rgba(239, 68, 68, 0.18)"
+      : "#FEF2F2"
+    : isDark
+    ? "rgba(59, 130, 246, 0.18)"
+    : "#EFF6FF";
+
+  const iconColor = isCredit
+    ? isDark
+      ? "#4ADE80"
+      : "#15803D"
+    : isReversal
+    ? isDark
+      ? "#F87171"
+      : "#DC2626"
+    : isDark
+    ? "#60A5FA"
+    : "#1D4ED8";
+
   return (
-    <View style={styles.txnCard}>
+    <View
+      style={[
+        styles.txnCard,
+        {
+          backgroundColor: isDark ? "#151D24" : "#FFFFFF",
+          borderColor: isDark ? "#303B45" : "#F1F5F9",
+        },
+      ]}
+    >
       <View style={styles.txnLeft}>
-        <View
-          style={[
-            styles.txnIconWrap,
-            {
-              backgroundColor: isCredit
-                ? "#DCFCE7"
-                : isReversal
-                ? "#FEF2F2"
-                : "#EFF6FF",
-            },
-          ]}
-        >
+        <View style={[styles.txnIconWrap, { backgroundColor: iconWrapBg }]}>
           {isCredit ? (
-            <Feather name="arrow-down-left" size={scale(18)} color="#15803D" />
+            <Feather name="arrow-down-left" size={scale(18)} color={iconColor} />
           ) : isReversal ? (
-            <Feather name="rotate-ccw" size={scale(18)} color="#DC2626" />
+            <Feather name="rotate-ccw" size={scale(18)} color={iconColor} />
           ) : (
-            <Feather name="arrow-up-right" size={scale(18)} color="#1D4ED8" />
+            <Feather name="arrow-up-right" size={scale(18)} color={iconColor} />
           )}
         </View>
 
         <View style={styles.txnInfo}>
-          <Text style={styles.txnReason} numberOfLines={1}>
+          <Text
+            style={[
+              styles.txnReason,
+              { color: isDark ? "#F8FAFC" : "#0F172A" },
+            ]}
+            numberOfLines={1}
+          >
             {item.reason}
           </Text>
-          <Text style={styles.txnDate}>{dateFormatted}</Text>
+          <Text
+            style={[
+              styles.txnDate,
+              { color: isDark ? "#A8B2BE" : "#64748B" },
+            ]}
+          >
+            {dateFormatted}
+          </Text>
         </View>
       </View>
 
@@ -73,13 +109,26 @@ const TransactionCard = memo(function TransactionCard({
         <Text
           style={[
             styles.txnPoints,
-            { color: isCredit ? "#15803D" : "#DC2626" },
+            {
+              color: isCredit
+                ? isDark
+                  ? "#4ADE80"
+                  : "#15803D"
+                : isDark
+                ? "#F87171"
+                : "#DC2626",
+            },
           ]}
         >
           {isCredit ? "+" : "-"}
           {item.points} Pts
         </Text>
-        <Text style={styles.balanceAfterText}>
+        <Text
+          style={[
+            styles.balanceAfterText,
+            { color: isDark ? "#64748B" : "#94A3B8" },
+          ]}
+        >
           Bal: {item.balanceAfter} Pts
         </Text>
       </View>
@@ -90,6 +139,8 @@ const TransactionCard = memo(function TransactionCard({
 export default function LoyaltyScreen() {
   const router = useRouter();
   const dispatch = useAppDispatch();
+  const theme = useTheme();
+  const isDark = theme.mode === "dark";
 
   const {
     wallet,
@@ -98,127 +149,194 @@ export default function LoyaltyScreen() {
     transactionsTotal,
     transactionsPage,
     transactionsTotalPages,
-    transactionsLoading,
   } = useAppSelector((state) => state.referral);
 
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadData = useCallback(() => {
+  useEffect(() => {
     dispatch(fetchRewardsWallet());
-    dispatch(fetchRewardTransactions({ page: 1, limit: 20 }));
+    dispatch(fetchRewardTransactions({ page: 1, limit: 15 }));
   }, [dispatch]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await Promise.all([
       dispatch(fetchRewardsWallet()),
-      dispatch(fetchRewardTransactions({ page: 1, limit: 20 })),
+      dispatch(fetchRewardTransactions({ page: 1, limit: 15 })),
     ]);
     setRefreshing(false);
-  };
+  }, [dispatch]);
 
-  const handleLoadMore = () => {
-    if (transactionsLoading || transactionsPage >= transactionsTotalPages) return;
-    dispatch(
-      fetchRewardTransactions({
-        page: transactionsPage + 1,
-        limit: 20,
-      })
+  const handleLoadMore = useCallback(() => {
+    if (transactionsPage < transactionsTotalPages) {
+      dispatch(
+        fetchRewardTransactions({
+          page: transactionsPage + 1,
+          limit: 15,
+        })
+      );
+    }
+  }, [dispatch, transactionsPage, transactionsTotalPages]);
+
+  const renderHeader = () => {
+    const available = wallet?.availablePoints ?? 0;
+    const pending = (wallet as any)?.pendingPoints ?? 0;
+    const totalEarned = wallet?.lifetimeEarned ?? available;
+
+    return (
+      <View style={styles.headerContainer}>
+        {/* Hero Card */}
+        <View
+          style={[
+            styles.heroCard,
+            isDark && { backgroundColor: "#003844", shadowColor: "#000" },
+          ]}
+        >
+          <View style={styles.heroTop}>
+            <View style={styles.heroIconCircle}>
+              <Ionicons name="star" size={scale(20)} color="#FBBF24" />
+            </View>
+            <View style={styles.pointsPill}>
+              <Text style={styles.pointsPillText}>Bhansa Rewards</Text>
+            </View>
+          </View>
+
+          <Text style={styles.heroLabel}>Available Balance</Text>
+          <Text style={styles.heroPointsVal}>{available} Pts</Text>
+
+          {/* Stats Bar */}
+          <View style={styles.heroStatsRow}>
+            <View style={styles.heroStatItem}>
+              <Text style={styles.heroStatLabel}>Lifetime Earned</Text>
+              <Text style={styles.heroStatVal}>{totalEarned} Pts</Text>
+            </View>
+
+            <View style={styles.heroStatDivider} />
+
+            <View style={styles.heroStatItem}>
+              <Text style={styles.heroStatLabel}>Pending Verification</Text>
+              <Text style={styles.heroStatVal}>{pending} Pts</Text>
+            </View>
+          </View>
+
+          {/* Earn More CTA */}
+          <TouchableOpacity
+            style={[
+              styles.earnMoreBtn,
+              isDark && { backgroundColor: "#39D353" },
+            ]}
+            onPress={() =>
+              router.push("/Screens/Profile/refer-and-earned" as any)
+            }
+            activeOpacity={0.85}
+          >
+            <Feather
+              name="gift"
+              size={scale(16)}
+              color={isDark ? "#080D0F" : "#016073"}
+            />
+            <Text
+              style={[
+                styles.earnMoreBtnText,
+                isDark && { color: "#080D0F", fontWeight: "800" },
+              ]}
+            >
+              Earn More Points via Referrals
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Section Header */}
+        <View style={styles.sectionHeaderRow}>
+          <Text
+            style={[
+              styles.sectionTitle,
+              { color: isDark ? "#F8FAFC" : "#0F172A" },
+            ]}
+          >
+            Transaction History
+          </Text>
+          <Text
+            style={[
+              styles.sectionCount,
+              { color: isDark ? "#A8B2BE" : "#64748B" },
+            ]}
+          >
+            {transactionsTotal} records
+          </Text>
+        </View>
+      </View>
     );
   };
 
-  const availablePoints = wallet?.availablePoints || 0;
-  const lifetimeEarned = wallet?.lifetimeEarned || availablePoints;
-  const lifetimeRedeemed = wallet?.lifetimeRedeemed || 0;
-
-  const renderHeader = () => (
-    <View style={styles.headerContainer}>
-      {/* Hero Points Card */}
-      <View style={styles.heroCard}>
-        <View style={styles.heroTop}>
-          <View style={styles.heroIconCircle}>
-            <Ionicons name="sparkles" size={scale(20)} color="#FFFFFF" />
-          </View>
-          <View style={styles.pointsPill}>
-            <Text style={styles.pointsPillText}>Authoritative Ledger</Text>
-          </View>
-        </View>
-
-        <Text style={styles.heroLabel}>Available Reward Points</Text>
-        <Text style={styles.heroPointsVal}>{availablePoints.toLocaleString()}</Text>
-
-        <View style={styles.heroStatsRow}>
-          <View style={styles.heroStatItem}>
-            <Text style={styles.heroStatLabel}>Lifetime Earned</Text>
-            <Text style={styles.heroStatVal}>+{lifetimeEarned.toLocaleString()}</Text>
-          </View>
-          <View style={styles.heroStatDivider} />
-          <View style={styles.heroStatItem}>
-            <Text style={styles.heroStatLabel}>Redeemed</Text>
-            <Text style={styles.heroStatVal}>{lifetimeRedeemed.toLocaleString()}</Text>
-          </View>
-        </View>
-
-        <TouchableOpacity
-          style={styles.earnMoreBtn}
-          onPress={() => router.push("/Screens/Profile/refer-and-earned" as any)}
-          activeOpacity={0.85}
-        >
-          <Feather name="gift" size={scale(16)} color="#016073" />
-          <Text style={styles.earnMoreBtnText}>Earn More Points via Referrals</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Transactions Section Title */}
-      <View style={styles.sectionHeaderRow}>
-        <Text style={styles.sectionTitle}>Points Ledger History</Text>
-        <Text style={styles.sectionCount}>
-          {transactionsTotal} transaction{transactionsTotal === 1 ? "" : "s"}
-        </Text>
-      </View>
-    </View>
-  );
+  const rootBg = isDark ? "#080D0F" : "#F8FAFC";
+  const navBg = isDark ? "#080D0F" : "#FFFFFF";
+  const navBorder = isDark ? "#1E252E" : "#F1F5F9";
+  const navTitle = isDark ? "#F8FAFC" : "#0F172A";
+  const navSub = isDark ? "#A8B2BE" : "#64748B";
+  const btnBg = isDark ? "#151D24" : "#E6F4F6";
+  const backIcon = isDark ? "#F8FAFC" : "#016073";
+  const shareIcon = isDark ? "#39D353" : "#016073";
 
   return (
-    <SafeAreaView style={styles.root} edges={["top"]}>
-      <StatusBar style="dark" />
+    <SafeAreaView style={[styles.root, { backgroundColor: rootBg }]}>
+      <StatusBar style={isDark ? "light" : "dark"} />
 
-      {/* Top Nav */}
-      <View style={styles.topNav}>
+      {/* Top Navbar */}
+      <View
+        style={[
+          styles.topNav,
+          { backgroundColor: navBg, borderBottomColor: navBorder },
+        ]}
+      >
         <TouchableOpacity
-          style={styles.backBtn}
+          style={[styles.backBtn, { backgroundColor: btnBg }]}
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
-          <Feather name="arrow-left" size={scale(20)} color="#016073" />
+          <Feather name="arrow-left" size={scale(20)} color={backIcon} />
         </TouchableOpacity>
         <View style={styles.topNavCenter}>
-          <Text style={styles.navTitle}>Rewards Wallet</Text>
-          <Text style={styles.navSub}>Points Balance & Transaction Ledger</Text>
+          <Text style={[styles.navTitle, { color: navTitle }]}>
+            Rewards Wallet
+          </Text>
+          <Text style={[styles.navSub, { color: navSub }]}>
+            Points Balance & Transaction Ledger
+          </Text>
         </View>
         <TouchableOpacity
-          style={styles.referNavBtn}
-          onPress={() => router.push("/Screens/Profile/refer-and-earned" as any)}
+          style={[styles.referNavBtn, { backgroundColor: btnBg }]}
+          onPress={() =>
+            router.push("/Screens/Profile/refer-and-earned" as any)
+          }
           activeOpacity={0.7}
         >
-          <Feather name="share-2" size={scale(16)} color="#016073" />
+          <Feather name="share-2" size={scale(16)} color={shareIcon} />
         </TouchableOpacity>
       </View>
 
       {walletLoading && !wallet ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#016073" />
-          <Text style={styles.loadingText}>Loading rewards wallet...</Text>
+          <ActivityIndicator
+            size="large"
+            color={isDark ? "#39D353" : "#016073"}
+          />
+          <Text
+            style={[
+              styles.loadingText,
+              { color: isDark ? "#A8B2BE" : "#64748B" },
+            ]}
+          >
+            Loading rewards wallet...
+          </Text>
         </View>
       ) : (
         <FlatList
           data={transactions}
           keyExtractor={(item) => item._id || item.idempotencyKey}
-          renderItem={({ item }) => <TransactionCard item={item} />}
+          renderItem={({ item }) => (
+            <TransactionCard item={item} isDark={isDark} />
+          )}
           ListHeaderComponent={renderHeader}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
@@ -228,23 +346,56 @@ export default function LoyaltyScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={["#016073"]}
+              colors={[isDark ? "#39D353" : "#016073"]}
+              tintColor={isDark ? "#39D353" : "#016073"}
             />
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons name="receipt-outline" size={scale(48)} color="#94A3B8" />
-              <Text style={styles.emptyTitle}>No Transactions Recorded</Text>
-              <Text style={styles.emptySubtitle}>
+              <Ionicons
+                name="receipt-outline"
+                size={scale(48)}
+                color={isDark ? "#64748B" : "#94A3B8"}
+              />
+              <Text
+                style={[
+                  styles.emptyTitle,
+                  { color: isDark ? "#F8FAFC" : "#0F172A" },
+                ]}
+              >
+                No Transactions Recorded
+              </Text>
+              <Text
+                style={[
+                  styles.emptySubtitle,
+                  { color: isDark ? "#A8B2BE" : "#64748B" },
+                ]}
+              >
                 Invite your friends or participate in loyalty campaigns to earn bonus points!
               </Text>
               <TouchableOpacity
-                style={styles.emptyActionBtn}
-                onPress={() => router.push("/Screens/Profile/refer-and-earned" as any)}
+                style={[
+                  styles.emptyActionBtn,
+                  isDark && { backgroundColor: "#39D353" },
+                ]}
+                onPress={() =>
+                  router.push("/Screens/Profile/refer-and-earned" as any)
+                }
                 activeOpacity={0.8}
               >
-                <Feather name="gift" size={scale(16)} color="#FFFFFF" />
-                <Text style={styles.emptyActionBtnText}>Invite & Earn Points</Text>
+                <Feather
+                  name="gift"
+                  size={scale(16)}
+                  color={isDark ? "#080D0F" : "#FFFFFF"}
+                />
+                <Text
+                  style={[
+                    styles.emptyActionBtnText,
+                    isDark && { color: "#080D0F", fontWeight: "800" },
+                  ]}
+                >
+                  Invite & Earn Points
+                </Text>
               </TouchableOpacity>
             </View>
           }
@@ -257,7 +408,6 @@ export default function LoyaltyScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
   },
   topNav: {
     flexDirection: "row",
@@ -265,16 +415,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(16),
     paddingTop: moderateScale(8),
     paddingBottom: moderateScale(12),
-    backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
     gap: scale(12),
   },
   backBtn: {
     width: scale(38),
     height: scale(38),
     borderRadius: scale(19),
-    backgroundColor: "#E6F4F6",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -284,18 +431,15 @@ const styles = StyleSheet.create({
   navTitle: {
     fontSize: moderateScale(16),
     fontWeight: "800",
-    color: "#0F172A",
   },
   navSub: {
     fontSize: moderateScale(11),
-    color: "#64748B",
     marginTop: scale(1),
   },
   referNavBtn: {
     width: scale(38),
     height: scale(38),
     borderRadius: scale(19),
-    backgroundColor: "#E6F4F6",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -307,7 +451,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: moderateScale(13),
-    color: "#64748B",
   },
   listContent: {
     padding: scale(16),
@@ -417,22 +560,18 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: moderateScale(14.5),
     fontWeight: "800",
-    color: "#0F172A",
   },
   sectionCount: {
     fontSize: moderateScale(11.5),
-    color: "#64748B",
   },
   txnCard: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#FFFFFF",
     padding: scale(12),
     borderRadius: scale(10),
     marginBottom: moderateScale(8),
     borderWidth: 1,
-    borderColor: "#F1F5F9",
   },
   txnLeft: {
     flexDirection: "row",
@@ -453,11 +592,9 @@ const styles = StyleSheet.create({
   txnReason: {
     fontSize: moderateScale(13),
     fontWeight: "700",
-    color: "#0F172A",
   },
   txnDate: {
     fontSize: moderateScale(10.5),
-    color: "#64748B",
     marginTop: scale(1),
   },
   txnRight: {
@@ -470,7 +607,6 @@ const styles = StyleSheet.create({
   },
   balanceAfterText: {
     fontSize: moderateScale(10),
-    color: "#94A3B8",
   },
   emptyContainer: {
     alignItems: "center",
@@ -481,12 +617,10 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: moderateScale(15),
     fontWeight: "800",
-    color: "#0F172A",
     marginTop: moderateScale(10),
   },
   emptySubtitle: {
     fontSize: moderateScale(12),
-    color: "#64748B",
     textAlign: "center",
     marginTop: scale(4),
     lineHeight: scale(16),

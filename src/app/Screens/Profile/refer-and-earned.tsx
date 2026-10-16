@@ -1,7 +1,7 @@
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchMyReferral } from "@/store/slices/referralSlice";
-import { moderateScale, scale } from "@/theme";
-import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { moderateScale, scale, useTheme } from "@/theme";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -9,7 +9,6 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Platform,
   RefreshControl,
   ScrollView,
   Share,
@@ -22,9 +21,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ReferAndEarnScreen() {
   const router = useRouter();
+  const theme = useTheme();
+  const isDark = theme.mode === "dark";
   const dispatch = useAppDispatch();
 
-  const { summary, summaryLoading, error } = useAppSelector(
+  const { summary, summaryLoading } = useAppSelector(
     (state) => state.referral
   );
 
@@ -83,35 +84,87 @@ export default function ReferAndEarnScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.root} edges={["top"]}>
-      <StatusBar style="dark" />
+    <SafeAreaView
+      style={[
+        styles.root,
+        isDark && { backgroundColor: "#080D0F" },
+      ]}
+      edges={["top"]}
+    >
+      <StatusBar style={isDark ? "light" : "dark"} />
 
       {/* Top Header */}
-      <View style={styles.topNav}>
+      <View
+        style={[
+          styles.topNav,
+          isDark && {
+            backgroundColor: "#080D0F",
+            borderBottomColor: "#1E252E",
+          },
+        ]}
+      >
         <TouchableOpacity
-          style={styles.backBtn}
+          style={[
+            styles.backBtn,
+            isDark && { backgroundColor: "#1E2E38" },
+          ]}
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
-          <Feather name="arrow-left" size={scale(20)} color="#016073" />
+          <Feather
+            name="arrow-left"
+            size={scale(20)}
+            color={isDark ? "#38BDF8" : "#016073"}
+          />
         </TouchableOpacity>
         <View style={styles.topNavCenter}>
-          <Text style={styles.navTitle}>Refer & Earn</Text>
-          <Text style={styles.navSub}>Invite Friends & Earn Free Points</Text>
+          <Text
+            style={[
+              styles.navTitle,
+              isDark && { color: "#F8FAFC" },
+            ]}
+          >
+            Refer & Earn
+          </Text>
+          <Text
+            style={[
+              styles.navSub,
+              isDark && { color: "#94A3B8" },
+            ]}
+          >
+            Invite Friends & Earn Free Points
+          </Text>
         </View>
         <TouchableOpacity
-          style={styles.historyNavBtn}
+          style={[
+            styles.historyNavBtn,
+            isDark && { backgroundColor: "#1E2E38" },
+          ]}
           onPress={() => router.push("/Screens/Profile/my-referrals" as any)}
           activeOpacity={0.7}
         >
-          <Feather name="users" size={scale(16)} color="#016073" />
+          <Feather
+            name="users"
+            size={scale(16)}
+            color={isDark ? "#38BDF8" : "#016073"}
+          />
         </TouchableOpacity>
       </View>
 
       {summaryLoading && !summary ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#016073" />
-          <Text style={styles.loadingText}>Loading referral program...</Text>
+          <ActivityIndicator
+            size="large"
+            color={isDark ? "#39D353" : "#016073"}
+          />
+          <Text
+            style={[
+              styles.loadingText,
+              isDark && { color: "#94A3B8" },
+            ]}
+          >
+            Loading referral program...
+          </Text>
         </View>
       ) : (
         <ScrollView
@@ -121,43 +174,124 @@ export default function ReferAndEarnScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={["#016073"]}
+              colors={[isDark ? "#39D353" : "#016073"]}
+              tintColor={isDark ? "#39D353" : "#016073"}
             />
           }
         >
           {/* Hero Banner Card */}
-          <View style={styles.heroCard}>
-            <View style={styles.heroIconCircle}>
-              <Ionicons name="gift" size={scale(32)} color="#016073" />
+          <View
+            style={[
+              styles.heroCard,
+              isDark && {
+                backgroundColor: "#151D24",
+                borderColor: "#303B45",
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.heroIconCircle,
+                isDark && { backgroundColor: "#1E2E38" },
+              ]}
+            >
+              <Ionicons
+                name="gift"
+                size={scale(32)}
+                color={isDark ? "#38BDF8" : "#016073"}
+              />
             </View>
-            <Text style={styles.heroTitle}>Invite Friends & Get Rewards</Text>
-            <Text style={styles.heroSubtitle}>
-              Give friends <Text style={styles.boldText}>{friendReward} points</Text> when they sign up, and you’ll get{" "}
-              <Text style={styles.boldText}>{referrerReward} points</Text> credited directly to your wallet!
+            <Text
+              style={[
+                styles.heroTitle,
+                isDark && { color: "#F8FAFC" },
+              ]}
+            >
+              Invite Friends & Get Rewards
+            </Text>
+            <Text
+              style={[
+                styles.heroSubtitle,
+                isDark && { color: "#94A3B8" },
+              ]}
+            >
+              Give friends{" "}
+              <Text
+                style={[
+                  styles.boldText,
+                  isDark && { color: "#38BDF8" },
+                ]}
+              >
+                {friendReward} points
+              </Text>{" "}
+              when they sign up, and you’ll get{" "}
+              <Text
+                style={[
+                  styles.boldText,
+                  isDark && { color: "#38BDF8" },
+                ]}
+              >
+                {referrerReward} points
+              </Text>{" "}
+              credited directly to your wallet!
             </Text>
 
             {/* Referral Code Box */}
-            <View style={styles.codeContainer}>
+            <View
+              style={[
+                styles.codeContainer,
+                isDark && {
+                  backgroundColor: "#1B252E",
+                  borderColor: "#303B45",
+                },
+              ]}
+            >
               <View style={styles.codeTextCol}>
-                <Text style={styles.codeSubLabel}>YOUR UNIQUE REFERRAL CODE</Text>
-                <Text style={styles.codeDisplay}>
+                <Text
+                  style={[
+                    styles.codeSubLabel,
+                    isDark && { color: "#38BDF8" },
+                  ]}
+                >
+                  YOUR UNIQUE REFERRAL CODE
+                </Text>
+                <Text
+                  style={[
+                    styles.codeDisplay,
+                    isDark && { color: "#F8FAFC" },
+                  ]}
+                >
                   {referralCode || "LOADING..."}
                 </Text>
               </View>
 
               <TouchableOpacity
-                style={[styles.copyBtn, copied && styles.copyBtnSuccess]}
+                style={[
+                  styles.copyBtn,
+                  isDark && {
+                    backgroundColor: "#1E2E38",
+                    borderColor: "#303B45",
+                  },
+                  copied && styles.copyBtnSuccess,
+                ]}
                 onPress={handleCopyCode}
                 activeOpacity={0.8}
               >
                 <Feather
                   name={copied ? "check" : "copy"}
                   size={scale(16)}
-                  color={copied ? "#FFFFFF" : "#016073"}
+                  color={
+                    copied
+                      ? "#FFFFFF"
+                      : isDark
+                      ? "#38BDF8"
+                      : "#016073"
+                  }
                 />
                 <Text
                   style={[
                     styles.copyBtnText,
+                    isDark && !copied && { color: "#38BDF8" },
                     copied && styles.copyBtnTextSuccess,
                   ]}
                 >
@@ -168,7 +302,10 @@ export default function ReferAndEarnScreen() {
 
             {/* Share Invitation Button */}
             <TouchableOpacity
-              style={styles.shareBtn}
+              style={[
+                styles.shareBtn,
+                isDark && { backgroundColor: "#00687A" },
+              ]}
               activeOpacity={0.85}
               onPress={handleShare}
             >
@@ -180,117 +317,396 @@ export default function ReferAndEarnScreen() {
           {/* Quick Action Navigation Bar */}
           <View style={styles.quickNavRow}>
             <TouchableOpacity
-              style={styles.quickNavCard}
+              style={[
+                styles.quickNavCard,
+                isDark && {
+                  backgroundColor: "#151D24",
+                  borderColor: "#303B45",
+                },
+              ]}
               onPress={() => router.push("/Screens/Profile/my-referrals" as any)}
               activeOpacity={0.8}
             >
-              <View style={[styles.quickNavIconWrap, { backgroundColor: "#E6F4F6" }]}>
-                <Feather name="users" size={scale(16)} color="#016073" />
+              <View
+                style={[
+                  styles.quickNavIconWrap,
+                  {
+                    backgroundColor: isDark
+                      ? "rgba(2, 132, 199, 0.18)"
+                      : "#E6F4F6",
+                  },
+                ]}
+              >
+                <Feather
+                  name="users"
+                  size={scale(16)}
+                  color={isDark ? "#38BDF8" : "#016073"}
+                />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.quickNavTitle}>My Referrals</Text>
-                <Text style={styles.quickNavSub}>View invited friends list</Text>
+                <Text
+                  style={[
+                    styles.quickNavTitle,
+                    isDark && { color: "#F8FAFC" },
+                  ]}
+                >
+                  My Referrals
+                </Text>
+                <Text
+                  style={[
+                    styles.quickNavSub,
+                    isDark && { color: "#94A3B8" },
+                  ]}
+                >
+                  View invited friends list
+                </Text>
               </View>
-              <Feather name="chevron-right" size={scale(16)} color="#94A3B8" />
+              <Feather
+                name="chevron-right"
+                size={scale(16)}
+                color={isDark ? "#64748B" : "#94A3B8"}
+              />
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.quickNavCard}
+              style={[
+                styles.quickNavCard,
+                isDark && {
+                  backgroundColor: "#151D24",
+                  borderColor: "#303B45",
+                },
+              ]}
               onPress={() => router.push("/Screens/Profile/loyalty" as any)}
               activeOpacity={0.8}
             >
-              <View style={[styles.quickNavIconWrap, { backgroundColor: "#FEF3C7" }]}>
-                <Ionicons name="wallet-outline" size={scale(16)} color="#B45309" />
+              <View
+                style={[
+                  styles.quickNavIconWrap,
+                  {
+                    backgroundColor: isDark
+                      ? "rgba(245, 158, 11, 0.18)"
+                      : "#FEF3C7",
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="wallet-outline"
+                  size={scale(16)}
+                  color={isDark ? "#FBBF24" : "#B45309"}
+                />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.quickNavTitle}>Points Wallet</Text>
-                <Text style={styles.quickNavSub}>
+                <Text
+                  style={[
+                    styles.quickNavTitle,
+                    isDark && { color: "#F8FAFC" },
+                  ]}
+                >
+                  Points Wallet
+                </Text>
+                <Text
+                  style={[
+                    styles.quickNavSub,
+                    isDark && { color: "#94A3B8" },
+                  ]}
+                >
                   {summary?.rewardPointsBalance || 0} Points Available
                 </Text>
               </View>
-              <Feather name="chevron-right" size={scale(16)} color="#94A3B8" />
+              <Feather
+                name="chevron-right"
+                size={scale(16)}
+                color={isDark ? "#64748B" : "#94A3B8"}
+              />
             </TouchableOpacity>
           </View>
 
           {/* Real Metrics Grid */}
           <View style={styles.statsSection}>
-            <Text style={styles.sectionHeader}>Your Referral Progress</Text>
+            <Text
+              style={[
+                styles.sectionHeader,
+                isDark && { color: "#F8FAFC" },
+              ]}
+            >
+              Your Referral Progress
+            </Text>
             <View style={styles.statsGrid}>
-              <View style={styles.statCard}>
-                <View style={[styles.statIconWrap, { backgroundColor: "#E6F4F6" }]}>
-                  <Feather name="user-plus" size={scale(15)} color="#016073" />
+              <View
+                style={[
+                  styles.statCard,
+                  isDark && {
+                    backgroundColor: "#151D24",
+                    borderColor: "#303B45",
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.statIconWrap,
+                    {
+                      backgroundColor: isDark
+                        ? "rgba(2, 132, 199, 0.18)"
+                        : "#E6F4F6",
+                    },
+                  ]}
+                >
+                  <Feather
+                    name="user-plus"
+                    size={scale(15)}
+                    color={isDark ? "#38BDF8" : "#016073"}
+                  />
                 </View>
-                <Text style={styles.statVal}>{summary?.totalInvited || 0}</Text>
-                <Text style={styles.statLabel}>Total Invited</Text>
+                <Text
+                  style={[
+                    styles.statVal,
+                    isDark && { color: "#F8FAFC" },
+                  ]}
+                >
+                  {summary?.totalInvited || 0}
+                </Text>
+                <Text
+                  style={[
+                    styles.statLabel,
+                    isDark && { color: "#94A3B8" },
+                  ]}
+                >
+                  Total Invited
+                </Text>
               </View>
 
-              <View style={styles.statCard}>
-                <View style={[styles.statIconWrap, { backgroundColor: "#DCFCE7" }]}>
-                  <Feather name="check-circle" size={scale(15)} color="#15803D" />
+              <View
+                style={[
+                  styles.statCard,
+                  isDark && {
+                    backgroundColor: "#151D24",
+                    borderColor: "#303B45",
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.statIconWrap,
+                    {
+                      backgroundColor: isDark
+                        ? "rgba(34, 197, 94, 0.18)"
+                        : "#DCFCE7",
+                    },
+                  ]}
+                >
+                  <Feather
+                    name="check-circle"
+                    size={scale(15)}
+                    color={isDark ? "#4ADE80" : "#15803D"}
+                  />
                 </View>
-                <Text style={[styles.statVal, { color: "#15803D" }]}>
+                <Text
+                  style={[
+                    styles.statVal,
+                    { color: isDark ? "#4ADE80" : "#15803D" },
+                  ]}
+                >
                   {summary?.successfulReferrals || 0}
                 </Text>
-                <Text style={styles.statLabel}>Successful</Text>
+                <Text
+                  style={[
+                    styles.statLabel,
+                    isDark && { color: "#94A3B8" },
+                  ]}
+                >
+                  Successful
+                </Text>
               </View>
 
-              <View style={styles.statCard}>
-                <View style={[styles.statIconWrap, { backgroundColor: "#FEF3C7" }]}>
-                  <Feather name="clock" size={scale(15)} color="#B45309" />
+              <View
+                style={[
+                  styles.statCard,
+                  isDark && {
+                    backgroundColor: "#151D24",
+                    borderColor: "#303B45",
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.statIconWrap,
+                    {
+                      backgroundColor: isDark
+                        ? "rgba(245, 158, 11, 0.18)"
+                        : "#FEF3C7",
+                    },
+                  ]}
+                >
+                  <Feather
+                    name="clock"
+                    size={scale(15)}
+                    color={isDark ? "#FBBF24" : "#B45309"}
+                  />
                 </View>
-                <Text style={[styles.statVal, { color: "#B45309" }]}>
+                <Text
+                  style={[
+                    styles.statVal,
+                    { color: isDark ? "#FBBF24" : "#B45309" },
+                  ]}
+                >
                   {summary?.pendingReferrals || 0}
                 </Text>
-                <Text style={styles.statLabel}>Pending</Text>
+                <Text
+                  style={[
+                    styles.statLabel,
+                    isDark && { color: "#94A3B8" },
+                  ]}
+                >
+                  Pending
+                </Text>
               </View>
 
-              <View style={styles.statCard}>
-                <View style={[styles.statIconWrap, { backgroundColor: "#F3E8FF" }]}>
-                  <Ionicons name="star-outline" size={scale(15)} color="#7E22CE" />
+              <View
+                style={[
+                  styles.statCard,
+                  isDark && {
+                    backgroundColor: "#151D24",
+                    borderColor: "#303B45",
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.statIconWrap,
+                    {
+                      backgroundColor: isDark
+                        ? "rgba(168, 85, 247, 0.18)"
+                        : "#F3E8FF",
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name="star-outline"
+                    size={scale(15)}
+                    color={isDark ? "#C084FC" : "#7E22CE"}
+                  />
                 </View>
-                <Text style={[styles.statVal, { color: "#7E22CE" }]}>
+                <Text
+                  style={[
+                    styles.statVal,
+                    { color: isDark ? "#C084FC" : "#7E22CE" },
+                  ]}
+                >
                   {summary?.totalPointsEarned || 0}
                 </Text>
-                <Text style={styles.statLabel}>Points Earned</Text>
+                <Text
+                  style={[
+                    styles.statLabel,
+                    isDark && { color: "#94A3B8" },
+                  ]}
+                >
+                  Points Earned
+                </Text>
               </View>
             </View>
           </View>
 
           {/* Step-by-Step How It Works */}
-          <View style={styles.howItWorksCard}>
-            <Text style={styles.sectionHeader}>How It Works</Text>
+          <View
+            style={[
+              styles.howItWorksCard,
+              isDark && {
+                backgroundColor: "#151D24",
+                borderColor: "#303B45",
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.sectionHeader,
+                isDark && { color: "#F8FAFC" },
+              ]}
+            >
+              How It Works
+            </Text>
 
             <View style={styles.stepRow}>
-              <View style={styles.stepBadge}>
+              <View
+                style={[
+                  styles.stepBadge,
+                  isDark && { backgroundColor: "#004D5D" },
+                ]}
+              >
                 <Text style={styles.stepBadgeText}>1</Text>
               </View>
               <View style={styles.stepInfo}>
-                <Text style={styles.stepTitle}>Share your unique link or code</Text>
-                <Text style={styles.stepSub}>
+                <Text
+                  style={[
+                    styles.stepTitle,
+                    isDark && { color: "#F8FAFC" },
+                  ]}
+                >
+                  Share your unique link or code
+                </Text>
+                <Text
+                  style={[
+                    styles.stepSub,
+                    isDark && { color: "#94A3B8" },
+                  ]}
+                >
                   Send your referral invitation to friends and family via WhatsApp, SMS, or social apps.
                 </Text>
               </View>
             </View>
 
             <View style={styles.stepRow}>
-              <View style={styles.stepBadge}>
+              <View
+                style={[
+                  styles.stepBadge,
+                  isDark && { backgroundColor: "#004D5D" },
+                ]}
+              >
                 <Text style={styles.stepBadgeText}>2</Text>
               </View>
               <View style={styles.stepInfo}>
-                <Text style={styles.stepTitle}>Friend signs up with your code</Text>
-                <Text style={styles.stepSub}>
+                <Text
+                  style={[
+                    styles.stepTitle,
+                    isDark && { color: "#F8FAFC" },
+                  ]}
+                >
+                  Friend signs up with your code
+                </Text>
+                <Text
+                  style={[
+                    styles.stepSub,
+                    isDark && { color: "#94A3B8" },
+                  ]}
+                >
                   When your friend creates an account, they instantly receive {friendReward} welcome reward points.
                 </Text>
               </View>
             </View>
 
             <View style={styles.stepRow}>
-              <View style={styles.stepBadge}>
+              <View
+                style={[
+                  styles.stepBadge,
+                  isDark && { backgroundColor: "#004D5D" },
+                ]}
+              >
                 <Text style={styles.stepBadgeText}>3</Text>
               </View>
               <View style={styles.stepInfo}>
-                <Text style={styles.stepTitle}>You earn {referrerReward} points</Text>
-                <Text style={styles.stepSub}>
+                <Text
+                  style={[
+                    styles.stepTitle,
+                    isDark && { color: "#F8FAFC" },
+                  ]}
+                >
+                  You earn {referrerReward} points
+                </Text>
+                <Text
+                  style={[
+                    styles.stepSub,
+                    isDark && { color: "#94A3B8" },
+                  ]}
+                >
                   Your wallet is credited atomically with {referrerReward} points. Use points for store rewards and discounts!
                 </Text>
               </View>
@@ -298,21 +714,60 @@ export default function ReferAndEarnScreen() {
           </View>
 
           {/* Terms & Conditions Accordion / Box */}
-          <View style={styles.termsCard}>
+          <View
+            style={[
+              styles.termsCard,
+              isDark && {
+                backgroundColor: "#1B252E",
+                borderColor: "#303B45",
+              },
+            ]}
+          >
             <View style={styles.termsHeaderRow}>
-              <Feather name="shield" size={scale(16)} color="#64748B" />
-              <Text style={styles.termsHeading}>Terms & Conditions</Text>
+              <Feather
+                name="shield"
+                size={scale(16)}
+                color={isDark ? "#94A3B8" : "#64748B"}
+              />
+              <Text
+                style={[
+                  styles.termsHeading,
+                  isDark && { color: "#F8FAFC" },
+                ]}
+              >
+                Terms & Conditions
+              </Text>
             </View>
-            <Text style={styles.termsText}>
+            <Text
+              style={[
+                styles.termsText,
+                isDark && { color: "#94A3B8" },
+              ]}
+            >
               • Both the referrer and referred customer receive points upon successful, verified account registration.
             </Text>
-            <Text style={styles.termsText}>
+            <Text
+              style={[
+                styles.termsText,
+                isDark && { color: "#94A3B8" },
+              ]}
+            >
               • Referral rewards are strictly limited to one welcome attribution per newly registered customer account.
             </Text>
-            <Text style={styles.termsText}>
+            <Text
+              style={[
+                styles.termsText,
+                isDark && { color: "#94A3B8" },
+              ]}
+            >
               • Self-referrals and duplicate accounts are strictly prohibited and automatically detected by our anti-abuse system.
             </Text>
-            <Text style={styles.termsText}>
+            <Text
+              style={[
+                styles.termsText,
+                isDark && { color: "#94A3B8" },
+              ]}
+            >
               • Reward points are non-transferable and can be redeemed for promotional discounts and perks on Bhansa Mart.
             </Text>
           </View>
@@ -610,6 +1065,8 @@ const styles = StyleSheet.create({
     borderRadius: scale(12),
     padding: scale(14),
     gap: scale(6),
+    borderWidth: 1,
+    borderColor: "transparent",
   },
   termsHeaderRow: {
     flexDirection: "row",

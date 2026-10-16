@@ -1,4 +1,3 @@
-import { Image } from "expo-image";
 import { moderateScale, scale, useTheme } from "@/theme";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -10,6 +9,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 export default function OfferDetailsScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const isDark = theme.mode === "dark";
   const params = useLocalSearchParams<{
     id?: string;
     title?: string;
@@ -70,31 +70,62 @@ export default function OfferDetailsScreen() {
   };
 
   return (
-    <View style={styles.root}>
-      <StatusBar style="dark" />
+    <View
+      style={[
+        styles.root,
+        isDark && { backgroundColor: "#080D0F" },
+      ]}
+    >
+      <StatusBar style={isDark ? "light" : "dark"} />
 
       {/* 1. Header with SafeAreaView */}
-      <SafeAreaView edges={["top"]} style={styles.safeAreaHeader}>
+      <SafeAreaView
+        edges={["top"]}
+        style={[
+          styles.safeAreaHeader,
+          isDark && { backgroundColor: "#080D0F" },
+        ]}
+      >
         <View style={styles.navBar}>
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() => router.back()}
             style={styles.navIconButton}
           >
-            <Feather name="arrow-left" size={scale(22)} color="#0F172A" />
+            <Feather
+              name="arrow-left"
+              size={scale(22)}
+              color={isDark ? "#F8FAFC" : "#0F172A"}
+            />
           </TouchableOpacity>
 
-          <Text style={styles.navTitle}>Offer details</Text>
+          <Text
+            style={[
+              styles.navTitle,
+              isDark && { color: "#F8FAFC" },
+            ]}
+          >
+            Offer details
+          </Text>
 
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={handleShare}
             style={styles.navIconButton}
           >
-            <Feather name="share-2" size={scale(20)} color="#0F172A" />
+            <Feather
+              name="share-2"
+              size={scale(20)}
+              color={isDark ? "#F8FAFC" : "#0F172A"}
+            />
           </TouchableOpacity>
         </View>
-        <View style={styles.headerDivider} />
+        <View
+          style={[
+            styles.headerDivider,
+            isDark && { backgroundColor: "#1E252E" },
+          ]}
+        />
       </SafeAreaView>
 
       {/* 2. Scrollable Body Content */}
@@ -103,51 +134,135 @@ export default function OfferDetailsScreen() {
         contentContainerStyle={styles.scrollContent}
       >
         {/* Blue Hero Banner Card */}
-        <View style={styles.heroBanner}>
+        <View
+          style={[
+            styles.heroBanner,
+            isDark && { backgroundColor: "#1E3A5F" },
+          ]}
+        >
           <View style={styles.heroInnerOverlay}>
-            <Ionicons name="gift-outline" size={scale(48)} color="rgba(255,255,255,0.4)" />
+            <Ionicons
+              name="gift-outline"
+              size={scale(48)}
+              color="rgba(255,255,255,0.4)"
+            />
           </View>
         </View>
 
         {/* Offer Header Row: Avatar + Title + Points Badge */}
-        <View style={styles.offerHeaderSection}>
+        <View
+          style={[
+            styles.offerHeaderSection,
+            isDark && {
+              backgroundColor: "#151D24",
+              borderColor: "#303B45",
+            },
+          ]}
+        >
           <View style={styles.topInfoRow}>
             {/* Store / Reward Avatar Icon */}
-            <View style={styles.avatarCircle}>
-              <Ionicons name="cart" size={scale(20)} color="#008080" />
+            <View
+              style={[
+                styles.avatarCircle,
+                isDark && {
+                  backgroundColor: "#1E2E38",
+                  borderColor: "#303B45",
+                },
+              ]}
+            >
+              <Ionicons
+                name="cart"
+                size={scale(20)}
+                color={isDark ? "#38BDF8" : "#008080"}
+              />
             </View>
 
             {/* Title & Points Pill */}
             <View style={styles.titleWrapper}>
               <View style={styles.titleBadgeRow}>
-                <Text style={styles.mainTitle}>{title}</Text>
-                <View style={styles.pointsPill}>
-                  <Ionicons name="ribbon-outline" size={scale(12)} color="#475569" />
-                  <Text style={styles.pointsPillText}>{pointsCost} RP</Text>
+                <Text
+                  style={[
+                    styles.mainTitle,
+                    isDark && { color: "#F8FAFC" },
+                  ]}
+                >
+                  {title}
+                </Text>
+                <View
+                  style={[
+                    styles.pointsPill,
+                    isDark && {
+                      backgroundColor: "#1B252E",
+                      borderColor: "#303B45",
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name="ribbon-outline"
+                    size={scale(12)}
+                    color={isDark ? "#94A3B8" : "#475569"}
+                  />
+                  <Text
+                    style={[
+                      styles.pointsPillText,
+                      isDark && { color: "#F8FAFC" },
+                    ]}
+                  >
+                    {pointsCost} RP
+                  </Text>
                 </View>
               </View>
 
               {/* Valid Till */}
               <View style={styles.validityRow}>
-                <Text style={styles.validityLabel}>Valid till : </Text>
-                <Text style={styles.validityDate}>{validTill}</Text>
+                <Text
+                  style={[
+                    styles.validityLabel,
+                    isDark && { color: "#39D353" },
+                  ]}
+                >
+                  Valid till :{" "}
+                </Text>
+                <Text
+                  style={[
+                    styles.validityDate,
+                    isDark && { color: "#39D353" },
+                  ]}
+                >
+                  {validTill}
+                </Text>
               </View>
             </View>
           </View>
 
           {/* Subheading */}
-          <Text style={styles.subheading}>
+          <Text
+            style={[
+              styles.subheading,
+              isDark && { color: "#F8FAFC" },
+            ]}
+          >
             Redeem {pointsCost} points and enjoy your favorite snack for free!
           </Text>
 
           {/* Body Description */}
-          <Text style={styles.bodyParagraph}>
+          <Text
+            style={[
+              styles.bodyParagraph,
+              isDark && { color: "#A8B2BE" },
+            ]}
+          >
             Satisfy your cravings with Wai Wai—absolutely free! Redeem{" "}
             {pointsCost} points to enjoy this delicious snack that you love. It's
             our way of saying thank you for being a valued customer.
           </Text>
 
-          <Text style={styles.bodyParagraph}>
+          <Text
+            style={[
+              styles.bodyParagraph,
+              isDark && { color: "#A8B2BE" },
+            ]}
+          >
             Add it to your cart now and let us handle the rest. Don't wait too
             long—rewards like this don't last forever. Treat yourself today and
             make your points work for you!
@@ -159,27 +274,66 @@ export default function OfferDetailsScreen() {
             onPress={handleCallSupport}
             style={styles.supportRow}
           >
-            <Text style={styles.supportText}>
+            <Text
+              style={[
+                styles.supportText,
+                isDark && { color: "#F8FAFC" },
+              ]}
+            >
               For support, contact us at:{" "}
-              <Text style={styles.supportHighlight}>{supportPhone}</Text>
+              <Text
+                style={[
+                  styles.supportHighlight,
+                  isDark && { color: "#38BDF8" },
+                ]}
+              >
+                {supportPhone}
+              </Text>
             </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
 
       {/* 3. Sticky Bottom Action Bar */}
-      <SafeAreaView edges={["bottom"]} style={styles.bottomBarContainer}>
+      <SafeAreaView
+        edges={["bottom"]}
+        style={[
+          styles.bottomBarContainer,
+          isDark && {
+            backgroundColor: "#080D0F",
+            borderTopColor: "#1E252E",
+          },
+        ]}
+      >
         <View style={styles.bottomBarInner}>
           <View style={styles.bottomPriceCol}>
-            <Text style={styles.bottomPriceLabel}>Redeem point</Text>
-            <Text style={styles.bottomPriceValue}>RS.{pointsCost}</Text>
+            <Text
+              style={[
+                styles.bottomPriceLabel,
+                isDark && { color: "#94A3B8" },
+              ]}
+            >
+              Redeem point
+            </Text>
+            <Text
+              style={[
+                styles.bottomPriceValue,
+                isDark && { color: "#F8FAFC" },
+              ]}
+            >
+              RS.{pointsCost}
+            </Text>
           </View>
 
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={handleRedeemNow}
             disabled={isRedeemed}
-            style={[styles.redeemButton, isRedeemed && styles.redeemButtonDisabled]}
+            style={[
+              styles.redeemButton,
+              isDark && { backgroundColor: "#00687A" },
+              isRedeemed && styles.redeemButtonDisabled,
+            ]}
           >
             <Text style={styles.redeemButtonText}>
               {isRedeemed ? "Redeemed" : "Redeem Now"}

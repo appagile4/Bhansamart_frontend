@@ -84,11 +84,17 @@ export default function ActiveCartSection({
               {/* Product Image Box */}
               <View style={styles.imageBox}>
                 <Image
-                  source={{
-                    uri:
-                      item.imageUrl ||
-                      "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=200&q=80",
-                  }}
+                  source={
+                    typeof item.imageUrl === "number"
+                      ? item.imageUrl
+                      : typeof item.imageUrl === "string" && item.imageUrl.length > 0
+                        ? { uri: item.imageUrl }
+                        : item.imageUrl && typeof item.imageUrl === "object" && "uri" in (item.imageUrl as any)
+                          ? (item.imageUrl as any)
+                          : {
+                              uri: "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=200&q=80",
+                            }
+                  }
                   style={styles.image}
                   resizeMode="contain"
                 />

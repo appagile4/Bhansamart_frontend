@@ -10,6 +10,7 @@ import orderReducer from "./slices/orderSlice";
 import deliveryReducer from "./slices/deliverySlice";
 import vendorFinanceReducer from "./slices/vendorFinanceSlice";
 import referralReducer from "./slices/referralSlice";
+import paymentReducer from "./slices/paymentSlice";
 
 export const store = configureStore({
   reducer: {
@@ -24,6 +25,7 @@ export const store = configureStore({
     delivery: deliveryReducer,
     vendorFinance: vendorFinanceReducer,
     referral: referralReducer,
+    payment: paymentReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

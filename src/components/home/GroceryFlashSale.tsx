@@ -707,7 +707,7 @@ export default function GroceryFlashSale({
   const router = useRouter();
   const theme = useTheme();
   const isDark = theme.mode === "dark";
-  const { addToCart } = useCart();
+  const { addToCart, getItemQuantity } = useCart();
   const { publicProducts, publicLoading } = useAppSelector(
     (state) => state.product,
   );
@@ -1052,28 +1052,60 @@ export default function GroceryFlashSale({
           onPress={() => handleAddPress(item)}
           style={styles.svgAddButtonWrapper}
         >
-          <Svg
-            width="100%"
-            height="100%"
-            viewBox="78 138 98 36"
-            preserveAspectRatio="none"
-            style={StyleSheet.absoluteFill}
-          >
-            <Path
-              d={FLASH_ADD_BUTTON_SVG_PATH}
-              fill={isDark ? "#151D24" : "#FFFFFF"}
-              stroke={isDark ? "#39D353" : "#43784A"}
-              strokeWidth={1.5}
-            />
-          </Svg>
-          <Text style={[styles.addButtonText, isDark && { color: "#39D353" }]}>
-            ADD
-          </Text>
-          {item.optionsText ? (
-            <Text style={[styles.optionsText, isDark && { color: "#A8B2BE" }]}>
-              {item.optionsText}
-            </Text>
-          ) : null}
+          {(() => {
+            const itemQty = getItemQuantity(item.id);
+            const inCart = itemQty > 0;
+            return (
+              <>
+                <Svg
+                  width="100%"
+                  height="100%"
+                  viewBox="78 138 98 36"
+                  preserveAspectRatio="none"
+                  style={StyleSheet.absoluteFill}
+                >
+                  <Path
+                    d={FLASH_ADD_BUTTON_SVG_PATH}
+                    fill={
+                      inCart
+                        ? isDark
+                          ? "#16A34A"
+                          : "#3F784C"
+                        : isDark
+                          ? "#151D24"
+                          : "#FFFFFF"
+                    }
+                    stroke={isDark ? "#39D353" : "#43784A"}
+                    strokeWidth={1.5}
+                  />
+                </Svg>
+                <Text
+                  style={[
+                    styles.addButtonText,
+                    inCart && { color: "#FFFFFF" },
+                    isDark && { color: inCart ? "#FFFFFF" : "#39D353" },
+                  ]}
+                >
+                  {inCart ? `${itemQty} IN CART` : "ADD"}
+                </Text>
+                {item.optionsText ? (
+                  <Text
+                    style={[
+                      styles.optionsText,
+                      inCart && { color: "rgba(255,255,255,0.85)" },
+                      isDark && {
+                        color: inCart
+                          ? "rgba(255,255,255,0.85)"
+                          : "#A8B2BE",
+                      },
+                    ]}
+                  >
+                    {item.optionsText}
+                  </Text>
+                ) : null}
+              </>
+            );
+          })()}
         </TouchableOpacity>
       </View>
 

@@ -51,7 +51,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const addToCart = useCallback(
     (product: Omit<CartItem, "quantity"> & { quantity?: number }) => {
-      dispatch(addToCartLocal(product));
       dispatch(addToCartThunk(product));
     },
     [dispatch]
@@ -60,7 +59,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const removeFromCart = useCallback(
     (productId: string) => {
       const pId = String(productId).trim();
-      dispatch(removeFromCartLocal(pId));
       dispatch(removeFromCartThunk(pId));
     },
     [dispatch]
@@ -69,31 +67,32 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const updateQuantity = useCallback(
     (productId: string, delta: number) => {
       const pId = String(productId).trim();
-      dispatch(updateQuantityLocal({ productId: pId, delta }));
       dispatch(updateCartQuantityThunk({ productId: pId, delta }));
     },
     [dispatch]
   );
 
-  // High-performance O(1) product quantity lookup map
-  const cartMapRef = React.useRef<Record<string, number>>({});
-  useEffect(() => {
+  // Synchronous, reactive product quantity lookup map
+  const cartMap = React.useMemo(() => {
     const map: Record<string, number> = {};
     for (const item of cartItems) {
       if (item.id) map[String(item.id).trim()] = item.quantity;
       if ((item as any).productId) map[String((item as any).productId).trim()] = item.quantity;
       if ((item as any)._id) map[String((item as any)._id).trim()] = item.quantity;
+      if (item.name) map[String(item.name).trim()] = item.quantity;
     }
-    cartMapRef.current = map;
+    return map;
   }, [cartItems]);
 
-  const getItemQuantity = useCallback((productId: string): number => {
-    const targetId = String(productId).trim();
-    return targetId ? cartMapRef.current[targetId] || 0 : 0;
-  }, []);
+  const getItemQuantity = useCallback(
+    (productId: string): number => {
+      const targetId = String(productId || "").trim();
+      return targetId ? cartMap[targetId] || 0 : 0;
+    },
+    [cartMap]
+  );
 
   const clearCart = useCallback(() => {
-    dispatch(clearCartLocal());
     dispatch(clearCartThunk());
   }, [dispatch]);
 

@@ -42,6 +42,7 @@ const STATUS_STEPS: { key: OrderStatus; label: string; icon: any }[] = [
 export default function OrderSummaryScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const isDark = theme.mode === "dark";
   const dispatch = useAppDispatch();
   const params = useLocalSearchParams<{
     orderId?: string;
@@ -151,27 +152,61 @@ export default function OrderSummaryScreen() {
     order?.orderNumber || params.orderNumber || "BM-ORDER";
 
   return (
-    <View style={styles.root}>
-      <StatusBar style="dark" />
+    <View
+      style={[
+        styles.root,
+        isDark && { backgroundColor: "#080D0F" },
+      ]}
+    >
+      <StatusBar style={isDark ? "light" : "dark"} />
 
       {/* 1. Header with SafeAreaView for full top status bar coverage */}
-      <SafeAreaView edges={["top"]} style={styles.safeAreaHeader}>
+      <SafeAreaView
+        edges={["top"]}
+        style={[
+          styles.safeAreaHeader,
+          isDark && { backgroundColor: "#080D0F" },
+        ]}
+      >
         <View style={styles.navBar}>
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() => (router.canGoBack() ? router.back() : router.replace("/customerMain/home" as any))}
             style={styles.backButton}
           >
-            <Feather name="arrow-left" size={scale(22)} color="#1E293B" />
+            <Feather
+              name="arrow-left"
+              size={scale(22)}
+              color={isDark ? "#F8FAFC" : "#1E293B"}
+            />
           </TouchableOpacity>
-          <Text style={styles.navTitle}>Live Order Tracking</Text>
+          <Text
+            style={[
+              styles.navTitle,
+              isDark && { color: "#F8FAFC" },
+            ]}
+          >
+            Live Order Tracking
+          </Text>
           <View style={{ width: scale(36) }} />
         </View>
 
         {/* Title Section */}
         <View style={styles.titleSection}>
-          <Text style={styles.screenTitle}>Order Details</Text>
-          <Text style={styles.arrivingSubtext}>
+          <Text
+            style={[
+              styles.screenTitle,
+              isDark && { color: "#F8FAFC" },
+            ]}
+          >
+            Order Details
+          </Text>
+          <Text
+            style={[
+              styles.arrivingSubtext,
+              isDark && { color: "#38BDF8" },
+            ]}
+          >
             {isRejected
               ? "Order was cancelled"
               : currentStatus === "DELIVERED"
@@ -182,11 +217,21 @@ export default function OrderSummaryScreen() {
 
         {/* Items in this order heading */}
         <View style={styles.itemsHeader}>
-          <Text style={styles.itemsHeaderText}>
+          <Text
+            style={[
+              styles.itemsHeaderText,
+              isDark && { color: "#94A3B8" },
+            ]}
+          >
             {order?.items?.length || 0} items in this order
           </Text>
         </View>
-        <View style={styles.headerDivider} />
+        <View
+          style={[
+            styles.headerDivider,
+            isDark && { backgroundColor: "#1E252E" },
+          ]}
+        />
       </SafeAreaView>
 
       {/* 2. Scrollable Body */}
@@ -195,10 +240,23 @@ export default function OrderSummaryScreen() {
         contentContainerStyle={styles.scrollContent}
       >
         {/* ── Live Real-Time Status Card ─────────────────────────────── */}
-        <View style={styles.statusCard}>
+        <View
+          style={[
+            styles.statusCard,
+            isDark && {
+              backgroundColor: "#151D24",
+              borderColor: "#303B45",
+            },
+          ]}
+        >
           <View style={styles.statusCardHeader}>
             <View style={styles.pulseDot} />
-            <Text style={styles.statusCardTitle}>
+            <Text
+              style={[
+                styles.statusCardTitle,
+                isDark && { color: "#F8FAFC" },
+              ]}
+            >
               {isRejected
                 ? "Order Cancelled"
                 : `Current Status: ${
@@ -237,20 +295,39 @@ export default function OrderSummaryScreen() {
                       <View
                         style={[
                           styles.stepCircle,
+                          isDark && !isCompleted && !isCurrent && {
+                            backgroundColor: "#1E252E",
+                          },
                           isCompleted && styles.stepCircleCompleted,
-                          isCurrent && styles.stepCircleCurrent,
+                          isCurrent &&
+                            (isDark
+                              ? {
+                                  backgroundColor: "#00687A",
+                                  borderWidth: 2,
+                                  borderColor: "#38BDF8",
+                                }
+                              : styles.stepCircleCurrent),
                         ]}
                       >
                         <Ionicons
                           name={step.icon}
                           size={scale(13)}
-                          color={isCompleted ? "#FFFFFF" : "#94A3B8"}
+                          color={
+                            isCompleted
+                              ? "#FFFFFF"
+                              : isDark
+                              ? "#64748B"
+                              : "#94A3B8"
+                          }
                         />
                       </View>
                       {idx < STATUS_STEPS.length - 1 && (
                         <View
                           style={[
                             styles.stepLine,
+                            isDark && !isCompleted && {
+                              backgroundColor: "#1E252E",
+                            },
                             isCompleted && styles.stepLineCompleted,
                           ]}
                         />
@@ -260,8 +337,15 @@ export default function OrderSummaryScreen() {
                       <Text
                         style={[
                           styles.stepLabel,
-                          isCompleted && styles.stepLabelCompleted,
-                          isCurrent && styles.stepLabelCurrent,
+                          isDark && !isCompleted && { color: "#64748B" },
+                          isCompleted && [
+                            styles.stepLabelCompleted,
+                            isDark && { color: "#F8FAFC" },
+                          ],
+                          isCurrent && [
+                            styles.stepLabelCurrent,
+                            isDark && { color: "#38BDF8" },
+                          ],
                         ]}
                       >
                         {step.label}
@@ -276,22 +360,71 @@ export default function OrderSummaryScreen() {
 
         {/* ── Customer Delivery Verification OTP Card ──────────────────── */}
         {order?.customerDeliveryOtp && currentStatus !== "DELIVERED" ? (
-          <View style={styles.otpCard}>
+          <View
+            style={[
+              styles.otpCard,
+              isDark && {
+                backgroundColor: "#151D24",
+                borderColor: "#303B45",
+              },
+            ]}
+          >
             <View style={styles.otpHeaderRow}>
-              <View style={styles.otpIconBox}>
-                <Feather name="shield" size={scale(18)} color="#0F766E" />
+              <View
+                style={[
+                  styles.otpIconBox,
+                  isDark && { backgroundColor: "#1E2E38" },
+                ]}
+              >
+                <Feather
+                  name="shield"
+                  size={scale(18)}
+                  color={isDark ? "#2DD4BF" : "#0F766E"}
+                />
               </View>
               <View style={{ flex: 1, marginLeft: scale(10) }}>
-                <Text style={styles.otpCardTitle}>Delivery Verification OTP</Text>
-                <Text style={styles.otpCardSub}>
+                <Text
+                  style={[
+                    styles.otpCardTitle,
+                    isDark && { color: "#2DD4BF" },
+                  ]}
+                >
+                  Delivery Verification OTP
+                </Text>
+                <Text
+                  style={[
+                    styles.otpCardSub,
+                    isDark && { color: "#94A3B8" },
+                  ]}
+                >
                   Share this code with your delivery partner at the doorstep
                 </Text>
               </View>
             </View>
-            <View style={styles.otpCodeContainer}>
-              <Text style={styles.otpCodeText}>{order.customerDeliveryOtp}</Text>
+            <View
+              style={[
+                styles.otpCodeContainer,
+                isDark && {
+                  backgroundColor: "#1B252E",
+                  borderColor: "#303B45",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.otpCodeText,
+                  isDark && { color: "#2DD4BF" },
+                ]}
+              >
+                {order.customerDeliveryOtp}
+              </Text>
             </View>
-            <Text style={styles.otpSafetyHint}>
+            <Text
+              style={[
+                styles.otpSafetyHint,
+                isDark && { color: "#94A3B8" },
+              ]}
+            >
               🔒 Do not share this OTP before receiving and checking your package.
             </Text>
           </View>
@@ -299,35 +432,92 @@ export default function OrderSummaryScreen() {
 
         {/* ── Assigned Delivery Partner Card ───────────────────────────── */}
         {order?.assignedDeliveryBoy ? (
-          <View style={styles.partnerCard}>
+          <View
+            style={[
+              styles.partnerCard,
+              isDark && {
+                backgroundColor: "#151D24",
+                borderColor: "#303B45",
+              },
+            ]}
+          >
             <View style={styles.partnerCardTop}>
-              <View style={styles.partnerAvatarBox}>
-                <MaterialCommunityIcons name="moped" size={scale(22)} color="#0F766E" />
+              <View
+                style={[
+                  styles.partnerAvatarBox,
+                  isDark && { backgroundColor: "#1E2E38" },
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name="moped"
+                  size={scale(22)}
+                  color={isDark ? "#2DD4BF" : "#0F766E"}
+                />
               </View>
               <View style={{ flex: 1, marginLeft: scale(10) }}>
-                <Text style={styles.partnerRoleLabel}>DELIVERY PARTNER ASSIGNED</Text>
-                <Text style={styles.partnerName}>
+                <Text
+                  style={[
+                    styles.partnerRoleLabel,
+                    isDark && { color: "#2DD4BF" },
+                  ]}
+                >
+                  DELIVERY PARTNER ASSIGNED
+                </Text>
+                <Text
+                  style={[
+                    styles.partnerName,
+                    isDark && { color: "#F8FAFC" },
+                  ]}
+                >
                   {order.assignedDeliveryBoy.fullName || "Delivery Partner"}
                 </Text>
-                <Text style={styles.partnerVehicle}>
+                <Text
+                  style={[
+                    styles.partnerVehicle,
+                    isDark && { color: "#94A3B8" },
+                  ]}
+                >
                   {order.assignedDeliveryBoy.vehicleDetails?.vehicleType || "Motorcycle"} • ⭐ 5.0
                 </Text>
               </View>
               {order.assignedDeliveryBoy.phone ? (
                 <TouchableOpacity
-                  style={styles.partnerCallBtn}
+                  style={[
+                    styles.partnerCallBtn,
+                    isDark && {
+                      backgroundColor: "#1E2E38",
+                      borderColor: "#303B45",
+                    },
+                  ]}
                   onPress={() => Linking.openURL(`tel:${order.assignedDeliveryBoy.phone}`)}
                 >
-                  <Feather name="phone" size={scale(16)} color="#0F766E" />
+                  <Feather
+                    name="phone"
+                    size={scale(16)}
+                    color={isDark ? "#2DD4BF" : "#0F766E"}
+                  />
                 </TouchableOpacity>
               ) : null}
             </View>
 
             {/* Live GPS Tracker Indicator */}
             {liveRiderLocation || currentStatus === "OUT_FOR_DELIVERY" ? (
-              <View style={styles.liveTrackingRow}>
+              <View
+                style={[
+                  styles.liveTrackingRow,
+                  isDark && {
+                    backgroundColor: "rgba(34, 197, 94, 0.16)",
+                    borderColor: "rgba(34, 197, 94, 0.3)",
+                  },
+                ]}
+              >
                 <View style={styles.liveTrackingDot} />
-                <Text style={styles.liveTrackingText}>
+                <Text
+                  style={[
+                    styles.liveTrackingText,
+                    isDark && { color: "#4ADE80" },
+                  ]}
+                >
                   {liveRiderLocation
                     ? `Live GPS Active • (${liveRiderLocation.latitude.toFixed(4)}°N, ${liveRiderLocation.longitude.toFixed(4)}°E)`
                     : "Live GPS Active • Rider is on the way"}
@@ -338,17 +528,33 @@ export default function OrderSummaryScreen() {
         ) : null}
 
         {/* ── Ordered Items List ─────────────────────────────────────── */}
-        <View style={styles.itemsListCard}>
+        <View
+          style={[
+            styles.itemsListCard,
+            isDark && {
+              backgroundColor: "#151D24",
+              borderColor: "#303B45",
+            },
+          ]}
+        >
           {order?.items?.map((item, index) => (
             <View
               key={item.productId || index}
               style={[
                 styles.itemRow,
-                index < (order.items?.length || 0) - 1 && styles.itemDivider,
+                index < (order.items?.length || 0) - 1 && [
+                  styles.itemDivider,
+                  isDark && { borderBottomColor: "#1E252E" },
+                ],
               ]}
             >
               {/* Thumbnail */}
-              <View style={styles.imageBox}>
+              <View
+                style={[
+                  styles.imageBox,
+                  isDark && { backgroundColor: "#1B252E" },
+                ]}
+              >
                 <Image
                   source={{
                     uri:
@@ -362,10 +568,21 @@ export default function OrderSummaryScreen() {
 
               {/* Title & Info */}
               <View style={styles.itemInfo}>
-                <Text style={styles.itemName} numberOfLines={2}>
+                <Text
+                  style={[
+                    styles.itemName,
+                    isDark && { color: "#F8FAFC" },
+                  ]}
+                  numberOfLines={2}
+                >
                   {item.name}
                 </Text>
-                <Text style={styles.packInfo}>
+                <Text
+                  style={[
+                    styles.packInfo,
+                    isDark && { color: "#94A3B8" },
+                  ]}
+                >
                   Qty: {item.quantity} &middot; {item.weight || "1 unit"}
                 </Text>
               </View>
@@ -373,11 +590,21 @@ export default function OrderSummaryScreen() {
               {/* Prices on Right */}
               <View style={styles.priceCol}>
                 {item.originalPrice && item.originalPrice > item.price ? (
-                  <Text style={styles.strikethroughPrice}>
+                  <Text
+                    style={[
+                      styles.strikethroughPrice,
+                      isDark && { color: "#64748B" },
+                    ]}
+                  >
                     Rs.{item.originalPrice * item.quantity}
                   </Text>
                 ) : null}
-                <Text style={styles.finalPrice}>
+                <Text
+                  style={[
+                    styles.finalPrice,
+                    isDark && { color: "#39D353" },
+                  ]}
+                >
                   Rs.{item.price * item.quantity}
                 </Text>
               </View>
@@ -386,26 +613,84 @@ export default function OrderSummaryScreen() {
         </View>
 
         {/* ── Bill details Card ───────────────────────────────────────── */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Bill details</Text>
-          <View style={styles.cardDivider} />
+        <View
+          style={[
+            styles.card,
+            isDark && {
+              backgroundColor: "#151D24",
+              borderColor: "#303B45",
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.cardTitle,
+              isDark && { color: "#F8FAFC" },
+            ]}
+          >
+            Bill details
+          </Text>
+          <View
+            style={[
+              styles.cardDivider,
+              isDark && { backgroundColor: "#1E252E" },
+            ]}
+          />
 
           <View style={styles.billRows}>
             <View style={styles.billRow}>
-              <Text style={styles.billLabel}>Item Total</Text>
-              <Text style={styles.billValue}>Rs.{order?.itemsTotal || 0}</Text>
+              <Text
+                style={[
+                  styles.billLabel,
+                  isDark && { color: "#94A3B8" },
+                ]}
+              >
+                Item Total
+              </Text>
+              <Text
+                style={[
+                  styles.billValue,
+                  isDark && { color: "#F8FAFC" },
+                ]}
+              >
+                Rs.{order?.itemsTotal || 0}
+              </Text>
             </View>
 
             <View style={styles.billRow}>
-              <Text style={styles.billLabel}>Handling charge</Text>
-              <Text style={styles.billValue}>
+              <Text
+                style={[
+                  styles.billLabel,
+                  isDark && { color: "#94A3B8" },
+                ]}
+              >
+                Handling charge
+              </Text>
+              <Text
+                style={[
+                  styles.billValue,
+                  isDark && { color: "#F8FAFC" },
+                ]}
+              >
                 Rs.{order?.handlingCharge || 30}
               </Text>
             </View>
 
             <View style={styles.billRow}>
-              <Text style={styles.billLabel}>Delivery charge</Text>
-              <Text style={styles.freeValue}>
+              <Text
+                style={[
+                  styles.billLabel,
+                  isDark && { color: "#94A3B8" },
+                ]}
+              >
+                Delivery charge
+              </Text>
+              <Text
+                style={[
+                  styles.freeValue,
+                  isDark && { color: "#39D353" },
+                ]}
+              >
                 {order?.deliveryCharge === 0
                   ? "FREE"
                   : `Rs.${order?.deliveryCharge}`}
@@ -414,33 +699,96 @@ export default function OrderSummaryScreen() {
 
             {order?.discount ? (
               <View style={styles.billRow}>
-                <Text style={styles.billLabel}>Coupon discount</Text>
-                <Text style={styles.discountValue}>-Rs.{order.discount}</Text>
+                <Text
+                  style={[
+                    styles.billLabel,
+                    isDark && { color: "#94A3B8" },
+                  ]}
+                >
+                  Coupon discount
+                </Text>
+                <Text
+                  style={[
+                    styles.discountValue,
+                    isDark && { color: "#39D353" },
+                  ]}
+                >
+                  -Rs.{order.discount}
+                </Text>
               </View>
             ) : null}
           </View>
 
-          <View style={styles.cardDivider} />
+          <View
+            style={[
+              styles.cardDivider,
+              isDark && { backgroundColor: "#1E252E" },
+            ]}
+          />
 
           {/* Bill Total */}
           <View style={styles.billTotalRow}>
-            <Text style={styles.billTotalLabel}>Bill Total</Text>
-            <Text style={styles.billTotalValue}>
+            <Text
+              style={[
+                styles.billTotalLabel,
+                isDark && { color: "#F8FAFC" },
+              ]}
+            >
+              Bill Total
+            </Text>
+            <Text
+              style={[
+                styles.billTotalValue,
+                isDark && { color: "#39D353" },
+              ]}
+            >
               Rs.{order?.totalAmount || 0}
             </Text>
           </View>
         </View>
 
         {/* ── Order Details Card ─────────────────────────────────────── */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Order Details</Text>
-          <View style={styles.cardDivider} />
+        <View
+          style={[
+            styles.card,
+            isDark && {
+              backgroundColor: "#151D24",
+              borderColor: "#303B45",
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.cardTitle,
+              isDark && { color: "#F8FAFC" },
+            ]}
+          >
+            Order Details
+          </Text>
+          <View
+            style={[
+              styles.cardDivider,
+              isDark && { backgroundColor: "#1E252E" },
+            ]}
+          />
 
           <View style={styles.orderDetailsList}>
             {/* Store Info */}
             <View style={styles.orderDetailItem}>
-              <Text style={styles.detailLabel}>Store / Vendor</Text>
-              <Text style={styles.detailValueBold}>
+              <Text
+                style={[
+                  styles.detailLabel,
+                  isDark && { color: "#94A3B8" },
+                ]}
+              >
+                Store / Vendor
+              </Text>
+              <Text
+                style={[
+                  styles.detailValueBold,
+                  isDark && { color: "#F8FAFC" },
+                ]}
+              >
                 {order?.vendor?.businessDetails?.businessName ||
                   order?.vendor?.sellerDetails?.sellerName ||
                   "BhansaMart Partner Store"}
@@ -449,32 +797,64 @@ export default function OrderSummaryScreen() {
 
             {/* Order id */}
             <View style={styles.orderDetailItem}>
-              <Text style={styles.detailLabel}>Order ID</Text>
+              <Text
+                style={[
+                  styles.detailLabel,
+                  isDark && { color: "#94A3B8" },
+                ]}
+              >
+                Order ID
+              </Text>
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={handleCopyOrderId}
                 style={styles.orderIdRow}
               >
-                <Text style={styles.detailValueBold}>
+                <Text
+                  style={[
+                    styles.detailValueBold,
+                    isDark && { color: "#F8FAFC" },
+                  ]}
+                >
                   {displayedOrderNumber}
                 </Text>
                 <Ionicons
                   name={copied ? "checkmark" : "copy-outline"}
                   size={scale(16)}
-                  color={copied ? "#059669" : "#475569"}
+                  color={
+                    copied
+                      ? isDark
+                        ? "#39D353"
+                        : "#059669"
+                      : isDark
+                      ? "#94A3B8"
+                      : "#475569"
+                  }
                 />
               </TouchableOpacity>
             </View>
 
             {/* Payment */}
             <View style={styles.orderDetailItem}>
-              <Text style={styles.detailLabel}>Payment Method</Text>
-              <Text style={styles.detailValue}>
+              <Text
+                style={[
+                  styles.detailLabel,
+                  isDark && { color: "#94A3B8" },
+                ]}
+              >
+                Payment Method
+              </Text>
+              <Text
+                style={[
+                  styles.detailValue,
+                  isDark && { color: "#F8FAFC" },
+                ]}
+              >
                 {order?.paymentMethod || "Cash on delivery"} &middot;{" "}
                 <Text
                   style={{
                     color:
-                      order?.paymentStatus === "paid" ? "#059669" : "#D97706",
+                      order?.paymentStatus === "paid" ? (isDark ? "#39D353" : "#059669") : "#D97706",
                     fontWeight: "700",
                   }}
                 >
@@ -485,20 +865,49 @@ export default function OrderSummaryScreen() {
 
             {/* Deliver to */}
             <View style={styles.orderDetailItem}>
-              <Text style={styles.detailLabel}>Deliver to</Text>
-              <Text style={styles.detailValue}>
+              <Text
+                style={[
+                  styles.detailLabel,
+                  isDark && { color: "#94A3B8" },
+                ]}
+              >
+                Deliver to
+              </Text>
+              <Text
+                style={[
+                  styles.detailValue,
+                  isDark && { color: "#F8FAFC" },
+                ]}
+              >
                 {order?.deliveryAddress?.addressLine ||
                   "Baneshwor, Kathmandu, Bagmati, Nepal"}
               </Text>
-              <Text style={styles.detailPhone}>
+              <Text
+                style={[
+                  styles.detailPhone,
+                  isDark && { color: "#94A3B8" },
+                ]}
+              >
                 Contact: {order?.deliveryAddress?.phone || "N/A"}
               </Text>
             </View>
 
             {/* Order placed timestamp */}
             <View style={styles.orderDetailItem}>
-              <Text style={styles.detailLabel}>Placed At</Text>
-              <Text style={styles.detailValue}>
+              <Text
+                style={[
+                  styles.detailLabel,
+                  isDark && { color: "#94A3B8" },
+                ]}
+              >
+                Placed At
+              </Text>
+              <Text
+                style={[
+                  styles.detailValue,
+                  isDark && { color: "#F8FAFC" },
+                ]}
+              >
                 {order?.createdAt
                   ? new Date(order.createdAt).toLocaleString([], {
                       dateStyle: "medium",
@@ -511,14 +920,46 @@ export default function OrderSummaryScreen() {
         </View>
 
         {/* ── Support Card ───────────────────────────────────────────── */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Need help with your order?</Text>
-          <View style={styles.cardDivider} />
+        <View
+          style={[
+            styles.card,
+            isDark && {
+              backgroundColor: "#151D24",
+              borderColor: "#303B45",
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.cardTitle,
+              isDark && { color: "#F8FAFC" },
+            ]}
+          >
+            Need help with your order?
+          </Text>
+          <View
+            style={[
+              styles.cardDivider,
+              isDark && { backgroundColor: "#1E252E" },
+            ]}
+          />
 
           <TouchableOpacity activeOpacity={0.7} onPress={handleCallSupport}>
-            <Text style={styles.supportText}>
+            <Text
+              style={[
+                styles.supportText,
+                isDark && { color: "#94A3B8" },
+              ]}
+            >
               For instant customer support, call us at:{" "}
-              <Text style={styles.supportPhoneBold}>015585858</Text>
+              <Text
+                style={[
+                  styles.supportPhoneBold,
+                  isDark && { color: "#38BDF8" },
+                ]}
+              >
+                015585858
+              </Text>
             </Text>
           </TouchableOpacity>
         </View>

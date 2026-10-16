@@ -23,8 +23,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { fetchUserProfile, logoutUser } from "@/store/slices/authSlice";
 import { fetchAddresses } from "@/store/slices/addressSlice";
+import { fetchUserProfile, logoutUser } from "@/store/slices/authSlice";
 import { fetchCustomerOrders } from "@/store/slices/orderSlice";
 import {
   fetchCustomerNotifications,
@@ -36,6 +36,7 @@ interface MenuItem {
   id: string;
   icon: (color: string) => React.ReactNode;
   iconBg: string;
+  iconColor: string;
   label: string;
   badge?: string;
   badgeColor?: string;
@@ -51,6 +52,7 @@ interface MenuSection {
 export default function ProfileScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const isDark = theme.mode === "dark";
   const dispatch = useAppDispatch();
 
   // Redux state selectors (Live data from backend)
@@ -61,7 +63,7 @@ export default function ProfileScreen() {
   const { customerOrders } = useAppSelector((state) => state.order);
   const { addresses } = useAppSelector((state) => state.address);
   const { wallet, summary, unreadNotificationsCount } = useAppSelector(
-    (state) => state.referral
+    (state) => state.referral,
   );
 
   const [refreshing, setRefreshing] = useState(false);
@@ -76,7 +78,7 @@ export default function ProfileScreen() {
       "PREPARING",
       "READY_FOR_PICKUP",
       "OUT_FOR_DELIVERY",
-    ].includes(o.orderStatus)
+    ].includes(o.orderStatus),
   ).length;
 
   const referrerBonus = summary?.campaign?.referrerRewardPoints;
@@ -106,7 +108,7 @@ export default function ProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       loadProfileData();
-    }, [loadProfileData])
+    }, [loadProfileData]),
   );
 
   // Pull-to-refresh
@@ -155,6 +157,36 @@ export default function ProfileScreen() {
     }
   };
 
+  // Color tokens
+  const colors = {
+    rootBg: isDark ? "#080D0F" : "#F8FAFC",
+    headerBg: isDark ? "#080D0F" : "#FFFFFF",
+    navTitle: isDark ? "#F8FAFC" : "#0F172A",
+    backIcon: isDark ? "#F8FAFC" : "#1E293B",
+    headerDivider: isDark ? "#1E252E" : "#F1F5F9",
+    cardBg: isDark ? "#151D24" : "#FFFFFF",
+    cardBorder: isDark ? "#303B45" : "#E2E8F0",
+    textPrimary: isDark ? "#F8FAFC" : "#0F172A",
+    textSecondary: isDark ? "#A8B2BE" : "#64748B",
+    goldPillBg: isDark ? "rgba(245, 158, 11, 0.16)" : "#FEF3C7",
+    goldPillText: isDark ? "#FBBF24" : "#B45309",
+    editBtnBg: isDark ? "#1E2E38" : "#E6F4F6",
+    editBtnIcon: isDark ? "#39D353" : "#004D5D",
+    walletBarBg: isDark ? "#1B252E" : "#F8FAFC",
+    walletBarBorder: isDark ? "#303B45" : "#F1F5F9",
+    walletDivider: isDark ? "#303B45" : "#E2E8F0",
+    sectionTitle: isDark ? "#94A3B8" : "#64748B",
+    menuLabelText: isDark ? "#F8FAFC" : "#1E293B",
+    chevron: isDark ? "#64748B" : "#94A3B8",
+    rowDivider: isDark ? "#1E252E" : "#F1F5F9",
+    logoutBg: isDark ? "rgba(239, 68, 68, 0.12)" : "#FEF2F2",
+    logoutBorder: isDark ? "rgba(239, 68, 68, 0.25)" : "#FEE2E2",
+    logoutIconBox: isDark ? "rgba(239, 68, 68, 0.2)" : "#FEE2E2",
+    logoutText: isDark ? "#F87171" : "#DC2626",
+    footerText: isDark ? "#64748B" : "#94A3B8",
+    refreshColor: isDark ? "#39D353" : "#003844",
+  };
+
   const sections: MenuSection[] = [
     {
       title: "YOUR INFORMATION",
@@ -164,22 +196,24 @@ export default function ProfileScreen() {
           icon: (color) => (
             <Feather name="user" size={scale(19)} color={color} />
           ),
-          iconBg: "#E0F2FE",
+          iconBg: isDark ? "rgba(100, 116, 139, 0.16)" : "#E2E8F0",
+          iconColor: isDark ? "#94A3B8" : "#475569",
           label: "My profile",
           onPress: () => router.push("/Screens/Profile/myprofile" as any),
         },
         {
           id: "wishlist",
           icon: (color) => (
-            <Ionicons name="heart-outline" size={scale(19)} color={color} />
+            <Ionicons name="heart" size={scale(19)} color={color} />
           ),
-          iconBg: "#FCE7F3",
+          iconBg: isDark ? "rgba(244, 63, 94, 0.16)" : "#FFE4E6",
+          iconColor: isDark ? "#FB7185" : "#E11D48",
           label: "My Wishlist",
           badge:
             wishlistCount > 0
               ? `${wishlistCount} ${wishlistCount === 1 ? "Item" : "Items"}`
               : undefined,
-          badgeColor: "#DB2777",
+          badgeColor: isDark ? "#56d37c" : "#56d37c",
           onPress: () => router.push("/Screens/Profile/wishlist" as any),
         },
         {
@@ -191,15 +225,23 @@ export default function ProfileScreen() {
               color={color}
             />
           ),
-          iconBg: "#DCFCE7",
+          iconBg: isDark ? "rgba(100, 116, 139, 0.16)" : "#E2E8F0",
+          iconColor: isDark ? "#94A3B8" : "#475569",
           label: "Your orders",
           badge:
             activeOrdersCount > 0
               ? `${activeOrdersCount} Active`
               : customerOrders.length > 0
-              ? `${customerOrders.length} Total`
-              : undefined,
-          badgeColor: activeOrdersCount > 0 ? "#16A34A" : "#64748B",
+                ? `${customerOrders.length} Total`
+                : undefined,
+          badgeColor:
+            activeOrdersCount > 0
+              ? isDark
+                ? "#4ADE80"
+                : "#16A34A"
+              : isDark
+                ? "#94A3B8"
+                : "#64748B",
           onPress: () => router.push("/Screens/Profile/your-orders" as any),
         },
         {
@@ -207,10 +249,11 @@ export default function ProfileScreen() {
           icon: (color) => (
             <MaterialIcons name="location-on" size={scale(20)} color={color} />
           ),
-          iconBg: "#FEF3C7",
+          iconBg: isDark ? "rgba(100, 116, 139, 0.16)" : "#E2E8F0",
+          iconColor: isDark ? "#94A3B8" : "#475569",
           label: "Address Book",
           badge: addresses.length > 0 ? `${addresses.length} Saved` : undefined,
-          badgeColor: "#0284C7",
+          badgeColor: isDark ? "#56d37c" : "#56d37c",
           onPress: () => router.push("/Screens/Profile/address" as any),
         },
       ],
@@ -223,10 +266,11 @@ export default function ProfileScreen() {
           icon: (color) => (
             <Ionicons name="star" size={scale(19)} color={color} />
           ),
-          iconBg: "#FEF9C3",
+          iconBg: isDark ? "rgba(100, 116, 139, 0.16)" : "#E2E8F0",
+          iconColor: isDark ? "#94A3B8" : "#475569",
           label: "Loyalty Points",
           badge: `${availablePoints} Pts`,
-          badgeColor: "#CA8A04",
+          badgeColor: isDark ? "#56d37c" : "#56d37c",
           onPress: () => router.push("/Screens/Profile/loyalty" as any),
         },
         {
@@ -238,10 +282,11 @@ export default function ProfileScreen() {
               color={color}
             />
           ),
-          iconBg: "#F3E8FF",
+          iconBg: isDark ? "rgba(100, 116, 139, 0.16)" : "#E2E8F0",
+          iconColor: isDark ? "#94A3B8" : "#475569",
           label: "Collected Coupons",
           badge: undefined,
-          badgeColor: "#9333EA",
+          badgeColor: isDark ? "#56d37c" : "#56d37c",
           onPress: () =>
             router.push("/Screens/Profile/collected-coupons" as any),
         },
@@ -250,10 +295,11 @@ export default function ProfileScreen() {
           icon: (color) => (
             <Feather name="gift" size={scale(19)} color={color} />
           ),
-          iconBg: "#FCE7F3",
+          iconBg: isDark ? "rgba(100, 116, 139, 0.16)" : "#E2E8F0",
+          iconColor: isDark ? "#94A3B8" : "#475569",
           label: "Refer & Earn",
           badge: referrerBonus ? `Get ${referrerBonus} Pts` : undefined,
-          badgeColor: "#DB2777",
+          badgeColor: isDark ? "#56d37c" : "#56d37c",
           onPress: () =>
             router.push("/Screens/Profile/refer-and-earned" as any),
         },
@@ -266,7 +312,8 @@ export default function ProfileScreen() {
               color={color}
             />
           ),
-          iconBg: "#E0E7FF",
+          iconBg: isDark ? "rgba(100, 116, 139, 0.16)" : "#E2E8F0",
+          iconColor: isDark ? "#94A3B8" : "#475569",
           label: "Payment Settings",
           onPress: () => router.push("/Screens/Profile/paymentsetting" as any),
         },
@@ -280,7 +327,8 @@ export default function ProfileScreen() {
           icon: (color) => (
             <Ionicons name="headset" size={scale(19)} color={color} />
           ),
-          iconBg: "#CCFBF1",
+          iconBg: isDark ? "rgba(100, 116, 139, 0.16)" : "#E2E8F0",
+          iconColor: isDark ? "#94A3B8" : "#475569",
           label: "Help & Support",
           onPress: () => router.push("/Screens/Profile/support" as any),
         },
@@ -289,7 +337,8 @@ export default function ProfileScreen() {
           icon: (color) => (
             <Feather name="share-2" size={scale(18)} color={color} />
           ),
-          iconBg: "#F1F5F9",
+          iconBg: isDark ? "rgba(148, 163, 184, 0.16)" : "#F1F5F9",
+          iconColor: isDark ? "#CBD5E1" : "#475569",
           label: "Share the App",
           onPress: handleShareApp,
         },
@@ -302,7 +351,8 @@ export default function ProfileScreen() {
               color={color}
             />
           ),
-          iconBg: "#E2E8F0",
+          iconBg: isDark ? "rgba(100, 116, 139, 0.16)" : "#E2E8F0",
+          iconColor: isDark ? "#94A3B8" : "#475569",
           label: "About Bhansa Mart",
           onPress: () => router.push("/Screens/Profile/about" as any),
         },
@@ -311,23 +361,37 @@ export default function ProfileScreen() {
   ];
 
   return (
-    <View style={styles.root}>
-      <StatusBar style="dark" />
+    <View style={[styles.root, { backgroundColor: colors.rootBg }]}>
+      <StatusBar style={isDark ? "light" : "dark"} />
 
       {/* 1. Header with SafeAreaView */}
-      <SafeAreaView edges={["top"]} style={styles.safeAreaHeader}>
+      <SafeAreaView
+        edges={["top"]}
+        style={[styles.safeAreaHeader, { backgroundColor: colors.headerBg }]}
+      >
         <View style={styles.navBar}>
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() => router.back()}
             style={styles.backButton}
           >
-            <Feather name="arrow-left" size={scale(22)} color="#1E293B" />
+            <Feather
+              name="arrow-left"
+              size={scale(22)}
+              color={colors.backIcon}
+            />
           </TouchableOpacity>
-          <Text style={styles.navTitle}>My Account</Text>
+          <Text style={[styles.navTitle, { color: colors.navTitle }]}>
+            My Account
+          </Text>
           <View style={{ width: scale(36) }} />
         </View>
-        <View style={styles.headerDivider} />
+        <View
+          style={[
+            styles.headerDivider,
+            { backgroundColor: colors.headerDivider },
+          ]}
+        />
       </SafeAreaView>
 
       {/* 2. Scrollable Body Content */}
@@ -338,13 +402,21 @@ export default function ProfileScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={["#003844"]}
-            tintColor="#003844"
+            colors={[colors.refreshColor]}
+            tintColor={colors.refreshColor}
           />
         }
       >
         {/* User Profile Hero Card */}
-        <View style={styles.userProfileCard}>
+        <View
+          style={[
+            styles.userProfileCard,
+            {
+              backgroundColor: colors.cardBg,
+              borderColor: colors.cardBorder,
+            },
+          ]}
+        >
           <View style={styles.userProfileRow}>
             {/* Avatar Circle */}
             <View style={styles.avatarContainer}>
@@ -356,7 +428,9 @@ export default function ProfileScreen() {
                 />
               ) : (
                 <LinearGradient
-                  colors={["#003844", "#005C70"]}
+                  colors={
+                    isDark ? ["#014c5c", "#003844"] : ["#003844", "#005C70"]
+                  }
                   style={styles.avatarGradient}
                 >
                   <Text style={styles.avatarInitials}>
@@ -372,7 +446,9 @@ export default function ProfileScreen() {
                 </LinearGradient>
               )}
               {Boolean(user?.isEmailVerified) && (
-                <View style={styles.verifiedBadge}>
+                <View
+                  style={[styles.verifiedBadge, { borderColor: colors.cardBg }]}
+                >
                   <Ionicons name="checkmark" size={scale(10)} color="#FFFFFF" />
                 </View>
               )}
@@ -381,17 +457,38 @@ export default function ProfileScreen() {
             {/* Name & Email / Phone */}
             <View style={styles.userInfoCol}>
               <View style={styles.nameRow}>
-                <Text style={styles.userNameText}>
+                <Text
+                  style={[styles.userNameText, { color: colors.textPrimary }]}
+                >
                   {user?.name || "Customer"}
                 </Text>
-                <View style={styles.goldMemberPill}>
-                  <Text style={styles.goldMemberText}>
-                    👑 {user?.role === "admin" ? "Admin" : user?.role === "vendor" ? "Vendor" : "Member"}
+                <View
+                  style={[
+                    styles.goldMemberPill,
+                    { backgroundColor: colors.goldPillBg },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.goldMemberText,
+                      { color: colors.goldPillText },
+                    ]}
+                  >
+                    👑{" "}
+                    {user?.role === "admin"
+                      ? "Admin"
+                      : user?.role === "vendor"
+                        ? "Vendor"
+                        : "Member"}
                   </Text>
                 </View>
               </View>
-              <Text style={styles.userPhoneText}>
-                {user?.phone ? user.phone : user?.email || "No contact info registered"}
+              <Text
+                style={[styles.userPhoneText, { color: colors.textSecondary }]}
+              >
+                {user?.phone
+                  ? user.phone
+                  : user?.email || "No contact info registered"}
               </Text>
             </View>
 
@@ -399,14 +496,29 @@ export default function ProfileScreen() {
             <TouchableOpacity
               activeOpacity={0.75}
               onPress={() => router.push("/Screens/Profile/myprofile" as any)}
-              style={styles.editProfileBtn}
+              style={[
+                styles.editProfileBtn,
+                { backgroundColor: colors.editBtnBg },
+              ]}
             >
-              <Feather name="edit-2" size={scale(15)} color="#004D5D" />
+              <Feather
+                name="edit-2"
+                size={scale(15)}
+                color={colors.editBtnIcon}
+              />
             </TouchableOpacity>
           </View>
 
           {/* Quick Balance Preview Row inside Profile Card */}
-          <View style={styles.walletBar}>
+          <View
+            style={[
+              styles.walletBar,
+              {
+                backgroundColor: colors.walletBarBg,
+                borderColor: colors.walletBarBorder,
+              },
+            ]}
+          >
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => router.push("/Screens/Profile/loyalty" as any)}
@@ -414,12 +526,31 @@ export default function ProfileScreen() {
             >
               <Ionicons name="star" size={scale(16)} color="#F59E0B" />
               <View>
-                <Text style={styles.walletValueText}>{availablePoints} RP</Text>
-                <Text style={styles.walletSubText}>Reward Points</Text>
+                <Text
+                  style={[
+                    styles.walletValueText,
+                    { color: colors.textPrimary },
+                  ]}
+                >
+                  {availablePoints} RP
+                </Text>
+                <Text
+                  style={[
+                    styles.walletSubText,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  Reward Points
+                </Text>
               </View>
             </TouchableOpacity>
 
-            <View style={styles.walletDivider} />
+            <View
+              style={[
+                styles.walletDivider,
+                { backgroundColor: colors.walletDivider },
+              ]}
+            />
 
             <TouchableOpacity
               activeOpacity={0.8}
@@ -434,8 +565,22 @@ export default function ProfileScreen() {
                 color="#10B981"
               />
               <View>
-                <Text style={styles.walletValueText}>Discounts</Text>
-                <Text style={styles.walletSubText}>Collected Coupons</Text>
+                <Text
+                  style={[
+                    styles.walletValueText,
+                    { color: colors.textPrimary },
+                  ]}
+                >
+                  Discounts
+                </Text>
+                <Text
+                  style={[
+                    styles.walletSubText,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  Collected Coupons
+                </Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -447,41 +592,79 @@ export default function ProfileScreen() {
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => router.push("/Screens/Profile/address" as any)}
-            style={styles.quickActionTile}
+            style={[
+              styles.quickActionTile,
+              {
+                backgroundColor: colors.cardBg,
+                borderColor: colors.cardBorder,
+              },
+            ]}
           >
             <View
-              style={[styles.tileIconCircle, { backgroundColor: "#E0F2FE" }]}
+              style={[
+                styles.tileIconCircle,
+                {
+                  backgroundColor: isDark
+                    ? "rgba(2, 132, 199, 0.18)"
+                    : "#E0F2FE",
+                },
+              ]}
             >
               <MaterialIcons
                 name="location-on"
                 size={scale(22)}
-                color="#0284C7"
+                color={isDark ? "#38BDF8" : "#0284C7"}
               />
               {addresses.length > 0 && (
-                <View style={[styles.notifBadge, { backgroundColor: "#0284C7" }]}>
+                <View
+                  style={[
+                    styles.notifBadge,
+                    {
+                      backgroundColor: isDark ? "#0284C7" : "#0284C7",
+                      borderColor: colors.cardBg,
+                    },
+                  ]}
+                >
                   <Text style={styles.notifBadgeText}>{addresses.length}</Text>
                 </View>
               )}
             </View>
-            <Text style={styles.tileLabel}>Address Book</Text>
+            <Text style={[styles.tileLabel, { color: colors.menuLabelText }]}>
+              Address Book
+            </Text>
           </TouchableOpacity>
 
           {/* Notifications */}
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => router.push("/Screens/Profile/notifications" as any)}
-            style={styles.quickActionTile}
+            style={[
+              styles.quickActionTile,
+              {
+                backgroundColor: colors.cardBg,
+                borderColor: colors.cardBorder,
+              },
+            ]}
           >
             <View
-              style={[styles.tileIconCircle, { backgroundColor: "#DCFCE7" }]}
+              style={[
+                styles.tileIconCircle,
+                {
+                  backgroundColor: isDark
+                    ? "rgba(22, 163, 74, 0.18)"
+                    : "#DCFCE7",
+                },
+              ]}
             >
               <MaterialCommunityIcons
                 name="bell-outline"
                 size={scale(22)}
-                color="#16A34A"
+                color={isDark ? "#4ADE80" : "#16A34A"}
               />
               {unreadNotificationsCount > 0 && (
-                <View style={styles.notifBadge}>
+                <View
+                  style={[styles.notifBadge, { borderColor: colors.cardBg }]}
+                >
                   <Text style={styles.notifBadgeText}>
                     {unreadNotificationsCount > 99
                       ? "99+"
@@ -490,34 +673,61 @@ export default function ProfileScreen() {
                 </View>
               )}
             </View>
-            <Text style={styles.tileLabel}>Notifications</Text>
+            <Text style={[styles.tileLabel, { color: colors.menuLabelText }]}>
+              Notifications
+            </Text>
           </TouchableOpacity>
 
           {/* Reviews */}
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => router.push("/Screens/Profile/reviews" as any)}
-            style={styles.quickActionTile}
+            style={[
+              styles.quickActionTile,
+              {
+                backgroundColor: colors.cardBg,
+                borderColor: colors.cardBorder,
+              },
+            ]}
           >
             <View
-              style={[styles.tileIconCircle, { backgroundColor: "#FEF3C7" }]}
+              style={[
+                styles.tileIconCircle,
+                {
+                  backgroundColor: isDark
+                    ? "rgba(217, 119, 6, 0.18)"
+                    : "#FEF3C7",
+                },
+              ]}
             >
               <MaterialCommunityIcons
                 name="message-draw"
                 size={scale(21)}
-                color="#D97706"
+                color={isDark ? "#FBBF24" : "#D97706"}
               />
             </View>
-            <Text style={styles.tileLabel}>My Reviews</Text>
+            <Text style={[styles.tileLabel, { color: colors.menuLabelText }]}>
+              My Reviews
+            </Text>
           </TouchableOpacity>
         </View>
 
         {/* Menu Section Cards */}
         {sections.map((section) => (
           <View key={section.title} style={styles.menuSectionWrapper}>
-            <Text style={styles.sectionTitle}>{section.title}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.sectionTitle }]}>
+              {section.title}
+            </Text>
 
-            <View style={styles.menuCard}>
+            <View
+              style={[
+                styles.menuCard,
+                {
+                  backgroundColor: colors.cardBg,
+                  borderColor: colors.cardBorder,
+                },
+              ]}
+            >
               {section.items.map((item, index) => {
                 const isLast = index === section.items.length - 1;
                 return (
@@ -534,11 +744,18 @@ export default function ProfileScreen() {
                           { backgroundColor: item.iconBg },
                         ]}
                       >
-                        {item.icon("#003844")}
+                        {item.icon(item.iconColor)}
                       </View>
 
                       {/* Label */}
-                      <Text style={styles.menuLabelText}>{item.label}</Text>
+                      <Text
+                        style={[
+                          styles.menuLabelText,
+                          { color: colors.menuLabelText },
+                        ]}
+                      >
+                        {item.label}
+                      </Text>
 
                       {/* Optional Badge */}
                       {item.badge && (
@@ -546,14 +763,20 @@ export default function ProfileScreen() {
                           style={[
                             styles.itemBadge,
                             {
-                              backgroundColor: `${item.badgeColor || "#008080"}18`,
+                              backgroundColor: isDark
+                                ? `${item.badgeColor || "#39D353"}28`
+                                : `${item.badgeColor || "#008080"}18`,
                             },
                           ]}
                         >
                           <Text
                             style={[
                               styles.itemBadgeText,
-                              { color: item.badgeColor || "#008080" },
+                              {
+                                color:
+                                  item.badgeColor ||
+                                  (isDark ? "#39D353" : "#008080"),
+                              },
                             ]}
                           >
                             {item.badge}
@@ -565,11 +788,18 @@ export default function ProfileScreen() {
                       <Feather
                         name="chevron-right"
                         size={scale(18)}
-                        color="#94A3B8"
+                        color={colors.chevron}
                       />
                     </TouchableOpacity>
 
-                    {!isLast && <View style={styles.rowDivider} />}
+                    {!isLast && (
+                      <View
+                        style={[
+                          styles.rowDivider,
+                          { backgroundColor: colors.rowDivider },
+                        ]}
+                      />
+                    )}
                   </View>
                 );
               })}
@@ -581,17 +811,34 @@ export default function ProfileScreen() {
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={handleLogout}
-          style={styles.logoutCard}
+          style={[
+            styles.logoutCard,
+            {
+              backgroundColor: colors.logoutBg,
+              borderColor: colors.logoutBorder,
+            },
+          ]}
         >
-          <View style={styles.logoutIconBox}>
-            <MaterialIcons name="logout" size={scale(20)} color="#EF4444" />
+          <View
+            style={[
+              styles.logoutIconBox,
+              { backgroundColor: colors.logoutIconBox },
+            ]}
+          >
+            <MaterialIcons
+              name="logout"
+              size={scale(20)}
+              color={colors.logoutText}
+            />
           </View>
-          <Text style={styles.logoutText}>Log Out</Text>
+          <Text style={[styles.logoutText, { color: colors.logoutText }]}>
+            Log Out
+          </Text>
         </TouchableOpacity>
 
         {/* Footer Info */}
         <View style={styles.footerContainer}>
-          <Text style={styles.footerAppVersion}>
+          <Text style={[styles.footerAppVersion, { color: colors.footerText }]}>
             Bhansa Mart v1.2.0 • Simplifying Your Kitchen Needs
           </Text>
         </View>
@@ -603,11 +850,8 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
   },
-  safeAreaHeader: {
-    backgroundColor: "#FFFFFF",
-  },
+  safeAreaHeader: {},
   navBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -624,11 +868,9 @@ const styles = StyleSheet.create({
   navTitle: {
     fontSize: moderateScale(17),
     fontWeight: "700",
-    color: "#0F172A",
   },
   headerDivider: {
     height: 1,
-    backgroundColor: "#F1F5F9",
   },
   scrollContent: {
     paddingHorizontal: scale(16),
@@ -637,11 +879,9 @@ const styles = StyleSheet.create({
     gap: scale(16),
   },
   userProfileCard: {
-    backgroundColor: "#FFFFFF",
     borderRadius: scale(18),
     padding: scale(16),
     borderWidth: 1,
-    borderColor: "#E2E8F0",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -686,7 +926,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: "#FFFFFF",
   },
   userInfoCol: {
     flex: 1,
@@ -700,10 +939,8 @@ const styles = StyleSheet.create({
   userNameText: {
     fontSize: moderateScale(17),
     fontWeight: "700",
-    color: "#0F172A",
   },
   goldMemberPill: {
-    backgroundColor: "#FEF3C7",
     paddingHorizontal: scale(6),
     paddingVertical: scale(2),
     borderRadius: scale(6),
@@ -711,30 +948,25 @@ const styles = StyleSheet.create({
   goldMemberText: {
     fontSize: moderateScale(10),
     fontWeight: "700",
-    color: "#B45309",
   },
   userPhoneText: {
     fontSize: moderateScale(13),
-    color: "#64748B",
     fontWeight: "500",
   },
   editProfileBtn: {
     width: scale(36),
     height: scale(36),
     borderRadius: scale(18),
-    backgroundColor: "#E6F4F6",
     alignItems: "center",
     justifyContent: "center",
   },
   walletBar: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F8FAFC",
     borderRadius: scale(12),
     paddingVertical: scale(10),
     paddingHorizontal: scale(14),
     borderWidth: 1,
-    borderColor: "#F1F5F9",
   },
   walletItem: {
     flex: 1,
@@ -745,17 +977,14 @@ const styles = StyleSheet.create({
   walletValueText: {
     fontSize: moderateScale(13),
     fontWeight: "700",
-    color: "#0F172A",
   },
   walletSubText: {
     fontSize: moderateScale(10.5),
-    color: "#64748B",
     fontWeight: "500",
   },
   walletDivider: {
     width: 1,
     height: scale(26),
-    backgroundColor: "#E2E8F0",
     marginHorizontal: scale(8),
   },
   quickActionsContainer: {
@@ -765,13 +994,11 @@ const styles = StyleSheet.create({
   },
   quickActionTile: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
     borderRadius: scale(14),
     paddingVertical: scale(12),
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#E2E8F0",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
@@ -798,7 +1025,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1.5,
-    borderColor: "#FFFFFF",
     paddingHorizontal: scale(3),
   },
   notifBadgeText: {
@@ -809,7 +1035,6 @@ const styles = StyleSheet.create({
   tileLabel: {
     fontSize: moderateScale(11.5),
     fontWeight: "600",
-    color: "#1E293B",
   },
   menuSectionWrapper: {
     gap: scale(8),
@@ -817,15 +1042,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: moderateScale(11.5),
     fontWeight: "700",
-    color: "#64748B",
     letterSpacing: 0.5,
     marginLeft: scale(4),
   },
   menuCard: {
-    backgroundColor: "#FFFFFF",
     borderRadius: scale(16),
     borderWidth: 1,
-    borderColor: "#E2E8F0",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
@@ -851,7 +1073,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: moderateScale(14),
     fontWeight: "600",
-    color: "#1E293B",
   },
   itemBadge: {
     paddingHorizontal: scale(8),
@@ -865,18 +1086,15 @@ const styles = StyleSheet.create({
   },
   rowDivider: {
     height: 1,
-    backgroundColor: "#F1F5F9",
     marginLeft: scale(62),
   },
   logoutCard: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FEF2F2",
     borderRadius: scale(14),
     paddingVertical: scale(13),
     borderWidth: 1,
-    borderColor: "#FEE2E2",
     gap: scale(8),
     marginTop: scale(4),
   },
@@ -884,14 +1102,12 @@ const styles = StyleSheet.create({
     width: scale(28),
     height: scale(28),
     borderRadius: scale(14),
-    backgroundColor: "#FEE2E2",
     alignItems: "center",
     justifyContent: "center",
   },
   logoutText: {
     fontSize: moderateScale(14),
     fontWeight: "700",
-    color: "#DC2626",
   },
   footerContainer: {
     alignItems: "center",
@@ -900,7 +1116,6 @@ const styles = StyleSheet.create({
   },
   footerAppVersion: {
     fontSize: moderateScale(11),
-    color: "#94A3B8",
     fontWeight: "500",
   },
 });

@@ -5,8 +5,8 @@ import {
   markAllCustomerNotificationsRead,
 } from "@/store/slices/referralSlice";
 import { CustomerNotificationItem } from "@/store/services/referralService";
-import { moderateScale, scale } from "@/theme";
-import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { moderateScale, scale, useTheme } from "@/theme";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { memo, useCallback, useEffect, useState } from "react";
@@ -22,79 +22,152 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 // ── Notification Item Row ──────────────────────────────────────────────
-const NotificationRow = memo(function NotificationRow({
-  item,
-  onPress,
-}: {
-  item: CustomerNotificationItem;
-  onPress: (item: CustomerNotificationItem) => void;
-}) {
-  const isReferralReward =
-    item.type === "referral_reward" || item.type === "referral_success";
-  const isWelcomeReward = item.type === "welcome_reward";
-  const isReward = item.type === "reward" || isReferralReward || isWelcomeReward;
-  const isOrder = item.type === "order";
+const NotificationRow = memo(
+  function NotificationRow({
+    item,
+    isDark,
+    onPress,
+  }: {
+    item: CustomerNotificationItem;
+    isDark: boolean;
+    onPress: (item: CustomerNotificationItem) => void;
+  }) {
+    const isReferralReward =
+      item.type === "referral_reward" || item.type === "referral_success";
+    const isWelcomeReward = item.type === "welcome_reward";
+    const isOrder = item.type === "order";
 
-  const dateFormatted = item.createdAt
-    ? new Date(item.createdAt).toLocaleDateString([], {
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "Recently";
+    const dateFormatted = item.createdAt
+      ? new Date(item.createdAt).toLocaleDateString([], {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : "Recently";
 
-  return (
-    <TouchableOpacity
-      style={[styles.notifCard, !item.isRead && styles.notifCardUnread]}
-      activeOpacity={0.8}
-      onPress={() => onPress(item)}
-    >
-      <View
+    return (
+      <TouchableOpacity
         style={[
-          styles.notifIconWrap,
-          {
-            backgroundColor: isReferralReward
-              ? "#E6F4F6"
-              : isWelcomeReward
-              ? "#DCFCE7"
-              : isOrder
-              ? "#FEF3C7"
-              : "#F1F5F9",
+          styles.notifCard,
+          isDark && {
+            backgroundColor: "#151D24",
+            borderColor: "#303B45",
           },
+          !item.isRead &&
+            (isDark
+              ? {
+                  backgroundColor: "rgba(2, 132, 199, 0.12)",
+                  borderColor: "rgba(56, 189, 248, 0.4)",
+                  borderWidth: 1.5,
+                }
+              : styles.notifCardUnread),
         ]}
+        activeOpacity={0.8}
+        onPress={() => onPress(item)}
       >
-        {isReferralReward ? (
-          <Feather name="gift" size={scale(18)} color="#016073" />
-        ) : isWelcomeReward ? (
-          <Ionicons name="sparkles" size={scale(18)} color="#15803D" />
-        ) : isOrder ? (
-          <Feather name="package" size={scale(18)} color="#B45309" />
-        ) : (
-          <Feather name="bell" size={scale(18)} color="#64748B" />
-        )}
-      </View>
-
-      <View style={styles.notifContent}>
-        <View style={styles.notifTopRow}>
-          <Text style={styles.notifTitle} numberOfLines={1}>
-            {item.title}
-          </Text>
-          {!item.isRead && <View style={styles.unreadDot} />}
+        <View
+          style={[
+            styles.notifIconWrap,
+            {
+              backgroundColor: isReferralReward
+                ? isDark
+                  ? "rgba(2, 132, 199, 0.18)"
+                  : "#E6F4F6"
+                : isWelcomeReward
+                ? isDark
+                  ? "rgba(34, 197, 94, 0.18)"
+                  : "#DCFCE7"
+                : isOrder
+                ? isDark
+                  ? "rgba(245, 158, 11, 0.18)"
+                  : "#FEF3C7"
+                : isDark
+                ? "#1E2E38"
+                : "#F1F5F9",
+            },
+          ]}
+        >
+          {isReferralReward ? (
+            <Feather
+              name="gift"
+              size={scale(18)}
+              color={isDark ? "#38BDF8" : "#016073"}
+            />
+          ) : isWelcomeReward ? (
+            <Ionicons
+              name="sparkles"
+              size={scale(18)}
+              color={isDark ? "#4ADE80" : "#15803D"}
+            />
+          ) : isOrder ? (
+            <Feather
+              name="package"
+              size={scale(18)}
+              color={isDark ? "#FBBF24" : "#B45309"}
+            />
+          ) : (
+            <Feather
+              name="bell"
+              size={scale(18)}
+              color={isDark ? "#94A3B8" : "#64748B"}
+            />
+          )}
         </View>
 
-        <Text style={styles.notifMessage} numberOfLines={3}>
-          {item.message}
-        </Text>
+        <View style={styles.notifContent}>
+          <View style={styles.notifTopRow}>
+            <Text
+              style={[
+                styles.notifTitle,
+                isDark && { color: "#F8FAFC" },
+              ]}
+              numberOfLines={1}
+            >
+              {item.title}
+            </Text>
+            {!item.isRead && (
+              <View
+                style={[
+                  styles.unreadDot,
+                  isDark && { backgroundColor: "#38BDF8" },
+                ]}
+              />
+            )}
+          </View>
 
-        <Text style={styles.notifTime}>{dateFormatted}</Text>
-      </View>
-    </TouchableOpacity>
-  );
-});
+          <Text
+            style={[
+              styles.notifMessage,
+              isDark && { color: "#A8B2BE" },
+            ]}
+            numberOfLines={3}
+          >
+            {item.message}
+          </Text>
+
+          <Text
+            style={[
+              styles.notifTime,
+              isDark && { color: "#64748B" },
+            ]}
+          >
+            {dateFormatted}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
+  },
+  (prev, next) =>
+    prev.item._id === next.item._id &&
+    prev.item.isRead === next.item.isRead &&
+    prev.isDark === next.isDark
+);
 
 export default function CustomerNotificationsScreen() {
   const router = useRouter();
+  const theme = useTheme();
+  const isDark = theme.mode === "dark";
   const dispatch = useAppDispatch();
 
   const {
@@ -143,21 +216,54 @@ export default function CustomerNotificationsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.root} edges={["top"]}>
-      <StatusBar style="dark" />
+    <SafeAreaView
+      style={[
+        styles.root,
+        isDark && { backgroundColor: "#080D0F" },
+      ]}
+      edges={["top"]}
+    >
+      <StatusBar style={isDark ? "light" : "dark"} />
 
       {/* Top Nav */}
-      <View style={styles.topNav}>
+      <View
+        style={[
+          styles.topNav,
+          isDark && {
+            backgroundColor: "#080D0F",
+            borderBottomColor: "#1E252E",
+          },
+        ]}
+      >
         <TouchableOpacity
-          style={styles.backBtn}
+          style={[
+            styles.backBtn,
+            isDark && { backgroundColor: "#1E2E38" },
+          ]}
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
-          <Feather name="arrow-left" size={scale(20)} color="#016073" />
+          <Feather
+            name="arrow-left"
+            size={scale(20)}
+            color={isDark ? "#38BDF8" : "#016073"}
+          />
         </TouchableOpacity>
         <View style={styles.topNavCenter}>
-          <Text style={styles.navTitle}>Notifications</Text>
-          <Text style={styles.navSub}>
+          <Text
+            style={[
+              styles.navTitle,
+              isDark && { color: "#F8FAFC" },
+            ]}
+          >
+            Notifications
+          </Text>
+          <Text
+            style={[
+              styles.navSub,
+              isDark && { color: "#94A3B8" },
+            ]}
+          >
             {unreadNotificationsCount > 0
               ? `${unreadNotificationsCount} unread update${unreadNotificationsCount === 1 ? "" : "s"}`
               : "All caught up"}
@@ -166,26 +272,50 @@ export default function CustomerNotificationsScreen() {
 
         {unreadNotificationsCount > 0 && (
           <TouchableOpacity
-            style={styles.markAllBtn}
+            style={[
+              styles.markAllBtn,
+              isDark && { backgroundColor: "#1E2E38" },
+            ]}
             onPress={handleMarkAllRead}
             activeOpacity={0.7}
           >
-            <Text style={styles.markAllBtnText}>Read All</Text>
+            <Text
+              style={[
+                styles.markAllBtnText,
+                isDark && { color: "#38BDF8" },
+              ]}
+            >
+              Read All
+            </Text>
           </TouchableOpacity>
         )}
       </View>
 
       {notificationsLoading && notifications.length === 0 ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#016073" />
-          <Text style={styles.loadingText}>Loading notifications...</Text>
+          <ActivityIndicator
+            size="large"
+            color={isDark ? "#39D353" : "#016073"}
+          />
+          <Text
+            style={[
+              styles.loadingText,
+              isDark && { color: "#94A3B8" },
+            ]}
+          >
+            Loading notifications...
+          </Text>
         </View>
       ) : (
         <FlatList
           data={notifications}
           keyExtractor={(item) => item._id}
           renderItem={({ item }) => (
-            <NotificationRow item={item} onPress={handleNotificationPress} />
+            <NotificationRow
+              item={item}
+              isDark={isDark}
+              onPress={handleNotificationPress}
+            />
           )}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
@@ -193,16 +323,38 @@ export default function CustomerNotificationsScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={["#016073"]}
+              colors={[isDark ? "#39D353" : "#016073"]}
+              tintColor={isDark ? "#39D353" : "#016073"}
             />
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <View style={styles.emptyIconCircle}>
-                <Ionicons name="notifications-outline" size={scale(40)} color="#016073" />
+              <View
+                style={[
+                  styles.emptyIconCircle,
+                  isDark && { backgroundColor: "#1E2E38" },
+                ]}
+              >
+                <Ionicons
+                  name="notifications-outline"
+                  size={scale(40)}
+                  color={isDark ? "#38BDF8" : "#016073"}
+                />
               </View>
-              <Text style={styles.emptyTitle}>No Notifications Yet</Text>
-              <Text style={styles.emptySubtitle}>
+              <Text
+                style={[
+                  styles.emptyTitle,
+                  isDark && { color: "#F8FAFC" },
+                ]}
+              >
+                No Notifications Yet
+              </Text>
+              <Text
+                style={[
+                  styles.emptySubtitle,
+                  isDark && { color: "#94A3B8" },
+                ]}
+              >
                 You will receive updates here about order status, referral rewards, and special promotions.
               </Text>
             </View>

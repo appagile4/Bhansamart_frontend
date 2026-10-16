@@ -40,6 +40,7 @@ export default function AddAddressScreen() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const theme = useTheme();
+  const isDark = theme.mode === "dark";
   const { user } = useAppSelector((state) => state.auth);
 
   const params = useLocalSearchParams<{
@@ -361,28 +362,67 @@ export default function AddAddressScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: "#ffffff" }]}>
-      <StatusBar style="dark" />
+    <SafeAreaView
+      style={[
+        styles.container,
+        { backgroundColor: isDark ? "#080D0F" : "#ffffff" },
+      ]}
+    >
+      <StatusBar style={isDark ? "light" : "dark"} />
 
       {/* Top Navbar Header */}
-      <View style={styles.navBar}>
+      <View
+        style={[
+          styles.navBar,
+          {
+            backgroundColor: isDark ? "#080D0F" : "#ffffff",
+            borderBottomColor: isDark ? "#1E252E" : "#F1F5F9",
+          },
+        ]}
+      >
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={() => router.back()}
           style={styles.backButton}
         >
-          <Feather name="arrow-left" size={scale(24)} color="#1E293B" />
+          <Feather
+            name="arrow-left"
+            size={scale(24)}
+            color={isDark ? "#F8FAFC" : "#1E293B"}
+          />
         </TouchableOpacity>
-        <Text style={styles.navTitle}>
+        <Text
+          style={[
+            styles.navTitle,
+            isDark && { color: "#F8FAFC" },
+          ]}
+        >
           {isEditing ? "Edit Address" : "Add Address"}
         </Text>
       </View>
 
       {/* Search Input Bar */}
-      <View style={styles.searchContainer}>
-        <View style={styles.searchBox}>
+      <View
+        style={[
+          styles.searchContainer,
+          isDark && { backgroundColor: "#080D0F" },
+        ]}
+      >
+        <View
+          style={[
+            styles.searchBox,
+            isDark && {
+              backgroundColor: "#151D24",
+              borderColor: "#303B45",
+            },
+          ]}
+        >
           <TouchableOpacity onPress={handleSearchLocation} activeOpacity={0.7}>
-            <Feather name="search" size={scale(18)} color="#64748B" />
+            <Feather
+              name="search"
+              size={scale(18)}
+              color={isDark ? "#94A3B8" : "#64748B"}
+            />
           </TouchableOpacity>
           <TextInput
             value={searchQuery}
@@ -390,15 +430,22 @@ export default function AddAddressScreen() {
             onSubmitEditing={handleSearchLocation}
             returnKeyType="search"
             placeholder="Search for area, street, landmark..."
-            placeholderTextColor="#94A3B8"
-            style={styles.searchInput}
+            placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
+            style={[
+              styles.searchInput,
+              isDark && { color: "#F8FAFC" },
+            ]}
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity
               onPress={() => setSearchQuery("")}
               style={{ padding: scale(2) }}
             >
-              <Feather name="x" size={scale(16)} color="#94A3B8" />
+              <Feather
+                name="x"
+                size={scale(16)}
+                color={isDark ? "#94A3B8" : "#94A3B8"}
+              />
             </TouchableOpacity>
           )}
         </View>
@@ -406,18 +453,36 @@ export default function AddAddressScreen() {
 
       {/* Location Disabled Alert Bar */}
       {hasLocationPermission === false && (
-        <View style={styles.locationAlertBar}>
+        <View
+          style={[
+            styles.locationAlertBar,
+            isDark && {
+              backgroundColor: "#151D24",
+              borderBottomColor: "#1E252E",
+            },
+          ]}
+        >
           <View style={styles.locationAlertLeft}>
             <MaterialCommunityIcons
               name="map-marker-off-outline"
               size={scale(24)}
-              color="#1E293B"
+              color={isDark ? "#38BDF8" : "#1E293B"}
             />
             <View style={styles.locationAlertTextCol}>
-              <Text style={styles.locationAlertTitle}>
+              <Text
+                style={[
+                  styles.locationAlertTitle,
+                  isDark && { color: "#F8FAFC" },
+                ]}
+              >
                 Device Location not enabled
               </Text>
-              <Text style={styles.locationAlertSubtitle}>
+              <Text
+                style={[
+                  styles.locationAlertSubtitle,
+                  isDark && { color: "#94A3B8" },
+                ]}
+              >
                 Enable for precise delivery address
               </Text>
             </View>
@@ -426,7 +491,10 @@ export default function AddAddressScreen() {
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={handleUseCurrentLocation}
-            style={styles.enableBtn}
+            style={[
+              styles.enableBtn,
+              isDark && { backgroundColor: "#00687A" },
+            ]}
           >
             <Text style={styles.enableBtnText}>Enable</Text>
           </TouchableOpacity>
@@ -462,50 +530,109 @@ export default function AddAddressScreen() {
           activeOpacity={0.85}
           onPress={handleUseCurrentLocation}
           disabled={isLocating}
-          style={styles.currentLocationBtn}
+          style={[
+            styles.currentLocationBtn,
+            isDark && {
+              backgroundColor: "#151D24",
+              borderColor: "#303B45",
+            },
+          ]}
         >
           {isLocating ? (
-            <ActivityIndicator size="small" color="#2D6A4F" />
+            <ActivityIndicator
+              size="small"
+              color={isDark ? "#39D353" : "#2D6A4F"}
+            />
           ) : (
             <MaterialCommunityIcons
               name="crosshairs-gps"
               size={scale(18)}
-              color="#2D6A4F"
+              color={isDark ? "#39D353" : "#2D6A4F"}
             />
           )}
-          <Text style={styles.currentLocationText}>
+          <Text
+            style={[
+              styles.currentLocationText,
+              isDark && { color: "#39D353" },
+            ]}
+          >
             {isLocating ? "Finding GPS..." : "Use current location"}
           </Text>
         </TouchableOpacity>
       </View>
 
       {/* Bottom Delivery Summary Box */}
-      <View style={styles.bottomDeliveryContainer}>
-        <Text style={styles.deliverHeading}>Deliver your order to</Text>
+      <View
+        style={[
+          styles.bottomDeliveryContainer,
+          isDark && {
+            backgroundColor: "#151D24",
+            borderTopColor: "#303B45",
+          },
+        ]}
+      >
+        <Text
+          style={[
+            styles.deliverHeading,
+            isDark && { color: "#F8FAFC" },
+          ]}
+        >
+          Deliver your order to
+        </Text>
 
         {/* Selected Location Pill */}
-        <View style={styles.locationCard}>
+        <View
+          style={[
+            styles.locationCard,
+            isDark && { backgroundColor: "#1B252E" },
+          ]}
+        >
           <View style={styles.locationPinBox}>
             <Ionicons
               name="location-outline"
               size={scale(22)}
-              color="#008080"
+              color={isDark ? "#38BDF8" : "#008080"}
             />
           </View>
           <View style={styles.locationTexts}>
-            <Text style={styles.areaTitle} numberOfLines={1}>
+            <Text
+              style={[
+                styles.areaTitle,
+                isDark && { color: "#F8FAFC" },
+              ]}
+              numberOfLines={1}
+            >
               {currentArea}
             </Text>
-            <Text style={styles.citySubtitle} numberOfLines={1}>
+            <Text
+              style={[
+                styles.citySubtitle,
+                isDark && { color: "#94A3B8" },
+              ]}
+              numberOfLines={1}
+            >
               {currentCity}
             </Text>
           </View>
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={openBottomSheet}
-            style={styles.changeBtn}
+            style={[
+              styles.changeBtn,
+              isDark && {
+                backgroundColor: "#151D24",
+                borderColor: "#303B45",
+              },
+            ]}
           >
-            <Text style={styles.changeBtnText}>Change</Text>
+            <Text
+              style={[
+                styles.changeBtnText,
+                isDark && { color: "#38BDF8" },
+              ]}
+            >
+              Change
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -513,7 +640,10 @@ export default function AddAddressScreen() {
         <TouchableOpacity
           activeOpacity={0.9}
           onPress={openBottomSheet}
-          style={styles.addDetailsBtn}
+          style={[
+            styles.addDetailsBtn,
+            isDark && { backgroundColor: "#00687A" },
+          ]}
         >
           <Text style={styles.addDetailsBtnText}>
             {isEditing ? "Edit address details" : "Add more address details"}
@@ -545,12 +675,18 @@ export default function AddAddressScreen() {
           <Animated.View
             style={[
               styles.bottomSheetContainer,
+              isDark && { backgroundColor: "#151D24" },
               { transform: [{ translateY }] },
             ]}
           >
             {/* Gesture Handle Bar */}
             <View {...panResponder.panHandlers} style={styles.dragHandleBox}>
-              <View style={styles.dragPill} />
+              <View
+                style={[
+                  styles.dragPill,
+                  isDark && { backgroundColor: "#303B45" },
+                ]}
+              />
             </View>
 
             <ScrollView
@@ -561,28 +697,67 @@ export default function AddAddressScreen() {
             >
               {/* Modal Title */}
               <View style={styles.sheetHeader}>
-                <Text style={styles.sheetTitle}>
+                <Text
+                  style={[
+                    styles.sheetTitle,
+                    isDark && { color: "#F8FAFC" },
+                  ]}
+                >
                   {isEditing ? "Edit Address Details" : "Enter Address Details"}
                 </Text>
                 <TouchableOpacity
                   onPress={closeBottomSheet}
                   style={styles.sheetCloseBtn}
                 >
-                  <Feather name="x" size={scale(20)} color="#64748B" />
+                  <Feather
+                    name="x"
+                    size={scale(20)}
+                    color={isDark ? "#94A3B8" : "#64748B"}
+                  />
                 </TouchableOpacity>
               </View>
 
               {/* Selected Location Pill in Sheet */}
-              <View style={styles.sheetLocationPreview}>
-                <Ionicons name="location" size={scale(18)} color="#2D6A4F" />
+              <View
+                style={[
+                  styles.sheetLocationPreview,
+                  isDark && { backgroundColor: "#1B252E" },
+                ]}
+              >
+                <Ionicons
+                  name="location"
+                  size={scale(18)}
+                  color={isDark ? "#39D353" : "#2D6A4F"}
+                />
                 <View style={{ flex: 1, marginLeft: scale(8) }}>
-                  <Text style={styles.sheetAreaText}>{currentArea}</Text>
-                  <Text style={styles.sheetCityText}>{currentCity}</Text>
+                  <Text
+                    style={[
+                      styles.sheetAreaText,
+                      isDark && { color: "#F8FAFC" },
+                    ]}
+                  >
+                    {currentArea}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.sheetCityText,
+                      isDark && { color: "#94A3B8" },
+                    ]}
+                  >
+                    {currentCity}
+                  </Text>
                 </View>
               </View>
 
               {/* Address Type Selector (Home, Work, Other) */}
-              <Text style={styles.inputLabel}>Save address as</Text>
+              <Text
+                style={[
+                  styles.inputLabel,
+                  isDark && { color: "#F8FAFC" },
+                ]}
+              >
+                Save address as
+              </Text>
               <View style={styles.typeSelectorRow}>
                 {(["Home", "Work", "Other"] as const).map((type) => (
                   <TouchableOpacity
@@ -591,13 +766,27 @@ export default function AddAddressScreen() {
                     onPress={() => setAddressType(type)}
                     style={[
                       styles.typeBadge,
-                      addressType === type && styles.typeBadgeActive,
+                      isDark && {
+                        backgroundColor: "#1B252E",
+                        borderColor: "#303B45",
+                      },
+                      addressType === type &&
+                        (isDark
+                          ? {
+                              backgroundColor: "#00687A",
+                              borderColor: "#00687A",
+                            }
+                          : styles.typeBadgeActive),
                     ]}
                   >
                     <Text
                       style={[
                         styles.typeBadgeText,
-                        addressType === type && styles.typeBadgeTextActive,
+                        isDark && { color: "#94A3B8" },
+                        addressType === type &&
+                          (isDark
+                            ? { color: "#ffffff" }
+                            : styles.typeBadgeTextActive),
                       ]}
                     >
                       {type}
@@ -607,39 +796,79 @@ export default function AddAddressScreen() {
               </View>
 
               {/* Flat / Building Input */}
-              <Text style={styles.inputLabel}>
+              <Text
+                style={[
+                  styles.inputLabel,
+                  isDark && { color: "#F8FAFC" },
+                ]}
+              >
                 House / Flat / Floor / Building Name *
               </Text>
               <TextInput
                 value={houseNo}
                 onChangeText={setHouseNo}
                 placeholder="e.g. Floor 5, Sunrise Apartment"
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
                 returnKeyType="next"
-                style={styles.sheetInput}
+                style={[
+                  styles.sheetInput,
+                  isDark && {
+                    backgroundColor: "#1B252E",
+                    borderColor: "#303B45",
+                    color: "#F8FAFC",
+                  },
+                ]}
               />
 
               {/* Landmark Input */}
-              <Text style={styles.inputLabel}>Nearby Landmark (Optional)</Text>
+              <Text
+                style={[
+                  styles.inputLabel,
+                  isDark && { color: "#F8FAFC" },
+                ]}
+              >
+                Nearby Landmark (Optional)
+              </Text>
               <TextInput
                 value={landmark}
                 onChangeText={setLandmark}
                 placeholder="e.g. Near Big Mart / Main Chowk"
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
                 returnKeyType="next"
-                style={styles.sheetInput}
+                style={[
+                  styles.sheetInput,
+                  isDark && {
+                    backgroundColor: "#1B252E",
+                    borderColor: "#303B45",
+                    color: "#F8FAFC",
+                  },
+                ]}
               />
 
               {/* Phone Number */}
-              <Text style={styles.inputLabel}>Contact Phone Number *</Text>
+              <Text
+                style={[
+                  styles.inputLabel,
+                  isDark && { color: "#F8FAFC" },
+                ]}
+              >
+                Contact Phone Number *
+              </Text>
               <TextInput
                 value={phone}
                 onChangeText={setPhone}
                 keyboardType="phone-pad"
                 placeholder="e.g. 9868686868"
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
                 returnKeyType="done"
-                style={styles.sheetInput}
+                style={[
+                  styles.sheetInput,
+                  isDark && {
+                    backgroundColor: "#1B252E",
+                    borderColor: "#303B45",
+                    color: "#F8FAFC",
+                  },
+                ]}
               />
 
               {/* Save Address Button */}
@@ -647,7 +876,11 @@ export default function AddAddressScreen() {
                 activeOpacity={0.9}
                 onPress={handleSaveAddress}
                 disabled={isSaving}
-                style={[styles.sheetSaveBtn, isSaving && { opacity: 0.7 }]}
+                style={[
+                  styles.sheetSaveBtn,
+                  isDark && { backgroundColor: "#00687A" },
+                  isSaving && { opacity: 0.7 },
+                ]}
               >
                 {isSaving ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />

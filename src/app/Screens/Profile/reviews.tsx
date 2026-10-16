@@ -36,6 +36,7 @@ const SAMPLE_REVIEWS: ReviewItem[] = [
 
 export default function MyReviewsScreen() {
   const theme = useTheme();
+  const isDark = theme.mode === "dark";
   const [activeTab, setActiveTab] = useState<"pending" | "reviewed">("pending");
 
   const filteredItems = SAMPLE_REVIEWS.filter(
@@ -48,20 +49,42 @@ export default function MyReviewsScreen() {
 
   return (
     <SafeAreaView
-      style={[styles.container, { backgroundColor: "#ffffff" }]}
+      style={[
+        styles.container,
+        { backgroundColor: isDark ? "#080D0F" : "#ffffff" },
+      ]}
     >
-      <StatusBar style="dark" />
+      <StatusBar style={isDark ? "light" : "dark"} />
 
       {/* Top Navbar Header */}
-      <View style={styles.navBar}>
+      <View
+        style={[
+          styles.navBar,
+          {
+            backgroundColor: isDark ? "#080D0F" : "#ffffff",
+            borderBottomColor: isDark ? "#1E252E" : "#F1F5F9",
+          },
+        ]}
+      >
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={() => router.back()}
           style={styles.backButton}
         >
-          <Feather name="arrow-left" size={scale(24)} color="#1E293B" />
+          <Feather
+            name="arrow-left"
+            size={scale(24)}
+            color={isDark ? "#F8FAFC" : "#1E293B"}
+          />
         </TouchableOpacity>
-        <Text style={styles.navTitle}>My Reviews</Text>
+        <Text
+          style={[
+            styles.navTitle,
+            { color: isDark ? "#F8FAFC" : "#1E293B" },
+          ]}
+        >
+          My Reviews
+        </Text>
       </View>
 
       <ScrollView
@@ -77,7 +100,11 @@ export default function MyReviewsScreen() {
             style={[
               styles.tabPill,
               activeTab === "pending"
-                ? styles.tabPillPendingActive
+                ? isDark
+                  ? styles.tabPillPendingActiveDark
+                  : styles.tabPillPendingActive
+                : isDark
+                ? styles.tabPillInactiveDark
                 : styles.tabPillInactive,
             ]}
           >
@@ -85,7 +112,11 @@ export default function MyReviewsScreen() {
               style={[
                 styles.tabText,
                 activeTab === "pending"
-                  ? styles.tabTextPendingActive
+                  ? isDark
+                    ? styles.tabTextPendingActiveDark
+                    : styles.tabTextPendingActive
+                  : isDark
+                  ? styles.tabTextInactiveDark
                   : styles.tabTextInactive,
               ]}
             >
@@ -100,7 +131,11 @@ export default function MyReviewsScreen() {
             style={[
               styles.tabPill,
               activeTab === "reviewed"
-                ? styles.tabPillReviewedActive
+                ? isDark
+                  ? styles.tabPillReviewedActiveDark
+                  : styles.tabPillReviewedActive
+                : isDark
+                ? styles.tabPillInactiveDark
                 : styles.tabPillInactive,
             ]}
           >
@@ -108,7 +143,11 @@ export default function MyReviewsScreen() {
               style={[
                 styles.tabText,
                 activeTab === "reviewed"
-                  ? styles.tabTextReviewedActive
+                  ? isDark
+                    ? styles.tabTextReviewedActiveDark
+                    : styles.tabTextReviewedActive
+                  : isDark
+                  ? styles.tabTextInactiveDark
                   : styles.tabTextInactive,
               ]}
             >
@@ -118,17 +157,30 @@ export default function MyReviewsScreen() {
         </View>
 
         {/* Reviews List */}
-        <View style={styles.listContainer}>
+        <View
+          style={[
+            styles.listContainer,
+            { backgroundColor: isDark ? "#080D0F" : "#ffffff" },
+          ]}
+        >
           {filteredItems.map((item, index) => (
             <View
               key={item.id}
               style={[
                 styles.reviewRow,
-                index < filteredItems.length - 1 && styles.rowDivider,
+                index < filteredItems.length - 1 && [
+                  styles.rowDivider,
+                  { borderBottomColor: isDark ? "#1E252E" : "#F1F5F9" },
+                ],
               ]}
             >
               {/* Product Thumbnail Box */}
-              <View style={styles.imageBox}>
+              <View
+                style={[
+                  styles.imageBox,
+                  { backgroundColor: isDark ? "#151D24" : "#F1F5F9" },
+                ]}
+              >
                 <Image
                   source={{ uri: item.imageUrl }}
                   style={styles.productImage}
@@ -138,17 +190,33 @@ export default function MyReviewsScreen() {
 
               {/* Title & Pack Info Column */}
               <View style={styles.infoCol}>
-                <Text style={styles.productName} numberOfLines={2}>
+                <Text
+                  style={[
+                    styles.productName,
+                    { color: isDark ? "#F8FAFC" : "#334155" },
+                  ]}
+                  numberOfLines={2}
+                >
                   {item.name}
                 </Text>
-                <Text style={styles.packInfoText}>{item.packInfo}</Text>
+                <Text
+                  style={[
+                    styles.packInfoText,
+                    { color: isDark ? "#94A3B8" : "#64748B" },
+                  ]}
+                >
+                  {item.packInfo}
+                </Text>
               </View>
 
               {/* "Review Now" Action Button */}
               <TouchableOpacity
                 activeOpacity={0.85}
                 onPress={() => handleReviewNow(item)}
-                style={styles.reviewBtn}
+                style={[
+                  styles.reviewBtn,
+                  isDark && { backgroundColor: "#00687A" },
+                ]}
               >
                 <Text style={styles.reviewBtnText}>Review Now</Text>
               </TouchableOpacity>
@@ -157,7 +225,12 @@ export default function MyReviewsScreen() {
 
           {filteredItems.length === 0 && (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>
+              <Text
+                style={[
+                  styles.emptyText,
+                  { color: isDark ? "#64748B" : "#94A3B8" },
+                ]}
+              >
                 No {activeTab} reviews found.
               </Text>
             </View>
@@ -213,8 +286,17 @@ const styles = StyleSheet.create({
     borderColor: "#4A7C59",
     backgroundColor: "#F4FBEA",
   },
+  tabPillPendingActiveDark: {
+    borderColor: "#39D353",
+    backgroundColor: "rgba(57, 211, 83, 0.16)",
+  },
   tabTextPendingActive: {
     color: "#2D6A4F",
+    fontWeight: "700",
+    fontSize: moderateScale(13),
+  },
+  tabTextPendingActiveDark: {
+    color: "#39D353",
     fontWeight: "700",
     fontSize: moderateScale(13),
   },
@@ -222,8 +304,17 @@ const styles = StyleSheet.create({
     borderColor: "#003844",
     backgroundColor: "#003844",
   },
+  tabPillReviewedActiveDark: {
+    borderColor: "#005C70",
+    backgroundColor: "#005C70",
+  },
   tabTextReviewedActive: {
     color: "#ffffff",
+    fontWeight: "700",
+    fontSize: moderateScale(13),
+  },
+  tabTextReviewedActiveDark: {
+    color: "#F8FAFC",
     fontWeight: "700",
     fontSize: moderateScale(13),
   },
@@ -231,8 +322,17 @@ const styles = StyleSheet.create({
     borderColor: "#CBD5E1",
     backgroundColor: "#ffffff",
   },
+  tabPillInactiveDark: {
+    borderColor: "#303B45",
+    backgroundColor: "#151D24",
+  },
   tabTextInactive: {
     color: "#64748B",
+    fontWeight: "600",
+    fontSize: moderateScale(13),
+  },
+  tabTextInactiveDark: {
+    color: "#94A3B8",
     fontWeight: "600",
     fontSize: moderateScale(13),
   },

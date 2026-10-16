@@ -6,7 +6,7 @@ import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -50,8 +50,14 @@ const GRADIENT_COLORS = ["#003844", "#004d5d", "#016073"] as const;
 export default function MyProfileDetailsScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const isDark = theme.mode === "dark";
   const dispatch = useAppDispatch();
   const { user, isLoading } = useAppSelector((state) => state.auth);
+
+  const styles = useMemo(() => getStyles(isDark), [isDark]);
+  const gradientColors = isDark
+    ? (["#03181C", "#002830", "#003844"] as const)
+    : GRADIENT_COLORS;
 
   // Profile Avatar state
   const [profileImage, setProfileImage] = useState<string | null>(
@@ -349,7 +355,7 @@ export default function MyProfileDetailsScreen() {
 
       {/* 1. Header Hero with Linear Gradient */}
       <LinearGradient
-        colors={GRADIENT_COLORS}
+        colors={gradientColors}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.heroGradient}
@@ -446,8 +452,21 @@ export default function MyProfileDetailsScreen() {
               style={styles.fieldRow}
             >
               <View style={styles.fieldLeft}>
-                <View style={[styles.iconBox, { backgroundColor: "#E0F2FE" }]}>
-                  <Feather name="user" size={scale(17)} color="#0284C7" />
+                <View
+                  style={[
+                    styles.iconBox,
+                    {
+                      backgroundColor: isDark
+                        ? "rgba(2, 132, 199, 0.16)"
+                        : "#E0F2FE",
+                    },
+                  ]}
+                >
+                  <Feather
+                    name="user"
+                    size={scale(17)}
+                    color={isDark ? "#38BDF8" : "#0284C7"}
+                  />
                 </View>
                 <View>
                   <Text style={styles.fieldLabel}>Full Name</Text>
@@ -468,7 +487,7 @@ export default function MyProfileDetailsScreen() {
                       : "chevron-down"
                   }
                   size={scale(16)}
-                  color="#008080"
+                  color={isDark ? "#39D353" : "#008080"}
                 />
               </View>
             </TouchableOpacity>
@@ -482,7 +501,7 @@ export default function MyProfileDetailsScreen() {
                     value={draftName}
                     onChangeText={setDraftName}
                     placeholder="Enter full name"
-                    placeholderTextColor="#94A3B8"
+                    placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
                     style={styles.textInput}
                   />
                 </View>
@@ -493,7 +512,7 @@ export default function MyProfileDetailsScreen() {
                   style={styles.actionGradientBtnWrapper}
                 >
                   <LinearGradient
-                    colors={GRADIENT_COLORS}
+                    colors={gradientColors}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.saveBtn}
@@ -515,8 +534,21 @@ export default function MyProfileDetailsScreen() {
               style={styles.fieldRow}
             >
               <View style={styles.fieldLeft}>
-                <View style={[styles.iconBox, { backgroundColor: "#F3E8FF" }]}>
-                  <Ionicons name="male-female-outline" size={scale(17)} color="#9333EA" />
+                <View
+                  style={[
+                    styles.iconBox,
+                    {
+                      backgroundColor: isDark
+                        ? "rgba(147, 51, 234, 0.16)"
+                        : "#F3E8FF",
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name="male-female-outline"
+                    size={scale(17)}
+                    color={isDark ? "#C084FC" : "#9333EA"}
+                  />
                 </View>
                 <View>
                   <Text style={styles.fieldLabel}>Gender</Text>
@@ -535,7 +567,7 @@ export default function MyProfileDetailsScreen() {
                       : "chevron-down"
                   }
                   size={scale(16)}
-                  color="#008080"
+                  color={isDark ? "#39D353" : "#008080"}
                 />
               </View>
             </TouchableOpacity>
@@ -593,8 +625,21 @@ export default function MyProfileDetailsScreen() {
               style={styles.fieldRow}
             >
               <View style={styles.fieldLeft}>
-                <View style={[styles.iconBox, { backgroundColor: "#FEF3C7" }]}>
-                  <Feather name="calendar" size={scale(17)} color="#D97706" />
+                <View
+                  style={[
+                    styles.iconBox,
+                    {
+                      backgroundColor: isDark
+                        ? "rgba(217, 119, 6, 0.16)"
+                        : "#FEF3C7",
+                    },
+                  ]}
+                >
+                  <Feather
+                    name="calendar"
+                    size={scale(17)}
+                    color={isDark ? "#FBBF24" : "#D97706"}
+                  />
                 </View>
                 <View>
                   <Text style={styles.fieldLabel}>Date of Birth</Text>
@@ -604,7 +649,11 @@ export default function MyProfileDetailsScreen() {
 
               <View style={styles.fieldAction}>
                 <Text style={styles.editActionText}>Select</Text>
-                <Feather name="calendar" size={scale(16)} color="#008080" />
+                <Feather
+                  name="calendar"
+                  size={scale(16)}
+                  color={isDark ? "#39D353" : "#008080"}
+                />
               </View>
             </TouchableOpacity>
           </View>
@@ -621,14 +670,31 @@ export default function MyProfileDetailsScreen() {
           <View style={styles.fieldBlock}>
             <View style={styles.fieldRow}>
               <View style={styles.fieldLeft}>
-                <View style={[styles.iconBox, { backgroundColor: "#DCFCE7" }]}>
-                  <Feather name="phone" size={scale(17)} color="#16A34A" />
+                <View
+                  style={[
+                    styles.iconBox,
+                    {
+                      backgroundColor: isDark
+                        ? "rgba(22, 163, 74, 0.16)"
+                        : "#DCFCE7",
+                    },
+                  ]}
+                >
+                  <Feather
+                    name="phone"
+                    size={scale(17)}
+                    color={isDark ? "#4ADE80" : "#16A34A"}
+                  />
                 </View>
                 <View>
                   <View style={styles.lockedLabelContainer}>
                     <Text style={styles.fieldLabel}>Mobile Number</Text>
                     <View style={styles.verifiedTag}>
-                      <Ionicons name="checkmark-circle" size={scale(12)} color="#16A34A" />
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={scale(12)}
+                        color={isDark ? "#4ADE80" : "#16A34A"}
+                      />
                       <Text style={styles.verifiedTagText}>Verified</Text>
                     </View>
                   </View>
@@ -638,7 +704,11 @@ export default function MyProfileDetailsScreen() {
               </View>
 
               <View style={styles.lockIconBox}>
-                <Feather name="lock" size={scale(15)} color="#94A3B8" />
+                <Feather
+                  name="lock"
+                  size={scale(15)}
+                  color={isDark ? "#64748B" : "#94A3B8"}
+                />
               </View>
             </View>
           </View>
@@ -653,8 +723,21 @@ export default function MyProfileDetailsScreen() {
               style={styles.fieldRow}
             >
               <View style={styles.fieldLeft}>
-                <View style={[styles.iconBox, { backgroundColor: "#FFEDD5" }]}>
-                  <Feather name="mail" size={scale(17)} color="#EA580C" />
+                <View
+                  style={[
+                    styles.iconBox,
+                    {
+                      backgroundColor: isDark
+                        ? "rgba(234, 88, 12, 0.16)"
+                        : "#FFEDD5",
+                    },
+                  ]}
+                >
+                  <Feather
+                    name="mail"
+                    size={scale(17)}
+                    color={isDark ? "#FB923C" : "#EA580C"}
+                  />
                 </View>
                 <View>
                   <Text style={styles.fieldLabel}>Email Address</Text>
@@ -675,7 +758,7 @@ export default function MyProfileDetailsScreen() {
                       : "chevron-down"
                   }
                   size={scale(16)}
-                  color="#008080"
+                  color={isDark ? "#39D353" : "#008080"}
                 />
               </View>
             </TouchableOpacity>
@@ -689,7 +772,7 @@ export default function MyProfileDetailsScreen() {
                     value={draftEmail}
                     onChangeText={setDraftEmail}
                     placeholder="Enter email address"
-                    placeholderTextColor="#94A3B8"
+                    placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
                     keyboardType="email-address"
                     autoCapitalize="none"
                     style={styles.textInput}
@@ -700,7 +783,7 @@ export default function MyProfileDetailsScreen() {
                     style={styles.actionGradientBtnWrapper}
                   >
                     <LinearGradient
-                      colors={GRADIENT_COLORS}
+                      colors={gradientColors}
                       style={styles.verifyActionBtn}
                     >
                       <Text style={styles.verifyActionBtnText}>Verify OTP</Text>
@@ -721,8 +804,21 @@ export default function MyProfileDetailsScreen() {
               style={styles.fieldRow}
             >
               <View style={styles.fieldLeft}>
-                <View style={[styles.iconBox, { backgroundColor: "#F1F5F9" }]}>
-                  <Feather name="shield" size={scale(17)} color="#475569" />
+                <View
+                  style={[
+                    styles.iconBox,
+                    {
+                      backgroundColor: isDark
+                        ? "rgba(148, 163, 184, 0.16)"
+                        : "#F1F5F9",
+                    },
+                  ]}
+                >
+                  <Feather
+                    name="shield"
+                    size={scale(17)}
+                    color={isDark ? "#94A3B8" : "#475569"}
+                  />
                 </View>
                 <View>
                   <Text style={styles.fieldLabel}>Account Password</Text>
@@ -741,7 +837,7 @@ export default function MyProfileDetailsScreen() {
                       : "chevron-down"
                   }
                   size={scale(16)}
-                  color="#008080"
+                  color={isDark ? "#39D353" : "#008080"}
                 />
               </View>
             </TouchableOpacity>
@@ -756,7 +852,7 @@ export default function MyProfileDetailsScreen() {
                     value={currentPassword}
                     onChangeText={setCurrentPassword}
                     placeholder="Current Password"
-                    placeholderTextColor="#94A3B8"
+                    placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
                     secureTextEntry={!showCurrentPass}
                     style={styles.textInput}
                   />
@@ -766,7 +862,7 @@ export default function MyProfileDetailsScreen() {
                     <Feather
                       name={showCurrentPass ? "eye-off" : "eye"}
                       size={scale(16)}
-                      color="#94A3B8"
+                      color={isDark ? "#64748B" : "#94A3B8"}
                     />
                   </TouchableOpacity>
                 </View>
@@ -776,7 +872,7 @@ export default function MyProfileDetailsScreen() {
                     value={newPassword}
                     onChangeText={setNewPassword}
                     placeholder="New Password (min 8 chars)"
-                    placeholderTextColor="#94A3B8"
+                    placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
                     secureTextEntry={!showNewPass}
                     style={styles.textInput}
                   />
@@ -784,7 +880,7 @@ export default function MyProfileDetailsScreen() {
                     <Feather
                       name={showNewPass ? "eye-off" : "eye"}
                       size={scale(16)}
-                      color="#94A3B8"
+                      color={isDark ? "#64748B" : "#94A3B8"}
                     />
                   </TouchableOpacity>
                 </View>
@@ -794,7 +890,7 @@ export default function MyProfileDetailsScreen() {
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
                     placeholder="Confirm New Password"
-                    placeholderTextColor="#94A3B8"
+                    placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
                     secureTextEntry={!showNewPass}
                     style={styles.textInput}
                   />
@@ -807,7 +903,7 @@ export default function MyProfileDetailsScreen() {
                   style={styles.actionGradientBtnWrapper}
                 >
                   <LinearGradient
-                    colors={GRADIENT_COLORS}
+                    colors={gradientColors}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.saveBtn}
@@ -822,7 +918,11 @@ export default function MyProfileDetailsScreen() {
 
         {/* Security Note Banner */}
         <View style={styles.securityBanner}>
-          <Ionicons name="information-circle-outline" size={scale(18)} color="#008080" />
+          <Ionicons
+            name="information-circle-outline"
+            size={scale(18)}
+            color={isDark ? "#5EEAD4" : "#008080"}
+          />
           <Text style={styles.securityBannerText}>
             Your personal information is encrypted with 256-bit SSL for maximum privacy and safety.
           </Text>
@@ -868,7 +968,7 @@ export default function MyProfileDetailsScreen() {
                 maximumDate={new Date()}
                 minimumDate={new Date(1920, 0, 1)}
                 onChange={handleDateChange}
-                textColor="#0F172A"
+                textColor={isDark ? "#F8FAFC" : "#0F172A"}
                 style={{ height: scale(200) }}
               />
             </View>
@@ -898,14 +998,31 @@ export default function MyProfileDetailsScreen() {
               onPress={pickImageFromGallery}
               style={styles.sheetOption}
             >
-              <View style={[styles.sheetOptionIconBox, { backgroundColor: "#E0F2FE" }]}>
-                <Ionicons name="images-outline" size={scale(20)} color="#0284C7" />
+              <View
+                style={[
+                  styles.sheetOptionIconBox,
+                  {
+                    backgroundColor: isDark
+                      ? "rgba(2, 132, 199, 0.16)"
+                      : "#E0F2FE",
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="images-outline"
+                  size={scale(20)}
+                  color={isDark ? "#38BDF8" : "#0284C7"}
+                />
               </View>
               <View style={styles.sheetOptionTextBox}>
                 <Text style={styles.sheetOptionTitle}>Choose from Gallery</Text>
                 <Text style={styles.sheetOptionSub}>Select an existing photo from library</Text>
               </View>
-              <Feather name="chevron-right" size={scale(18)} color="#94A3B8" />
+              <Feather
+                name="chevron-right"
+                size={scale(18)}
+                color={isDark ? "#64748B" : "#94A3B8"}
+              />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -913,14 +1030,31 @@ export default function MyProfileDetailsScreen() {
               onPress={takePhotoWithCamera}
               style={styles.sheetOption}
             >
-              <View style={[styles.sheetOptionIconBox, { backgroundColor: "#DCFCE7" }]}>
-                <Ionicons name="camera-outline" size={scale(20)} color="#16A34A" />
+              <View
+                style={[
+                  styles.sheetOptionIconBox,
+                  {
+                    backgroundColor: isDark
+                      ? "rgba(22, 163, 74, 0.16)"
+                      : "#DCFCE7",
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="camera-outline"
+                  size={scale(20)}
+                  color={isDark ? "#4ADE80" : "#16A34A"}
+                />
               </View>
               <View style={styles.sheetOptionTextBox}>
                 <Text style={styles.sheetOptionTitle}>Take a Photo</Text>
                 <Text style={styles.sheetOptionSub}>Use your camera to click a new picture</Text>
               </View>
-              <Feather name="chevron-right" size={scale(18)} color="#94A3B8" />
+              <Feather
+                name="chevron-right"
+                size={scale(18)}
+                color={isDark ? "#64748B" : "#94A3B8"}
+              />
             </TouchableOpacity>
 
             {profileImage && (
@@ -929,14 +1063,38 @@ export default function MyProfileDetailsScreen() {
                 onPress={removePhoto}
                 style={[styles.sheetOption, { borderBottomWidth: 0 }]}
               >
-                <View style={[styles.sheetOptionIconBox, { backgroundColor: "#FEE2E2" }]}>
-                  <Feather name="trash-2" size={scale(18)} color="#EF4444" />
+                <View
+                  style={[
+                    styles.sheetOptionIconBox,
+                    {
+                      backgroundColor: isDark
+                        ? "rgba(239, 68, 68, 0.16)"
+                        : "#FEE2E2",
+                    },
+                  ]}
+                >
+                  <Feather
+                    name="trash-2"
+                    size={scale(18)}
+                    color={isDark ? "#F87171" : "#EF4444"}
+                  />
                 </View>
                 <View style={styles.sheetOptionTextBox}>
-                  <Text style={[styles.sheetOptionTitle, { color: "#EF4444" }]}>Remove Photo</Text>
+                  <Text
+                    style={[
+                      styles.sheetOptionTitle,
+                      { color: isDark ? "#F87171" : "#EF4444" },
+                    ]}
+                  >
+                    Remove Photo
+                  </Text>
                   <Text style={styles.sheetOptionSub}>Reset to default initials</Text>
                 </View>
-                <Feather name="chevron-right" size={scale(18)} color="#94A3B8" />
+                <Feather
+                  name="chevron-right"
+                  size={scale(18)}
+                  color={isDark ? "#64748B" : "#94A3B8"}
+                />
               </TouchableOpacity>
             )}
 
@@ -954,522 +1112,523 @@ export default function MyProfileDetailsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: "#F8FAFC",
-  },
-  heroGradient: {
-    borderBottomLeftRadius: scale(28),
-    borderBottomRightRadius: scale(28),
-    overflow: "hidden",
-    paddingBottom: moderateScale(22),
-    position: "relative",
-  },
-  safeHero: {
-    position: "relative",
-  },
-  decorCircle1: {
-    position: "absolute",
-    top: -scale(40),
-    right: -scale(40),
-    width: scale(140),
-    height: scale(140),
-    borderRadius: scale(70),
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-  },
-  decorCircle2: {
-    position: "absolute",
-    bottom: -scale(20),
-    left: -scale(30),
-    width: scale(110),
-    height: scale(110),
-    borderRadius: scale(55),
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
-  },
-  navBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: scale(16),
-    paddingVertical: moderateScale(10),
-  },
-  backButton: {
-    width: scale(38),
-    height: scale(38),
-    borderRadius: scale(19),
-    backgroundColor: "rgba(255, 255, 255, 0.15)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  navTitle: {
-    fontSize: moderateScale(17),
-    fontWeight: "700",
-    color: "#FFFFFF",
-    letterSpacing: 0.3,
-  },
-  heroContent: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingTop: moderateScale(6),
-  },
-  avatarWrapper: {
-    position: "relative",
-    marginBottom: moderateScale(10),
-  },
-  avatarOuterRing: {
-    width: scale(96),
-    height: scale(96),
-    borderRadius: scale(48),
-    borderWidth: 3,
-    borderColor: "rgba(255, 255, 255, 0.8)",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 6,
-    backgroundColor: "#003844",
-  },
-  avatarImg: {
-    width: scale(90),
-    height: scale(90),
-    borderRadius: scale(45),
-  },
-  avatarPlaceholder: {
-    width: scale(90),
-    height: scale(90),
-    borderRadius: scale(45),
-    backgroundColor: "#004d5d",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarInitials: {
-    color: "#FFFFFF",
-    fontSize: moderateScale(28),
-    fontWeight: "800",
-  },
-  cameraBadgeContainer: {
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  cameraBadge: {
-    width: scale(32),
-    height: scale(32),
-    borderRadius: scale(16),
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
-  },
-  heroUserName: {
-    fontSize: moderateScale(18),
-    fontWeight: "800",
-    color: "#FFFFFF",
-    marginBottom: moderateScale(4),
-  },
-  badgeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: scale(8),
-  },
-  verifiedMemberBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: scale(4),
-    backgroundColor: "rgba(255, 255, 255, 0.18)",
-    paddingHorizontal: scale(10),
-    paddingVertical: scale(3.5),
-    borderRadius: scale(20),
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.25)",
-  },
-  verifiedMemberText: {
-    fontSize: moderateScale(11.5),
-    fontWeight: "700",
-    color: "#FFFFFF",
-  },
-  scrollContent: {
-    paddingHorizontal: scale(16),
-    paddingTop: moderateScale(16),
-    paddingBottom: moderateScale(60),
-  },
-  sectionHeader: {
-    marginBottom: moderateScale(8),
-    marginTop: moderateScale(8),
-  },
-  sectionTitle: {
-    fontSize: moderateScale(15),
-    fontWeight: "700",
-    color: "#0F172A",
-  },
-  sectionSubtitle: {
-    fontSize: moderateScale(12),
-    color: "#64748B",
-    marginTop: scale(1),
-  },
-  card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: scale(16),
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    shadowColor: "#64748B",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
-    overflow: "hidden",
-    marginBottom: moderateScale(14),
-  },
-  fieldBlock: {
-    paddingHorizontal: scale(14),
-  },
-  fieldRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: moderateScale(14),
-  },
-  fieldLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: scale(12),
-    flex: 1,
-  },
-  iconBox: {
-    width: scale(38),
-    height: scale(38),
-    borderRadius: scale(10),
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  fieldLabel: {
-    fontSize: moderateScale(13.5),
-    fontWeight: "600",
-    color: "#1E293B",
-  },
-  fieldValue: {
-    fontSize: moderateScale(12.5),
-    color: "#64748B",
-    fontWeight: "500",
-    marginTop: scale(2),
-  },
-  fieldAction: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: scale(4),
-  },
-  editActionText: {
-    fontSize: moderateScale(12.5),
-    color: "#008080",
-    fontWeight: "700",
-  },
-  lockedLabelContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: scale(6),
-  },
-  verifiedTag: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#DCFCE7",
-    paddingHorizontal: scale(6),
-    paddingVertical: scale(2),
-    borderRadius: scale(4),
-    gap: scale(3),
-  },
-  verifiedTagText: {
-    fontSize: moderateScale(10),
-    fontWeight: "700",
-    color: "#16A34A",
-  },
-  lockedValueText: {
-    fontSize: moderateScale(13),
-    color: "#334155",
-    fontWeight: "700",
-    marginTop: scale(2),
-  },
-  lockedNoteText: {
-    fontSize: moderateScale(10.5),
-    color: "#94A3B8",
-    marginTop: scale(2),
-  },
-  lockIconBox: {
-    width: scale(30),
-    height: scale(30),
-    borderRadius: scale(15),
-    backgroundColor: "#F1F5F9",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  dividerLine: {
-    height: 1,
-    backgroundColor: "#F1F5F9",
-    marginLeft: scale(50),
-  },
-  dropdownContent: {
-    backgroundColor: "#F8FAFC",
-    borderRadius: scale(12),
-    padding: scale(12),
-    marginBottom: scale(12),
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  inputSubLabel: {
-    fontSize: moderateScale(12),
-    color: "#64748B",
-    fontWeight: "600",
-    marginBottom: scale(8),
-  },
-  inputBox: {
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#CBD5E1",
-    borderRadius: scale(8),
-    paddingHorizontal: scale(12),
-    paddingVertical: Platform.OS === "ios" ? scale(10) : scale(6),
-  },
-  passwordInputBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#CBD5E1",
-    borderRadius: scale(8),
-    paddingHorizontal: scale(12),
-    paddingVertical: Platform.OS === "ios" ? scale(10) : scale(6),
-    justifyContent: "space-between",
-  },
-  emailInputWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#CBD5E1",
-    borderRadius: scale(8),
-    paddingHorizontal: scale(10),
-    paddingVertical: Platform.OS === "ios" ? scale(6) : scale(3),
-    gap: scale(8),
-  },
-  textInput: {
-    flex: 1,
-    fontSize: moderateScale(13.5),
-    color: "#0F172A",
-  },
-  actionGradientBtnWrapper: {
-    borderRadius: scale(8),
-    overflow: "hidden",
-  },
-  verifyActionBtn: {
-    paddingHorizontal: scale(14),
-    paddingVertical: scale(8),
-    borderRadius: scale(6),
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  verifyActionBtnText: {
-    color: "#FFFFFF",
-    fontSize: moderateScale(12),
-    fontWeight: "700",
-  },
-  saveBtn: {
-    paddingVertical: scale(10),
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: scale(10),
-    borderRadius: scale(8),
-  },
-  saveBtnText: {
-    color: "#FFFFFF",
-    fontSize: moderateScale(13),
-    fontWeight: "700",
-  },
-  genderOptionsGrid: {
-    gap: scale(8),
-  },
-  genderOptionPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    paddingVertical: scale(10),
-    paddingHorizontal: scale(12),
-    borderRadius: scale(8),
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    gap: scale(10),
-  },
-  genderOptionPillActive: {
-    borderColor: "#008080",
-    backgroundColor: "#F0FDF4",
-  },
-  radioCircle: {
-    width: scale(18),
-    height: scale(18),
-    borderRadius: scale(9),
-    borderWidth: 1.5,
-    borderColor: "#94A3B8",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  radioCircleActive: {
-    borderColor: "#008080",
-  },
-  radioDot: {
-    width: scale(8),
-    height: scale(8),
-    borderRadius: scale(4),
-    backgroundColor: "#008080",
-  },
-  genderOptionText: {
-    fontSize: moderateScale(13),
-    color: "#334155",
-    fontWeight: "500",
-  },
-  genderOptionTextActive: {
-    color: "#008080",
-    fontWeight: "700",
-  },
-  securityBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: scale(10),
-    backgroundColor: "#F0FDFA",
-    padding: scale(12),
-    borderRadius: scale(12),
-    borderWidth: 1,
-    borderColor: "#CCFBF1",
-    marginTop: scale(4),
-  },
-  securityBannerText: {
-    flex: 1,
-    fontSize: moderateScale(11.5),
-    color: "#0F766E",
-    fontWeight: "500",
-    lineHeight: scale(16),
-  },
-  // iOS DateTimePicker Modal
-  iosModalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.4)",
-    justifyContent: "flex-end",
-  },
-  iosModalCard: {
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: scale(20),
-    borderTopRightRadius: scale(20),
-    paddingBottom: scale(30),
-    paddingTop: scale(16),
-  },
-  iosModalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: scale(18),
-    paddingBottom: scale(12),
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
-  },
-  iosModalTitle: {
-    fontSize: moderateScale(16),
-    fontWeight: "700",
-    color: "#0F172A",
-  },
-  iosModalCancelText: {
-    fontSize: moderateScale(14),
-    color: "#64748B",
-    fontWeight: "600",
-  },
-  iosModalDoneText: {
-    fontSize: moderateScale(14),
-    color: "#008080",
-    fontWeight: "700",
-  },
-  // Image picker sheet
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "flex-end",
-  },
-  bottomSheetCard: {
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: scale(24),
-    borderTopRightRadius: scale(24),
-    paddingHorizontal: scale(20),
-    paddingTop: scale(12),
-    paddingBottom: scale(34),
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 10,
-  },
-  sheetHandle: {
-    width: scale(36),
-    height: scale(4),
-    backgroundColor: "#CBD5E1",
-    borderRadius: scale(2),
-    alignSelf: "center",
-    marginBottom: scale(14),
-  },
-  sheetTitle: {
-    fontSize: moderateScale(17),
-    fontWeight: "800",
-    color: "#0F172A",
-    textAlign: "center",
-  },
-  sheetSubtitle: {
-    fontSize: moderateScale(12.5),
-    color: "#64748B",
-    textAlign: "center",
-    marginTop: scale(2),
-    marginBottom: scale(16),
-  },
-  sheetOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: scale(12),
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
-    gap: scale(14),
-  },
-  sheetOptionIconBox: {
-    width: scale(42),
-    height: scale(42),
-    borderRadius: scale(12),
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sheetOptionTextBox: {
-    flex: 1,
-  },
-  sheetOptionTitle: {
-    fontSize: moderateScale(14.5),
-    fontWeight: "700",
-    color: "#1E293B",
-  },
-  sheetOptionSub: {
-    fontSize: moderateScale(12),
-    color: "#64748B",
-    marginTop: scale(2),
-  },
-  sheetCancelButton: {
-    marginTop: scale(16),
-    paddingVertical: scale(12),
-    backgroundColor: "#F1F5F9",
-    borderRadius: scale(12),
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sheetCancelText: {
-    fontSize: moderateScale(14),
-    fontWeight: "700",
-    color: "#475569",
-  },
-});
+const getStyles = (isDark: boolean) =>
+  StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: isDark ? "#080D0F" : "#F8FAFC",
+    },
+    heroGradient: {
+      borderBottomLeftRadius: scale(28),
+      borderBottomRightRadius: scale(28),
+      overflow: "hidden",
+      paddingBottom: moderateScale(22),
+      position: "relative",
+    },
+    safeHero: {
+      position: "relative",
+    },
+    decorCircle1: {
+      position: "absolute",
+      top: -scale(40),
+      right: -scale(40),
+      width: scale(140),
+      height: scale(140),
+      borderRadius: scale(70),
+      backgroundColor: "rgba(255, 255, 255, 0.08)",
+    },
+    decorCircle2: {
+      position: "absolute",
+      bottom: -scale(20),
+      left: -scale(30),
+      width: scale(110),
+      height: scale(110),
+      borderRadius: scale(55),
+      backgroundColor: "rgba(255, 255, 255, 0.05)",
+    },
+    navBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: scale(16),
+      paddingVertical: moderateScale(10),
+    },
+    backButton: {
+      width: scale(38),
+      height: scale(38),
+      borderRadius: scale(19),
+      backgroundColor: "rgba(255, 255, 255, 0.15)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    navTitle: {
+      fontSize: moderateScale(17),
+      fontWeight: "700",
+      color: "#FFFFFF",
+      letterSpacing: 0.3,
+    },
+    heroContent: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingTop: moderateScale(6),
+    },
+    avatarWrapper: {
+      position: "relative",
+      marginBottom: moderateScale(10),
+    },
+    avatarOuterRing: {
+      width: scale(96),
+      height: scale(96),
+      borderRadius: scale(48),
+      borderWidth: 3,
+      borderColor: "rgba(255, 255, 255, 0.8)",
+      alignItems: "center",
+      justifyContent: "center",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 8,
+      elevation: 6,
+      backgroundColor: "#003844",
+    },
+    avatarImg: {
+      width: scale(90),
+      height: scale(90),
+      borderRadius: scale(45),
+    },
+    avatarPlaceholder: {
+      width: scale(90),
+      height: scale(90),
+      borderRadius: scale(45),
+      backgroundColor: "#004d5d",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    avatarInitials: {
+      color: "#FFFFFF",
+      fontSize: moderateScale(28),
+      fontWeight: "800",
+    },
+    cameraBadgeContainer: {
+      position: "absolute",
+      bottom: 0,
+      right: 0,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      elevation: 4,
+    },
+    cameraBadge: {
+      width: scale(32),
+      height: scale(32),
+      borderRadius: scale(16),
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 2,
+      borderColor: "#FFFFFF",
+    },
+    heroUserName: {
+      fontSize: moderateScale(18),
+      fontWeight: "800",
+      color: "#FFFFFF",
+      marginBottom: moderateScale(4),
+    },
+    badgeRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: scale(8),
+    },
+    verifiedMemberBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: scale(4),
+      backgroundColor: "rgba(255, 255, 255, 0.18)",
+      paddingHorizontal: scale(10),
+      paddingVertical: scale(3.5),
+      borderRadius: scale(20),
+      borderWidth: 1,
+      borderColor: "rgba(255, 255, 255, 0.25)",
+    },
+    verifiedMemberText: {
+      fontSize: moderateScale(11.5),
+      fontWeight: "700",
+      color: "#FFFFFF",
+    },
+    scrollContent: {
+      paddingHorizontal: scale(16),
+      paddingTop: moderateScale(16),
+      paddingBottom: moderateScale(60),
+    },
+    sectionHeader: {
+      marginBottom: moderateScale(8),
+      marginTop: moderateScale(8),
+    },
+    sectionTitle: {
+      fontSize: moderateScale(15),
+      fontWeight: "700",
+      color: isDark ? "#F8FAFC" : "#0F172A",
+    },
+    sectionSubtitle: {
+      fontSize: moderateScale(12),
+      color: isDark ? "#A8B2BE" : "#64748B",
+      marginTop: scale(1),
+    },
+    card: {
+      backgroundColor: isDark ? "#151D24" : "#FFFFFF",
+      borderRadius: scale(16),
+      borderWidth: 1,
+      borderColor: isDark ? "#303B45" : "#E2E8F0",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.04,
+      shadowRadius: 6,
+      elevation: 2,
+      overflow: "hidden",
+      marginBottom: moderateScale(14),
+    },
+    fieldBlock: {
+      paddingHorizontal: scale(14),
+    },
+    fieldRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingVertical: moderateScale(14),
+    },
+    fieldLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: scale(12),
+      flex: 1,
+    },
+    iconBox: {
+      width: scale(38),
+      height: scale(38),
+      borderRadius: scale(10),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    fieldLabel: {
+      fontSize: moderateScale(13.5),
+      fontWeight: "600",
+      color: isDark ? "#F8FAFC" : "#1E293B",
+    },
+    fieldValue: {
+      fontSize: moderateScale(12.5),
+      color: isDark ? "#A8B2BE" : "#64748B",
+      fontWeight: "500",
+      marginTop: scale(2),
+    },
+    fieldAction: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: scale(4),
+    },
+    editActionText: {
+      fontSize: moderateScale(12.5),
+      color: isDark ? "#39D353" : "#008080",
+      fontWeight: "700",
+    },
+    lockedLabelContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: scale(6),
+    },
+    verifiedTag: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: isDark ? "rgba(34, 197, 94, 0.16)" : "#DCFCE7",
+      paddingHorizontal: scale(6),
+      paddingVertical: scale(2),
+      borderRadius: scale(4),
+      gap: scale(3),
+    },
+    verifiedTagText: {
+      fontSize: moderateScale(10),
+      fontWeight: "700",
+      color: isDark ? "#4ADE80" : "#16A34A",
+    },
+    lockedValueText: {
+      fontSize: moderateScale(13),
+      color: isDark ? "#E2E8F0" : "#334155",
+      fontWeight: "700",
+      marginTop: scale(2),
+    },
+    lockedNoteText: {
+      fontSize: moderateScale(10.5),
+      color: isDark ? "#94A3B8" : "#94A3B8",
+      marginTop: scale(2),
+    },
+    lockIconBox: {
+      width: scale(30),
+      height: scale(30),
+      borderRadius: scale(15),
+      backgroundColor: isDark ? "#1B252E" : "#F1F5F9",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    dividerLine: {
+      height: 1,
+      backgroundColor: isDark ? "#1E252E" : "#F1F5F9",
+      marginLeft: scale(50),
+    },
+    dropdownContent: {
+      backgroundColor: isDark ? "#1B252E" : "#F8FAFC",
+      borderRadius: scale(12),
+      padding: scale(12),
+      marginBottom: scale(12),
+      borderWidth: 1,
+      borderColor: isDark ? "#303B45" : "#E2E8F0",
+    },
+    inputSubLabel: {
+      fontSize: moderateScale(12),
+      color: isDark ? "#CBD5E1" : "#64748B",
+      fontWeight: "600",
+      marginBottom: scale(8),
+    },
+    inputBox: {
+      backgroundColor: isDark ? "#151D24" : "#FFFFFF",
+      borderWidth: 1,
+      borderColor: isDark ? "#303B45" : "#CBD5E1",
+      borderRadius: scale(8),
+      paddingHorizontal: scale(12),
+      paddingVertical: Platform.OS === "ios" ? scale(10) : scale(6),
+    },
+    passwordInputBox: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: isDark ? "#151D24" : "#FFFFFF",
+      borderWidth: 1,
+      borderColor: isDark ? "#303B45" : "#CBD5E1",
+      borderRadius: scale(8),
+      paddingHorizontal: scale(12),
+      paddingVertical: Platform.OS === "ios" ? scale(10) : scale(6),
+      justifyContent: "space-between",
+    },
+    emailInputWrapper: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: isDark ? "#151D24" : "#FFFFFF",
+      borderWidth: 1,
+      borderColor: isDark ? "#303B45" : "#CBD5E1",
+      borderRadius: scale(8),
+      paddingHorizontal: scale(10),
+      paddingVertical: Platform.OS === "ios" ? scale(6) : scale(3),
+      gap: scale(8),
+    },
+    textInput: {
+      flex: 1,
+      fontSize: moderateScale(13.5),
+      color: isDark ? "#F8FAFC" : "#0F172A",
+    },
+    actionGradientBtnWrapper: {
+      borderRadius: scale(8),
+      overflow: "hidden",
+    },
+    verifyActionBtn: {
+      paddingHorizontal: scale(14),
+      paddingVertical: scale(8),
+      borderRadius: scale(6),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    verifyActionBtnText: {
+      color: "#FFFFFF",
+      fontSize: moderateScale(12),
+      fontWeight: "700",
+    },
+    saveBtn: {
+      paddingVertical: scale(10),
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: scale(10),
+      borderRadius: scale(8),
+    },
+    saveBtnText: {
+      color: "#FFFFFF",
+      fontSize: moderateScale(13),
+      fontWeight: "700",
+    },
+    genderOptionsGrid: {
+      gap: scale(8),
+    },
+    genderOptionPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: isDark ? "#151D24" : "#FFFFFF",
+      paddingVertical: scale(10),
+      paddingHorizontal: scale(12),
+      borderRadius: scale(8),
+      borderWidth: 1,
+      borderColor: isDark ? "#303B45" : "#E2E8F0",
+      gap: scale(10),
+    },
+    genderOptionPillActive: {
+      borderColor: isDark ? "#39D353" : "#008080",
+      backgroundColor: isDark ? "rgba(57, 211, 83, 0.12)" : "#F0FDF4",
+    },
+    radioCircle: {
+      width: scale(18),
+      height: scale(18),
+      borderRadius: scale(9),
+      borderWidth: 1.5,
+      borderColor: isDark ? "#64748B" : "#94A3B8",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    radioCircleActive: {
+      borderColor: isDark ? "#39D353" : "#008080",
+    },
+    radioDot: {
+      width: scale(8),
+      height: scale(8),
+      borderRadius: scale(4),
+      backgroundColor: isDark ? "#39D353" : "#008080",
+    },
+    genderOptionText: {
+      fontSize: moderateScale(13),
+      color: isDark ? "#CBD5E1" : "#334155",
+      fontWeight: "500",
+    },
+    genderOptionTextActive: {
+      color: isDark ? "#39D353" : "#008080",
+      fontWeight: "700",
+    },
+    securityBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: scale(10),
+      backgroundColor: isDark ? "rgba(0, 128, 128, 0.15)" : "#F0FDFA",
+      padding: scale(12),
+      borderRadius: scale(12),
+      borderWidth: 1,
+      borderColor: isDark ? "rgba(0, 128, 128, 0.3)" : "#CCFBF1",
+      marginTop: scale(4),
+    },
+    securityBannerText: {
+      flex: 1,
+      fontSize: moderateScale(11.5),
+      color: isDark ? "#5EEAD4" : "#0F766E",
+      fontWeight: "500",
+      lineHeight: scale(16),
+    },
+    // iOS DateTimePicker Modal
+    iosModalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.6)",
+      justifyContent: "flex-end",
+    },
+    iosModalCard: {
+      backgroundColor: isDark ? "#151D24" : "#FFFFFF",
+      borderTopLeftRadius: scale(20),
+      borderTopRightRadius: scale(20),
+      paddingBottom: scale(30),
+      paddingTop: scale(16),
+    },
+    iosModalHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: scale(18),
+      paddingBottom: scale(12),
+      borderBottomWidth: 1,
+      borderBottomColor: isDark ? "#1E252E" : "#F1F5F9",
+    },
+    iosModalTitle: {
+      fontSize: moderateScale(16),
+      fontWeight: "700",
+      color: isDark ? "#F8FAFC" : "#0F172A",
+    },
+    iosModalCancelText: {
+      fontSize: moderateScale(14),
+      color: isDark ? "#A8B2BE" : "#64748B",
+      fontWeight: "600",
+    },
+    iosModalDoneText: {
+      fontSize: moderateScale(14),
+      color: isDark ? "#39D353" : "#008080",
+      fontWeight: "700",
+    },
+    // Image picker sheet
+    modalBackdrop: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.6)",
+      justifyContent: "flex-end",
+    },
+    bottomSheetCard: {
+      backgroundColor: isDark ? "#151D24" : "#FFFFFF",
+      borderTopLeftRadius: scale(24),
+      borderTopRightRadius: scale(24),
+      paddingHorizontal: scale(20),
+      paddingTop: scale(12),
+      paddingBottom: scale(34),
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: -4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 12,
+      elevation: 10,
+    },
+    sheetHandle: {
+      width: scale(36),
+      height: scale(4),
+      backgroundColor: isDark ? "#303B45" : "#CBD5E1",
+      borderRadius: scale(2),
+      alignSelf: "center",
+      marginBottom: scale(14),
+    },
+    sheetTitle: {
+      fontSize: moderateScale(17),
+      fontWeight: "800",
+      color: isDark ? "#F8FAFC" : "#0F172A",
+      textAlign: "center",
+    },
+    sheetSubtitle: {
+      fontSize: moderateScale(12.5),
+      color: isDark ? "#A8B2BE" : "#64748B",
+      textAlign: "center",
+      marginTop: scale(2),
+      marginBottom: scale(16),
+    },
+    sheetOption: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: scale(12),
+      borderBottomWidth: 1,
+      borderBottomColor: isDark ? "#1E252E" : "#F1F5F9",
+      gap: scale(14),
+    },
+    sheetOptionIconBox: {
+      width: scale(42),
+      height: scale(42),
+      borderRadius: scale(12),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    sheetOptionTextBox: {
+      flex: 1,
+    },
+    sheetOptionTitle: {
+      fontSize: moderateScale(14.5),
+      fontWeight: "700",
+      color: isDark ? "#F8FAFC" : "#1E293B",
+    },
+    sheetOptionSub: {
+      fontSize: moderateScale(12),
+      color: isDark ? "#A8B2BE" : "#64748B",
+      marginTop: scale(2),
+    },
+    sheetCancelButton: {
+      marginTop: scale(16),
+      paddingVertical: scale(12),
+      backgroundColor: isDark ? "#1B252E" : "#F1F5F9",
+      borderRadius: scale(12),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    sheetCancelText: {
+      fontSize: moderateScale(14),
+      fontWeight: "700",
+      color: isDark ? "#CBD5E1" : "#475569",
+    },
+  });

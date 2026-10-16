@@ -221,17 +221,29 @@ export default function OrderAgainScreen() {
     });
   };
 
-  const handleAddToCart = (product: DealProduct) => {
+  const handleAddToCart = (product: any) => {
+    const targetId = String(
+      product.id || product._id || product.productId || ""
+    ).trim() || `item-${Date.now()}`;
+    let imgUrl = "";
+    if (typeof product.imageUrl === "string" && product.imageUrl) {
+      imgUrl = product.imageUrl;
+    } else if (typeof product.image === "string" && product.image) {
+      imgUrl = product.image;
+    } else if (
+      product.image &&
+      typeof product.image === "object" &&
+      "uri" in product.image
+    ) {
+      imgUrl = product.image.uri;
+    }
     addToCart({
-      id: product.id,
+      id: targetId,
       name: product.name,
       price: product.price,
       originalPrice: product.originalPrice,
-      imageUrl:
-        typeof product.image === "object" && "uri" in product.image
-          ? (product.image as any).uri
-          : "",
-      weight: product.weight,
+      imageUrl: imgUrl,
+      weight: product.weight || "1 unit",
     });
   };
 

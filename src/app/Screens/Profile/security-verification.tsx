@@ -19,6 +19,7 @@ type VerificationStep = "choose_method" | "enter_otp";
 
 export default function SecurityVerificationScreen() {
   const theme = useTheme();
+  const isDark = theme.mode === "dark";
   const [step, setStep] = useState<VerificationStep>("choose_method");
   const [otp, setOtp] = useState<string[]>(["7", "2", "5", "5", "0"]);
   const inputRefs = useRef<(TextInput | null)[]>([]);
@@ -48,12 +49,23 @@ export default function SecurityVerificationScreen() {
 
   return (
     <SafeAreaView
-      style={[styles.container, { backgroundColor: "#ffffff" }]}
+      style={[
+        styles.container,
+        { backgroundColor: isDark ? "#080D0F" : "#ffffff" },
+      ]}
     >
-      <StatusBar style="dark" />
+      <StatusBar style={isDark ? "light" : "dark"} />
 
       {/* Top Navbar */}
-      <View style={styles.navBar}>
+      <View
+        style={[
+          styles.navBar,
+          {
+            backgroundColor: isDark ? "#080D0F" : "#ffffff",
+            borderBottomColor: isDark ? "#1E252E" : "#F1F5F9",
+          },
+        ]}
+      >
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={() => {
@@ -65,9 +77,20 @@ export default function SecurityVerificationScreen() {
           }}
           style={styles.backButton}
         >
-          <Feather name="arrow-left" size={scale(24)} color="#1E293B" />
+          <Feather
+            name="arrow-left"
+            size={scale(24)}
+            color={isDark ? "#F8FAFC" : "#1E293B"}
+          />
         </TouchableOpacity>
-        <Text style={styles.navTitle}>Security verification</Text>
+        <Text
+          style={[
+            styles.navTitle,
+            { color: isDark ? "#F8FAFC" : "#1E293B" },
+          ]}
+        >
+          Security verification
+        </Text>
       </View>
 
       <KeyboardAvoidingView
@@ -79,17 +102,27 @@ export default function SecurityVerificationScreen() {
           <View style={styles.stepContainer}>
             {/* Top Shield Icon with Checkmark */}
             <View style={styles.shieldWrapper}>
-              <View style={styles.shieldCircle}>
+              <View
+                style={[
+                  styles.shieldCircle,
+                  isDark && { backgroundColor: "#1E2E38" },
+                ]}
+              >
                 <MaterialCommunityIcons
                   name="shield-check"
                   size={scale(72)}
-                  color="#8A9BA8"
+                  color={isDark ? "#38BDF8" : "#8A9BA8"}
                 />
               </View>
             </View>
 
             {/* Instruction Text */}
-            <Text style={styles.instructionText}>
+            <Text
+              style={[
+                styles.instructionText,
+                isDark && { color: "#94A3B8" },
+              ]}
+            >
               Please choose a way to verify, and we'll send you a otp to a mail.
             </Text>
 
@@ -97,21 +130,56 @@ export default function SecurityVerificationScreen() {
             <TouchableOpacity
               activeOpacity={0.85}
               onPress={() => setStep("enter_otp")}
-              style={styles.methodCard}
+              style={[
+                styles.methodCard,
+                isDark && {
+                  backgroundColor: "#151D24",
+                  borderColor: "#303B45",
+                },
+              ]}
             >
               <View style={styles.methodLeft}>
-                <Feather name="mail" size={scale(22)} color="#334155" />
-                <Text style={styles.methodText}>Verify through Email</Text>
+                <Feather
+                  name="mail"
+                  size={scale(22)}
+                  color={isDark ? "#38BDF8" : "#334155"}
+                />
+                <Text
+                  style={[
+                    styles.methodText,
+                    isDark && { color: "#F8FAFC" },
+                  ]}
+                >
+                  Verify through Email
+                </Text>
               </View>
-              <Feather name="chevron-right" size={scale(20)} color="#2D6A4F" />
+              <Feather
+                name="chevron-right"
+                size={scale(20)}
+                color={isDark ? "#39D353" : "#2D6A4F"}
+              />
             </TouchableOpacity>
           </View>
         ) : (
           /* STEP 2: ENTER OTP */
           <View style={styles.stepContainer}>
             {/* Notification sentence */}
-            <Text style={styles.otpHeading}>
-              We sent an email to <Text style={styles.emailHighlight}>email@gmail.com</Text> with a link to change your password
+            <Text
+              style={[
+                styles.otpHeading,
+                isDark && { color: "#F8FAFC" },
+              ]}
+            >
+              We sent an email to{" "}
+              <Text
+                style={[
+                  styles.emailHighlight,
+                  isDark && { color: "#38BDF8" },
+                ]}
+              >
+                email@gmail.com
+              </Text>{" "}
+              with a link to change your password
             </Text>
 
             {/* 5-Digit OTP Boxes */}
@@ -127,7 +195,14 @@ export default function SecurityVerificationScreen() {
                   onKeyPress={(e) => handleKeyPress(e, index)}
                   keyboardType="number-pad"
                   maxLength={1}
-                  style={styles.otpBox}
+                  style={[
+                    styles.otpBox,
+                    isDark && {
+                      backgroundColor: "#1B252E",
+                      borderColor: "#303B45",
+                      color: "#F8FAFC",
+                    },
+                  ]}
                   selectTextOnFocus
                 />
               ))}
@@ -139,15 +214,29 @@ export default function SecurityVerificationScreen() {
               onPress={() => Alert.alert("OTP Resent", "A new OTP has been sent.")}
               style={styles.resendRow}
             >
-              <Text style={styles.resendText}>Request a new one</Text>
-              <Feather name="arrow-right" size={scale(16)} color="#0E7490" />
+              <Text
+                style={[
+                  styles.resendText,
+                  isDark && { color: "#38BDF8" },
+                ]}
+              >
+                Request a new one
+              </Text>
+              <Feather
+                name="arrow-right"
+                size={scale(16)}
+                color={isDark ? "#38BDF8" : "#0E7490"}
+              />
             </TouchableOpacity>
 
             {/* Verify Action Button */}
             <TouchableOpacity
               activeOpacity={0.88}
               onPress={handleVerifyOtp}
-              style={styles.verifyBtn}
+              style={[
+                styles.verifyBtn,
+                isDark && { backgroundColor: "#00687A" },
+              ]}
             >
               <Text style={styles.verifyBtnText}>Verify</Text>
             </TouchableOpacity>
