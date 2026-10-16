@@ -1,6 +1,6 @@
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { logoutVendorAction } from "@/store/slices/vendorAuthSlice";
-import { moderateScale, scale } from "@/theme";
+import { moderateScale, scale, useTheme } from "@/theme";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
@@ -215,20 +215,32 @@ const MAIN_MENU_ITEMS: MenuItem[] = [
 
   {
     id: "reports",
-    title: "Reports",
+    title: "Reports & Analytics",
     iconName: "bar-chart-2",
     iconType: "feather",
+    route: "/Screens/vendorScreens/report",
     hasDropdown: true,
+    subItems: [
+      {
+        id: "monthly_report",
+        title: "Monthly Sales Report",
+        route: "/Screens/vendorScreens/report",
+      },
+      {
+        id: "delivery_report",
+        title: "Deliveries & Returns",
+        route: "/Screens/vendorScreens/report?tab=delivery",
+      },
+      {
+        id: "growth_report",
+        title: "Growth & Revenue",
+        route: "/Screens/vendorScreens/report?tab=growth",
+      },
+    ],
   },
 ];
 
 const SETTINGS_MENU_ITEMS: MenuItem[] = [
-  {
-    id: "notification",
-    title: "Notification",
-    iconName: "bell",
-    iconType: "feather",
-  },
   {
     id: "settings",
     title: "Settings",
@@ -260,25 +272,33 @@ export default function VendorSideMenu({
   const searchParams = useLocalSearchParams<{
     status?: string;
     filter?: string;
+    tab?: string;
   }>();
   const dispatch = useAppDispatch();
   const { vendorUser, vendorDetails } = useAppSelector(
     (state) => state.vendorAuth,
   );
 
+  const theme = useTheme();
+  const isDark = theme.mode === "dark";
+
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({
     orders: false,
     products: false,
     inventory: false,
+    reports: false,
   });
 
-  // Auto-expand orders or inventory if on those screens
+  // Auto-expand orders, inventory or reports if on those screens
   useEffect(() => {
     if (pathname.includes("/VendorMain/order")) {
       setExpandedItems((prev) => ({ ...prev, orders: true }));
     }
     if (pathname.includes("/Screens/vendorScreens/stocks")) {
       setExpandedItems((prev) => ({ ...prev, inventory: true }));
+    }
+    if (pathname.includes("/Screens/vendorScreens/report")) {
+      setExpandedItems((prev) => ({ ...prev, reports: true }));
     }
   }, [pathname]);
 
@@ -428,6 +448,19 @@ export default function VendorSideMenu({
       }
     }
 
+    if (pathname.includes("/Screens/vendorScreens/report")) {
+      const currentTab = (searchParams.tab || "").toLowerCase().trim();
+      if (sub.id === "delivery_report") {
+        return currentTab === "delivery";
+      }
+      if (sub.id === "growth_report") {
+        return currentTab === "growth";
+      }
+      if (sub.id === "monthly_report") {
+        return !currentTab || currentTab === "all";
+      }
+    }
+
     if (sub.route.includes("?")) {
       const [base] = sub.route.split("?");
       return pathname === base;
@@ -437,7 +470,13 @@ export default function VendorSideMenu({
   };
 
   const renderIcon = (item: MenuItem, isActive: boolean) => {
-    const color = isActive ? "#016073" : "#475569";
+    const color = isActive
+      ? isDark
+        ? "#38BDF8"
+        : "#016073"
+      : isDark
+        ? "#94A3B8"
+        : "#475569";
     const size = scale(18);
 
     switch (item.iconType) {
@@ -471,31 +510,49 @@ export default function VendorSideMenu({
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={() => {
-            if (item.hasDropdown) {
+            if (item.hasDropdown && item.subItems && item.subItems.length > 0) {
               toggleExpand(item.id);
             } else if (item.route) {
               handleNavigate(item.route);
             }
           }}
-          style={[styles.menuItemRow, isActive && styles.menuItemActive]}
+          style={[
+            styles.menuItemRow,
+            isActive &&
+              (isDark
+                ? { backgroundColor: "rgba(2, 132, 199, 0.16)" }
+                : styles.menuItemActive),
+          ]}
         >
           <View style={styles.menuItemLeft}>
             {renderIcon(item, isActive)}
             <Text
               style={[
                 styles.menuItemTitle,
-                isActive && styles.menuItemTitleActive,
+                isDark && { color: "#F8FAFC" },
+                isActive &&
+                  (isDark
+                    ? { color: "#38BDF8", fontWeight: "700" }
+                    : styles.menuItemTitleActive),
               ]}
             >
               {item.title}
             </Text>
           </View>
 
-          {item.hasDropdown && (
+          {item.hasDropdown && item.subItems && item.subItems.length > 0 && (
             <Feather
               name="chevron-down"
               size={scale(16)}
-              color={isActive ? "#016073" : "#64748B"}
+              color={
+                isActive
+                  ? isDark
+                    ? "#38BDF8"
+                    : "#016073"
+                  : isDark
+                    ? "#94A3B8"
+                    : "#64748B"
+              }
               style={{
                 transform: [{ rotate: isExpanded ? "180deg" : "0deg" }],
               }}
@@ -515,19 +572,30 @@ export default function VendorSideMenu({
                   onPress={() => handleNavigate(sub.route || item.route)}
                   style={[
                     styles.subItemRow,
-                    isSubActive && styles.subItemRowActive,
+                    isSubActive &&
+                      (isDark
+                        ? { backgroundColor: "rgba(2, 132, 199, 0.12)" }
+                        : styles.subItemRowActive),
                   ]}
                 >
                   <View
                     style={[
                       styles.subItemBullet,
-                      isSubActive && styles.subItemBulletActive,
+                      isDark && { backgroundColor: "#303B45" },
+                      isSubActive &&
+                        (isDark
+                          ? { backgroundColor: "#38BDF8" }
+                          : styles.subItemBulletActive),
                     ]}
                   />
                   <Text
                     style={[
                       styles.subItemTitle,
-                      isSubActive && styles.subItemTitleActive,
+                      isDark && { color: "#94A3B8" },
+                      isSubActive &&
+                        (isDark
+                          ? { color: "#38BDF8", fontWeight: "700" }
+                          : styles.subItemTitleActive),
                     ]}
                   >
                     {sub.title}
@@ -566,23 +634,11 @@ export default function VendorSideMenu({
             <View style={styles.drawerHeader}>
               <View style={styles.logoRow}>
                 <Image
-                  source={require("@/assets/images/Home/bhansa-mart-cart-badge.png")}
+                  source={require("@/assets/images/Home/bhansa-mart-green-banner.png")}
                   style={styles.logoImage}
                   contentFit="contain"
                 />
               </View>
-
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={handleClose}
-                style={styles.headerMoreBtn}
-              >
-                <Feather
-                  name="more-vertical"
-                  size={scale(20)}
-                  color="#64748B"
-                />
-              </TouchableOpacity>
             </View>
 
             {/* Divider */}
@@ -660,10 +716,13 @@ const styles = StyleSheet.create({
   logoRow: {
     flexDirection: "row",
     alignItems: "center",
+    padding: scale(20),
+    // justifyContent: "center",
   },
   logoImage: {
-    width: scale(110),
-    height: scale(46),
+    position: "absolute",
+    width: scale(190),
+    height: scale(136),
   },
   headerMoreBtn: {
     width: scale(36),
