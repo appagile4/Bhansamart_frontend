@@ -223,13 +223,32 @@ export default function YouMightLikeSection({
   }, [normalizedProducts]);
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        isDark && { backgroundColor: "#101922", borderColor: "#1E2A38" },
+      ]}
+    >
       {/* Section Title & Header Action */}
       <View style={styles.headerRow}>
-        <Text style={styles.sectionTitle}>You might also like</Text>
+        <Text
+          style={[
+            styles.sectionTitle,
+            isDark && { color: "#F8FAFC" },
+          ]}
+        >
+          You might also like
+        </Text>
         {onSeeAllPress && (
           <TouchableOpacity activeOpacity={0.7} onPress={onSeeAllPress}>
-            <Text style={styles.seeAllHeaderBtnText}>See all</Text>
+            <Text
+              style={[
+                styles.seeAllHeaderBtnText,
+                isDark && { color: "#38BDF8" },
+              ]}
+            >
+              See all
+            </Text>
           </TouchableOpacity>
         )}
       </View>

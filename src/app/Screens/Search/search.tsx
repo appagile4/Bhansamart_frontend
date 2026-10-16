@@ -4,18 +4,12 @@ import { useCart } from "@/context/cart-context";
 import { getAllProductsApi } from "@/store/services/productService";
 import { ProductItem } from "@/store/slices/productSlice";
 import { moderateScale, scale, useTheme } from "@/theme";
-import {
-  Feather,
-  FontAwesome,
-  Ionicons,
-  MaterialCommunityIcons,
-} from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -60,8 +54,7 @@ function normalizeToDealProduct(prod: ProductItem, index = 0): DealProduct {
       : {
           uri: "https://images.unsplash.com/photo-1612927601601-6638404737ce?w=400&q=80",
         };
-  const pOrigPrice =
-    Number(prod.originalPrice) || Number(prod.price) || 200;
+  const pOrigPrice = Number(prod.originalPrice) || Number(prod.price) || 200;
   const pPrice = Number(prod.price) || 150;
   const discount =
     pOrigPrice > pPrice
@@ -82,7 +75,10 @@ function normalizeToDealProduct(prod: ProductItem, index = 0): DealProduct {
     ordersCount: prod.ordersCount || 500,
     image: pImg,
     images: prod.images,
-    tags: prod.tags && prod.tags.length > 0 ? prod.tags : [prod.category || "Top Pick"],
+    tags:
+      prod.tags && prod.tags.length > 0
+        ? prod.tags
+        : [prod.category || "Top Pick"],
   };
 }
 
@@ -91,6 +87,7 @@ import { useAppSelector } from "@/store/hooks";
 export default function SearchScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const isDark = theme.mode === "dark";
   const { addToCart } = useCart();
 
   const customerLat = useAppSelector((state) => state.address?.latitude);
@@ -136,7 +133,7 @@ export default function SearchScreen() {
 
     setRecentSearches((prev) => {
       const filtered = prev.filter(
-        (item) => item.label.toLowerCase() !== cleanTerm.toLowerCase()
+        (item) => item.label.toLowerCase() !== cleanTerm.toLowerCase(),
       );
       const updated = [
         {
@@ -149,7 +146,7 @@ export default function SearchScreen() {
 
       AsyncStorage.setItem(
         RECENT_SEARCHES_STORAGE_KEY,
-        JSON.stringify(updated)
+        JSON.stringify(updated),
       ).catch(() => {});
 
       return updated;
@@ -226,14 +223,14 @@ export default function SearchScreen() {
         setSearchError(
           err?.response?.data?.message ||
             err?.message ||
-            "Failed to fetch search results. Please try again."
+            "Failed to fetch search results. Please try again.",
         );
         setSearchResults([]);
       } finally {
         setIsSearching(false);
       }
     },
-    [saveRecentSearchTerm]
+    [saveRecentSearchTerm],
   );
 
   // 6. Handle Search Input Changes with Debounce
@@ -276,7 +273,7 @@ export default function SearchScreen() {
         ? searchResults
         : searchResults.filter(
             (p) =>
-              p.category?.toLowerCase() === activeCategoryFilter.toLowerCase()
+              p.category?.toLowerCase() === activeCategoryFilter.toLowerCase(),
           );
 
     return list.map((item, idx) => normalizeToDealProduct(item, idx));
@@ -295,7 +292,9 @@ export default function SearchScreen() {
 
     return Object.keys(grouped).map((catName) => ({
       title: catName,
-      items: grouped[catName].slice(0, 6).map((item, idx) => normalizeToDealProduct(item, idx)),
+      items: grouped[catName]
+        .slice(0, 6)
+        .map((item, idx) => normalizeToDealProduct(item, idx)),
     }));
   }, [discoveryProducts]);
 
@@ -312,9 +311,10 @@ export default function SearchScreen() {
         category: product.category,
         subCategory: product.subCategory,
         weight: product.weight,
-        image: typeof product.image === "object" && (product.image as any)?.uri
-          ? (product.image as any).uri
-          : undefined,
+        image:
+          typeof product.image === "object" && (product.image as any)?.uri
+            ? (product.image as any).uri
+            : undefined,
       },
     });
   };
@@ -357,14 +357,14 @@ export default function SearchScreen() {
             executeSearch("Noodles");
           },
         },
-      ]
+      ],
     );
   };
 
   const isQueryActive = searchQuery.trim().length > 0;
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, isDark && { backgroundColor: "#0A0F14" }]}>
       <StatusBar style="light" />
 
       {/* Floating Cart Bar */}
@@ -372,27 +372,45 @@ export default function SearchScreen() {
 
       {/* 1. Sky Blue Gradient Top Header with SearchBar */}
       <LinearGradient
-        colors={["#003844", "#004d5d", "#016073"]}
+        colors={
+          isDark
+            ? ["#071418", "#0B2129", "#0F2E3A"]
+            : ["#003844", "#004d5d", "#016073"]
+        }
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.gradientHeader}
       >
         <SafeAreaView edges={["top"]} style={styles.safeArea}>
-          <View style={styles.searchBarWrapper}>
+          <View
+            style={[
+              styles.searchBarWrapper,
+              isDark && {
+                backgroundColor: "#15222D",
+                borderWidth: 1,
+                borderColor: "#243545",
+                shadowOpacity: 0.25,
+              },
+            ]}
+          >
             {/* Back Arrow */}
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={() => router.back()}
               style={styles.searchIconBtn}
             >
-              <Feather name="arrow-left" size={scale(20)} color="#1E293B" />
+              <Feather
+                name="arrow-left"
+                size={scale(20)}
+                color={isDark ? "#F1F5F9" : "#1E293B"}
+              />
             </TouchableOpacity>
 
             {/* TextInput for Real Product Search */}
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, isDark && { color: "#F8FAFC" }]}
               placeholder="Search in all categories (e.g. Noodles, Tea)"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
               value={searchQuery}
               onChangeText={handleSearchChange}
               onSubmitEditing={() => executeSearch(searchQuery)}
@@ -411,12 +429,21 @@ export default function SearchScreen() {
                 }}
                 style={styles.clearBtn}
               >
-                <Feather name="x" size={scale(16)} color="#94A3B8" />
+                <Feather
+                  name="x"
+                  size={scale(16)}
+                  color={isDark ? "#64748B" : "#94A3B8"}
+                />
               </TouchableOpacity>
             )}
 
             {/* Subtle Divider */}
-            <View style={styles.searchDivider} />
+            <View
+              style={[
+                styles.searchDivider,
+                isDark && { backgroundColor: "#243545" },
+              ]}
+            />
 
             {/* Microphone Button */}
             <TouchableOpacity
@@ -424,7 +451,11 @@ export default function SearchScreen() {
               onPress={handleVoiceSearch}
               style={styles.searchIconBtn}
             >
-              <Feather name="mic" size={scale(19)} color="#0F172A" />
+              <Feather
+                name="mic"
+                size={scale(19)}
+                color={isDark ? "#ffffff" : "#0F172A"}
+              />
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -443,7 +474,12 @@ export default function SearchScreen() {
           <View style={styles.resultsContainer}>
             {/* Search Header Row */}
             <View style={styles.resultsHeaderRow}>
-              <Text style={styles.resultsCountText}>
+              <Text
+                style={[
+                  styles.resultsCountText,
+                  isDark && { color: "#94A3B8" },
+                ]}
+              >
                 {isSearching
                   ? "Searching all categories..."
                   : `Found ${searchResults.length} product${
@@ -468,12 +504,23 @@ export default function SearchScreen() {
                       onPress={() => setActiveCategoryFilter(cat)}
                       style={[
                         styles.catPill,
-                        isSelected && styles.catPillActive,
+                        isDark && {
+                          backgroundColor: "#15222D",
+                          borderColor: "#243545",
+                        },
+                        isSelected &&
+                          (isDark
+                            ? {
+                                backgroundColor: "#016073",
+                                borderColor: "#016073",
+                              }
+                            : styles.catPillActive),
                       ]}
                     >
                       <Text
                         style={[
                           styles.catPillText,
+                          isDark && { color: "#94A3B8" },
                           isSelected && styles.catPillTextActive,
                         ]}
                       >
@@ -488,20 +535,36 @@ export default function SearchScreen() {
             {/* Loading Indicator */}
             {isSearching ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#004d5d" />
-                <Text style={styles.loadingText}>
+                <ActivityIndicator
+                  size="large"
+                  color={isDark ? "#38BDF8" : "#004d5d"}
+                />
+                <Text
+                  style={[styles.loadingText, isDark && { color: "#94A3B8" }]}
+                >
                   Searching products across all categories...
                 </Text>
               </View>
             ) : searchError ? (
               <View style={styles.emptyContainer}>
                 <Feather name="alert-circle" size={scale(48)} color="#EF4444" />
-                <Text style={styles.emptyTitle}>Search Error</Text>
-                <Text style={styles.emptySubtitle}>{searchError}</Text>
+                <Text
+                  style={[styles.emptyTitle, isDark && { color: "#F8FAFC" }]}
+                >
+                  Search Error
+                </Text>
+                <Text
+                  style={[styles.emptySubtitle, isDark && { color: "#94A3B8" }]}
+                >
+                  {searchError}
+                </Text>
                 <TouchableOpacity
                   activeOpacity={0.8}
                   onPress={() => executeSearch(searchQuery)}
-                  style={styles.retryBtn}
+                  style={[
+                    styles.retryBtn,
+                    isDark && { backgroundColor: "#016073" },
+                  ]}
                 >
                   <Text style={styles.retryBtnText}>Retry Search</Text>
                 </TouchableOpacity>
@@ -523,9 +586,19 @@ export default function SearchScreen() {
             ) : (
               /* Empty State */
               <View style={styles.emptyContainer}>
-                <Feather name="search" size={scale(48)} color="#CBD5E1" />
-                <Text style={styles.emptyTitle}>No products found</Text>
-                <Text style={styles.emptySubtitle}>
+                <Feather
+                  name="search"
+                  size={scale(48)}
+                  color={isDark ? "#334155" : "#CBD5E1"}
+                />
+                <Text
+                  style={[styles.emptyTitle, isDark && { color: "#F8FAFC" }]}
+                >
+                  No products found
+                </Text>
+                <Text
+                  style={[styles.emptySubtitle, isDark && { color: "#94A3B8" }]}
+                >
                   We couldn't find any products matching "{searchQuery.trim()}".
                   Try searching with different keywords or browse categories.
                 </Text>
@@ -541,12 +614,23 @@ export default function SearchScreen() {
             {recentSearches.length > 0 && (
               <View style={styles.sectionContainer}>
                 <View style={styles.sectionHeaderRow}>
-                  <Text style={styles.sectionHeading}>Recent searches</Text>
+                  <Text
+                    style={[
+                      styles.sectionHeading,
+                      isDark && { color: "#F8FAFC" },
+                    ]}
+                  >
+                    Recent searches
+                  </Text>
                   <TouchableOpacity
                     activeOpacity={0.7}
                     onPress={handleClearRecent}
                   >
-                    <Text style={styles.clearText}>Clear</Text>
+                    <Text
+                      style={[styles.clearText, isDark && { color: "#F87171" }]}
+                    >
+                      Clear
+                    </Text>
                   </TouchableOpacity>
                 </View>
 
@@ -564,15 +648,28 @@ export default function SearchScreen() {
                         setSearchQuery(chip.label);
                         executeSearch(chip.label);
                       }}
-                      style={styles.chipPill}
+                      style={[
+                        styles.chipPill,
+                        isDark && {
+                          backgroundColor: "#15222D",
+                          borderColor: "#243545",
+                        },
+                      ]}
                     >
                       <Feather
                         name="search"
                         size={scale(13)}
-                        color="#64748B"
+                        color={isDark ? "#64748B" : "#64748B"}
                         style={styles.chipIcon}
                       />
-                      <Text style={styles.chipLabel}>{chip.label}</Text>
+                      <Text
+                        style={[
+                          styles.chipLabel,
+                          isDark && { color: "#E2E8F0" },
+                        ]}
+                      >
+                        {chip.label}
+                      </Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
@@ -581,7 +678,11 @@ export default function SearchScreen() {
 
             {/* Section 2: Trending Searches */}
             <View style={styles.sectionContainer}>
-              <Text style={styles.sectionHeading}>Trending in categories</Text>
+              <Text
+                style={[styles.sectionHeading, isDark && { color: "#F8FAFC" }]}
+              >
+                Trending in categories
+              </Text>
 
               <View style={styles.trendingWrap}>
                 {DEFAULT_TRENDING.map((item) => (
@@ -592,14 +693,28 @@ export default function SearchScreen() {
                       setSearchQuery(item.title);
                       executeSearch(item.title);
                     }}
-                    style={styles.trendingPill}
+                    style={[
+                      styles.trendingPill,
+                      isDark && {
+                        backgroundColor: "#10232B",
+                        borderWidth: 1,
+                        borderColor: "#1A3644",
+                      },
+                    ]}
                   >
                     <MaterialCommunityIcons
                       name={item.icon as any}
                       size={scale(16)}
-                      color="#004d5d"
+                      color={isDark ? "#ffff" : "#004d5d"}
                     />
-                    <Text style={styles.trendingPillText}>{item.title}</Text>
+                    <Text
+                      style={[
+                        styles.trendingPillText,
+                        isDark && { color: "#7DD3FC" },
+                      ]}
+                    >
+                      {item.title}
+                    </Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -608,14 +723,28 @@ export default function SearchScreen() {
             {/* Section 3: Popular Category Shelves with Real Products */}
             {isDiscoveryLoading ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="small" color="#004d5d" />
-                <Text style={styles.loadingText}>Loading popular products...</Text>
+                <ActivityIndicator
+                  size="small"
+                  color={isDark ? "#38BDF8" : "#004d5d"}
+                />
+                <Text
+                  style={[styles.loadingText, isDark && { color: "#94A3B8" }]}
+                >
+                  Loading popular products...
+                </Text>
               </View>
             ) : (
               discoveryShelves.map((shelf) => (
                 <View key={shelf.title} style={styles.shelfContainer}>
                   <View style={styles.shelfHeaderRow}>
-                    <Text style={styles.shelfTitle}>{shelf.title}</Text>
+                    <Text
+                      style={[
+                        styles.shelfTitle,
+                        isDark && { color: "#F8FAFC" },
+                      ]}
+                    >
+                      {shelf.title}
+                    </Text>
                     <TouchableOpacity
                       activeOpacity={0.7}
                       onPress={() => {
@@ -623,7 +752,14 @@ export default function SearchScreen() {
                         executeSearch(shelf.title);
                       }}
                     >
-                      <Text style={styles.seeAllText}>See all</Text>
+                      <Text
+                        style={[
+                          styles.seeAllText,
+                          isDark && { color: "#38BDF8" },
+                        ]}
+                      >
+                        See all
+                      </Text>
                     </TouchableOpacity>
                   </View>
 

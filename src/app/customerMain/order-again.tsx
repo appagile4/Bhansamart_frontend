@@ -248,14 +248,19 @@ export default function OrderAgainScreen() {
   };
 
   const hasPastOrders = previousOrderedProducts.length > 0;
+  const isDark = theme.mode === "dark";
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, isDark && { backgroundColor: "#0A0F14" }]}>
       <StatusBar style="light" />
 
       {/* 1. Top Cyan/Blue Gradient Header with Safe Area */}
       <LinearGradient
-        colors={["#003844", "#004d5d", "#016073"]}
+        colors={
+          isDark
+            ? ["#071418", "#0B2129", "#0F2E3A"]
+            : ["#003844", "#004d5d", "#016073"]
+        }
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={styles.gradientHeader}
@@ -270,10 +275,20 @@ export default function OrderAgainScreen() {
                 onPress={() => setIsLocationModalVisible(true)}
                 style={styles.locationButton}
               >
-                <Text style={styles.locationText} numberOfLines={1}>
+                <Text
+                  style={[
+                    styles.locationText,
+                    isDark && { color: "#BAE6FD" },
+                  ]}
+                  numberOfLines={1}
+                >
                   {currentLocation}
                 </Text>
-                <Feather name="chevron-down" size={scale(14)} color="#ffffff" />
+                <Feather
+                  name="chevron-down"
+                  size={scale(14)}
+                  color={isDark ? "#BAE6FD" : "#ffffff"}
+                />
               </TouchableOpacity>
             </View>
 
@@ -281,21 +296,45 @@ export default function OrderAgainScreen() {
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => router.push("/Screens/Profile/profile" as any)}
-              style={styles.profileBtn}
+              style={[
+                styles.profileBtn,
+                isDark && {
+                  backgroundColor: "#15222D",
+                  borderColor: "#243545",
+                  borderWidth: 1,
+                },
+              ]}
             >
-              <Ionicons name="person" size={scale(17)} color="#1E293B" />
+              <Ionicons
+                name="person"
+                size={scale(17)}
+                color={isDark ? "#E2E8F0" : "#1E293B"}
+              />
             </TouchableOpacity>
           </View>
 
           {/* Search Input Bar */}
-          <View style={styles.searchBarContainer}>
-            <Feather name="search" size={scale(18)} color="#64748B" />
+          <View
+            style={[
+              styles.searchBarContainer,
+              isDark && {
+                backgroundColor: "#15222D",
+                borderColor: "#243545",
+                borderWidth: 1,
+              },
+            ]}
+          >
+            <Feather
+              name="search"
+              size={scale(18)}
+              color={isDark ? "#94A3B8" : "#64748B"}
+            />
             <TextInput
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholder="Search products to order again..."
-              placeholderTextColor="#94A3B8"
-              style={styles.searchInput}
+              placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
+              style={[styles.searchInput, isDark && { color: "#F8FAFC" }]}
             />
             {searchQuery.length > 0 ? (
               <TouchableOpacity
@@ -303,11 +342,19 @@ export default function OrderAgainScreen() {
                 onPress={() => setSearchQuery("")}
                 style={styles.micBtn}
               >
-                <Feather name="x" size={scale(16)} color="#64748B" />
+                <Feather
+                  name="x"
+                  size={scale(16)}
+                  color={isDark ? "#94A3B8" : "#64748B"}
+                />
               </TouchableOpacity>
             ) : (
               <TouchableOpacity activeOpacity={0.7} style={styles.micBtn}>
-                <Feather name="mic" size={scale(17)} color="#64748B" />
+                <Feather
+                  name="mic"
+                  size={scale(17)}
+                  color={isDark ? "#94A3B8" : "#64748B"}
+                />
               </TouchableOpacity>
             )}
           </View>
@@ -322,8 +369,8 @@ export default function OrderAgainScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={["#003844"]}
-            tintColor="#003844"
+            colors={[isDark ? "#38BDF8" : "#003844"]}
+            tintColor={isDark ? "#38BDF8" : "#003844"}
           />
         }
       >
@@ -332,14 +379,44 @@ export default function OrderAgainScreen() {
           <View style={styles.bestsellersSection}>
             <View style={styles.sectionHeaderRow}>
               <View>
-                <Text style={styles.bestsellersTitle}>Previously Ordered</Text>
-                <Text style={styles.bestsellersSubtitle}>
+                <Text
+                  style={[
+                    styles.bestsellersTitle,
+                    isDark && { color: "#F8FAFC" },
+                  ]}
+                >
+                  Previously Ordered
+                </Text>
+                <Text
+                  style={[
+                    styles.bestsellersSubtitle,
+                    isDark && { color: "#94A3B8" },
+                  ]}
+                >
                   Quickly reorder items from your past deliveries
                 </Text>
               </View>
-              <View style={styles.topRankPill}>
-                <Feather name="repeat" size={scale(12)} color="#DC2626" />
-                <Text style={styles.topRankText}>
+              <View
+                style={[
+                  styles.topRankPill,
+                  isDark && {
+                    backgroundColor: "#351419",
+                    borderColor: "#5C1D24",
+                    borderWidth: 1,
+                  },
+                ]}
+              >
+                <Feather
+                  name="repeat"
+                  size={scale(12)}
+                  color={isDark ? "#F87171" : "#DC2626"}
+                />
+                <Text
+                  style={[
+                    styles.topRankText,
+                    isDark && { color: "#F87171" },
+                  ]}
+                >
                   {previousOrderedProducts.length} Items
                 </Text>
               </View>
@@ -348,7 +425,10 @@ export default function OrderAgainScreen() {
             {filteredPastProducts.length > 0 ? (
               <View style={styles.productsGrid}>
                 {filteredPastProducts.map((item) => (
-                  <View key={`past-${item.id}`} style={styles.productCardWrapper}>
+                  <View
+                    key={`past-${item.id}`}
+                    style={styles.productCardWrapper}
+                  >
                     <ProductCard
                       product={item}
                       cardWidth={CARD_WIDTH}
@@ -360,7 +440,12 @@ export default function OrderAgainScreen() {
               </View>
             ) : (
               <View style={styles.noSearchBox}>
-                <Text style={styles.noSearchText}>
+                <Text
+                  style={[
+                    styles.noSearchText,
+                    isDark && { color: "#94A3B8" },
+                  ]}
+                >
                   No past items match "{searchQuery}"
                 </Text>
               </View>
@@ -368,10 +453,28 @@ export default function OrderAgainScreen() {
           </View>
         ) : (
           /* Reordering Illustration & Hero Banner Section (Shown when no past orders) */
-          <View style={styles.illustrationSection}>
+          <View
+            style={[
+              styles.illustrationSection,
+              isDark && {
+                backgroundColor: "#101922",
+                borderColor: "#1E2A38",
+              },
+            ]}
+          >
             <View style={styles.bagIllustrationWrapper}>
-              <View style={styles.cloudLeft} />
-              <View style={styles.cloudRight} />
+              <View
+                style={[
+                  styles.cloudLeft,
+                  isDark && { backgroundColor: "#1E2A38" },
+                ]}
+              />
+              <View
+                style={[
+                  styles.cloudRight,
+                  isDark && { backgroundColor: "#1E2A38" },
+                ]}
+              />
 
               <View style={styles.groceryBag}>
                 <MaterialCommunityIcons
@@ -399,8 +502,20 @@ export default function OrderAgainScreen() {
               </View>
             </View>
 
-            <Text style={styles.reorderingTitle}>Reordering Will Be Easy</Text>
-            <Text style={styles.reorderingSubtitle}>
+            <Text
+              style={[
+                styles.reorderingTitle,
+                isDark && { color: "#F8FAFC" },
+              ]}
+            >
+              Reordering Will Be Easy
+            </Text>
+            <Text
+              style={[
+                styles.reorderingSubtitle,
+                isDark && { color: "#94A3B8" },
+              ]}
+            >
               Items you order most frequently will show up here for fast 1-tap
               reordering. Explore our popular store products below to get
               started!
@@ -412,10 +527,20 @@ export default function OrderAgainScreen() {
         <View style={styles.bestsellersSection}>
           <View style={styles.sectionHeaderRow}>
             <View>
-              <Text style={styles.bestsellersTitle}>
+              <Text
+                style={[
+                  styles.bestsellersTitle,
+                  isDark && { color: "#F8FAFC" },
+                ]}
+              >
                 {hasPastOrders ? "Popular Products" : "Best sellers"}
               </Text>
-              <Text style={styles.bestsellersSubtitle}>
+              <Text
+                style={[
+                  styles.bestsellersSubtitle,
+                  isDark && { color: "#94A3B8" },
+                ]}
+              >
                 {hasPastOrders
                   ? "Explore trending essentials from nearby stores"
                   : "Highest selling items across all categories"}
@@ -425,11 +550,24 @@ export default function OrderAgainScreen() {
               <View
                 style={[
                   styles.topRankPill,
-                  { backgroundColor: "#DCFCE7" },
+                  {
+                    backgroundColor: isDark ? "#0A2818" : "#DCFCE7",
+                    borderColor: isDark ? "#14532D" : "transparent",
+                    borderWidth: isDark ? 1 : 0,
+                  },
                 ]}
               >
-                <Ionicons name="sparkles" size={scale(12)} color="#16A34A" />
-                <Text style={[styles.topRankText, { color: "#16A34A" }]}>
+                <Ionicons
+                  name="sparkles"
+                  size={scale(12)}
+                  color={isDark ? "#4ADE80" : "#16A34A"}
+                />
+                <Text
+                  style={[
+                    styles.topRankText,
+                    { color: isDark ? "#4ADE80" : "#16A34A" },
+                  ]}
+                >
                   {liveBestsellers.length} Live
                 </Text>
               </View>
@@ -439,8 +577,16 @@ export default function OrderAgainScreen() {
           {/* Loading Indicator */}
           {publicLoading && liveBestsellers.length === 0 ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#003844" />
-              <Text style={styles.loadingText}>
+              <ActivityIndicator
+                size="large"
+                color={isDark ? "#38BDF8" : "#003844"}
+              />
+              <Text
+                style={[
+                  styles.loadingText,
+                  isDark && { color: "#94A3B8" },
+                ]}
+              >
                 Loading fresh products from store...
               </Text>
             </View>
@@ -466,9 +612,14 @@ export default function OrderAgainScreen() {
               <MaterialCommunityIcons
                 name="package-variant"
                 size={scale(40)}
-                color="#94A3B8"
+                color={isDark ? "#475569" : "#94A3B8"}
               />
-              <Text style={styles.noSearchText}>
+              <Text
+                style={[
+                  styles.noSearchText,
+                  isDark && { color: "#64748B" },
+                ]}
+              >
                 {searchQuery.trim()
                   ? `No products found matching "${searchQuery}"`
                   : "No store products currently available."}

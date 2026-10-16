@@ -123,6 +123,7 @@ const GRADIENT_COLORS = ["#003844", "#004d5d", "#016073"] as const;
 export default function CartScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const isDark = theme.mode === "dark";
   const {
     cartItems,
     addToCart,
@@ -289,12 +290,12 @@ export default function CartScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, isDark && { backgroundColor: "#0A0F14" }]}>
       <StatusBar style="light" />
 
       {/* Top Header with Gradient Bar */}
       <LinearGradient
-        colors={GRADIENT_COLORS}
+        colors={isDark ? ["#071418", "#0B2129", "#0F2E3A"] : GRADIENT_COLORS}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
       >
@@ -326,15 +327,36 @@ export default function CartScreen() {
       </LinearGradient>
 
       {/* Main Screen Body */}
-      <View style={styles.body}>
+      <View style={[styles.body, isDark && { backgroundColor: "#0A0F14" }]}>
         {cartItems.length === 0 && savedItems.length === 0 ? (
           /* Empty Cart State */
           <View style={styles.emptyCartContainer}>
-            <View style={styles.emptyIconCircle}>
-              <Ionicons name="cart-outline" size={scale(56)} color="#008080" />
+            <View
+              style={[
+                styles.emptyIconCircle,
+                isDark && { backgroundColor: "#15222D" },
+              ]}
+            >
+              <Ionicons
+                name="cart-outline"
+                size={scale(56)}
+                color={isDark ? "#38BDF8" : "#008080"}
+              />
             </View>
-            <Text style={styles.emptyTitle}>Your Cart is Empty</Text>
-            <Text style={styles.emptySubtitle}>
+            <Text
+              style={[
+                styles.emptyTitle,
+                isDark && { color: "#F8FAFC" },
+              ]}
+            >
+              Your Cart is Empty
+            </Text>
+            <Text
+              style={[
+                styles.emptySubtitle,
+                isDark && { color: "#94A3B8" },
+              ]}
+            >
               Looks like you haven't added anything to your cart yet. Explore
               thousands of items with fast delivery!
             </Text>
@@ -345,7 +367,7 @@ export default function CartScreen() {
               style={styles.shopNowBtnWrapper}
             >
               <LinearGradient
-                colors={GRADIENT_COLORS}
+                colors={isDark ? ["#071418", "#0B2129", "#0F2E3A"] : GRADIENT_COLORS}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.shopNowBtn}
@@ -361,16 +383,40 @@ export default function CartScreen() {
             contentContainerStyle={styles.scrollContent}
           >
             {/* Delivery Timeline / Address Bar */}
-            <View style={styles.addressBar}>
+            <View
+              style={[
+                styles.addressBar,
+                isDark && {
+                  backgroundColor: "#101922",
+                  borderColor: "#1E2A38",
+                },
+              ]}
+            >
               <View style={styles.addressBarLeft}>
-                <View style={styles.lightningIconBox}>
+                <View
+                  style={[
+                    styles.lightningIconBox,
+                    isDark && { backgroundColor: "#016073" },
+                  ]}
+                >
                   <Ionicons name="flash" size={scale(14)} color="#FFFFFF" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.deliverySpeedText}>
+                  <Text
+                    style={[
+                      styles.deliverySpeedText,
+                      isDark && { color: "#F8FAFC" },
+                    ]}
+                  >
                     Delivery in 10-15 mins
                   </Text>
-                  <Text style={styles.deliveryLocationText} numberOfLines={1}>
+                  <Text
+                    style={[
+                      styles.deliveryLocationText,
+                      isDark && { color: "#94A3B8" },
+                    ]}
+                    numberOfLines={1}
+                  >
                     {deliveryAddress}
                   </Text>
                 </View>
@@ -380,7 +426,14 @@ export default function CartScreen() {
                 activeOpacity={0.7}
                 onPress={() => router.push("/Screens/Profile/address" as any)}
               >
-                <Text style={styles.changeAddressText}>Change</Text>
+                <Text
+                  style={[
+                    styles.changeAddressText,
+                    isDark && { color: "#38BDF8" },
+                  ]}
+                >
+                  Change
+                </Text>
               </TouchableOpacity>
             </View>
 
@@ -428,21 +481,52 @@ export default function CartScreen() {
 
             {/* 5. Payment Method Selection Section */}
             {cartItems.length > 0 && (
-              <View style={styles.paymentSectionCard}>
-                <View style={styles.paymentHeaderRow}>
+              <View
+                style={[
+                  styles.paymentSectionCard,
+                  isDark && {
+                    backgroundColor: "#101922",
+                    borderColor: "#1E2A38",
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.paymentHeaderRow,
+                    isDark && { borderBottomColor: "#1E2A38" },
+                  ]}
+                >
                   <View style={styles.paymentHeaderLeft}>
-                    <View style={styles.paymentHeaderIconBox}>
+                    <View
+                      style={[
+                        styles.paymentHeaderIconBox,
+                        isDark && {
+                          backgroundColor: "#15222D",
+                          borderColor: "#243545",
+                        },
+                      ]}
+                    >
                       <MaterialCommunityIcons
                         name="credit-card-outline"
                         size={scale(18)}
-                        color="#008080"
+                        color={isDark ? "#38BDF8" : "#008080"}
                       />
                     </View>
                     <View>
-                      <Text style={styles.paymentSectionTitle}>
+                      <Text
+                        style={[
+                          styles.paymentSectionTitle,
+                          isDark && { color: "#F8FAFC" },
+                        ]}
+                      >
                         Payment Method
                       </Text>
-                      <Text style={styles.paymentSectionSubtitle}>
+                      <Text
+                        style={[
+                          styles.paymentSectionSubtitle,
+                          isDark && { color: "#94A3B8" },
+                        ]}
+                      >
                         Select your preferred payment option
                       </Text>
                     </View>
@@ -453,7 +537,14 @@ export default function CartScreen() {
                       router.push("/Screens/Profile/paymentsetting" as any)
                     }
                   >
-                    <Text style={styles.managePaymentText}>Manage</Text>
+                    <Text
+                      style={[
+                        styles.managePaymentText,
+                        isDark && { color: "#38BDF8" },
+                      ]}
+                    >
+                      Manage
+                    </Text>
                   </TouchableOpacity>
                 </View>
 
@@ -467,13 +558,27 @@ export default function CartScreen() {
                         onPress={() => setPaymentMethod(option.name)}
                         style={[
                           styles.paymentOptionItem,
-                          isSelected && styles.paymentOptionItemSelected,
+                          isDark && {
+                            backgroundColor: "#15222D",
+                            borderColor: "#243545",
+                          },
+                          isSelected &&
+                            (isDark
+                              ? {
+                                  backgroundColor: "#102824",
+                                  borderColor: "#0D9488",
+                                }
+                              : styles.paymentOptionItemSelected),
                         ]}
                       >
                         <View
                           style={[
                             styles.paymentOptionIconBox,
-                            { backgroundColor: option.iconBg },
+                            {
+                              backgroundColor: isDark
+                                ? "#1E2A38"
+                                : option.iconBg,
+                            },
                           ]}
                         >
                           <MaterialCommunityIcons
@@ -488,20 +593,39 @@ export default function CartScreen() {
                             <Text
                               style={[
                                 styles.paymentOptionTitle,
-                                isSelected && styles.paymentOptionTitleSelected,
+                                isDark && { color: "#E2E8F0" },
+                                isSelected &&
+                                  (isDark
+                                    ? { color: "#F8FAFC" }
+                                    : styles.paymentOptionTitleSelected),
                               ]}
                             >
                               {option.name}
                             </Text>
                             {option.id === "cod" && (
-                              <View style={styles.popularBadge}>
-                                <Text style={styles.popularBadgeText}>
+                              <View
+                                style={[
+                                  styles.popularBadge,
+                                  isDark && { backgroundColor: "#0A2818" },
+                                ]}
+                              >
+                                <Text
+                                  style={[
+                                    styles.popularBadgeText,
+                                    isDark && { color: "#4ADE80" },
+                                  ]}
+                                >
                                   POPULAR
                                 </Text>
                               </View>
                             )}
                           </View>
-                          <Text style={styles.paymentOptionSub}>
+                          <Text
+                            style={[
+                              styles.paymentOptionSub,
+                              isDark && { color: "#94A3B8" },
+                            ]}
+                          >
                             {option.subtitle}
                           </Text>
                         </View>
@@ -509,10 +633,21 @@ export default function CartScreen() {
                         <View
                           style={[
                             styles.radioCircle,
-                            isSelected && styles.radioCircleSelected,
+                            isDark && { borderColor: "#475569" },
+                            isSelected &&
+                              (isDark
+                                ? { borderColor: "#0D9488" }
+                                : styles.radioCircleSelected),
                           ]}
                         >
-                          {isSelected && <View style={styles.radioInner} />}
+                          {isSelected && (
+                            <View
+                              style={[
+                                styles.radioInner,
+                                isDark && { backgroundColor: "#0D9488" },
+                              ]}
+                            />
+                          )}
                         </View>
                       </TouchableOpacity>
                     );

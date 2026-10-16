@@ -181,7 +181,19 @@ export default function SelectLocationModal({
     }
   };
 
+  const isDark = theme.mode === "dark";
+
   const getAddressBg = (type: string) => {
+    if (isDark) {
+      switch (type) {
+        case "Work":
+          return "#132D42";
+        case "Other":
+          return "#2A1E45";
+        default:
+          return "#133123";
+      }
+    }
     switch (type) {
       case "Work":
         return "#E0F2FE";
@@ -206,9 +218,9 @@ export default function SelectLocationModal({
         </TouchableWithoutFeedback>
 
         {/* Bottom Sheet Card */}
-        <View style={styles.sheetCard}>
+        <View style={[styles.sheetCard, isDark && { backgroundColor: "#111820" }]}>
           {/* Top Pull Handle */}
-          <View style={styles.pullHandle} />
+          <View style={[styles.pullHandle, isDark && { backgroundColor: "#334155" }]} />
 
           <ScrollView
             showsVerticalScrollIndicator={false}
@@ -218,20 +230,35 @@ export default function SelectLocationModal({
           >
             {/* 1. Device Location Not Enabled Notice Banner */}
             {isLocationEnabled === false && (
-              <View style={styles.noticeBanner}>
+              <View
+                style={[
+                  styles.noticeBanner,
+                  isDark && { backgroundColor: "#1A242F", borderColor: "#2B3A4A" },
+                ]}
+              >
                 <View style={styles.noticeIconWrap}>
                   <MaterialCommunityIcons
                     name="map-marker-off-outline"
                     size={scale(24)}
-                    color="#1E293B"
+                    color={isDark ? "#94A3B8" : "#1E293B"}
                   />
                 </View>
 
                 <View style={styles.noticeTextGroup}>
-                  <Text style={styles.noticeTitle}>
+                  <Text
+                    style={[
+                      styles.noticeTitle,
+                      isDark && { color: "#F8FAFC" },
+                    ]}
+                  >
                     Device Location not enabled
                   </Text>
-                  <Text style={styles.noticeSubtitle}>
+                  <Text
+                    style={[
+                      styles.noticeSubtitle,
+                      isDark && { color: "#94A3B8" },
+                    ]}
+                  >
                     Enable for precise delivery address
                   </Text>
                 </View>
@@ -248,7 +275,14 @@ export default function SelectLocationModal({
 
             {/* 2. Select Location Header */}
             <View style={styles.headerRow}>
-              <Text style={styles.mainTitle}>Select Delivery Location</Text>
+              <Text
+                style={[
+                  styles.mainTitle,
+                  isDark && { color: "#F8FAFC" },
+                ]}
+              >
+                Select Delivery Location
+              </Text>
               <TouchableOpacity
                 onPress={() => {
                   onClose();
@@ -260,12 +294,24 @@ export default function SelectLocationModal({
             </View>
 
             {/* 3. Search Bar Input */}
-            <View style={styles.searchBarContainer}>
-              <Feather name="search" size={scale(18)} color="#64748B" />
+            <View
+              style={[
+                styles.searchBarContainer,
+                isDark && { backgroundColor: "#1A242F", borderColor: "#2B3A4A" },
+              ]}
+            >
+              <Feather
+                name="search"
+                size={scale(18)}
+                color={isDark ? "#94A3B8" : "#64748B"}
+              />
               <TextInput
-                style={styles.searchInput}
+                style={[
+                  styles.searchInput,
+                  isDark && { color: "#F8FAFC" },
+                ]}
                 placeholder="Search area, landmark, saved address..."
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 autoCorrect={false}
@@ -278,14 +324,19 @@ export default function SelectLocationModal({
                   <Ionicons
                     name="close-circle"
                     size={scale(18)}
-                    color="#94A3B8"
+                    color={isDark ? "#94A3B8" : "#94A3B8"}
                   />
                 </TouchableOpacity>
               )}
             </View>
 
             {/* 4. Action Card (Use Current Location & Add New Address) */}
-            <View style={styles.actionCard}>
+            <View
+              style={[
+                styles.actionCard,
+                isDark && { backgroundColor: "#1A242F", borderColor: "#2B3A4A" },
+              ]}
+            >
               {/* Use current location row */}
               <TouchableOpacity
                 activeOpacity={0.7}
@@ -300,22 +351,32 @@ export default function SelectLocationModal({
                     <MaterialCommunityIcons
                       name="crosshairs-gps"
                       size={scale(20)}
-                      color="#265935"
+                      color={isDark ? "#4ADE80" : "#265935"}
                     />
                   )}
-                  <Text style={styles.actionText}>
+                  <Text
+                    style={[
+                      styles.actionText,
+                      isDark && { color: "#4ADE80" },
+                    ]}
+                  >
                     {isLocating ? "Fetching GPS location..." : "Use current location"}
                   </Text>
                 </View>
                 <Feather
                   name="chevron-right"
                   size={scale(18)}
-                  color="#64748B"
+                  color={isDark ? "#94A3B8" : "#64748B"}
                 />
               </TouchableOpacity>
 
               {/* Divider */}
-              <View style={styles.actionDivider} />
+              <View
+                style={[
+                  styles.actionDivider,
+                  isDark && { backgroundColor: "#2B3A4A" },
+                ]}
+              />
 
               {/* Add New address row */}
               <TouchableOpacity
@@ -324,19 +385,37 @@ export default function SelectLocationModal({
                 style={styles.actionRow}
               >
                 <View style={styles.actionLeft}>
-                  <Feather name="plus" size={scale(20)} color="#265935" />
-                  <Text style={styles.actionText}>Add new address</Text>
+                  <Feather
+                    name="plus"
+                    size={scale(20)}
+                    color={isDark ? "#4ADE80" : "#265935"}
+                  />
+                  <Text
+                    style={[
+                      styles.actionText,
+                      isDark && { color: "#4ADE80" },
+                    ]}
+                  >
+                    Add new address
+                  </Text>
                 </View>
                 <Feather
                   name="chevron-right"
                   size={scale(18)}
-                  color="#64748B"
+                  color={isDark ? "#94A3B8" : "#64748B"}
                 />
               </TouchableOpacity>
             </View>
 
             {/* 5. Saved Addresses Section */}
-            <Text style={styles.recentSectionTitle}>Your Saved Addresses</Text>
+            <Text
+              style={[
+                styles.recentSectionTitle,
+                isDark && { color: "#94A3B8" },
+              ]}
+            >
+              Your Saved Addresses
+            </Text>
 
             {loading && addresses.length === 0 ? (
               <View style={{ paddingVertical: scale(20), alignItems: "center" }}>
@@ -356,7 +435,9 @@ export default function SelectLocationModal({
                     onPress={() => handleSelectSavedAddress(item)}
                     style={[
                       styles.locationCard,
+                      isDark && { backgroundColor: "#1A242F", borderColor: "#2B3A4A" },
                       isSelected && styles.locationCardSelected,
+                      isSelected && isDark && { backgroundColor: "#122A26", borderColor: "#008080" },
                     ]}
                   >
                     {/* Location Icon Badge */}
@@ -372,14 +453,27 @@ export default function SelectLocationModal({
                     {/* Location Text Group */}
                     <View style={styles.locationTextGroup}>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: scale(6) }}>
-                        <Text style={styles.locationName}>{item.type}</Text>
+                        <Text
+                          style={[
+                            styles.locationName,
+                            isDark && { color: "#F8FAFC" },
+                          ]}
+                        >
+                          {item.type}
+                        </Text>
                         {item.isDefault && (
                           <View style={styles.defaultPill}>
                             <Text style={styles.defaultPillText}>DEFAULT</Text>
                           </View>
                         )}
                       </View>
-                      <Text style={styles.locationAddress} numberOfLines={2}>
+                      <Text
+                        style={[
+                          styles.locationAddress,
+                          isDark && { color: "#94A3B8" },
+                        ]}
+                        numberOfLines={2}
+                      >
                         {item.addressLine}
                       </Text>
                     </View>
@@ -395,7 +489,7 @@ export default function SelectLocationModal({
                       <Feather
                         name="chevron-right"
                         size={scale(18)}
-                        color="#64748B"
+                        color={isDark ? "#94A3B8" : "#64748B"}
                       />
                     )}
                   </TouchableOpacity>
@@ -403,7 +497,14 @@ export default function SelectLocationModal({
               })
             ) : (
               <View style={styles.noSavedBox}>
-                <Text style={styles.noSavedText}>No saved addresses found</Text>
+                <Text
+                  style={[
+                    styles.noSavedText,
+                    isDark && { color: "#64748B" },
+                  ]}
+                >
+                  No saved addresses found
+                </Text>
               </View>
             )}
           </ScrollView>

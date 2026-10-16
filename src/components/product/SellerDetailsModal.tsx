@@ -66,6 +66,7 @@ export default function SellerDetailsModal({
   onSeeOtherSellers,
 }: SellerDetailsModalProps) {
   const theme = useTheme();
+  const isDark = theme.mode === "dark";
   const [isFavorite, setIsFavorite] = useState(false);
 
   const data = { ...DEFAULT_SELLER, ...seller };
@@ -84,9 +85,9 @@ export default function SellerDetailsModal({
         </TouchableWithoutFeedback>
 
         {/* Bottom Sheet Card */}
-        <View style={styles.sheetCard}>
+        <View style={[styles.sheetCard, isDark && { backgroundColor: "#111820" }]}>
           {/* Top Pull Handle */}
-          <View style={styles.pullHandle} />
+          <View style={[styles.pullHandle, isDark && { backgroundColor: "#334155" }]} />
 
           <ScrollView
             showsVerticalScrollIndicator={false}
@@ -105,7 +106,13 @@ export default function SellerDetailsModal({
               </View>
 
               {/* Store Title */}
-              <Text style={styles.storeName} numberOfLines={2}>
+              <Text
+                style={[
+                  styles.storeName,
+                  isDark && { color: "#F8FAFC" },
+                ]}
+                numberOfLines={2}
+              >
                 {data.name}
               </Text>
 
@@ -118,7 +125,7 @@ export default function SellerDetailsModal({
                 <Ionicons
                   name={isFavorite ? "heart" : "heart-outline"}
                   size={scale(24)}
-                  color={isFavorite ? "#EF4444" : "#1E293B"}
+                  color={isFavorite ? "#EF4444" : isDark ? "#F1F5F9" : "#1E293B"}
                 />
               </TouchableOpacity>
             </View>
@@ -131,27 +138,48 @@ export default function SellerDetailsModal({
                   <Ionicons
                     name="location-outline"
                     size={scale(15)}
-                    color="#64748B"
+                    color={isDark ? "#94A3B8" : "#64748B"}
                   />
-                  <Text style={styles.metricText}>{data.distance}</Text>
+                  <Text
+                    style={[
+                      styles.metricText,
+                      isDark && { color: "#94A3B8" },
+                    ]}
+                  >
+                    {data.distance}
+                  </Text>
                 </View>
 
                 <View style={styles.metricItem}>
                   <Ionicons
                     name="time-outline"
                     size={scale(15)}
-                    color="#64748B"
+                    color={isDark ? "#94A3B8" : "#64748B"}
                   />
-                  <Text style={styles.metricText}>{data.deliveryTime}</Text>
+                  <Text
+                    style={[
+                      styles.metricText,
+                      isDark && { color: "#94A3B8" },
+                    ]}
+                  >
+                    {data.deliveryTime}
+                  </Text>
                 </View>
 
                 <View style={styles.metricItem}>
                   <Ionicons
                     name="time-outline"
                     size={scale(15)}
-                    color="#64748B"
+                    color={isDark ? "#94A3B8" : "#64748B"}
                   />
-                  <Text style={styles.metricText}>{data.experience}</Text>
+                  <Text
+                    style={[
+                      styles.metricText,
+                      isDark && { color: "#94A3B8" },
+                    ]}
+                  >
+                    {data.experience}
+                  </Text>
                 </View>
               </View>
 
@@ -168,48 +196,164 @@ export default function SellerDetailsModal({
                     style={styles.ratingStar}
                   />
                 </View>
-                <Text style={styles.ratingCountText}>{data.ratingCount}</Text>
+                <Text
+                  style={[
+                    styles.ratingCountText,
+                    isDark && { color: "#94A3B8" },
+                  ]}
+                >
+                  {data.ratingCount}
+                </Text>
               </View>
             </View>
 
             {/* 3. 3-Column Stats Row */}
-            <View style={styles.statsRow}>
+            <View
+              style={[
+                styles.statsRow,
+                isDark && { borderColor: "#1E2A38" },
+              ]}
+            >
               <View style={styles.statCol}>
-                <Text style={styles.statNumber}>{data.stat1Value}</Text>
-                <Text style={styles.statLabel}>{data.stat1Label}</Text>
+                <Text
+                  style={[
+                    styles.statNumber,
+                    isDark && { color: "#F8FAFC" },
+                  ]}
+                >
+                  {data.stat1Value}
+                </Text>
+                <Text
+                  style={[
+                    styles.statLabel,
+                    isDark && { color: "#94A3B8" },
+                  ]}
+                >
+                  {data.stat1Label}
+                </Text>
               </View>
-              <View style={styles.statDivider} />
+              <View
+                style={[
+                  styles.statDivider,
+                  isDark && { backgroundColor: "#1E2A38" },
+                ]}
+              />
               <View style={styles.statCol}>
-                <Text style={styles.statNumber}>{data.stat2Value}</Text>
-                <Text style={styles.statLabel}>{data.stat2Label}</Text>
+                <Text
+                  style={[
+                    styles.statNumber,
+                    isDark && { color: "#F8FAFC" },
+                  ]}
+                >
+                  {data.stat2Value}
+                </Text>
+                <Text
+                  style={[
+                    styles.statLabel,
+                    isDark && { color: "#94A3B8" },
+                  ]}
+                >
+                  {data.stat2Label}
+                </Text>
               </View>
-              <View style={styles.statDivider} />
+              <View
+                style={[
+                  styles.statDivider,
+                  isDark && { backgroundColor: "#1E2A38" },
+                ]}
+              />
               <View style={styles.statCol}>
-                <Text style={styles.statNumber}>{data.stat3Value}</Text>
-                <Text style={styles.statLabel}>{data.stat3Label}</Text>
+                <Text
+                  style={[
+                    styles.statNumber,
+                    isDark && { color: "#F8FAFC" },
+                  ]}
+                >
+                  {data.stat3Value}
+                </Text>
+                <Text
+                  style={[
+                    styles.statLabel,
+                    isDark && { color: "#94A3B8" },
+                  ]}
+                >
+                  {data.stat3Label}
+                </Text>
               </View>
             </View>
 
             {/* 4. About Seller Section */}
             <View style={styles.sectionContainer}>
-              <Text style={styles.sectionHeading}>About Seller</Text>
-              <Text style={styles.sectionBodyText}>{data.aboutText}</Text>
+              <Text
+                style={[
+                  styles.sectionHeading,
+                  isDark && { color: "#F8FAFC" },
+                ]}
+              >
+                About Seller
+              </Text>
+              <Text
+                style={[
+                  styles.sectionBodyText,
+                  isDark && { color: "#94A3B8" },
+                ]}
+              >
+                {data.aboutText}
+              </Text>
             </View>
 
-            <View style={styles.thinDivider} />
+            <View
+              style={[
+                styles.thinDivider,
+                isDark && { backgroundColor: "#1E2A38" },
+              ]}
+            />
 
             {/* 5. Location Section */}
             <View style={styles.sectionContainer}>
-              <Text style={styles.sectionHeading}>Location</Text>
-              <Text style={styles.sectionBodyText}>{data.locationText}</Text>
+              <Text
+                style={[
+                  styles.sectionHeading,
+                  isDark && { color: "#F8FAFC" },
+                ]}
+              >
+                Location
+              </Text>
+              <Text
+                style={[
+                  styles.sectionBodyText,
+                  isDark && { color: "#94A3B8" },
+                ]}
+              >
+                {data.locationText}
+              </Text>
             </View>
 
-            <View style={styles.thinDivider} />
+            <View
+              style={[
+                styles.thinDivider,
+                isDark && { backgroundColor: "#1E2A38" },
+              ]}
+            />
 
             {/* 6. Product Catalog Section */}
             <View style={styles.sectionContainer}>
-              <Text style={styles.sectionHeading}>Product Catalog</Text>
-              <Text style={styles.sectionBodyText}>{data.catalogText}</Text>
+              <Text
+                style={[
+                  styles.sectionHeading,
+                  isDark && { color: "#F8FAFC" },
+                ]}
+              >
+                Product Catalog
+              </Text>
+              <Text
+                style={[
+                  styles.sectionBodyText,
+                  isDark && { color: "#94A3B8" },
+                ]}
+              >
+                {data.catalogText}
+              </Text>
             </View>
 
             {/* 7. Action Button */}
@@ -219,9 +363,22 @@ export default function SellerDetailsModal({
                 onClose();
                 onSeeOtherSellers?.();
               }}
-              style={styles.seeOtherButton}
+              style={[
+                styles.seeOtherButton,
+                isDark && {
+                  backgroundColor: "#111820",
+                  borderColor: "#38BDF8",
+                },
+              ]}
             >
-              <Text style={styles.seeOtherButtonText}>See other sellers</Text>
+              <Text
+                style={[
+                  styles.seeOtherButtonText,
+                  isDark && { color: "#38BDF8" },
+                ]}
+              >
+                See other sellers
+              </Text>
             </TouchableOpacity>
           </ScrollView>
         </View>

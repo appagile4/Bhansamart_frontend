@@ -248,9 +248,11 @@ export default function ProductDetailScreen() {
     );
   };
 
+  const isDark = theme.mode === "dark";
+
   return (
-    <View style={styles.root}>
-      <StatusBar style="dark" />
+    <View style={[styles.root, isDark && { backgroundColor: "#0A0F14" }]}>
+      <StatusBar style={isDark ? "light" : "dark"} />
 
       {/* Top Floating Action Bar */}
       <SafeAreaView edges={["top"]} style={styles.topBarContainer}>
@@ -259,9 +261,20 @@ export default function ProductDetailScreen() {
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => router.back()}
-            style={styles.iconCircleBtn}
+            style={[
+              styles.iconCircleBtn,
+              isDark && {
+                backgroundColor: "#15222D",
+                borderColor: "#243545",
+                borderWidth: 1,
+              },
+            ]}
           >
-            <Feather name="chevron-down" size={scale(24)} color="#1E293B" />
+            <Feather
+              name="chevron-down"
+              size={scale(24)}
+              color={isDark ? "#F1F5F9" : "#1E293B"}
+            />
           </TouchableOpacity>
 
           {/* Wishlist & Share Buttons */}
@@ -271,25 +284,48 @@ export default function ProductDetailScreen() {
               onPress={handleToggleWishlist}
               style={[
                 styles.iconCircleBtn,
-                isWishlisted && { backgroundColor: "#FFF1F2" },
+                isDark && {
+                  backgroundColor: "#15222D",
+                  borderColor: "#243545",
+                  borderWidth: 1,
+                },
+                isWishlisted && {
+                  backgroundColor: isDark ? "#351419" : "#FFF1F2",
+                  borderColor: isDark ? "#5C1D24" : "transparent",
+                },
               ]}
             >
               <Ionicons
                 name={isWishlisted ? "heart" : "heart-outline"}
                 size={scale(19)}
-                color={isWishlisted ? "#DC2626" : "#1E293B"}
+                color={
+                  isWishlisted
+                    ? isDark
+                      ? "#F87171"
+                      : "#DC2626"
+                    : isDark
+                      ? "#F1F5F9"
+                      : "#1E293B"
+                }
               />
             </TouchableOpacity>
 
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={handleShare}
-              style={styles.iconCircleBtn}
+              style={[
+                styles.iconCircleBtn,
+                isDark && {
+                  backgroundColor: "#15222D",
+                  borderColor: "#243545",
+                  borderWidth: 1,
+                },
+              ]}
             >
               <Ionicons
                 name="share-social-outline"
                 size={scale(19)}
-                color="#1E293B"
+                color={isDark ? "#F1F5F9" : "#1E293B"}
               />
             </TouchableOpacity>
           </View>
@@ -302,7 +338,12 @@ export default function ProductDetailScreen() {
         contentContainerStyle={styles.scrollContent}
       >
         {/* 1. Hero Product Image Showcase (Paging Carousel) */}
-        <View style={styles.heroImageCard}>
+        <View
+          style={[
+            styles.heroImageCard,
+            isDark && { backgroundColor: "#101922" },
+          ]}
+        >
           <ScrollView
             horizontal
             pagingEnabled
@@ -340,8 +381,12 @@ export default function ProductDetailScreen() {
                   style={[
                     styles.dot,
                     activeImageIndex === dotIdx
-                      ? styles.dotActive
-                      : styles.dotInactive,
+                      ? isDark
+                        ? { backgroundColor: "#38BDF8", width: scale(10) }
+                        : styles.dotActive
+                      : isDark
+                        ? { backgroundColor: "#334155" }
+                        : styles.dotInactive,
                   ]}
                 />
               ))}
@@ -350,18 +395,67 @@ export default function ProductDetailScreen() {
         </View>
 
         {/* 2. Product Name, Unit & Price Banner */}
-        <View style={styles.productInfoSection}>
-          <Text style={styles.productTitle}>{productName}</Text>
-          <Text style={styles.productWeight}>{productWeight}</Text>
+        <View
+          style={[
+            styles.productInfoSection,
+            isDark && { backgroundColor: "#101922" },
+          ]}
+        >
+          <Text
+            style={[
+              styles.productTitle,
+              isDark && { color: "#F8FAFC" },
+            ]}
+          >
+            {productName}
+          </Text>
+          <Text
+            style={[
+              styles.productWeight,
+              isDark && { color: "#94A3B8" },
+            ]}
+          >
+            {productWeight}
+          </Text>
 
           <View style={styles.priceRow}>
-            <Text style={styles.currentPrice}>Rs. {productPrice}</Text>
+            <Text
+              style={[
+                styles.currentPrice,
+                isDark && { color: "#F8FAFC" },
+              ]}
+            >
+              Rs. {productPrice}
+            </Text>
             {productOriginalPrice > productPrice && (
-              <Text style={styles.mrpPrice}>MRP Rs. {productOriginalPrice}</Text>
+              <Text
+                style={[
+                  styles.mrpPrice,
+                  isDark && { color: "#64748B" },
+                ]}
+              >
+                MRP Rs. {productOriginalPrice}
+              </Text>
             )}
             {discountPercent > 0 && (
-              <View style={styles.discountBadge}>
-                <Text style={styles.discountText}>{discountPercent}% OFF</Text>
+              <View
+                style={[
+                  styles.discountBadge,
+                  isDark && {
+                    backgroundColor: "#0A2818",
+                    borderColor: "#14532D",
+                    borderWidth: 1,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.discountText,
+                    isDark && { color: "#4ADE80" },
+                  ]}
+                >
+                  {discountPercent}% OFF
+                </Text>
               </View>
             )}
           </View>
@@ -370,74 +464,216 @@ export default function ProductDetailScreen() {
         {/* 3. Store / Seller Card */}
         <TouchableOpacity
           activeOpacity={0.8}
-          style={styles.sellerCard}
+          style={[
+            styles.sellerCard,
+            isDark && {
+              backgroundColor: "#101922",
+              borderColor: "#1E2A38",
+            },
+          ]}
           onPress={() => setIsSellerModalVisible(true)}
         >
           <View style={styles.sellerLeft}>
-            <View style={styles.sellerAvatar}>
+            <View
+              style={[
+                styles.sellerAvatar,
+                isDark && { backgroundColor: "#132D3E" },
+              ]}
+            >
               <MaterialCommunityIcons
                 name="storefront-outline"
                 size={scale(20)}
-                color="#016073"
+                color={isDark ? "#38BDF8" : "#016073"}
               />
             </View>
             <View style={styles.sellerTextGroup}>
-              <Text style={styles.sellerName}>{sellerInfo.name}</Text>
+              <Text
+                style={[
+                  styles.sellerName,
+                  isDark && { color: "#F8FAFC" },
+                ]}
+              >
+                {sellerInfo.name}
+              </Text>
               <View style={styles.sellerSubRow}>
-                <Text style={styles.sellerLocation}>{sellerInfo.locationText}</Text>
-                <Text style={styles.sellerDot}>•</Text>
+                <Text
+                  style={[
+                    styles.sellerLocation,
+                    isDark && { color: "#94A3B8" },
+                  ]}
+                >
+                  {sellerInfo.locationText}
+                </Text>
+                <Text
+                  style={[
+                    styles.sellerDot,
+                    isDark && { color: "#64748B" },
+                  ]}
+                >
+                  •
+                </Text>
                 <View style={styles.ratingBadge}>
-                  <Text style={styles.ratingText}>{ratingAvg.toFixed(1)}</Text>
+                  <Text
+                    style={[
+                      styles.ratingText,
+                      isDark && { color: "#F8FAFC" },
+                    ]}
+                  >
+                    {ratingAvg.toFixed(1)}
+                  </Text>
                   <Ionicons name="star" size={scale(11)} color="#F59E0B" />
                 </View>
               </View>
             </View>
           </View>
-          <Feather name="chevron-right" size={scale(18)} color="#64748B" />
+          <Feather
+            name="chevron-right"
+            size={scale(18)}
+            color={isDark ? "#94A3B8" : "#64748B"}
+          />
         </TouchableOpacity>
 
         {/* 4. Expandable View Product Details */}
-        <View style={styles.accordionCard}>
+        <View
+          style={[
+            styles.accordionCard,
+            isDark && {
+              backgroundColor: "#101922",
+              borderColor: "#1E2A38",
+            },
+          ]}
+        >
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() => setIsDetailsExpanded((prev) => !prev)}
             style={styles.accordionHeader}
           >
-            <Text style={styles.accordionTitle}>View product details</Text>
+            <Text
+              style={[
+                styles.accordionTitle,
+                isDark && { color: "#F8FAFC" },
+              ]}
+            >
+              View product details
+            </Text>
             <Feather
               name={isDetailsExpanded ? "chevron-up" : "chevron-down"}
               size={scale(18)}
-              color="#1E293B"
+              color={isDark ? "#F8FAFC" : "#1E293B"}
             />
           </TouchableOpacity>
 
           {isDetailsExpanded && (
             <View style={styles.accordionBody}>
-              <Text style={styles.detailsBodyText}>{productDescription}</Text>
+              <Text
+                style={[
+                  styles.detailsBodyText,
+                  isDark && { color: "#CBD5E1" },
+                ]}
+              >
+                {productDescription}
+              </Text>
               <View style={styles.detailItemRow}>
-                <Text style={styles.detailKey}>Category:</Text>
-                <Text style={styles.detailVal}>{productCategory}</Text>
+                <Text
+                  style={[
+                    styles.detailKey,
+                    isDark && { color: "#94A3B8" },
+                  ]}
+                >
+                  Category:
+                </Text>
+                <Text
+                  style={[
+                    styles.detailVal,
+                    isDark && { color: "#F8FAFC" },
+                  ]}
+                >
+                  {productCategory}
+                </Text>
               </View>
               <View style={styles.detailItemRow}>
-                <Text style={styles.detailKey}>Sub-Category:</Text>
-                <Text style={styles.detailVal}>{productSubCategory}</Text>
+                <Text
+                  style={[
+                    styles.detailKey,
+                    isDark && { color: "#94A3B8" },
+                  ]}
+                >
+                  Sub-Category:
+                </Text>
+                <Text
+                  style={[
+                    styles.detailVal,
+                    isDark && { color: "#F8FAFC" },
+                  ]}
+                >
+                  {productSubCategory}
+                </Text>
               </View>
               <View style={styles.detailItemRow}>
-                <Text style={styles.detailKey}>Brand:</Text>
-                <Text style={styles.detailVal}>{productBrand}</Text>
+                <Text
+                  style={[
+                    styles.detailKey,
+                    isDark && { color: "#94A3B8" },
+                  ]}
+                >
+                  Brand:
+                </Text>
+                <Text
+                  style={[
+                    styles.detailVal,
+                    isDark && { color: "#F8FAFC" },
+                  ]}
+                >
+                  {productBrand}
+                </Text>
               </View>
               <View style={styles.detailItemRow}>
-                <Text style={styles.detailKey}>Unit / Size:</Text>
-                <Text style={styles.detailVal}>{productWeight}</Text>
+                <Text
+                  style={[
+                    styles.detailKey,
+                    isDark && { color: "#94A3B8" },
+                  ]}
+                >
+                  Unit / Size:
+                </Text>
+                <Text
+                  style={[
+                    styles.detailVal,
+                    isDark && { color: "#F8FAFC" },
+                  ]}
+                >
+                  {productWeight}
+                </Text>
               </View>
               {product?.sku && (
                 <View style={styles.detailItemRow}>
-                  <Text style={styles.detailKey}>SKU:</Text>
-                  <Text style={styles.detailVal}>{product.sku}</Text>
+                  <Text
+                    style={[
+                      styles.detailKey,
+                      isDark && { color: "#94A3B8" },
+                    ]}
+                  >
+                    SKU:
+                  </Text>
+                  <Text
+                    style={[
+                      styles.detailVal,
+                      isDark && { color: "#F8FAFC" },
+                    ]}
+                  >
+                    {product.sku}
+                  </Text>
                 </View>
               )}
               <View style={styles.detailItemRow}>
-                <Text style={styles.detailKey}>Stock Status:</Text>
+                <Text
+                  style={[
+                    styles.detailKey,
+                    isDark && { color: "#94A3B8" },
+                  ]}
+                >
+                  Stock Status:
+                </Text>
                 <Text
                   style={[
                     styles.detailVal,
@@ -454,33 +690,80 @@ export default function ProductDetailScreen() {
         {/* 5. Brand Card */}
         <TouchableOpacity
           activeOpacity={0.8}
-          style={styles.brandCard}
+          style={[
+            styles.brandCard,
+            isDark && {
+              backgroundColor: "#101922",
+              borderColor: "#1E2A38",
+            },
+          ]}
           onPress={() => {}}
         >
           <View style={styles.brandLeft}>
-            <View style={styles.brandLogoBox}>
+            <View
+              style={[
+                styles.brandLogoBox,
+                isDark && { backgroundColor: "#016073" },
+              ]}
+            >
               <Text style={styles.brandLogoText}>
                 {productBrand.substring(0, 3).toUpperCase()}
               </Text>
             </View>
             <View>
-              <Text style={styles.brandTitle}>{productBrand}</Text>
-              <Text style={styles.brandSubtitle}>
+              <Text
+                style={[
+                  styles.brandTitle,
+                  isDark && { color: "#F8FAFC" },
+                ]}
+              >
+                {productBrand}
+              </Text>
+              <Text
+                style={[
+                  styles.brandSubtitle,
+                  isDark && { color: "#94A3B8" },
+                ]}
+              >
                 Explore {productBrand} in {productCategory}
               </Text>
             </View>
           </View>
-          <Feather name="chevron-right" size={scale(18)} color="#64748B" />
+          <Feather
+            name="chevron-right"
+            size={scale(18)}
+            color={isDark ? "#94A3B8" : "#64748B"}
+          />
         </TouchableOpacity>
 
         {/* 6. Ratings & Reviews Section */}
-        <View style={styles.reviewsSection}>
+        <View
+          style={[
+            styles.reviewsSection,
+            isDark && {
+              backgroundColor: "#101922",
+              borderColor: "#1E2A38",
+            },
+          ]}
+        >
           <View style={styles.reviewsHeader}>
-            <Text style={styles.reviewsHeading}>
+            <Text
+              style={[
+                styles.reviewsHeading,
+                isDark && { color: "#F8FAFC" },
+              ]}
+            >
               Ratings & Reviews ({ratingReviewsCount})
             </Text>
             <View style={styles.ratingSummaryBtn}>
-              <Text style={styles.avgRatingText}>{ratingAvg.toFixed(1)}</Text>
+              <Text
+                style={[
+                  styles.avgRatingText,
+                  isDark && { color: "#F8FAFC" },
+                ]}
+              >
+                {ratingAvg.toFixed(1)}
+              </Text>
               <View style={styles.starRow}>
                 {[1, 2, 3, 4, 5].map((s) => (
                   <Ionicons
@@ -495,9 +778,20 @@ export default function ProductDetailScreen() {
           </View>
 
           {/* Sample Verified Reviews */}
-          <View style={styles.reviewCard}>
+          <View
+            style={[
+              styles.reviewCard,
+              isDark && { backgroundColor: "#15202B" },
+            ]}
+          >
             <View style={styles.reviewContentCol}>
-              <Text style={styles.reviewQuoteText} numberOfLines={3}>
+              <Text
+                style={[
+                  styles.reviewQuoteText,
+                  isDark && { color: "#E2E8F0" },
+                ]}
+                numberOfLines={3}
+              >
                 Very fresh quality, timely delivery within 30 minutes. Exactly as described in the catalog!
               </Text>
               <View style={styles.reviewUserRow}>
@@ -511,7 +805,14 @@ export default function ProductDetailScreen() {
                     />
                   ))}
                 </View>
-                <Text style={styles.reviewerName}>Ramesh S. • Verified Buyer</Text>
+                <Text
+                  style={[
+                    styles.reviewerName,
+                    isDark && { color: "#94A3B8" },
+                  ]}
+                >
+                  Ramesh S. • Verified Buyer
+                </Text>
               </View>
             </View>
           </View>
@@ -519,8 +820,21 @@ export default function ProductDetailScreen() {
 
         {/* 7. Similar Products in Category */}
         {similarProducts.length > 0 && (
-          <View style={styles.gridSection}>
-            <Text style={styles.gridSectionTitle}>
+          <View
+            style={[
+              styles.gridSection,
+              isDark && {
+                backgroundColor: "#101922",
+                borderColor: "#1E2A38",
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.gridSectionTitle,
+                isDark && { color: "#F8FAFC" },
+              ]}
+            >
               Similar Products in {productCategory}
             </Text>
             <View style={styles.productsGrid}>
@@ -539,7 +853,12 @@ export default function ProductDetailScreen() {
                     onPress={() => handleProductCardPress(item)}
                     style={styles.productCard}
                   >
-                    <View style={styles.gridImageBox}>
+                    <View
+                      style={[
+                        styles.gridImageBox,
+                        isDark && { backgroundColor: "#182430" },
+                      ]}
+                    >
                       <Image
                         source={{ uri: sImg }}
                         style={styles.gridProductImg}
@@ -558,49 +877,120 @@ export default function ProductDetailScreen() {
                               weight: item.unit || "1 pc",
                             })
                           }
-                          style={styles.gridAddBtn}
+                          style={[
+                            styles.gridAddBtn,
+                            isDark && {
+                              backgroundColor: "#15222D",
+                              borderColor: "#38BDF8",
+                            },
+                          ]}
                         >
-                          <Text style={styles.gridAddText}>ADD</Text>
+                          <Text
+                            style={[
+                              styles.gridAddText,
+                              isDark && { color: "#38BDF8" },
+                            ]}
+                          >
+                            ADD
+                          </Text>
                         </TouchableOpacity>
                       ) : (
-                        <View style={styles.gridCounterBox}>
+                        <View
+                          style={[
+                            styles.gridCounterBox,
+                            isDark && {
+                              backgroundColor: "#15222D",
+                              borderColor: "#38BDF8",
+                            },
+                          ]}
+                        >
                           <TouchableOpacity
                             onPress={() => updateQuantity(sId, -1)}
                             style={styles.gridCounterBtn}
                           >
-                            <Feather name="minus" size={scale(9)} color="#016073" />
+                            <Feather
+                              name="minus"
+                              size={scale(9)}
+                              color={isDark ? "#38BDF8" : "#016073"}
+                            />
                           </TouchableOpacity>
-                          <Text style={styles.gridCounterQty}>{sQty}</Text>
+                          <Text
+                            style={[
+                              styles.gridCounterQty,
+                              isDark && { color: "#38BDF8" },
+                            ]}
+                          >
+                            {sQty}
+                          </Text>
                           <TouchableOpacity
                             onPress={() => updateQuantity(sId, 1)}
                             style={styles.gridCounterBtn}
                           >
-                            <Feather name="plus" size={scale(9)} color="#016073" />
+                            <Feather
+                              name="plus"
+                              size={scale(9)}
+                              color={isDark ? "#38BDF8" : "#016073"}
+                            />
                           </TouchableOpacity>
                         </View>
                       )}
                     </View>
 
-                    <Text style={styles.gridUnitText}>{item.unit || "1 pc"}</Text>
+                    <Text
+                      style={[
+                        styles.gridUnitText,
+                        isDark && { color: "#94A3B8" },
+                      ]}
+                    >
+                      {item.unit || "1 pc"}
+                    </Text>
 
-                    <Text style={styles.gridTitle} numberOfLines={2}>
+                    <Text
+                      style={[
+                        styles.gridTitle,
+                        isDark && { color: "#F8FAFC" },
+                      ]}
+                      numberOfLines={2}
+                    >
                       {item.name}
                     </Text>
 
                     <View style={styles.gridStarRow}>
                       <Ionicons name="star" size={scale(9)} color="#F59E0B" />
-                      <Text style={styles.gridRatingText}>
+                      <Text
+                        style={[
+                          styles.gridRatingText,
+                          isDark && { color: "#CBD5E1" },
+                        ]}
+                      >
                         {(item.ratingsAverage || 4.5).toFixed(1)}
                       </Text>
-                      <Text style={styles.gridReviewsCount}>
+                      <Text
+                        style={[
+                          styles.gridReviewsCount,
+                          isDark && { color: "#64748B" },
+                        ]}
+                      >
                         ({item.ratingsCount || 10})
                       </Text>
                     </View>
 
                     <View style={styles.gridPriceRow}>
-                      <Text style={styles.gridPrice}>Rs. {item.price}</Text>
+                      <Text
+                        style={[
+                          styles.gridPrice,
+                          isDark && { color: "#F8FAFC" },
+                        ]}
+                      >
+                        Rs. {item.price}
+                      </Text>
                       {item.originalPrice && item.originalPrice > item.price && (
-                        <Text style={styles.gridOrigPrice}>
+                        <Text
+                          style={[
+                            styles.gridOrigPrice,
+                            isDark && { color: "#64748B" },
+                          ]}
+                        >
                           Rs. {item.originalPrice}
                         </Text>
                       )}
@@ -625,15 +1015,40 @@ export default function ProductDetailScreen() {
           {
             paddingBottom: Math.max(insets.bottom, scale(12)),
           },
+          isDark && {
+            backgroundColor: "#101922",
+            borderTopColor: "#1E2A38",
+          },
         ]}
       >
         {/* Left Price & Unit Box */}
         <View style={styles.bottomPriceBox}>
           <View style={styles.bottomUnitRow}>
-            <Text style={styles.bottomUnitText}>{productWeight}</Text>
+            <Text
+              style={[
+                styles.bottomUnitText,
+                isDark && { color: "#94A3B8" },
+              ]}
+            >
+              {productWeight}
+            </Text>
             {discountPercent > 0 && (
-              <View style={styles.bottomDiscountPill}>
-                <Text style={styles.bottomDiscountPillText}>
+              <View
+                style={[
+                  styles.bottomDiscountPill,
+                  isDark && {
+                    backgroundColor: "#0A2818",
+                    borderColor: "#14532D",
+                    borderWidth: 1,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.bottomDiscountPillText,
+                    isDark && { color: "#4ADE80" },
+                  ]}
+                >
                   {discountPercent}% OFF
                 </Text>
               </View>
@@ -641,14 +1056,33 @@ export default function ProductDetailScreen() {
           </View>
 
           <View style={styles.bottomPriceRow}>
-            <Text style={styles.bottomPriceBold}>Rs. {productPrice}</Text>
+            <Text
+              style={[
+                styles.bottomPriceBold,
+                isDark && { color: "#F8FAFC" },
+              ]}
+            >
+              Rs. {productPrice}
+            </Text>
             {productOriginalPrice > productPrice && (
-              <Text style={styles.bottomMrpText}>
+              <Text
+                style={[
+                  styles.bottomMrpText,
+                  isDark && { color: "#64748B" },
+                ]}
+              >
                 MRP Rs. {productOriginalPrice}
               </Text>
             )}
           </View>
-          <Text style={styles.bottomTaxText}>Inclusive of all taxes</Text>
+          <Text
+            style={[
+              styles.bottomTaxText,
+              isDark && { color: "#64748B" },
+            ]}
+          >
+            Inclusive of all taxes
+          </Text>
         </View>
 
         {/* Right Add to Cart / Counter CTA */}

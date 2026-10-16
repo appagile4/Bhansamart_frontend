@@ -36,29 +36,73 @@ export default function ActiveCartSection({
   onSaveForLater,
 }: ActiveCartSectionProps) {
   const theme = useTheme();
+  const isDark = theme.mode === "dark";
 
   if (!items || items.length === 0) return null;
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        isDark && { backgroundColor: "#101922", borderColor: "#1E2A38" },
+      ]}
+    >
       {/* Shipment Header Banner */}
-      <View style={styles.deliveryHeader}>
-        <View style={styles.deliveryIconBox}>
+      <View
+        style={[
+          styles.deliveryHeader,
+          isDark && { borderBottomColor: "#1E2A38" },
+        ]}
+      >
+        <View
+          style={[
+            styles.deliveryIconBox,
+            isDark && {
+              backgroundColor: "#0A2818",
+              borderColor: "#14532D",
+            },
+          ]}
+        >
           <MaterialCommunityIcons
             name="truck-fast-outline"
             size={scale(18)}
-            color="#008080"
+            color={isDark ? "#4ADE80" : "#008080"}
           />
         </View>
         <View style={styles.deliveryTextCol}>
           <View style={styles.deliveryTitleRow}>
-            <Text style={styles.deliveryTitle}>Instant Delivery</Text>
-            <View style={styles.freePill}>
-              <Text style={styles.freePillText}>FREE</Text>
+            <Text
+              style={[
+                styles.deliveryTitle,
+                isDark && { color: "#F8FAFC" },
+              ]}
+            >
+              Instant Delivery
+            </Text>
+            <View
+              style={[
+                styles.freePill,
+                isDark && { backgroundColor: "#0A2818" },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.freePillText,
+                  isDark && { color: "#4ADE80" },
+                ]}
+              >
+                FREE
+              </Text>
             </View>
           </View>
-          <Text style={styles.deliverySubtitle}>
-            Shipment of {items.reduce((s, i) => s + i.quantity, 0)} {items.length === 1 ? "item" : "items"} in 10-15 mins
+          <Text
+            style={[
+              styles.deliverySubtitle,
+              isDark && { color: "#94A3B8" },
+            ]}
+          >
+            Shipment of {items.reduce((s, i) => s + i.quantity, 0)}{" "}
+            {items.length === 1 ? "item" : "items"} in 10-15 mins
           </Text>
         </View>
       </View>
@@ -79,48 +123,84 @@ export default function ActiveCartSection({
               style={[
                 styles.itemRow,
                 index < items.length - 1 && styles.itemDivider,
+                index < items.length - 1 &&
+                  isDark && { borderBottomColor: "#1E2A38" },
               ]}
             >
               {/* Product Image Box */}
-              <View style={styles.imageBox}>
+              <View
+                style={[
+                  styles.imageBox,
+                  isDark && {
+                    backgroundColor: "#15222D",
+                    borderColor: "#1E2A38",
+                  },
+                ]}
+              >
                 <Image
                   source={
                     typeof item.imageUrl === "number"
                       ? item.imageUrl
-                      : typeof item.imageUrl === "string" && item.imageUrl.length > 0
-                        ? { uri: item.imageUrl }
-                        : item.imageUrl && typeof item.imageUrl === "object" && "uri" in (item.imageUrl as any)
-                          ? (item.imageUrl as any)
-                          : {
-                              uri: "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=200&q=80",
-                            }
+                      : typeof item.imageUrl === "string" &&
+                        item.imageUrl.length > 0
+                      ? { uri: item.imageUrl }
+                      : item.imageUrl &&
+                        typeof item.imageUrl === "object" &&
+                        "uri" in (item.imageUrl as any)
+                      ? (item.imageUrl as any)
+                      : {
+                          uri: "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=200&q=80",
+                        }
                   }
                   style={styles.image}
                   resizeMode="contain"
                 />
                 {discountPct ? (
                   <View style={styles.discountBadge}>
-                    <Text style={styles.discountBadgeText}>{discountPct}% OFF</Text>
+                    <Text style={styles.discountBadgeText}>
+                      {discountPct}% OFF
+                    </Text>
                   </View>
                 ) : null}
               </View>
 
               {/* Middle Info Column */}
               <View style={styles.infoCol}>
-                <Text style={styles.itemName} numberOfLines={2}>
+                <Text
+                  style={[
+                    styles.itemName,
+                    isDark && { color: "#F8FAFC" },
+                  ]}
+                  numberOfLines={2}
+                >
                   {item.name}
                 </Text>
-                <Text style={styles.packInfo}>
+                <Text
+                  style={[
+                    styles.packInfo,
+                    isDark && { color: "#94A3B8" },
+                  ]}
+                >
                   {item.packInfo || item.weight || "Standard Pack"}
                 </Text>
 
                 {/* Price Display */}
                 <View style={styles.priceRow}>
-                  <Text style={styles.price}>
+                  <Text
+                    style={[
+                      styles.price,
+                      isDark && { color: "#F8FAFC" },
+                    ]}
+                  >
                     Rs.{item.price * item.quantity}
                   </Text>
                   {item.originalPrice && item.originalPrice > item.price && (
-                    <Text style={styles.origPrice}>
+                    <Text
+                      style={[
+                        styles.origPrice,
+                        isDark && { color: "#64748B" },
+                      ]}
+                    >
                       Rs.{item.originalPrice * item.quantity}
                     </Text>
                   )}
@@ -136,9 +216,16 @@ export default function ActiveCartSection({
                     <Ionicons
                       name="bookmark-outline"
                       size={scale(12)}
-                      color="#64748B"
+                      color={isDark ? "#94A3B8" : "#64748B"}
                     />
-                    <Text style={styles.saveForLaterText}>Save for later</Text>
+                    <Text
+                      style={[
+                        styles.saveForLaterText,
+                        isDark && { color: "#94A3B8" },
+                      ]}
+                    >
+                      Save for later
+                    </Text>
                   </TouchableOpacity>
 
                   {onRemove && (
@@ -147,7 +234,11 @@ export default function ActiveCartSection({
                       onPress={() => onRemove(item.id)}
                       style={styles.deleteBtn}
                     >
-                      <Feather name="trash-2" size={scale(12)} color="#EF4444" />
+                      <Feather
+                        name="trash-2"
+                        size={scale(12)}
+                        color="#EF4444"
+                      />
                     </TouchableOpacity>
                   )}
                 </View>
@@ -155,16 +246,29 @@ export default function ActiveCartSection({
 
               {/* Right Stepper Column */}
               <View style={styles.rightCol}>
-                <View style={styles.stepperContainer}>
+                <View
+                  style={[
+                    styles.stepperContainer,
+                    isDark && { backgroundColor: "#016073" },
+                  ]}
+                >
                   <TouchableOpacity
                     activeOpacity={0.75}
                     onPress={() => onDecrement(item.id)}
                     style={styles.stepBtn}
                   >
                     {item.quantity === 1 ? (
-                      <Feather name="trash-2" size={scale(13)} color="#FFFFFF" />
+                      <Feather
+                        name="trash-2"
+                        size={scale(13)}
+                        color="#FFFFFF"
+                      />
                     ) : (
-                      <Feather name="minus" size={scale(14)} color="#FFFFFF" />
+                      <Feather
+                        name="minus"
+                        size={scale(14)}
+                        color="#FFFFFF"
+                      />
                     )}
                   </TouchableOpacity>
                   <Text style={styles.quantityText}>{item.quantity}</Text>
@@ -173,10 +277,19 @@ export default function ActiveCartSection({
                     onPress={() => onIncrement(item.id)}
                     style={styles.stepBtn}
                   >
-                    <Feather name="plus" size={scale(14)} color="#FFFFFF" />
+                    <Feather
+                      name="plus"
+                      size={scale(14)}
+                      color="#FFFFFF"
+                    />
                   </TouchableOpacity>
                 </View>
-                <Text style={styles.unitPriceText}>
+                <Text
+                  style={[
+                    styles.unitPriceText,
+                    isDark && { color: "#64748B" },
+                  ]}
+                >
                   Rs.{item.price}/each
                 </Text>
               </View>

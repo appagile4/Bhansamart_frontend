@@ -33,6 +33,7 @@ export default function PromoCardsSection({
   onSeeAllCoupons,
 }: PromoCardsSectionProps) {
   const theme = useTheme();
+  const isDark = theme.mode === "dark";
   const [inputCode, setInputCode] = useState("");
 
   const handleApplyInput = () => {
@@ -44,15 +45,52 @@ export default function PromoCardsSection({
   return (
     <View style={styles.container}>
       {/* 1. Golden Gift Packaging Card */}
-      <View style={styles.giftCard}>
+      <View
+        style={[
+          styles.giftCard,
+          isDark && {
+            backgroundColor: "#1F1A08",
+            borderColor: "#4A3B12",
+          },
+        ]}
+      >
         <View style={styles.giftLeft}>
-          <View style={styles.giftIconSquare}>
-            <MaterialIcons name="card-giftcard" size={scale(24)} color="#854D0E" />
+          <View
+            style={[
+              styles.giftIconSquare,
+              isDark && { backgroundColor: "#3E300B" },
+            ]}
+          >
+            <MaterialIcons
+              name="card-giftcard"
+              size={scale(24)}
+              color={isDark ? "#FDE047" : "#854D0E"}
+            />
           </View>
           <View style={styles.giftTextCol}>
-            <Text style={styles.giftTitle}>Gift Packaging</Text>
-            <Text style={styles.giftSubtitle}>
-              Special eco gift bag + customized greeting ribbon for <Text style={styles.giftBold}>Rs.50</Text>
+            <Text
+              style={[
+                styles.giftTitle,
+                isDark && { color: "#FDE047" },
+              ]}
+            >
+              Gift Packaging
+            </Text>
+            <Text
+              style={[
+                styles.giftSubtitle,
+                isDark && { color: "#EAB308" },
+              ]}
+            >
+              Special eco gift bag + customized greeting ribbon for{" "}
+              <Text
+                style={[
+                  styles.giftBold,
+                  isDark && { color: "#FEF08A" },
+                ]}
+              >
+                Rs.50
+              </Text>
             </Text>
           </View>
         </View>
@@ -62,6 +100,10 @@ export default function PromoCardsSection({
           onPress={onSelectGift}
           style={[
             styles.selectBtn,
+            isDark && {
+              backgroundColor: "#281F07",
+              borderColor: "#854D0E",
+            },
             isGiftSelected && styles.selectBtnActive,
           ]}
         >
@@ -71,6 +113,7 @@ export default function PromoCardsSection({
           <Text
             style={[
               styles.selectBtnText,
+              isDark && { color: "#FDE047" },
               isGiftSelected && styles.selectBtnTextActive,
             ]}
           >
@@ -80,41 +123,111 @@ export default function PromoCardsSection({
       </View>
 
       {/* 2. Coupons & Offers Box */}
-      <View style={styles.couponContainer}>
+      <View
+        style={[
+          styles.couponContainer,
+          isDark && {
+            backgroundColor: "#101922",
+            borderColor: "#1E2A38",
+          },
+        ]}
+      >
         <View style={styles.couponHeader}>
           <View style={styles.couponHeaderLeft}>
-            <MaterialCommunityIcons name="ticket-percent-outline" size={scale(20)} color="#008080" />
-            <Text style={styles.couponHeaderTitle}>Coupons & Offers</Text>
+            <MaterialCommunityIcons
+              name="ticket-percent-outline"
+              size={scale(20)}
+              color={isDark ? "#38BDF8" : "#008080"}
+            />
+            <Text
+              style={[
+                styles.couponHeaderTitle,
+                isDark && { color: "#F8FAFC" },
+              ]}
+            >
+              Coupons & Offers
+            </Text>
           </View>
           <TouchableOpacity activeOpacity={0.7} onPress={onSeeAllCoupons}>
-            <Text style={styles.seeAllText}>View All</Text>
+            <Text
+              style={[
+                styles.seeAllText,
+                isDark && { color: "#38BDF8" },
+              ]}
+            >
+              View All
+            </Text>
           </TouchableOpacity>
         </View>
 
         {appliedCoupon ? (
-          <View style={styles.appliedCouponPill}>
+          <View
+            style={[
+              styles.appliedCouponPill,
+              isDark && {
+                backgroundColor: "#0A2818",
+                borderColor: "#14532D",
+              },
+            ]}
+          >
             <View style={styles.appliedCouponLeft}>
-              <Ionicons name="checkmark-circle" size={scale(18)} color="#16A34A" />
+              <Ionicons
+                name="checkmark-circle"
+                size={scale(18)}
+                color={isDark ? "#4ADE80" : "#16A34A"}
+              />
               <View>
-                <Text style={styles.appliedCouponCode}>{appliedCoupon} APPLIED</Text>
-                <Text style={styles.appliedCouponDesc}>Savings unlocked on this order</Text>
+                <Text
+                  style={[
+                    styles.appliedCouponCode,
+                    isDark && { color: "#4ADE80" },
+                  ]}
+                >
+                  {appliedCoupon} APPLIED
+                </Text>
+                <Text
+                  style={[
+                    styles.appliedCouponDesc,
+                    isDark && { color: "#86EFAC" },
+                  ]}
+                >
+                  Savings unlocked on this order
+                </Text>
               </View>
             </View>
             <TouchableOpacity activeOpacity={0.7} onPress={onRemoveCoupon}>
-              <Text style={styles.removeCouponText}>Remove</Text>
+              <Text
+                style={[
+                  styles.removeCouponText,
+                  isDark && { color: "#F87171" },
+                ]}
+              >
+                Remove
+              </Text>
             </TouchableOpacity>
           </View>
         ) : (
           <View>
             {/* Input Row */}
-            <View style={styles.couponInputWrapper}>
+            <View
+              style={[
+                styles.couponInputWrapper,
+                isDark && {
+                  backgroundColor: "#15222D",
+                  borderColor: "#243545",
+                },
+              ]}
+            >
               <TextInput
                 value={inputCode}
                 onChangeText={setInputCode}
                 placeholder="Enter coupon code"
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
                 autoCapitalize="characters"
-                style={styles.couponInput}
+                style={[
+                  styles.couponInput,
+                  isDark && { color: "#F8FAFC" },
+                ]}
               />
               <TouchableOpacity
                 activeOpacity={0.8}
@@ -122,7 +235,11 @@ export default function PromoCardsSection({
                 disabled={!inputCode.trim()}
                 style={[
                   styles.applyBtn,
-                  !inputCode.trim() && styles.applyBtnDisabled,
+                  isDark && { backgroundColor: "#016073" },
+                  !inputCode.trim() &&
+                    (isDark
+                      ? { backgroundColor: "#1E2A38" }
+                      : styles.applyBtnDisabled),
                 ]}
               >
                 <Text
@@ -143,10 +260,29 @@ export default function PromoCardsSection({
                   key={c.code}
                   activeOpacity={0.75}
                   onPress={() => onApplyCoupon?.(c.code)}
-                  style={styles.couponChip}
+                  style={[
+                    styles.couponChip,
+                    isDark && {
+                      backgroundColor: "#10232B",
+                      borderColor: "#1A3644",
+                    },
+                  ]}
                 >
-                  <Text style={styles.couponChipCode}>{c.code}</Text>
-                  <Text style={styles.couponChipDesc} numberOfLines={1}>
+                  <Text
+                    style={[
+                      styles.couponChipCode,
+                      isDark && { color: "#38BDF8" },
+                    ]}
+                  >
+                    {c.code}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.couponChipDesc,
+                      isDark && { color: "#94A3B8" },
+                    ]}
+                    numberOfLines={1}
+                  >
                     {c.desc}
                   </Text>
                 </TouchableOpacity>

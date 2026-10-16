@@ -1,4 +1,4 @@
-import { moderateScale, scale } from "@/theme";
+import { moderateScale, scale, useTheme } from "@/theme";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -18,6 +18,8 @@ export default function BottomCheckoutBar({
   onCheckout,
 }: BottomCheckoutBarProps) {
   const insets = useSafeAreaInsets();
+  const theme = useTheme();
+  const isDark = theme.mode === "dark";
 
   return (
     <View
@@ -26,14 +28,30 @@ export default function BottomCheckoutBar({
         {
           paddingBottom: Math.max(insets.bottom, scale(12)),
         },
+        isDark && {
+          backgroundColor: "#101922",
+          borderTopColor: "#1E2A38",
+        },
       ]}
     >
       {/* Main Action Row */}
       <View style={styles.mainActionRow}>
         {/* Left Total Info */}
         <View style={styles.totalCol}>
-          <Text style={styles.totalPriceText}>Rs.{totalPrice}</Text>
-          <Text style={styles.totalCountText}>
+          <Text
+            style={[
+              styles.totalPriceText,
+              isDark && { color: "#F8FAFC" },
+            ]}
+          >
+            Rs.{totalPrice}
+          </Text>
+          <Text
+            style={[
+              styles.totalCountText,
+              isDark && { color: "#94A3B8" },
+            ]}
+          >
             {totalCount} {totalCount === 1 ? "item" : "items"} in cart
           </Text>
         </View>
@@ -45,7 +63,11 @@ export default function BottomCheckoutBar({
           style={styles.checkoutBtnWrapper}
         >
           <LinearGradient
-            colors={GRADIENT_COLORS}
+            colors={
+              isDark
+                ? ["#071418", "#0B2129", "#0F2E3A"]
+                : GRADIENT_COLORS
+            }
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.checkoutBtn}

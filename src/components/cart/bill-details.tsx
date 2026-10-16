@@ -37,20 +37,41 @@ export default function BillDetailsSection({
   onApplyCouponPress,
 }: BillDetailsSectionProps) {
   const theme = useTheme();
+  const isDark = theme.mode === "dark";
 
   return (
     <View style={styles.container}>
       {/* 1. Rider Tip Appreciate Section */}
-      <View style={styles.tipCard}>
+      <View
+        style={[
+          styles.tipCard,
+          isDark && { backgroundColor: "#101922", borderColor: "#1E2A38" },
+        ]}
+      >
         <View style={styles.tipHeaderRow}>
-          <View style={styles.tipIconBox}>
+          <View
+            style={[
+              styles.tipIconBox,
+              isDark && { backgroundColor: "#351419" },
+            ]}
+          >
             <Ionicons name="heart" size={scale(16)} color="#EF4444" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.tipTitle}>
+            <Text
+              style={[
+                styles.tipTitle,
+                isDark && { color: "#F8FAFC" },
+              ]}
+            >
               Say thanks to your Delivery Hero
             </Text>
-            <Text style={styles.tipSubtitle}>
+            <Text
+              style={[
+                styles.tipSubtitle,
+                isDark && { color: "#94A3B8" },
+              ]}
+            >
               100% of this tip goes directly to your rider
             </Text>
           </View>
@@ -64,11 +85,25 @@ export default function BillDetailsSection({
                 key={tip}
                 activeOpacity={0.75}
                 onPress={() => onSelectTip?.(tip)}
-                style={[styles.tipChip, isSelected && styles.tipChipActive]}
+                style={[
+                  styles.tipChip,
+                  isDark && {
+                    backgroundColor: "#15222D",
+                    borderColor: "#243545",
+                  },
+                  isSelected &&
+                    (isDark
+                      ? {
+                          backgroundColor: "#016073",
+                          borderColor: "#016073",
+                        }
+                      : styles.tipChipActive),
+                ]}
               >
                 <Text
                   style={[
                     styles.tipChipText,
+                    isDark && { color: "#94A3B8" },
                     isSelected && styles.tipChipTextActive,
                   ]}
                 >
@@ -81,18 +116,51 @@ export default function BillDetailsSection({
       </View>
 
       {/* 2. Bill Summary Card */}
-      <View style={styles.billCard}>
-        <Text style={styles.sectionTitle}>Bill details</Text>
+      <View
+        style={[
+          styles.billCard,
+          isDark && { backgroundColor: "#101922", borderColor: "#1E2A38" },
+        ]}
+      >
+        <Text
+          style={[
+            styles.sectionTitle,
+            isDark && { color: "#F8FAFC" },
+          ]}
+        >
+          Bill details
+        </Text>
 
         <View style={styles.rowsList}>
           {/* Items Total */}
           <View style={styles.row}>
             <View style={styles.rowLeft}>
-              <Feather name="file-text" size={scale(15)} color="#64748B" />
-              <Text style={styles.rowLabel}>Items total</Text>
+              <Feather
+                name="file-text"
+                size={scale(15)}
+                color={isDark ? "#94A3B8" : "#64748B"}
+              />
+              <Text
+                style={[
+                  styles.rowLabel,
+                  isDark && { color: "#94A3B8" },
+                ]}
+              >
+                Items total
+              </Text>
               {savedOnItems > 0 && (
-                <View style={styles.savedBadge}>
-                  <Text style={styles.savedBadgeText}>
+                <View
+                  style={[
+                    styles.savedBadge,
+                    isDark && { backgroundColor: "#0A2818" },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.savedBadgeText,
+                      isDark && { color: "#4ADE80" },
+                    ]}
+                  >
                     Saved Rs.{savedOnItems}
                   </Text>
                 </View>
@@ -100,33 +168,88 @@ export default function BillDetailsSection({
             </View>
             <View style={styles.rowRight}>
               {originalTotal > itemsTotal && (
-                <Text style={styles.strikethroughPrice}>
+                <Text
+                  style={[
+                    styles.strikethroughPrice,
+                    isDark && { color: "#64748B" },
+                  ]}
+                >
                   Rs.{originalTotal}
                 </Text>
               )}
-              <Text style={styles.rowValue}>Rs.{itemsTotal}</Text>
+              <Text
+                style={[
+                  styles.rowValue,
+                  isDark && { color: "#F8FAFC" },
+                ]}
+              >
+                Rs.{itemsTotal}
+              </Text>
             </View>
           </View>
 
           {/* Delivery Charge */}
           <View style={styles.row}>
             <View style={styles.rowLeft}>
-              <Feather name="truck" size={scale(15)} color="#64748B" />
-              <Text style={styles.rowLabel}>Delivery charge</Text>
+              <Feather
+                name="truck"
+                size={scale(15)}
+                color={isDark ? "#94A3B8" : "#64748B"}
+              />
+              <Text
+                style={[
+                  styles.rowLabel,
+                  isDark && { color: "#94A3B8" },
+                ]}
+              >
+                Delivery charge
+              </Text>
             </View>
             <View style={styles.rowRight}>
-              <Text style={styles.strikethroughPrice}>Rs.40</Text>
-              <Text style={styles.freeText}>FREE</Text>
+              <Text
+                style={[
+                  styles.strikethroughPrice,
+                  isDark && { color: "#64748B" },
+                ]}
+              >
+                Rs.40
+              </Text>
+              <Text
+                style={[
+                  styles.freeText,
+                  isDark && { color: "#4ADE80" },
+                ]}
+              >
+                FREE
+              </Text>
             </View>
           </View>
 
           {/* Handling Charge */}
           <View style={styles.row}>
             <View style={styles.rowLeft}>
-              <Feather name="shield" size={scale(15)} color="#64748B" />
-              <Text style={styles.rowLabel}>Handling & packaging</Text>
+              <Feather
+                name="shield"
+                size={scale(15)}
+                color={isDark ? "#94A3B8" : "#64748B"}
+              />
+              <Text
+                style={[
+                  styles.rowLabel,
+                  isDark && { color: "#94A3B8" },
+                ]}
+              >
+                Handling & packaging
+              </Text>
             </View>
-            <Text style={styles.rowValue}>Rs.{handlingCharge}</Text>
+            <Text
+              style={[
+                styles.rowValue,
+                isDark && { color: "#F8FAFC" },
+              ]}
+            >
+              Rs.{handlingCharge}
+            </Text>
           </View>
 
           {/* Rider Tip */}
@@ -138,9 +261,23 @@ export default function BillDetailsSection({
                   size={scale(15)}
                   color="#EF4444"
                 />
-                <Text style={styles.rowLabel}>Delivery tip</Text>
+                <Text
+                  style={[
+                    styles.rowLabel,
+                    isDark && { color: "#94A3B8" },
+                  ]}
+                >
+                  Delivery tip
+                </Text>
               </View>
-              <Text style={styles.rowValue}>Rs.{riderTip}</Text>
+              <Text
+                style={[
+                  styles.rowValue,
+                  isDark && { color: "#F8FAFC" },
+                ]}
+              >
+                Rs.{riderTip}
+              </Text>
             </View>
           )}
 
@@ -148,17 +285,29 @@ export default function BillDetailsSection({
           {couponDiscount > 0 && (
             <View style={styles.row}>
               <View style={styles.rowLeft}>
-                <Feather name="tag" size={scale(15)} color="#16A34A" />
+                <Feather
+                  name="tag"
+                  size={scale(15)}
+                  color={isDark ? "#4ADE80" : "#16A34A"}
+                />
                 <Text
                   style={[
                     styles.rowLabel,
-                    { color: "#16A34A", fontWeight: "700" },
+                    {
+                      color: isDark ? "#4ADE80" : "#16A34A",
+                      fontWeight: "700",
+                    },
                   ]}
                 >
                   Coupon discount ({appliedCouponCode})
                 </Text>
               </View>
-              <Text style={[styles.rowValue, { color: "#16A34A" }]}>
+              <Text
+                style={[
+                  styles.rowValue,
+                  { color: isDark ? "#4ADE80" : "#16A34A" },
+                ]}
+              >
                 -Rs.{couponDiscount}
               </Text>
             </View>
@@ -169,58 +318,134 @@ export default function BillDetailsSection({
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={onApplyCouponPress}
-              style={styles.couponTapRow}
+              style={[
+                styles.couponTapRow,
+                isDark && {
+                  backgroundColor: "#122A26",
+                  borderColor: "#1A4D45",
+                },
+              ]}
             >
               <View style={styles.rowLeft}>
-                <Feather name="percent" size={scale(15)} color="#008080" />
+                <Feather
+                  name="percent"
+                  size={scale(15)}
+                  color={isDark ? "#38BDF8" : "#008080"}
+                />
                 <Text
                   style={[
                     styles.rowLabel,
-                    { color: "#008080", fontWeight: "600" },
+                    {
+                      color: isDark ? "#38BDF8" : "#008080",
+                      fontWeight: "600",
+                    },
                   ]}
                 >
                   Apply discount coupon
                 </Text>
               </View>
               <View style={styles.couponRight}>
-                <Text style={styles.couponText}>Select</Text>
+                <Text
+                  style={[
+                    styles.couponText,
+                    isDark && { color: "#38BDF8" },
+                  ]}
+                >
+                  Select
+                </Text>
                 <Feather
                   name="chevron-right"
                   size={scale(15)}
-                  color="#008080"
+                  color={isDark ? "#38BDF8" : "#008080"}
                 />
               </View>
             </TouchableOpacity>
           )}
         </View>
 
-        <View style={styles.divider} />
+        <View
+          style={[
+            styles.divider,
+            isDark && { backgroundColor: "#1E2A38" },
+          ]}
+        />
 
         {/* Grand Total Row */}
         <View style={styles.grandTotalRow}>
           <View>
-            <Text style={styles.grandTotalLabel}>To Pay</Text>
-            <Text style={styles.taxInclusiveText}>Inclusive of all taxes</Text>
+            <Text
+              style={[
+                styles.grandTotalLabel,
+                isDark && { color: "#F8FAFC" },
+              ]}
+            >
+              To Pay
+            </Text>
+            <Text
+              style={[
+                styles.taxInclusiveText,
+                isDark && { color: "#64748B" },
+              ]}
+            >
+              Inclusive of all taxes
+            </Text>
           </View>
-          <Text style={styles.grandTotalValue}>Rs.{grandTotal}</Text>
+          <Text
+            style={[
+              styles.grandTotalValue,
+              isDark && { color: "#38BDF8" },
+            ]}
+          >
+            Rs.{grandTotal}
+          </Text>
         </View>
 
         {/* Total Savings Highlight Banner */}
         {totalSavings > 0 && (
           <LinearGradient
-            colors={["#DCFCE7", "#F0FDF4"]}
+            colors={
+              isDark
+                ? ["#0A2818", "#071B11"]
+                : ["#DCFCE7", "#F0FDF4"]
+            }
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
-            style={styles.savingsBox}
+            style={[
+              styles.savingsBox,
+              isDark && { borderColor: "#14532D" },
+            ]}
           >
             <View style={styles.savingsTopRow}>
               <View style={styles.savingsTitleRow}>
-                <Ionicons name="sparkles" size={scale(16)} color="#16A34A" />
-                <Text style={styles.savingsLabel}>Your total savings</Text>
+                <Ionicons
+                  name="sparkles"
+                  size={scale(16)}
+                  color={isDark ? "#4ADE80" : "#16A34A"}
+                />
+                <Text
+                  style={[
+                    styles.savingsLabel,
+                    isDark && { color: "#4ADE80" },
+                  ]}
+                >
+                  Your total savings
+                </Text>
               </View>
-              <Text style={styles.savingsValue}>Rs.{totalSavings}</Text>
+              <Text
+                style={[
+                  styles.savingsValue,
+                  isDark && { color: "#4ADE80" },
+                ]}
+              >
+                Rs.{totalSavings}
+              </Text>
             </View>
-            <Text style={styles.savingsSubtext}>
+            <Text
+              style={[
+                styles.savingsSubtext,
+                isDark && { color: "#86EFAC" },
+              ]}
+            >
               Includes free delivery & item discounts
             </Text>
           </LinearGradient>
@@ -228,17 +453,35 @@ export default function BillDetailsSection({
       </View>
 
       {/* 3. Safety & Cancellation Note */}
-      <View style={styles.policyCard}>
+      <View
+        style={[
+          styles.policyCard,
+          isDark && {
+            backgroundColor: "#10232B",
+            borderColor: "#1A3644",
+          },
+        ]}
+      >
         <MaterialCommunityIcons
           name="shield-check-outline"
           size={scale(18)}
-          color="#0F766E"
+          color={isDark ? "#38BDF8" : "#0F766E"}
         />
         <View style={{ flex: 1 }}>
-          <Text style={styles.policyTitle}>
+          <Text
+            style={[
+              styles.policyTitle,
+              isDark && { color: "#38BDF8" },
+            ]}
+          >
             Cancellation & Quality Guarantee
           </Text>
-          <Text style={styles.policyText}>
+          <Text
+            style={[
+              styles.policyText,
+              isDark && { color: "#94A3B8" },
+            ]}
+          >
             Orders cannot be cancelled once packed. 100% replacement / instant
             refund guaranteed if quality is not met.
           </Text>

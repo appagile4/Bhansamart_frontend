@@ -32,16 +32,33 @@ export default function SavedItemsSection({
   onRemoveItem,
 }: SavedItemsSectionProps) {
   const theme = useTheme();
+  const isDark = theme.mode === "dark";
 
   if (!items || items.length === 0) return null;
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        isDark && { backgroundColor: "#101922", borderColor: "#1E2A38" },
+      ]}
+    >
       {/* Section Header */}
       <View style={styles.headerRow}>
         <View style={styles.headerTitleRow}>
-          <Ionicons name="bookmark" size={scale(16)} color="#008080" />
-          <Text style={styles.headerTitle}>Saved for later ({items.length})</Text>
+          <Ionicons
+            name="bookmark"
+            size={scale(16)}
+            color={isDark ? "#38BDF8" : "#008080"}
+          />
+          <Text
+            style={[
+              styles.headerTitle,
+              isDark && { color: "#F8FAFC" },
+            ]}
+          >
+            Saved for later ({items.length})
+          </Text>
         </View>
         <TouchableOpacity activeOpacity={0.7} onPress={onRemoveAll}>
           <Text style={styles.removeAllText}>Clear All</Text>
@@ -56,10 +73,20 @@ export default function SavedItemsSection({
             style={[
               styles.itemRow,
               index < items.length - 1 && styles.itemDivider,
+              index < items.length - 1 &&
+                isDark && { borderBottomColor: "#1E2A38" },
             ]}
           >
             {/* Thumbnail */}
-            <View style={styles.imageBox}>
+            <View
+              style={[
+                styles.imageBox,
+                isDark && {
+                  backgroundColor: "#15222D",
+                  borderColor: "#1E2A38",
+                },
+              ]}
+            >
               <Image
                 source={
                   typeof item.imageUrl === "string"
@@ -73,17 +100,41 @@ export default function SavedItemsSection({
 
             {/* Info Column */}
             <View style={styles.infoCol}>
-              <Text style={styles.itemName} numberOfLines={1}>
+              <Text
+                style={[
+                  styles.itemName,
+                  isDark && { color: "#F8FAFC" },
+                ]}
+                numberOfLines={1}
+              >
                 {item.name}
               </Text>
-              <Text style={styles.packInfo}>{item.packInfo}</Text>
+              <Text
+                style={[
+                  styles.packInfo,
+                  isDark && { color: "#94A3B8" },
+                ]}
+              >
+                {item.packInfo}
+              </Text>
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => onRemoveItem?.(item)}
                 style={styles.removeBtn}
               >
-                <Feather name="trash-2" size={scale(11)} color="#94A3B8" />
-                <Text style={styles.removeText}>Remove</Text>
+                <Feather
+                  name="trash-2"
+                  size={scale(11)}
+                  color={isDark ? "#64748B" : "#94A3B8"}
+                />
+                <Text
+                  style={[
+                    styles.removeText,
+                    isDark && { color: "#64748B" },
+                  ]}
+                >
+                  Remove
+                </Text>
               </TouchableOpacity>
             </View>
 
@@ -92,15 +143,42 @@ export default function SavedItemsSection({
               <TouchableOpacity
                 activeOpacity={0.85}
                 onPress={() => onAddToCart?.(item)}
-                style={styles.addBtn}
+                style={[
+                  styles.addBtn,
+                  isDark && {
+                    backgroundColor: "#10232B",
+                    borderColor: "#008080",
+                  },
+                ]}
               >
-                <Text style={styles.addBtnText}>Move to Cart</Text>
+                <Text
+                  style={[
+                    styles.addBtnText,
+                    isDark && { color: "#38BDF8" },
+                  ]}
+                >
+                  Move to Cart
+                </Text>
               </TouchableOpacity>
               <View style={styles.priceRow}>
                 {item.originalPrice > item.price && (
-                  <Text style={styles.origPrice}>Rs.{item.originalPrice}</Text>
+                  <Text
+                    style={[
+                      styles.origPrice,
+                      isDark && { color: "#64748B" },
+                    ]}
+                  >
+                    Rs.{item.originalPrice}
+                  </Text>
                 )}
-                <Text style={styles.price}>Rs.{item.price}</Text>
+                <Text
+                  style={[
+                    styles.price,
+                    isDark && { color: "#F8FAFC" },
+                  ]}
+                >
+                  Rs.{item.price}
+                </Text>
               </View>
             </View>
           </View>
