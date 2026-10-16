@@ -8,6 +8,13 @@ export interface CreateProductPayload {
   subCategory?: string;
   supplierName?: string;
   brand?: string;
+  brandRef?: string;
+  attributes?: Array<{
+    attributeId?: string;
+    name: string;
+    value?: string;
+    values?: string[];
+  }>;
   expirationDate?: string;
   price: number;
   originalPrice?: number;

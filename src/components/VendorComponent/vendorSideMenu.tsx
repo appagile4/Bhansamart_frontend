@@ -166,9 +166,28 @@ const MAIN_MENU_ITEMS: MenuItem[] = [
   },
   {
     id: "attribute",
-    title: "Attribute",
-    iconName: "credit-card",
+    title: "Brands & Attributes",
+    iconName: "sliders",
     iconType: "feather",
+    route: "/Screens/vendorScreens/attributes",
+    hasDropdown: true,
+    subItems: [
+      {
+        id: "attr_brands",
+        title: "Brands",
+        route: "/Screens/vendorScreens/attributes?tab=brands",
+      },
+      {
+        id: "attr_attributes",
+        title: "Attributes",
+        route: "/Screens/vendorScreens/attributes?tab=attributes",
+      },
+      {
+        id: "attr_requests",
+        title: "Brand Requests",
+        route: "/Screens/vendorScreens/attributes?tab=requests",
+      },
+    ],
   },
   {
     id: "customer",
@@ -287,6 +306,7 @@ export default function VendorSideMenu({
     products: false,
     inventory: false,
     reports: false,
+    attribute: false,
   });
 
   // Auto-expand orders, inventory or reports if on those screens
@@ -299,6 +319,9 @@ export default function VendorSideMenu({
     }
     if (pathname.includes("/Screens/vendorScreens/report")) {
       setExpandedItems((prev) => ({ ...prev, reports: true }));
+    }
+    if (pathname.includes("/Screens/vendorScreens/attributes")) {
+      setExpandedItems((prev) => ({ ...prev, attribute: true }));
     }
   }, [pathname]);
 

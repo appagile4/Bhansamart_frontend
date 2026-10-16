@@ -4,13 +4,16 @@ import {
   fetchProductById,
   updateProduct,
 } from "@/store/slices/productSlice";
+import { fetchBrands, fetchAttributes } from "@/store/slices/brandSlice";
+import { fetchBrandsApi, BrandItem } from "@/store/services/brandService";
+import AddBrandModal from "@/components/VendorComponent/AddBrandModal";
 import { moderateScale, scale } from "@/theme";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -56,6 +59,47 @@ const BRAND_OPTIONS = [
   "Generic / Store Brand",
 ];
 
+const DEFAULT_CATEGORY_BRANDS: Record<
+  string,
+  Array<{ _id: string; name: string; description: string; logo: string; categories: string[]; status: "APPROVED"; slug: string }>
+> = {
+  "Grocery & Kitchen": [
+    { _id: "cat_gk_amul", name: "Amul", slug: "amul", description: "The Taste of India - Dairy products and staples", logo: "https://logo.clearbit.com/amul.com", categories: ["Grocery & Kitchen", "Snacks & Drinks"], status: "APPROVED" },
+    { _id: "cat_gk_nestle", name: "Nestle", slug: "nestle", description: "Good food, Good life - Nutrition, health and wellness", logo: "https://logo.clearbit.com/nestle.com", categories: ["Grocery & Kitchen", "Snacks & Drinks", "Baby"], status: "APPROVED" },
+    { _id: "cat_gk_tata", name: "Tata Sampann", slug: "tata-sampann", description: "Wholesome natural food products by Tata", logo: "https://logo.clearbit.com/tataconsumer.com", categories: ["Grocery & Kitchen"], status: "APPROVED" },
+    { _id: "cat_gk_dabur", name: "Dabur", slug: "dabur", description: "Science-based Ayurvedic healthcare and nutrition", logo: "https://logo.clearbit.com/dabur.com", categories: ["Grocery & Kitchen", "Beauty & Personal Care"], status: "APPROVED" },
+    { _id: "cat_gk_everest", name: "Everest", slug: "everest", description: "India's leading spice manufacturer", logo: "https://logo.clearbit.com/everestspices.com", categories: ["Grocery & Kitchen"], status: "APPROVED" },
+    { _id: "cat_gk_fortune", name: "Fortune", slug: "fortune", description: "Cooking oils, basmati rice, atta, and pulses", logo: "https://logo.clearbit.com/fortunefoods.com", categories: ["Grocery & Kitchen"], status: "APPROVED" },
+    { _id: "cat_gk_aashirvaad", name: "Aashirvaad", slug: "aashirvaad", description: "Whole wheat atta and kitchen staples", logo: "https://logo.clearbit.com/itcportal.com", categories: ["Grocery & Kitchen"], status: "APPROVED" },
+  ],
+  "Snacks & Drinks": [
+    { _id: "cat_sd_lays", name: "Lay's", slug: "lays", description: "Crispy potato chips in diverse delicious flavors", logo: "https://logo.clearbit.com/lays.com", categories: ["Snacks & Drinks"], status: "APPROVED" },
+    { _id: "cat_sd_haldiram", name: "Haldiram's", slug: "haldirams", description: "Traditional Indian sweets and savories", logo: "https://logo.clearbit.com/haldirams.com", categories: ["Snacks & Drinks"], status: "APPROVED" },
+    { _id: "cat_sd_cadbury", name: "Cadbury", slug: "cadbury", description: "Iconic chocolates and confectionery", logo: "https://logo.clearbit.com/cadbury.co.uk", categories: ["Snacks & Drinks", "Gifting"], status: "APPROVED" },
+    { _id: "cat_sd_cocacola", name: "Coca-Cola", slug: "coca-cola", description: "Refreshing sparkling beverages", logo: "https://logo.clearbit.com/coca-cola.com", categories: ["Snacks & Drinks"], status: "APPROVED" },
+    { _id: "cat_sd_pepsi", name: "Pepsi", slug: "pepsi", description: "Cold drinks and refreshments", logo: "https://logo.clearbit.com/pepsi.com", categories: ["Snacks & Drinks"], status: "APPROVED" },
+    { _id: "cat_sd_amul", name: "Amul", slug: "amul", description: "Milkshakes, ice creams and beverages", logo: "https://logo.clearbit.com/amul.com", categories: ["Grocery & Kitchen", "Snacks & Drinks"], status: "APPROVED" },
+  ],
+  "Beauty & Personal Care": [
+    { _id: "cat_bp_nivea", name: "Nivea", slug: "nivea", description: "Skincare, body lotions and personal care", logo: "https://logo.clearbit.com/nivea.com", categories: ["Beauty & Personal Care"], status: "APPROVED" },
+    { _id: "cat_bp_loreal", name: "L'Oreal", slug: "loreal", description: "Hair care, skin care and beauty products", logo: "https://logo.clearbit.com/loreal.com", categories: ["Beauty & Personal Care"], status: "APPROVED" },
+    { _id: "cat_bp_himalaya", name: "Himalaya", slug: "himalaya", description: "Herbal personal care and wellness", logo: "https://logo.clearbit.com/himalayawellness.com", categories: ["Beauty & Personal Care", "Baby"], status: "APPROVED" },
+    { _id: "cat_bp_dettol", name: "Dettol", slug: "dettol", description: "Antiseptic liquids, soaps and sanitization", logo: "https://logo.clearbit.com/dettol.co.uk", categories: ["Beauty & Personal Care"], status: "APPROVED" },
+    { _id: "cat_bp_dabur", name: "Dabur", slug: "dabur", description: "Ayurvedic personal care and oral wellness", logo: "https://logo.clearbit.com/dabur.com", categories: ["Grocery & Kitchen", "Beauty & Personal Care"], status: "APPROVED" },
+  ],
+  "Baby": [
+    { _id: "cat_bb_pampers", name: "Pampers", slug: "pampers", description: "Baby diapers and gentle wipes", logo: "https://logo.clearbit.com/pampers.com", categories: ["Baby"], status: "APPROVED" },
+    { _id: "cat_bb_johnson", name: "Johnson's Baby", slug: "johnsons-baby", description: "Gentle baby skin and bath essentials", logo: "https://logo.clearbit.com/johnsonsbaby.com", categories: ["Baby"], status: "APPROVED" },
+    { _id: "cat_bb_himalaya", name: "Himalaya", slug: "himalaya", description: "Baby wellness and gentle creams", logo: "https://logo.clearbit.com/himalayawellness.com", categories: ["Beauty & Personal Care", "Baby"], status: "APPROVED" },
+    { _id: "cat_bb_nestle", name: "Nestle", slug: "nestle", description: "Infant nutrition and cereals", logo: "https://logo.clearbit.com/nestle.com", categories: ["Grocery & Kitchen", "Snacks & Drinks", "Baby"], status: "APPROVED" },
+  ],
+  "School, Office & Stationery": [
+    { _id: "cat_so_classmate", name: "Classmate", slug: "classmate", description: "Notebooks, pens and school stationery", logo: "https://logo.clearbit.com/classmateshop.com", categories: ["School, Office & Stationery"], status: "APPROVED" },
+    { _id: "cat_so_camlin", name: "Camlin", slug: "camlin", description: "Pencils, geometry boxes, and colors", logo: "https://logo.clearbit.com/kokuyocamlin.com", categories: ["School, Office & Stationery"], status: "APPROVED" },
+    { _id: "cat_so_faber", name: "Faber-Castell", slug: "faber-castell", description: "Art supplies, highlighters and markers", logo: "https://logo.clearbit.com/faber-castell.com", categories: ["School, Office & Stationery"], status: "APPROVED" },
+  ],
+};
+
 const DISCOUNT_CATEGORIES = [
   "No Discount",
   "Flat Amount Discount",
@@ -76,6 +120,11 @@ export default function AddProductScreen() {
   const { currentProduct, createLoading } = useAppSelector(
     (state) => state.product,
   );
+  const {
+    brands: categoryBrands,
+    attributes: categoryAttributes,
+    loading: brandsLoading,
+  } = useAppSelector((state) => state.brand);
 
   // 1. General Information
   const [productName, setProductName] = useState("");
@@ -86,7 +135,102 @@ export default function AddProductScreen() {
   );
   const [supplierName, setSupplierName] = useState(SUPPLIER_OPTIONS[0]);
   const [expirationDate, setExpirationDate] = useState("");
-  const [brand, setBrand] = useState(BRAND_OPTIONS[0]);
+  const [brand, setBrand] = useState("Generic / Store Brand");
+  const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null);
+  const [isAddBrandModalVisible, setIsAddBrandModalVisible] = useState(false);
+  const [isBrandPickerOpen, setIsBrandPickerOpen] = useState(false);
+  const [brandSearchQuery, setBrandSearchQuery] = useState("");
+  const [selectedAttributes, setSelectedAttributes] = useState<
+    Record<string, string[]>
+  >({});
+
+  const [categoryBrandsList, setCategoryBrandsList] = useState<BrandItem[]>([]);
+  const [isCategoryBrandsLoading, setIsCategoryBrandsLoading] = useState(false);
+
+  // Directly load approved brands for the target category
+  const loadBrandsForCategory = useCallback(
+    async (catName: string) => {
+      if (!catName) return;
+      try {
+        setIsCategoryBrandsLoading(true);
+        const res = await fetchBrandsApi({ category: catName, limit: 100 });
+        const items: BrandItem[] = res?.brands || res?.data || [];
+        setCategoryBrandsList(items);
+      } catch (err) {
+        console.warn("[AddProduct] Error loading brands for category:", err);
+      } finally {
+        setIsCategoryBrandsLoading(false);
+      }
+    },
+    [],
+  );
+
+  // Fetch brands and attributes whenever selected category changes
+  useEffect(() => {
+    if (category) {
+      loadBrandsForCategory(category);
+      dispatch(fetchBrands({ category, limit: 100 }));
+      dispatch(fetchAttributes({ category }));
+    }
+  }, [category, loadBrandsForCategory, dispatch]);
+
+  // Derived list of brands matching current category and optional search query
+  const activeCategoryBrands = useMemo(() => {
+    const apiList =
+      categoryBrandsList && categoryBrandsList.length > 0
+        ? categoryBrandsList
+        : categoryBrands || [];
+
+    const fallbackList = DEFAULT_CATEGORY_BRANDS[category] || [];
+
+    // Merge API brands with curated presets, prioritizing real DB records
+    const seenNames = new Set<string>();
+    const merged: BrandItem[] = [];
+
+    apiList.forEach((item) => {
+      if (item && item.name) {
+        seenNames.add(item.name.toLowerCase().trim());
+        merged.push(item);
+      }
+    });
+
+    fallbackList.forEach((item) => {
+      if (item && item.name && !seenNames.has(item.name.toLowerCase().trim())) {
+        seenNames.add(item.name.toLowerCase().trim());
+        merged.push(item as unknown as BrandItem);
+      }
+    });
+
+    const normCategory = (category || "").toLowerCase().trim();
+
+    return merged.filter((b) => {
+      if (b.name === "Generic / Store Brand") return false;
+
+      // Category check
+      const matchesCategory =
+        !b.categories ||
+        b.categories.length === 0 ||
+        b.categories.some((c) => {
+          const normC = c.toLowerCase().trim();
+          return (
+            normC === normCategory ||
+            normC.includes(normCategory) ||
+            normCategory.includes(normC)
+          );
+        });
+
+      if (!matchesCategory) return false;
+
+      // Search query check
+      if (brandSearchQuery.trim()) {
+        return b.name
+          .toLowerCase()
+          .includes(brandSearchQuery.toLowerCase().trim());
+      }
+
+      return true;
+    });
+  }, [categoryBrandsList, categoryBrands, category, brandSearchQuery]);
 
   // 2. Pricing
   const [basePrice, setBasePrice] = useState("");
@@ -155,6 +299,28 @@ export default function AddProductScreen() {
       if (currentProduct.supplierName)
         setSupplierName(currentProduct.supplierName);
       if (currentProduct.brand) setBrand(currentProduct.brand);
+      if (currentProduct.brandRef) {
+        const refId =
+          typeof currentProduct.brandRef === "object"
+            ? (currentProduct.brandRef as any)._id
+            : currentProduct.brandRef;
+        setSelectedBrandId(refId);
+        if (
+          typeof currentProduct.brandRef === "object" &&
+          (currentProduct.brandRef as any).name
+        ) {
+          setBrand((currentProduct.brandRef as any).name);
+        }
+      }
+      if (currentProduct.attributes && Array.isArray(currentProduct.attributes)) {
+        const attrMap: Record<string, string[]> = {};
+        currentProduct.attributes.forEach((attr: any) => {
+          if (attr.name) {
+            attrMap[attr.name] = attr.values || (attr.value ? [attr.value] : []);
+          }
+        });
+        setSelectedAttributes(attrMap);
+      }
       if (currentProduct.expirationDate)
         setExpirationDate(currentProduct.expirationDate);
       if (currentProduct.price != null)
@@ -363,6 +529,23 @@ export default function AddProductScreen() {
       formData.append("subCategory", subCategory || "");
       formData.append("supplierName", supplierName || "");
       formData.append("brand", brand || "Generic / Store Brand");
+      if (selectedBrandId && !selectedBrandId.startsWith("cat_")) {
+        formData.append("brandRef", selectedBrandId);
+      }
+      const formattedAttrs = Object.entries(selectedAttributes)
+        .filter(([_, vals]) => vals && vals.length > 0)
+        .map(([name, vals]) => {
+          const matched = categoryAttributes.find((ca) => ca.name === name);
+          return {
+            attributeId: matched?._id,
+            name,
+            value: vals.join(", "),
+            values: vals,
+          };
+        });
+      if (formattedAttrs.length > 0) {
+        formData.append("attributes", JSON.stringify(formattedAttrs));
+      }
       formData.append("expirationDate", expirationDate || "");
       formData.append("price", String(parseFloat(basePrice)));
       formData.append("originalPrice", String(parseFloat(basePrice) * 1.15));
@@ -593,6 +776,12 @@ export default function AddProductScreen() {
                         setCategory(val);
                         const subCats = SUB_CATEGORY_MAP[val] || [];
                         if (subCats.length > 0) setSubCategory(subCats[0]);
+                        // Instantly refresh brands and attributes for the chosen category
+                        setBrand("Generic / Store Brand");
+                        setSelectedBrandId(null);
+                        loadBrandsForCategory(val);
+                        dispatch(fetchBrands({ category: val, limit: 100 }));
+                        dispatch(fetchAttributes({ category: val }));
                       })
                     }
                     style={styles.dropdownBox}
@@ -682,16 +871,42 @@ export default function AddProductScreen() {
 
                 {/* Brand */}
                 <View style={styles.col}>
-                  <Text style={styles.inputLabel}>Brand</Text>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: scale(2),
+                    }}
+                  >
+                    <Text style={styles.inputLabel}>Brand</Text>
+                    <TouchableOpacity
+                      onPress={() => setIsAddBrandModalVisible(true)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      style={{ flexDirection: "row", alignItems: "center", gap: 2 }}
+                    >
+                      <Feather name="plus-circle" size={scale(11)} color="#016073" />
+                      <Text
+                        style={{
+                          fontSize: moderateScale(10),
+                          color: "#016073",
+                          fontWeight: "700",
+                        }}
+                      >
+                        + Add
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                   <TouchableOpacity
                     activeOpacity={0.7}
-                    onPress={() =>
-                      openPicker("Select Brand", BRAND_OPTIONS, setBrand)
-                    }
+                    onPress={() => {
+                      loadBrandsForCategory(category);
+                      setIsBrandPickerOpen(true);
+                    }}
                     style={styles.dropdownBox}
                   >
                     <Text style={styles.dropdownText} numberOfLines={1}>
-                      {brand}
+                      {brand || "Select Brand"}
                     </Text>
                     <Feather
                       name="chevron-down"
@@ -703,6 +918,63 @@ export default function AddProductScreen() {
               </View>
             </View>
           </View>
+
+          {/* ================= CARD 1.5: ATTRIBUTES & SPECIFICATIONS ================= */}
+          {categoryAttributes && categoryAttributes.length > 0 && (
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Feather name="sliders" size={scale(18)} color="#016073" />
+                <Text style={styles.cardTitle}>Attributes & Specifications</Text>
+              </View>
+
+              <View style={styles.cardBody}>
+                <Text style={styles.attributesHelpText}>
+                  Select applicable attribute values for this product ({category}):
+                </Text>
+
+                {categoryAttributes.map((attr) => {
+                  const currentVals = selectedAttributes[attr.name] || [];
+                  return (
+                    <View key={attr._id} style={styles.attrInputSection}>
+                      <Text style={styles.attrSectionLabel}>{attr.name}</Text>
+                      <View style={styles.attrPillWrap}>
+                        {attr.values.map((v) => {
+                          const isPicked = currentVals.includes(v);
+                          return (
+                            <TouchableOpacity
+                              key={v}
+                              onPress={() => {
+                                setSelectedAttributes((prev) => {
+                                  const existing = prev[attr.name] || [];
+                                  const nextVals = existing.includes(v)
+                                    ? existing.filter((item) => item !== v)
+                                    : [...existing, v];
+                                  return { ...prev, [attr.name]: nextVals };
+                                });
+                              }}
+                              style={[
+                                styles.attrPill,
+                                isPicked && styles.attrPillSelected,
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.attrPillText,
+                                  isPicked && styles.attrPillTextSelected,
+                                ]}
+                              >
+                                {isPicked ? `✓ ${v}` : v}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          )}
 
           {/* ================= CARD 2: UPLOAD PHOTOS ================= */}
           <View style={styles.card}>
@@ -1234,6 +1506,207 @@ export default function AddProductScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* DYNAMIC BRAND SELECTOR MODAL */}
+      <Modal
+        visible={isBrandPickerOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsBrandPickerOpen(false)}
+      >
+        <View style={styles.pickerModalBackdrop}>
+          <View
+            style={[
+              styles.pickerModalCard,
+              {
+                height: scale(500),
+                maxHeight: "85%",
+                display: "flex",
+                flexDirection: "column",
+              },
+            ]}
+          >
+            <View style={styles.pickerHeader}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: scale(8) }}>
+                <Feather name="tag" size={scale(18)} color="#016073" />
+                <Text style={styles.pickerTitle}>Select Brand ({category})</Text>
+              </View>
+              <TouchableOpacity onPress={() => setIsBrandPickerOpen(false)}>
+                <Ionicons name="close" size={scale(20)} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Quick search input */}
+            <View style={styles.brandSearchBox}>
+              <Feather name="search" size={scale(14)} color="#94A3B8" />
+              <TextInput
+                style={styles.brandSearchInput}
+                placeholder="Search approved brands..."
+                placeholderTextColor="#94A3B8"
+                value={brandSearchQuery}
+                onChangeText={setBrandSearchQuery}
+              />
+              {brandSearchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setBrandSearchQuery("")}>
+                  <Feather name="x-circle" size={scale(14)} color="#94A3B8" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Request / Add Brand banner button */}
+            <TouchableOpacity
+              onPress={() => {
+                setIsBrandPickerOpen(false);
+                setIsAddBrandModalVisible(true);
+              }}
+              style={styles.addBrandModalBanner}
+            >
+              <Feather name="plus-circle" size={scale(16)} color="#016073" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.addBrandBannerTitle}>+ Request / Add New Brand</Text>
+                <Text style={styles.addBrandBannerSubtitle}>
+                  Brand not listed? Submit request for "{category}"
+                </Text>
+              </View>
+              <Feather name="chevron-right" size={scale(16)} color="#016073" />
+            </TouchableOpacity>
+
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ paddingBottom: scale(24) }}
+              nestedScrollEnabled={true}
+              showsVerticalScrollIndicator={true}
+            >
+              {/* Default Generic / Store Brand */}
+              <TouchableOpacity
+                onPress={() => {
+                  setBrand("Generic / Store Brand");
+                  setSelectedBrandId(null);
+                  setIsBrandPickerOpen(false);
+                }}
+                style={[
+                  styles.brandOptionItem,
+                  brand === "Generic / Store Brand" && styles.brandOptionItemActive,
+                ]}
+              >
+                <View style={styles.brandAvatarPlaceholder}>
+                  <Feather name="package" size={scale(16)} color="#64748B" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.brandOptionName}>Generic / Store Brand</Text>
+                  <Text style={styles.brandOptionDesc}>
+                    Unbranded or everyday store packaged item
+                  </Text>
+                </View>
+                {brand === "Generic / Store Brand" && (
+                  <Feather name="check" size={scale(18)} color="#016073" />
+                )}
+              </TouchableOpacity>
+
+              {/* Dynamic filtered brands */}
+              {isCategoryBrandsLoading && activeCategoryBrands.length === 0 ? (
+                <View style={{ padding: scale(20), alignItems: "center" }}>
+                  <ActivityIndicator size="small" color="#016073" />
+                  <Text
+                    style={{
+                      fontSize: moderateScale(11),
+                      color: "#64748B",
+                      marginTop: scale(6),
+                    }}
+                  >
+                    Loading brands for {category}...
+                  </Text>
+                </View>
+              ) : activeCategoryBrands.length === 0 ? (
+                <View style={{ padding: scale(20), alignItems: "center", gap: scale(6) }}>
+                  <Feather name="tag" size={scale(24)} color="#94A3B8" />
+                  <Text
+                    style={{
+                      fontSize: moderateScale(13),
+                      fontWeight: "600",
+                      color: "#1E293B",
+                      textAlign: "center",
+                    }}
+                  >
+                    No brands found for "{category}"
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: moderateScale(11),
+                      color: "#64748B",
+                      textAlign: "center",
+                    }}
+                  >
+                    Select "Generic / Store Brand" above or tap "+ Request / Add New Brand" to submit one.
+                  </Text>
+                </View>
+              ) : (
+                activeCategoryBrands.map((b) => {
+                  const isSelected = selectedBrandId === b._id || brand === b.name;
+                  const logoUrl =
+                    typeof b.logo === "string"
+                      ? b.logo
+                      : (b.logo as any)?.url || "";
+                  return (
+                    <TouchableOpacity
+                      key={b._id}
+                      onPress={() => {
+                        setBrand(b.name);
+                        setSelectedBrandId(b._id);
+                        setIsBrandPickerOpen(false);
+                      }}
+                      style={[
+                        styles.brandOptionItem,
+                        isSelected && styles.brandOptionItemActive,
+                      ]}
+                    >
+                      <View style={styles.brandAvatarBox}>
+                        {logoUrl ? (
+                          <Image
+                            source={{ uri: logoUrl }}
+                            style={styles.brandAvatarImage}
+                            contentFit="contain"
+                          />
+                        ) : (
+                          <Feather name="tag" size={scale(16)} color="#016073" />
+                        )}
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.brandOptionName}>{b.name}</Text>
+                        {b.description ? (
+                          <Text style={styles.brandOptionDesc} numberOfLines={1}>
+                            {b.description}
+                          </Text>
+                        ) : null}
+                      </View>
+                      {isSelected && (
+                        <Feather name="check" size={scale(18)} color="#016073" />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ADD BRAND MODAL */}
+      <AddBrandModal
+        visible={isAddBrandModalVisible}
+        onClose={() => setIsAddBrandModalVisible(false)}
+        initialCategory={category}
+        onSuccess={(createdBrand) => {
+          if (createdBrand) {
+            setBrand(createdBrand.name);
+            if (createdBrand.status === "APPROVED") {
+              setSelectedBrandId(createdBrand._id);
+            }
+          }
+          loadBrandsForCategory(category);
+          dispatch(fetchBrands({ category, limit: 100 }));
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -1815,5 +2288,131 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(13),
     color: "#334155",
     fontWeight: "500",
+  },
+  // Attributes Card Styles
+  attributesHelpText: {
+    fontSize: moderateScale(12),
+    color: "#64748B",
+    marginBottom: scale(8),
+  },
+  attrInputSection: {
+    marginTop: scale(10),
+    gap: scale(6),
+  },
+  attrSectionLabel: {
+    fontSize: moderateScale(12),
+    fontWeight: "700",
+    color: "#1E293B",
+  },
+  attrPillWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: scale(8),
+  },
+  attrPill: {
+    paddingHorizontal: scale(12),
+    paddingVertical: scale(6),
+    borderRadius: scale(16),
+    backgroundColor: "#F1F5F9",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  attrPillSelected: {
+    backgroundColor: "#016073",
+    borderColor: "#016073",
+  },
+  attrPillText: {
+    fontSize: moderateScale(11),
+    fontWeight: "500",
+    color: "#475569",
+  },
+  attrPillTextSelected: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+  },
+  // Brand Picker Modal Styles
+  brandSearchBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(8),
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: moderateScale(8),
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(6),
+    marginVertical: scale(8),
+  },
+  brandSearchInput: {
+    flex: 1,
+    fontSize: moderateScale(13),
+    color: "#0F172A",
+  },
+  addBrandModalBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(10),
+    backgroundColor: "rgba(1, 96, 115, 0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(1, 96, 115, 0.2)",
+    borderRadius: moderateScale(10),
+    padding: scale(10),
+    marginBottom: scale(10),
+  },
+  addBrandBannerTitle: {
+    fontSize: moderateScale(12),
+    fontWeight: "700",
+    color: "#016073",
+  },
+  addBrandBannerSubtitle: {
+    fontSize: moderateScale(10),
+    color: "#64748B",
+    marginTop: scale(1),
+  },
+  brandOptionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(12),
+    paddingVertical: scale(10),
+    paddingHorizontal: scale(8),
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+    borderRadius: moderateScale(8),
+  },
+  brandOptionItemActive: {
+    backgroundColor: "rgba(1, 96, 115, 0.06)",
+  },
+  brandAvatarBox: {
+    width: scale(36),
+    height: scale(36),
+    borderRadius: scale(8),
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+  },
+  brandAvatarImage: {
+    width: scale(26),
+    height: scale(26),
+  },
+  brandAvatarPlaceholder: {
+    width: scale(36),
+    height: scale(36),
+    borderRadius: scale(8),
+    backgroundColor: "#F1F5F9",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  brandOptionName: {
+    fontSize: moderateScale(13),
+    fontWeight: "600",
+    color: "#0F172A",
+  },
+  brandOptionDesc: {
+    fontSize: moderateScale(10),
+    color: "#64748B",
+    marginTop: scale(1),
   },
 });

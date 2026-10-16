@@ -38,7 +38,12 @@ api.interceptors.request.use(
       let token = customerToken;
       if (config.url?.includes("/delivery")) {
         token = deliveryToken || vendorToken || customerToken;
-      } else if (config.url?.includes("/vendor") || config.url?.includes("/auth/vendor")) {
+      } else if (
+        config.url?.includes("/vendor") ||
+        config.url?.includes("/auth/vendor") ||
+        config.url?.includes("/brands") ||
+        config.url?.includes("/attributes")
+      ) {
         token = vendorToken || customerToken;
       } else {
         token = customerToken || deliveryToken || vendorToken;
