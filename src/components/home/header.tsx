@@ -139,7 +139,7 @@ export default function Header({
               <Ionicons
                 name="person"
                 size={scale(18)}
-                color={isDark ? "#39D353" : "#003844"}
+                color={isDark ? "#FFFFFF" : "#003844"}
               />
             </TouchableOpacity>
           </View>

@@ -525,7 +525,7 @@ export default function CategoryScreen() {
               <Ionicons
                 name="person"
                 size={scale(18)}
-                color={isDark ? "#39D353" : "#003844"}
+                color={isDark ? "#FFFFFF" : "#003844"}
               />
             </TouchableOpacity>
           </View>
@@ -586,7 +586,7 @@ export default function CategoryScreen() {
               <Feather
                 name="mic"
                 size={scale(18)}
-                color={isDark ? "#39D353" : "#0F172A"}
+                color={isDark ? "#FFFFFF" : "#0F172A"}
               />
             </TouchableOpacity>
           </View>

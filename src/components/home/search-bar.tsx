@@ -70,7 +70,7 @@ export default function SearchBar({
   ];
 
   const iconColor = isDark ? "#A8B2BE" : "#555555";
-  const micColor = isDark ? "#39D353" : "#222222";
+  const micColor = isDark ? "#FFFFFF" : "#222222";
   const placeholderColor = isDark ? "#A8B2BE" : "#888888";
 
   // If readOnly or onPress is explicitly provided, clicking anywhere routes to search
