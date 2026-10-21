@@ -125,3 +125,38 @@ export const deletePaymentMethodApi = async (
   );
   return response.data;
 };
+
+/**
+ * Initialize payment session for gateway
+ */
+export const initializePaymentApi = async (payload: {
+  orderId: string;
+  paymentProvider?: string;
+  customerPhone?: string;
+}) => {
+  const response = await api.post("/payments/initialize", payload);
+  return response.data;
+};
+
+/**
+ * Verify payment response from gateway (Signature / Gateway Callback)
+ */
+export const verifyPaymentApi = async (payload: {
+  orderId: string;
+  paymentProvider: string;
+  transactionId?: string;
+  signature?: string;
+  status?: string;
+  payload?: any;
+}) => {
+  const response = await api.post("/payments/verify", payload);
+  return response.data;
+};
+
+/**
+ * Get payment and settlement ledger status for an order
+ */
+export const getPaymentStatusApi = async (orderId: string) => {
+  const response = await api.get(`/payments/status/${orderId}`);
+  return response.data;
+};

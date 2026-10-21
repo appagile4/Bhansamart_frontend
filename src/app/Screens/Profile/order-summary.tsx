@@ -1,4 +1,8 @@
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
+  cancelOrderApi,
+  requestRefundApi,
+} from "@/store/services/orderService";
 import socketService from "@/store/services/socketService";
 import {
   fetchCustomerOrderById,
@@ -12,11 +16,14 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Linking,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -92,16 +99,18 @@ export default function OrderSummaryScreen() {
       });
 
       // Listen for live delivery partner GPS location updates
-      const unsubLocation = socketService.onDeliveryLocationUpdate((locData) => {
-        if (String(locData?.orderId) === String(activeOrderId)) {
-          setLiveRiderLocation({
-            latitude: locData.latitude,
-            longitude: locData.longitude,
-            speed: locData.speed,
-            updatedAt: locData.updatedAt || new Date().toISOString(),
-          });
-        }
-      });
+      const unsubLocation = socketService.onDeliveryLocationUpdate(
+        (locData) => {
+          if (String(locData?.orderId) === String(activeOrderId)) {
+            setLiveRiderLocation({
+              latitude: locData.latitude,
+              longitude: locData.longitude,
+              speed: locData.speed,
+              updatedAt: locData.updatedAt || new Date().toISOString(),
+            });
+          }
+        },
+      );
 
       return () => {
         unsubscribe();
@@ -116,8 +125,139 @@ export default function OrderSummaryScreen() {
   const isRejected =
     currentStatus === "REJECTED" || currentStatus === "CANCELLED";
 
-  // Calculate current step index
+  const hasClaim = Boolean(
+    order?.refundStatus &&
+      order.refundStatus !== "NONE" &&
+      order.refundStatus !== "NOT_APPLICABLE"
+  );
+
+  const activeClaimType =
+    order?.refundDetails?.claimType ||
+    (order?.refundStatus === "REPLACED" ? "REPLACEMENT" : "REFUND");
+
+  const isReplacementClaim =
+    activeClaimType === "REPLACEMENT" || order?.refundStatus === "REPLACED";
+
+  const isReturnClaim =
+    activeClaimType === "RETURN" ||
+    activeClaimType === "RETURN_REFUND" ||
+    activeClaimType === "DEFECTIVE" ||
+    activeClaimType === "WRONG_ITEM";
+
+  // Dynamic steps that seamlessly extend to show post-delivery claim stages
+  const dynamicSteps = useMemo(() => {
+    const steps: { key: string; label: string; icon: any; isError?: boolean }[] = [
+      { key: "PLACED", label: "Order Placed", icon: "receipt-outline" },
+      { key: "ACCEPTED", label: "Accepted by Store", icon: "storefront-outline" },
+      { key: "PREPARING", label: "Preparing Items", icon: "restaurant-outline" },
+      { key: "READY_FOR_PICKUP", label: "Ready for Pickup", icon: "bag-check-outline" },
+      { key: "OUT_FOR_DELIVERY", label: "Out for Delivery", icon: "bicycle-outline" },
+      { key: "DELIVERED", label: "Delivered", icon: "checkmark-circle-outline" },
+    ];
+
+    if (!hasClaim) {
+      return steps;
+    }
+
+    if (isReplacementClaim) {
+      steps.push(
+        {
+          key: "CLAIM_REQUESTED",
+          label: "Replacement Requested",
+          icon: "repeat-outline",
+        },
+        order?.refundStatus === "REJECTED"
+          ? {
+              key: "CLAIM_REJECTED",
+              label: "Replacement Declined",
+              icon: "close-circle-outline",
+              isError: true,
+            }
+          : {
+              key: "CLAIM_REVIEW",
+              label: "Store Review & Approval",
+              icon: "shield-checkmark-outline",
+            },
+        {
+          key: "CLAIM_RESOLVED",
+          label: "Replacement Delivered",
+          icon: "cube-outline",
+        }
+      );
+    } else if (isReturnClaim) {
+      steps.push(
+        {
+          key: "CLAIM_REQUESTED",
+          label: "Return & Refund Requested",
+          icon: "swap-horizontal-outline",
+        },
+        order?.refundStatus === "REJECTED"
+          ? {
+              key: "CLAIM_REJECTED",
+              label: "Return Declined",
+              icon: "close-circle-outline",
+              isError: true,
+            }
+          : {
+              key: "CLAIM_REVIEW",
+              label: "Store Review & Pickup",
+              icon: "shield-checkmark-outline",
+            },
+        {
+          key: "CLAIM_RESOLVED",
+          label: "Refund Credited to Account",
+          icon: "wallet-outline",
+        }
+      );
+    } else {
+      steps.push(
+        {
+          key: "CLAIM_REQUESTED",
+          label: "Refund Claim Requested",
+          icon: "receipt-outline",
+        },
+        order?.refundStatus === "REJECTED"
+          ? {
+              key: "CLAIM_REJECTED",
+              label: "Refund Declined",
+              icon: "close-circle-outline",
+              isError: true,
+            }
+          : {
+              key: "CLAIM_REVIEW",
+              label: "Store Verification & Payout",
+              icon: "shield-checkmark-outline",
+            },
+        {
+          key: "CLAIM_RESOLVED",
+          label: "Refund Credited to Account",
+          icon: "wallet-outline",
+        }
+      );
+    }
+
+    return steps;
+  }, [hasClaim, isReplacementClaim, isReturnClaim, order?.refundStatus]);
+
+  // Calculate current step index (handles regular delivery steps and post-delivery claim stages)
   const activeStepIndex = useMemo(() => {
+    if (hasClaim) {
+      switch (order?.refundStatus) {
+        case "REQUESTED":
+          return 6; // Step 6 (Requested) done, currently at step 7 (Store Review)
+        case "APPROVED":
+          return 7; // Step 7 (Approved) done, currently at step 8 (Final fulfillment)
+        case "REFUNDED":
+        case "REPLACED":
+        case "PARTIAL_REFUNDED":
+          return 8; // All completed
+        case "REJECTED":
+          return 7; // Rejection step
+        default:
+          return 6;
+      }
+    }
+
     switch (currentStatus) {
       case "PLACED":
         return 0;
@@ -134,7 +274,20 @@ export default function OrderSummaryScreen() {
       default:
         return 0;
     }
-  }, [currentStatus]);
+  }, [currentStatus, hasClaim, order?.refundStatus]);
+
+  const [cancelModalVisible, setCancelModalVisible] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelling, setCancelling] = useState(false);
+
+  const [refundModalVisible, setRefundModalVisible] = useState(false);
+  const [claimType, setClaimType] = useState<
+    "RETURN" | "DEFECTIVE" | "REPLACEMENT" | "WRONG_ITEM"
+  >("RETURN");
+  const [refundReason, setRefundReason] = useState("");
+  const [refundDescription, setRefundDescription] = useState("");
+  const [payoutUpi, setPayoutUpi] = useState("");
+  const [submittingRefund, setSubmittingRefund] = useState(false);
 
   const handleCopyOrderId = () => {
     setCopied(true);
@@ -148,16 +301,75 @@ export default function OrderSummaryScreen() {
     });
   };
 
+  const handleCancelOrderSubmit = async () => {
+    if (!order?._id) return;
+    setCancelling(true);
+    try {
+      await cancelOrderApi(order._id, cancelReason || "Cancelled by customer");
+      Alert.alert(
+        "Order Cancelled",
+        "Your order has been cancelled successfully.",
+      );
+      setCancelModalVisible(false);
+      setCancelReason("");
+      dispatch(fetchCustomerOrderById(order._id));
+    } catch (err: any) {
+      console.log("Cancelllation Failed:", err);
+
+      Alert.alert(
+        "Cancellation Failed",
+        err?.response?.data?.message ||
+          err.message ||
+          "Failed to cancel order.",
+      );
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  const handleSubmitRefundClaim = async () => {
+    if (!order?._id) return;
+    if (!refundReason.trim()) {
+      Alert.alert("Missing Reason", "Please provide a reason for your claim.");
+      return;
+    }
+    setSubmittingRefund(true);
+    try {
+      await requestRefundApi({
+        orderId: order._id,
+        claimType,
+        reason: refundReason.trim(),
+        description: refundDescription.trim(),
+        customerPayoutDetails: {
+          method: payoutUpi ? "UPI" : "ORIGINAL_PAYMENT",
+          upiId: payoutUpi.trim(),
+        },
+      });
+      Alert.alert(
+        "Request Submitted",
+        `${claimType === "REPLACEMENT" ? "Replacement" : "Refund/Return"} request submitted successfully. Our team will verify and resolve it shortly.`,
+      );
+      setRefundModalVisible(false);
+      setRefundReason("");
+      setRefundDescription("");
+      dispatch(fetchCustomerOrderById(order._id));
+    } catch (err: any) {
+      Alert.alert(
+        "Submission Failed",
+        err?.response?.data?.message ||
+          err.message ||
+          "Failed to submit request.",
+      );
+    } finally {
+      setSubmittingRefund(false);
+    }
+  };
+
   const displayedOrderNumber =
     order?.orderNumber || params.orderNumber || "BM-ORDER";
 
   return (
-    <View
-      style={[
-        styles.root,
-        isDark && { backgroundColor: "#080D0F" },
-      ]}
-    >
+    <View style={[styles.root, isDark && { backgroundColor: "#080D0F" }]}>
       <StatusBar style={isDark ? "light" : "dark"} />
 
       {/* 1. Header with SafeAreaView for full top status bar coverage */}
@@ -171,7 +383,11 @@ export default function OrderSummaryScreen() {
         <View style={styles.navBar}>
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={() => (router.canGoBack() ? router.back() : router.replace("/customerMain/home" as any))}
+            onPress={() =>
+              router.canGoBack()
+                ? router.back()
+                : router.replace("/customerMain/home" as any)
+            }
             style={styles.backButton}
           >
             <Feather
@@ -180,12 +396,7 @@ export default function OrderSummaryScreen() {
               color={isDark ? "#F8FAFC" : "#1E293B"}
             />
           </TouchableOpacity>
-          <Text
-            style={[
-              styles.navTitle,
-              isDark && { color: "#F8FAFC" },
-            ]}
-          >
+          <Text style={[styles.navTitle, isDark && { color: "#F8FAFC" }]}>
             Live Order Tracking
           </Text>
           <View style={{ width: scale(36) }} />
@@ -193,35 +404,41 @@ export default function OrderSummaryScreen() {
 
         {/* Title Section */}
         <View style={styles.titleSection}>
-          <Text
-            style={[
-              styles.screenTitle,
-              isDark && { color: "#F8FAFC" },
-            ]}
-          >
+          <Text style={[styles.screenTitle, isDark && { color: "#F8FAFC" }]}>
             Order Details
           </Text>
           <Text
-            style={[
-              styles.arrivingSubtext,
-              isDark && { color: "#38BDF8" },
-            ]}
+            style={[styles.arrivingSubtext, isDark && { color: "#38BDF8" }]}
           >
             {isRejected
               ? "Order was cancelled"
-              : currentStatus === "DELIVERED"
-                ? "Delivered successfully"
-                : "Arriving in 15-25 mins"}
+              : hasClaim
+                ? order?.refundStatus === "REQUESTED"
+                  ? isReplacementClaim
+                    ? "Replacement request under review"
+                    : "Return / Refund request under review"
+                  : order?.refundStatus === "APPROVED"
+                    ? isReplacementClaim
+                      ? "Replacement approved by store"
+                      : "Claim approved & processing payout"
+                    : order?.refundStatus === "REFUNDED" ||
+                        order?.refundStatus === "PARTIAL_REFUNDED"
+                      ? "Refund credited successfully"
+                      : order?.refundStatus === "REPLACED"
+                        ? "Replacement order dispatched"
+                        : order?.refundStatus === "REJECTED"
+                          ? "Claim declined by store"
+                          : "Delivered successfully"
+                : currentStatus === "DELIVERED"
+                  ? "Delivered successfully"
+                  : "Arriving in 15-25 mins"}
           </Text>
         </View>
 
         {/* Items in this order heading */}
         <View style={styles.itemsHeader}>
           <Text
-            style={[
-              styles.itemsHeaderText,
-              isDark && { color: "#94A3B8" },
-            ]}
+            style={[styles.itemsHeaderText, isDark && { color: "#94A3B8" }]}
           >
             {order?.items?.length || 0} items in this order
           </Text>
@@ -250,28 +467,57 @@ export default function OrderSummaryScreen() {
           ]}
         >
           <View style={styles.statusCardHeader}>
-            <View style={styles.pulseDot} />
-            <Text
+            <View
               style={[
-                styles.statusCardTitle,
-                isDark && { color: "#F8FAFC" },
+                styles.pulseDot,
+                hasClaim &&
+                  (order?.refundStatus === "REFUNDED" ||
+                  order?.refundStatus === "REPLACED"
+                    ? { backgroundColor: "#10B981" }
+                    : order?.refundStatus === "REJECTED"
+                      ? { backgroundColor: "#EF4444" }
+                      : { backgroundColor: "#F59E0B" }),
               ]}
+            />
+            <Text
+              style={[styles.statusCardTitle, isDark && { color: "#F8FAFC" }]}
             >
               {isRejected
                 ? "Order Cancelled"
-                : `Current Status: ${
-                    currentStatus === "PLACED"
-                      ? "Waiting for Store Confirmation"
-                      : currentStatus === "ACCEPTED"
-                        ? "Store Accepted Your Order"
-                        : currentStatus === "PREPARING"
-                          ? "Store is Packing Your Items"
-                          : currentStatus === "READY_FOR_PICKUP"
-                            ? "Order Packed & Ready"
-                            : currentStatus === "OUT_FOR_DELIVERY"
-                              ? "Delivery Partner on the Way"
-                              : "Delivered Successfully"
-                  }`}
+                : hasClaim
+                  ? order?.refundStatus === "REQUESTED"
+                    ? `Current Status: ${
+                        isReplacementClaim
+                          ? "Replacement Requested"
+                          : "Return / Refund Requested"
+                      } (Under Review)`
+                    : order?.refundStatus === "APPROVED"
+                      ? `Current Status: ${
+                          isReplacementClaim
+                            ? "Replacement Approved"
+                            : "Claim Approved"
+                        } (Processing)`
+                      : order?.refundStatus === "REFUNDED" ||
+                          order?.refundStatus === "PARTIAL_REFUNDED"
+                        ? `Current Status: Refund Completed (Rs.${order?.refundDetails?.amount || order?.totalAmount})`
+                        : order?.refundStatus === "REPLACED"
+                          ? "Current Status: Replacement Delivered"
+                          : order?.refundStatus === "REJECTED"
+                            ? "Current Status: Claim Declined by Store"
+                            : "Current Status: Delivered Successfully"
+                  : `Current Status: ${
+                      currentStatus === "PLACED"
+                        ? "Waiting for Store Confirmation"
+                        : currentStatus === "ACCEPTED"
+                          ? "Store Accepted Your Order"
+                          : currentStatus === "PREPARING"
+                            ? "Store is Packing Your Items"
+                            : currentStatus === "READY_FOR_PICKUP"
+                              ? "Order Packed & Ready"
+                              : currentStatus === "OUT_FOR_DELIVERY"
+                                ? "Delivery Partner on the Way"
+                                : "Delivered Successfully"
+                    }`}
             </Text>
           </View>
 
@@ -285,8 +531,9 @@ export default function OrderSummaryScreen() {
             </View>
           ) : (
             <View style={styles.stepperContainer}>
-              {STATUS_STEPS.map((step, idx) => {
-                const isCompleted = idx <= activeStepIndex;
+              {dynamicSteps.map((step, idx) => {
+                const isStepError = Boolean(step.isError);
+                const isCompleted = idx <= activeStepIndex && !isStepError;
                 const isCurrent = idx === activeStepIndex;
 
                 return (
@@ -295,11 +542,18 @@ export default function OrderSummaryScreen() {
                       <View
                         style={[
                           styles.stepCircle,
-                          isDark && !isCompleted && !isCurrent && {
-                            backgroundColor: "#1E252E",
-                          },
+                          isDark &&
+                            !isCompleted &&
+                            !isCurrent && {
+                              backgroundColor: "#1E252E",
+                            },
                           isCompleted && styles.stepCircleCompleted,
+                          isStepError && {
+                            backgroundColor: "#DC2626",
+                            borderColor: "#EF4444",
+                          },
                           isCurrent &&
+                            !isStepError &&
                             (isDark
                               ? {
                                   backgroundColor: "#00687A",
@@ -310,25 +564,29 @@ export default function OrderSummaryScreen() {
                         ]}
                       >
                         <Ionicons
-                          name={step.icon}
+                          name={isStepError ? "close" : step.icon}
                           size={scale(13)}
                           color={
-                            isCompleted
+                            isCompleted || isStepError
                               ? "#FFFFFF"
                               : isDark
-                              ? "#64748B"
-                              : "#94A3B8"
+                                ? "#64748B"
+                                : "#94A3B8"
                           }
                         />
                       </View>
-                      {idx < STATUS_STEPS.length - 1 && (
+                      {idx < dynamicSteps.length - 1 && (
                         <View
                           style={[
                             styles.stepLine,
-                            isDark && !isCompleted && {
-                              backgroundColor: "#1E252E",
-                            },
+                            isDark &&
+                              !isCompleted && {
+                                backgroundColor: "#1E252E",
+                              },
                             isCompleted && styles.stepLineCompleted,
+                            isStepError && {
+                              backgroundColor: "#EF4444",
+                            },
                           ]}
                         />
                       )}
@@ -342,14 +600,47 @@ export default function OrderSummaryScreen() {
                             styles.stepLabelCompleted,
                             isDark && { color: "#F8FAFC" },
                           ],
-                          isCurrent && [
-                            styles.stepLabelCurrent,
-                            isDark && { color: "#38BDF8" },
-                          ],
+                          isStepError && {
+                            color: "#EF4444",
+                            fontWeight: "700",
+                          },
+                          isCurrent &&
+                            !isStepError && [
+                              styles.stepLabelCurrent,
+                              isDark && { color: "#38BDF8" },
+                            ],
                         ]}
                       >
                         {step.label}
                       </Text>
+                      {/* Sub-label explaining each post-delivery claim step */}
+                      {idx >= 6 && (
+                        <Text
+                          style={{
+                            fontSize: moderateScale(11),
+                            color: isDark ? "#94A3B8" : "#64748B",
+                            marginTop: scale(2),
+                          }}
+                        >
+                          {idx === 6
+                            ? order?.refundDetails?.reason
+                              ? `Reason: ${order.refundDetails.reason}`
+                              : "Request registered"
+                            : idx === 7
+                              ? isStepError
+                                ? order?.refundDetails?.rejectionReason ||
+                                  "Declined by store team"
+                                : order?.refundStatus === "REQUESTED"
+                                  ? "Store team is reviewing request"
+                                  : "Approved by store team"
+                              : order?.refundStatus === "REFUNDED" ||
+                                  order?.refundStatus === "PARTIAL_REFUNDED"
+                                ? `NPR ${order?.refundDetails?.amount || order?.totalAmount} processed`
+                                : order?.refundStatus === "REPLACED"
+                                  ? "Replacement delivered"
+                                  : "Awaiting final settlement"}
+                        </Text>
+                      )}
                     </View>
                   </View>
                 );
@@ -357,6 +648,429 @@ export default function OrderSummaryScreen() {
             </View>
           )}
         </View>
+
+        {/* ── Post-Delivery Claim Resolution Details Card ──────────────────── */}
+        {hasClaim ? (
+          <View
+            style={[
+              styles.claimCard,
+              {
+                backgroundColor: isDark ? "#161D24" : "#FFFFFF",
+                borderColor:
+                  order?.refundStatus === "REFUNDED" ||
+                  order?.refundStatus === "REPLACED"
+                    ? isDark
+                      ? "#065F46"
+                      : "#A7F3D0"
+                    : order?.refundStatus === "REJECTED"
+                      ? isDark
+                        ? "#7F1D1D"
+                        : "#FECACA"
+                      : isDark
+                        ? "#78350F"
+                        : "#FDE68A",
+              },
+            ]}
+          >
+            {/* Header with Type & Status Badges */}
+            <View style={styles.claimCardHeader}>
+              <View style={styles.claimBadgeRow}>
+                <View
+                  style={[
+                    styles.claimTypeBadge,
+                    {
+                      backgroundColor: isReplacementClaim
+                        ? isDark
+                          ? "rgba(56, 189, 248, 0.2)"
+                          : "#E0F2FE"
+                        : isDark
+                          ? "rgba(245, 158, 11, 0.2)"
+                          : "#FEF3C7",
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.claimTypeBadgeText,
+                      {
+                        color: isReplacementClaim
+                          ? isDark
+                            ? "#38BDF8"
+                            : "#0284C7"
+                          : isDark
+                            ? "#FBBF24"
+                            : "#D97706",
+                      },
+                    ]}
+                  >
+                    {isReplacementClaim
+                      ? "🔄 Replacement Demand"
+                      : isReturnClaim
+                        ? "↩️ Return & Refund Demand"
+                        : "💰 Refund Demand"}
+                  </Text>
+                </View>
+              </View>
+
+              <View
+                style={[
+                  styles.claimStatusPill,
+                  {
+                    backgroundColor:
+                      order?.refundStatus === "REFUNDED" ||
+                      order?.refundStatus === "REPLACED"
+                        ? isDark
+                          ? "#064E3B"
+                          : "#D1FAE5"
+                        : order?.refundStatus === "APPROVED"
+                          ? isDark
+                            ? "#1E3A8A"
+                            : "#DBEAFE"
+                          : order?.refundStatus === "REJECTED"
+                            ? isDark
+                              ? "#7F1D1D"
+                              : "#FEE2E2"
+                            : isDark
+                              ? "#78350F"
+                              : "#FEF3C7",
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.claimStatusPillText,
+                    {
+                      color:
+                        order?.refundStatus === "REFUNDED" ||
+                        order?.refundStatus === "REPLACED"
+                          ? isDark
+                            ? "#34D399"
+                            : "#059669"
+                          : order?.refundStatus === "APPROVED"
+                            ? isDark
+                              ? "#60A5FA"
+                              : "#1D4ED8"
+                            : order?.refundStatus === "REJECTED"
+                              ? isDark
+                                ? "#F87171"
+                                : "#DC2626"
+                              : isDark
+                                ? "#FBBF24"
+                                : "#D97706",
+                    },
+                  ]}
+                >
+                  {order?.refundStatus === "REFUNDED"
+                    ? "REFUND CREDITED"
+                    : order?.refundStatus === "REPLACED"
+                      ? "REPLACED"
+                      : order?.refundStatus === "APPROVED"
+                        ? "APPROVED"
+                        : order?.refundStatus === "REJECTED"
+                          ? "DECLINED"
+                          : "UNDER REVIEW"}
+                </Text>
+              </View>
+            </View>
+
+            {/* 3-Stage Progress Bar */}
+            <View
+              style={[
+                styles.claimStageRow,
+                { borderColor: isDark ? "#263238" : "#F1F5F9" },
+              ]}
+            >
+              {/* Stage 1: Submitted */}
+              <View style={styles.claimStageItem}>
+                <View
+                  style={[
+                    styles.claimStageDot,
+                    { backgroundColor: isDark ? "#065F46" : "#10B981" },
+                  ]}
+                >
+                  <Ionicons name="checkmark" size={scale(11)} color="#FFFFFF" />
+                </View>
+                <Text
+                  style={[
+                    styles.claimStageLabel,
+                    { color: isDark ? "#34D399" : "#059669" },
+                  ]}
+                >
+                  1. Requested
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.claimStageLine,
+                  {
+                    backgroundColor:
+                      order?.refundStatus !== "REQUESTED"
+                        ? order?.refundStatus === "REJECTED"
+                          ? "#DC2626"
+                          : isDark
+                            ? "#065F46"
+                            : "#10B981"
+                        : isDark
+                          ? "#303B45"
+                          : "#E2E8F0",
+                  },
+                ]}
+              />
+
+              {/* Stage 2: Store Review */}
+              <View style={styles.claimStageItem}>
+                <View
+                  style={[
+                    styles.claimStageDot,
+                    {
+                      backgroundColor:
+                        order?.refundStatus === "REJECTED"
+                          ? "#DC2626"
+                          : order?.refundStatus === "REQUESTED"
+                            ? isDark
+                              ? "#FBBF24"
+                              : "#D97706"
+                            : isDark
+                              ? "#065F46"
+                              : "#10B981",
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name={
+                      order?.refundStatus === "REJECTED"
+                        ? "close"
+                        : order?.refundStatus === "REQUESTED"
+                          ? "ellipsis-horizontal"
+                          : "checkmark"
+                    }
+                    size={scale(11)}
+                    color="#FFFFFF"
+                  />
+                </View>
+                <Text
+                  style={[
+                    styles.claimStageLabel,
+                    {
+                      color:
+                        order?.refundStatus === "REJECTED"
+                          ? "#DC2626"
+                          : order?.refundStatus === "REQUESTED"
+                            ? isDark
+                              ? "#FBBF24"
+                              : "#D97706"
+                            : isDark
+                              ? "#34D399"
+                              : "#059669",
+                    },
+                  ]}
+                >
+                  2. Store Review
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.claimStageLine,
+                  {
+                    backgroundColor:
+                      order?.refundStatus === "REFUNDED" ||
+                      order?.refundStatus === "REPLACED"
+                        ? isDark
+                          ? "#065F46"
+                          : "#10B981"
+                        : isDark
+                          ? "#303B45"
+                          : "#E2E8F0",
+                  },
+                ]}
+              />
+
+              {/* Stage 3: Resolved */}
+              <View style={styles.claimStageItem}>
+                <View
+                  style={[
+                    styles.claimStageDot,
+                    {
+                      backgroundColor:
+                        order?.refundStatus === "REFUNDED" ||
+                        order?.refundStatus === "REPLACED"
+                          ? isDark
+                            ? "#065F46"
+                            : "#10B981"
+                          : isDark
+                            ? "#1E252E"
+                            : "#E2E8F0",
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name={
+                      order?.refundStatus === "REFUNDED" ||
+                      order?.refundStatus === "REPLACED"
+                        ? "checkmark-done"
+                        : "hourglass-outline"
+                    }
+                    size={scale(11)}
+                    color={
+                      order?.refundStatus === "REFUNDED" ||
+                      order?.refundStatus === "REPLACED"
+                        ? "#FFFFFF"
+                        : isDark
+                          ? "#64748B"
+                          : "#94A3B8"
+                    }
+                  />
+                </View>
+                <Text
+                  style={[
+                    styles.claimStageLabel,
+                    {
+                      color:
+                        order?.refundStatus === "REFUNDED" ||
+                        order?.refundStatus === "REPLACED"
+                          ? isDark
+                            ? "#34D399"
+                            : "#059669"
+                          : isDark
+                            ? "#64748B"
+                            : "#94A3B8",
+                    },
+                  ]}
+                >
+                  {isReplacementClaim ? "3. Replaced" : "3. Credited"}
+                </Text>
+              </View>
+            </View>
+
+            {/* Informative Description */}
+            <Text
+              style={{
+                fontSize: moderateScale(12),
+                color: isDark ? "#94A3B8" : "#64748B",
+                marginBottom: scale(10),
+                lineHeight: scale(17),
+              }}
+            >
+              {order?.refundStatus === "REFUNDED"
+                ? `Your refund of NPR ${order?.refundDetails?.amount || order?.totalAmount} has been processed to your payment method.`
+                : order?.refundStatus === "REPLACED"
+                  ? "Your free replacement items have been confirmed and dispatched by the store."
+                  : order?.refundStatus === "APPROVED"
+                    ? "Store has accepted your request. Replacement / refund settlement is in final processing."
+                    : order?.refundStatus === "REJECTED"
+                      ? "Your post-delivery request was reviewed and declined by the store team."
+                      : "Your request has been submitted to the store team. They will inspect the claim and update within 24 hours."}
+            </Text>
+
+            {/* Claim Key Details Table */}
+            <View style={styles.claimInfoGrid}>
+              <View style={styles.claimInfoRow}>
+                <Text style={styles.claimInfoLabel}>Customer Demand</Text>
+                <Text
+                  style={[
+                    styles.claimInfoValue,
+                    isDark && { color: "#F8FAFC" },
+                  ]}
+                >
+                  {isReplacementClaim
+                    ? "Replacement with new product"
+                    : isReturnClaim
+                      ? "Product Return & Full Refund"
+                      : "Payment Refund"}
+                </Text>
+              </View>
+
+              {order?.refundDetails?.reason ? (
+                <View style={styles.claimInfoRow}>
+                  <Text style={styles.claimInfoLabel}>Reason</Text>
+                  <Text
+                    style={[
+                      styles.claimInfoValue,
+                      isDark && { color: "#F8FAFC" },
+                    ]}
+                  >
+                    {order.refundDetails.reason}
+                  </Text>
+                </View>
+              ) : null}
+
+              {order?.refundDetails?.description ? (
+                <View style={styles.claimInfoRow}>
+                  <Text style={styles.claimInfoLabel}>Details</Text>
+                  <Text
+                    style={[
+                      styles.claimInfoValue,
+                      isDark && { color: "#F8FAFC" },
+                    ]}
+                  >
+                    {order.refundDetails.description}
+                  </Text>
+                </View>
+              ) : null}
+
+              {order?.refundDetails?.rejectionReason ? (
+                <View style={styles.claimInfoRow}>
+                  <Text style={[styles.claimInfoLabel, { color: "#EF4444" }]}>
+                    Decline Reason
+                  </Text>
+                  <Text
+                    style={[
+                      styles.claimInfoValue,
+                      { color: "#EF4444", fontWeight: "700" },
+                    ]}
+                  >
+                    {order.refundDetails.rejectionReason}
+                  </Text>
+                </View>
+              ) : null}
+
+              {order?.refundDetails?.adminNotes ? (
+                <View style={styles.claimInfoRow}>
+                  <Text style={styles.claimInfoLabel}>Store Note</Text>
+                  <Text
+                    style={[
+                      styles.claimInfoValue,
+                      isDark && { color: "#38BDF8" },
+                    ]}
+                  >
+                    {order.refundDetails.adminNotes}
+                  </Text>
+                </View>
+              ) : null}
+
+              {order?.refundDetails?.customerPayoutDetails?.upiId ? (
+                <View style={styles.claimInfoRow}>
+                  <Text style={styles.claimInfoLabel}>Payout Destination</Text>
+                  <Text
+                    style={[
+                      styles.claimInfoValue,
+                      isDark && { color: "#F8FAFC" },
+                    ]}
+                  >
+                    UPI: {order.refundDetails.customerPayoutDetails.upiId}
+                  </Text>
+                </View>
+              ) : null}
+
+              {order?.refundDetails?.refundNumber ? (
+                <View style={styles.claimInfoRow}>
+                  <Text style={styles.claimInfoLabel}>Claim ID</Text>
+                  <Text
+                    style={[
+                      styles.claimInfoValue,
+                      { fontFamily: "monospace", fontSize: moderateScale(11) },
+                      isDark && { color: "#F8FAFC" },
+                    ]}
+                  >
+                    {order.refundDetails.refundNumber}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          </View>
+        ) : null}
 
         {/* ── Customer Delivery Verification OTP Card ──────────────────── */}
         {order?.customerDeliveryOtp && currentStatus !== "DELIVERED" ? (
@@ -384,18 +1098,12 @@ export default function OrderSummaryScreen() {
               </View>
               <View style={{ flex: 1, marginLeft: scale(10) }}>
                 <Text
-                  style={[
-                    styles.otpCardTitle,
-                    isDark && { color: "#2DD4BF" },
-                  ]}
+                  style={[styles.otpCardTitle, isDark && { color: "#2DD4BF" }]}
                 >
                   Delivery Verification OTP
                 </Text>
                 <Text
-                  style={[
-                    styles.otpCardSub,
-                    isDark && { color: "#94A3B8" },
-                  ]}
+                  style={[styles.otpCardSub, isDark && { color: "#94A3B8" }]}
                 >
                   Share this code with your delivery partner at the doorstep
                 </Text>
@@ -411,21 +1119,16 @@ export default function OrderSummaryScreen() {
               ]}
             >
               <Text
-                style={[
-                  styles.otpCodeText,
-                  isDark && { color: "#2DD4BF" },
-                ]}
+                style={[styles.otpCodeText, isDark && { color: "#2DD4BF" }]}
               >
                 {order.customerDeliveryOtp}
               </Text>
             </View>
             <Text
-              style={[
-                styles.otpSafetyHint,
-                isDark && { color: "#94A3B8" },
-              ]}
+              style={[styles.otpSafetyHint, isDark && { color: "#94A3B8" }]}
             >
-              🔒 Do not share this OTP before receiving and checking your package.
+              🔒 Do not share this OTP before receiving and checking your
+              package.
             </Text>
           </View>
         ) : null}
@@ -464,10 +1167,7 @@ export default function OrderSummaryScreen() {
                   DELIVERY PARTNER ASSIGNED
                 </Text>
                 <Text
-                  style={[
-                    styles.partnerName,
-                    isDark && { color: "#F8FAFC" },
-                  ]}
+                  style={[styles.partnerName, isDark && { color: "#F8FAFC" }]}
                 >
                   {order.assignedDeliveryBoy.fullName || "Delivery Partner"}
                 </Text>
@@ -477,7 +1177,9 @@ export default function OrderSummaryScreen() {
                     isDark && { color: "#94A3B8" },
                   ]}
                 >
-                  {order.assignedDeliveryBoy.vehicleDetails?.vehicleType || "Motorcycle"} • ⭐ 5.0
+                  {order.assignedDeliveryBoy.vehicleDetails?.vehicleType ||
+                    "Motorcycle"}{" "}
+                  • ⭐ 5.0
                 </Text>
               </View>
               {order.assignedDeliveryBoy.phone ? (
@@ -489,7 +1191,9 @@ export default function OrderSummaryScreen() {
                       borderColor: "#303B45",
                     },
                   ]}
-                  onPress={() => Linking.openURL(`tel:${order.assignedDeliveryBoy.phone}`)}
+                  onPress={() =>
+                    Linking.openURL(`tel:${order.assignedDeliveryBoy.phone}`)
+                  }
                 >
                   <Feather
                     name="phone"
@@ -569,20 +1273,12 @@ export default function OrderSummaryScreen() {
               {/* Title & Info */}
               <View style={styles.itemInfo}>
                 <Text
-                  style={[
-                    styles.itemName,
-                    isDark && { color: "#F8FAFC" },
-                  ]}
+                  style={[styles.itemName, isDark && { color: "#F8FAFC" }]}
                   numberOfLines={2}
                 >
                   {item.name}
                 </Text>
-                <Text
-                  style={[
-                    styles.packInfo,
-                    isDark && { color: "#94A3B8" },
-                  ]}
-                >
+                <Text style={[styles.packInfo, isDark && { color: "#94A3B8" }]}>
                   Qty: {item.quantity} &middot; {item.weight || "1 unit"}
                 </Text>
               </View>
@@ -600,10 +1296,7 @@ export default function OrderSummaryScreen() {
                   </Text>
                 ) : null}
                 <Text
-                  style={[
-                    styles.finalPrice,
-                    isDark && { color: "#39D353" },
-                  ]}
+                  style={[styles.finalPrice, isDark && { color: "#39D353" }]}
                 >
                   Rs.{item.price * item.quantity}
                 </Text>
@@ -622,12 +1315,7 @@ export default function OrderSummaryScreen() {
             },
           ]}
         >
-          <Text
-            style={[
-              styles.cardTitle,
-              isDark && { color: "#F8FAFC" },
-            ]}
-          >
+          <Text style={[styles.cardTitle, isDark && { color: "#F8FAFC" }]}>
             Bill details
           </Text>
           <View
@@ -639,58 +1327,28 @@ export default function OrderSummaryScreen() {
 
           <View style={styles.billRows}>
             <View style={styles.billRow}>
-              <Text
-                style={[
-                  styles.billLabel,
-                  isDark && { color: "#94A3B8" },
-                ]}
-              >
+              <Text style={[styles.billLabel, isDark && { color: "#94A3B8" }]}>
                 Item Total
               </Text>
-              <Text
-                style={[
-                  styles.billValue,
-                  isDark && { color: "#F8FAFC" },
-                ]}
-              >
+              <Text style={[styles.billValue, isDark && { color: "#F8FAFC" }]}>
                 Rs.{order?.itemsTotal || 0}
               </Text>
             </View>
 
             <View style={styles.billRow}>
-              <Text
-                style={[
-                  styles.billLabel,
-                  isDark && { color: "#94A3B8" },
-                ]}
-              >
+              <Text style={[styles.billLabel, isDark && { color: "#94A3B8" }]}>
                 Handling charge
               </Text>
-              <Text
-                style={[
-                  styles.billValue,
-                  isDark && { color: "#F8FAFC" },
-                ]}
-              >
+              <Text style={[styles.billValue, isDark && { color: "#F8FAFC" }]}>
                 Rs.{order?.handlingCharge || 30}
               </Text>
             </View>
 
             <View style={styles.billRow}>
-              <Text
-                style={[
-                  styles.billLabel,
-                  isDark && { color: "#94A3B8" },
-                ]}
-              >
+              <Text style={[styles.billLabel, isDark && { color: "#94A3B8" }]}>
                 Delivery charge
               </Text>
-              <Text
-                style={[
-                  styles.freeValue,
-                  isDark && { color: "#39D353" },
-                ]}
-              >
+              <Text style={[styles.freeValue, isDark && { color: "#39D353" }]}>
                 {order?.deliveryCharge === 0
                   ? "FREE"
                   : `Rs.${order?.deliveryCharge}`}
@@ -700,18 +1358,12 @@ export default function OrderSummaryScreen() {
             {order?.discount ? (
               <View style={styles.billRow}>
                 <Text
-                  style={[
-                    styles.billLabel,
-                    isDark && { color: "#94A3B8" },
-                  ]}
+                  style={[styles.billLabel, isDark && { color: "#94A3B8" }]}
                 >
                   Coupon discount
                 </Text>
                 <Text
-                  style={[
-                    styles.discountValue,
-                    isDark && { color: "#39D353" },
-                  ]}
+                  style={[styles.discountValue, isDark && { color: "#39D353" }]}
                 >
                   -Rs.{order.discount}
                 </Text>
@@ -729,18 +1381,12 @@ export default function OrderSummaryScreen() {
           {/* Bill Total */}
           <View style={styles.billTotalRow}>
             <Text
-              style={[
-                styles.billTotalLabel,
-                isDark && { color: "#F8FAFC" },
-              ]}
+              style={[styles.billTotalLabel, isDark && { color: "#F8FAFC" }]}
             >
               Bill Total
             </Text>
             <Text
-              style={[
-                styles.billTotalValue,
-                isDark && { color: "#39D353" },
-              ]}
+              style={[styles.billTotalValue, isDark && { color: "#39D353" }]}
             >
               Rs.{order?.totalAmount || 0}
             </Text>
@@ -757,12 +1403,7 @@ export default function OrderSummaryScreen() {
             },
           ]}
         >
-          <Text
-            style={[
-              styles.cardTitle,
-              isDark && { color: "#F8FAFC" },
-            ]}
-          >
+          <Text style={[styles.cardTitle, isDark && { color: "#F8FAFC" }]}>
             Order Details
           </Text>
           <View
@@ -776,18 +1417,12 @@ export default function OrderSummaryScreen() {
             {/* Store Info */}
             <View style={styles.orderDetailItem}>
               <Text
-                style={[
-                  styles.detailLabel,
-                  isDark && { color: "#94A3B8" },
-                ]}
+                style={[styles.detailLabel, isDark && { color: "#94A3B8" }]}
               >
                 Store / Vendor
               </Text>
               <Text
-                style={[
-                  styles.detailValueBold,
-                  isDark && { color: "#F8FAFC" },
-                ]}
+                style={[styles.detailValueBold, isDark && { color: "#F8FAFC" }]}
               >
                 {order?.vendor?.businessDetails?.businessName ||
                   order?.vendor?.sellerDetails?.sellerName ||
@@ -798,10 +1433,7 @@ export default function OrderSummaryScreen() {
             {/* Order id */}
             <View style={styles.orderDetailItem}>
               <Text
-                style={[
-                  styles.detailLabel,
-                  isDark && { color: "#94A3B8" },
-                ]}
+                style={[styles.detailLabel, isDark && { color: "#94A3B8" }]}
               >
                 Order ID
               </Text>
@@ -827,8 +1459,8 @@ export default function OrderSummaryScreen() {
                         ? "#39D353"
                         : "#059669"
                       : isDark
-                      ? "#94A3B8"
-                      : "#475569"
+                        ? "#94A3B8"
+                        : "#475569"
                   }
                 />
               </TouchableOpacity>
@@ -837,24 +1469,22 @@ export default function OrderSummaryScreen() {
             {/* Payment */}
             <View style={styles.orderDetailItem}>
               <Text
-                style={[
-                  styles.detailLabel,
-                  isDark && { color: "#94A3B8" },
-                ]}
+                style={[styles.detailLabel, isDark && { color: "#94A3B8" }]}
               >
                 Payment Method
               </Text>
               <Text
-                style={[
-                  styles.detailValue,
-                  isDark && { color: "#F8FAFC" },
-                ]}
+                style={[styles.detailValue, isDark && { color: "#F8FAFC" }]}
               >
                 {order?.paymentMethod || "Cash on delivery"} &middot;{" "}
                 <Text
                   style={{
                     color:
-                      order?.paymentStatus === "paid" ? (isDark ? "#39D353" : "#059669") : "#D97706",
+                      order?.paymentStatus === "paid"
+                        ? isDark
+                          ? "#39D353"
+                          : "#059669"
+                        : "#D97706",
                     fontWeight: "700",
                   }}
                 >
@@ -866,27 +1496,18 @@ export default function OrderSummaryScreen() {
             {/* Deliver to */}
             <View style={styles.orderDetailItem}>
               <Text
-                style={[
-                  styles.detailLabel,
-                  isDark && { color: "#94A3B8" },
-                ]}
+                style={[styles.detailLabel, isDark && { color: "#94A3B8" }]}
               >
                 Deliver to
               </Text>
               <Text
-                style={[
-                  styles.detailValue,
-                  isDark && { color: "#F8FAFC" },
-                ]}
+                style={[styles.detailValue, isDark && { color: "#F8FAFC" }]}
               >
                 {order?.deliveryAddress?.addressLine ||
                   "Baneshwor, Kathmandu, Bagmati, Nepal"}
               </Text>
               <Text
-                style={[
-                  styles.detailPhone,
-                  isDark && { color: "#94A3B8" },
-                ]}
+                style={[styles.detailPhone, isDark && { color: "#94A3B8" }]}
               >
                 Contact: {order?.deliveryAddress?.phone || "N/A"}
               </Text>
@@ -895,18 +1516,12 @@ export default function OrderSummaryScreen() {
             {/* Order placed timestamp */}
             <View style={styles.orderDetailItem}>
               <Text
-                style={[
-                  styles.detailLabel,
-                  isDark && { color: "#94A3B8" },
-                ]}
+                style={[styles.detailLabel, isDark && { color: "#94A3B8" }]}
               >
                 Placed At
               </Text>
               <Text
-                style={[
-                  styles.detailValue,
-                  isDark && { color: "#F8FAFC" },
-                ]}
+                style={[styles.detailValue, isDark && { color: "#F8FAFC" }]}
               >
                 {order?.createdAt
                   ? new Date(order.createdAt).toLocaleString([], {
@@ -929,12 +1544,7 @@ export default function OrderSummaryScreen() {
             },
           ]}
         >
-          <Text
-            style={[
-              styles.cardTitle,
-              isDark && { color: "#F8FAFC" },
-            ]}
-          >
+          <Text style={[styles.cardTitle, isDark && { color: "#F8FAFC" }]}>
             Need help with your order?
           </Text>
           <View
@@ -945,12 +1555,7 @@ export default function OrderSummaryScreen() {
           />
 
           <TouchableOpacity activeOpacity={0.7} onPress={handleCallSupport}>
-            <Text
-              style={[
-                styles.supportText,
-                isDark && { color: "#94A3B8" },
-              ]}
-            >
+            <Text style={[styles.supportText, isDark && { color: "#94A3B8" }]}>
               For instant customer support, call us at:{" "}
               <Text
                 style={[
@@ -963,6 +1568,276 @@ export default function OrderSummaryScreen() {
             </Text>
           </TouchableOpacity>
         </View>
+
+        {/* ── Order Action Buttons (Cancel / Return / Replacement) ────── */}
+        <View
+          style={{
+            marginHorizontal: scale(16),
+            marginVertical: moderateScale(16),
+            gap: scale(10),
+          }}
+        >
+          {["PLACED", "ACCEPTED"].includes(currentStatus) && (
+            <TouchableOpacity
+              style={[styles.actionBtnOutline, { borderColor: "#EF4444" }]}
+              onPress={() => setCancelModalVisible(true)}
+              activeOpacity={0.8}
+            >
+              <Feather name="x-circle" size={scale(16)} color="#EF4444" />
+              <Text style={[styles.actionBtnOutlineText, { color: "#EF4444" }]}>
+                Cancel Order
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {currentStatus === "DELIVERED" &&
+            (!order?.refundStatus ||
+              order?.refundStatus === "NONE" ||
+              order?.refundStatus === "NOT_APPLICABLE") && (
+              <TouchableOpacity
+                style={[
+                  styles.actionBtnOutline,
+                  { borderColor: isDark ? "#38BDF8" : "#0284C7" },
+                ]}
+                onPress={() => setRefundModalVisible(true)}
+                activeOpacity={0.8}
+              >
+                <Feather
+                  name="rotate-ccw"
+                  size={scale(16)}
+                  color={isDark ? "#38BDF8" : "#0284C7"}
+                />
+                <Text
+                  style={[
+                    styles.actionBtnOutlineText,
+                    { color: isDark ? "#38BDF8" : "#0284C7" },
+                  ]}
+                >
+                  Request Return, Refund or Replacement
+                </Text>
+              </TouchableOpacity>
+            )}
+        </View>
+
+        {/* ── Cancel Order Modal ─────────────────────────────────────── */}
+        <Modal
+          visible={cancelModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setCancelModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View
+              style={[
+                styles.modalCard,
+                isDark && {
+                  backgroundColor: "#151D24",
+                  borderColor: "#303B45",
+                },
+              ]}
+            >
+              <Text style={[styles.modalTitle, isDark && { color: "#F8FAFC" }]}>
+                Cancel Order
+              </Text>
+              <Text style={[styles.modalSub, isDark && { color: "#94A3B8" }]}>
+                Are you sure you want to cancel Order #{displayedOrderNumber}?
+              </Text>
+              <TextInput
+                style={[
+                  styles.modalInput,
+                  isDark && {
+                    backgroundColor: "#1B252E",
+                    borderColor: "#303B45",
+                    color: "#F8FAFC",
+                  },
+                ]}
+                placeholder="Reason for cancellation (optional)"
+                placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
+                value={cancelReason}
+                onChangeText={setCancelReason}
+              />
+              <View style={styles.modalBtnRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.modalBtn,
+                    { backgroundColor: isDark ? "#303B45" : "#E2E8F0" },
+                  ]}
+                  onPress={() => setCancelModalVisible(false)}
+                >
+                  <Text
+                    style={[
+                      styles.modalBtnText,
+                      { color: isDark ? "#F8FAFC" : "#475569" },
+                    ]}
+                  >
+                    Keep Order
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalBtn, { backgroundColor: "#EF4444" }]}
+                  onPress={handleCancelOrderSubmit}
+                  disabled={cancelling}
+                >
+                  {cancelling ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={[styles.modalBtnText, { color: "#FFFFFF" }]}>
+                      Confirm Cancel
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* ── Return / Refund / Replacement Modal ───────────────────── */}
+        <Modal
+          visible={refundModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setRefundModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View
+              style={[
+                styles.modalCard,
+                isDark && {
+                  backgroundColor: "#151D24",
+                  borderColor: "#303B45",
+                },
+              ]}
+            >
+              <Text style={[styles.modalTitle, isDark && { color: "#F8FAFC" }]}>
+                Return, Refund or Replace
+              </Text>
+
+              {/* Claim Type Selector */}
+              <View
+                style={{
+                  flexDirection: "row",
+                  gap: scale(6),
+                  marginVertical: scale(10),
+                  flexWrap: "wrap",
+                }}
+              >
+                {(
+                  [
+                    { id: "RETURN", label: "Return & Refund" },
+                    { id: "DEFECTIVE", label: "Defective" },
+                    { id: "REPLACEMENT", label: "Replacement" },
+                    { id: "WRONG_ITEM", label: "Wrong Item" },
+                  ] as const
+                ).map((ct) => (
+                  <TouchableOpacity
+                    key={ct.id}
+                    style={[
+                      styles.claimTypeChip,
+                      claimType === ct.id && styles.claimTypeChipActive,
+                      isDark &&
+                        claimType !== ct.id && {
+                          backgroundColor: "#1B252E",
+                          borderColor: "#303B45",
+                        },
+                    ]}
+                    onPress={() => setClaimType(ct.id)}
+                  >
+                    <Text
+                      style={[
+                        styles.claimTypeChipText,
+                        claimType === ct.id && styles.claimTypeChipTextActive,
+                        isDark && claimType !== ct.id && { color: "#94A3B8" },
+                      ]}
+                    >
+                      {ct.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TextInput
+                style={[
+                  styles.modalInput,
+                  isDark && {
+                    backgroundColor: "#1B252E",
+                    borderColor: "#303B45",
+                    color: "#F8FAFC",
+                  },
+                ]}
+                placeholder="Reason (e.g. Expired, Damaged, Quality)"
+                placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
+                value={refundReason}
+                onChangeText={setRefundReason}
+              />
+
+              <TextInput
+                style={[
+                  styles.modalInput,
+                  { height: scale(60) },
+                  isDark && {
+                    backgroundColor: "#1B252E",
+                    borderColor: "#303B45",
+                    color: "#F8FAFC",
+                  },
+                ]}
+                placeholder="Description / details (optional)"
+                placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
+                multiline
+                value={refundDescription}
+                onChangeText={setRefundDescription}
+              />
+
+              {claimType !== "REPLACEMENT" && (
+                <TextInput
+                  style={[
+                    styles.modalInput,
+                    isDark && {
+                      backgroundColor: "#1B252E",
+                      borderColor: "#303B45",
+                      color: "#F8FAFC",
+                    },
+                  ]}
+                  placeholder="Payout UPI ID (e.g. yourname@esewa)"
+                  placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
+                  value={payoutUpi}
+                  onChangeText={setPayoutUpi}
+                />
+              )}
+
+              <View style={styles.modalBtnRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.modalBtn,
+                    { backgroundColor: isDark ? "#303B45" : "#E2E8F0" },
+                  ]}
+                  onPress={() => setRefundModalVisible(false)}
+                >
+                  <Text
+                    style={[
+                      styles.modalBtnText,
+                      { color: isDark ? "#F8FAFC" : "#475569" },
+                    ]}
+                  >
+                    Close
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalBtn, { backgroundColor: "#0284C7" }]}
+                  onPress={handleSubmitRefundClaim}
+                  disabled={submittingRefund}
+                >
+                  {submittingRefund ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={[styles.modalBtnText, { color: "#FFFFFF" }]}>
+                      Submit Claim
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     </View>
   );
@@ -1413,5 +2288,179 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#065F46",
     flex: 1,
+  },
+  actionBtnOutline: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: moderateScale(12),
+    paddingHorizontal: scale(16),
+    borderRadius: scale(10),
+    borderWidth: 1.5,
+    gap: scale(8),
+  },
+  actionBtnOutlineText: {
+    fontSize: moderateScale(14),
+    fontWeight: "700",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: scale(20),
+  },
+  modalCard: {
+    width: "100%",
+    backgroundColor: "#FFFFFF",
+    borderRadius: scale(14),
+    padding: scale(18),
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  modalTitle: {
+    fontSize: moderateScale(16),
+    fontWeight: "700",
+    color: "#1E293B",
+  },
+  modalSub: {
+    fontSize: moderateScale(13),
+    color: "#64748B",
+    marginTop: scale(4),
+    marginBottom: scale(10),
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: scale(8),
+    paddingHorizontal: scale(12),
+    paddingVertical: moderateScale(8),
+    fontSize: moderateScale(13),
+    color: "#1E293B",
+    marginTop: scale(8),
+  },
+  modalBtnRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: scale(10),
+    marginTop: scale(16),
+  },
+  modalBtn: {
+    paddingHorizontal: scale(16),
+    paddingVertical: moderateScale(10),
+    borderRadius: scale(8),
+  },
+  modalBtnText: {
+    fontSize: moderateScale(13),
+    fontWeight: "700",
+  },
+  claimTypeChip: {
+    paddingHorizontal: scale(10),
+    paddingVertical: moderateScale(6),
+    borderRadius: scale(20),
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    backgroundColor: "#F8FAFC",
+  },
+  claimTypeChipActive: {
+    backgroundColor: "#E0F2FE",
+    borderColor: "#0284C7",
+  },
+  claimTypeChipText: {
+    fontSize: moderateScale(11),
+    color: "#64748B",
+    fontWeight: "600",
+  },
+  claimTypeChipTextActive: {
+    color: "#0369A1",
+    fontWeight: "700",
+  },
+  claimCard: {
+    borderRadius: scale(14),
+    borderWidth: 1,
+    padding: scale(14),
+    marginBottom: moderateScale(14),
+  },
+  claimCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: scale(10),
+  },
+  claimBadgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(8),
+    flex: 1,
+  },
+  claimTypeBadge: {
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(3),
+    borderRadius: scale(6),
+  },
+  claimTypeBadgeText: {
+    fontSize: moderateScale(11),
+    fontWeight: "700",
+  },
+  claimStatusPill: {
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(4),
+    borderRadius: scale(12),
+  },
+  claimStatusPillText: {
+    fontSize: moderateScale(10),
+    fontWeight: "800",
+  },
+  claimStageRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: scale(6),
+    marginBottom: scale(12),
+    paddingVertical: scale(8),
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  claimStageItem: {
+    alignItems: "center",
+    flex: 1,
+  },
+  claimStageDot: {
+    width: scale(20),
+    height: scale(20),
+    borderRadius: scale(10),
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: scale(4),
+  },
+  claimStageLabel: {
+    fontSize: moderateScale(9),
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  claimStageLine: {
+    height: 2,
+    flex: 0.6,
+    marginBottom: scale(14),
+  },
+  claimInfoGrid: {
+    gap: scale(8),
+  },
+  claimInfoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  claimInfoLabel: {
+    fontSize: moderateScale(12),
+    color: "#64748B",
+    width: "35%",
+  },
+  claimInfoValue: {
+    fontSize: moderateScale(12),
+    fontWeight: "600",
+    color: "#1E293B",
+    flex: 1,
+    textAlign: "right",
   },
 });

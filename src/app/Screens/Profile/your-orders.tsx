@@ -81,7 +81,7 @@ export default function YourOrdersScreen() {
 
   const handleMoreOptions = (order: OrderRecord) => {
     Alert.alert("Order Options", `Order ID: ${order.orderNumber}`, [
-      { text: "View Details", onPress: () => handleOrderSummary(order) },
+      { text: "View Details & Return/Refund", onPress: () => handleOrderSummary(order) },
       {
         text: "Download Invoice",
         onPress: () => Alert.alert("Invoice downloaded"),
@@ -209,7 +209,22 @@ export default function YourOrdersScreen() {
                 {/* Middle Title & Subtitle */}
                 <View style={styles.statusTextCol}>
                   <Text style={[styles.statusTitle, { color: statusTitleColor }]}>
-                    {order.orderStatus === "PLACED"
+                    {order.refundStatus === "REQUESTED"
+                      ? order.refundDetails?.claimType === "REPLACEMENT"
+                        ? "Replacement Requested"
+                        : "Return / Refund Requested"
+                      : order.refundStatus === "APPROVED"
+                      ? order.refundDetails?.claimType === "REPLACEMENT"
+                        ? "Replacement Approved"
+                        : "Claim Approved"
+                      : order.refundStatus === "REFUNDED" ||
+                        order.refundStatus === "PARTIAL_REFUNDED"
+                      ? "Refund Completed"
+                      : order.refundStatus === "REPLACED"
+                      ? "Replacement Completed"
+                      : order.refundStatus === "REJECTED"
+                      ? "Claim Declined"
+                      : order.orderStatus === "PLACED"
                       ? "Order Placed"
                       : order.orderStatus === "ACCEPTED"
                       ? "Order Accepted"
@@ -229,7 +244,62 @@ export default function YourOrdersScreen() {
                 </View>
 
                 {/* Right Active Badge or More Options */}
-                {isActive ? (
+                {order.refundStatus &&
+                order.refundStatus !== "NONE" &&
+                order.refundStatus !== "NOT_APPLICABLE" ? (
+                  <View
+                    style={[
+                      styles.activePill,
+                      {
+                        backgroundColor:
+                          order.refundStatus === "REFUNDED" ||
+                          order.refundStatus === "REPLACED"
+                            ? isDark
+                              ? "rgba(16, 185, 129, 0.2)"
+                              : "#D1FAE5"
+                            : order.refundStatus === "REJECTED"
+                              ? isDark
+                                ? "rgba(239, 68, 68, 0.2)"
+                                : "#FEE2E2"
+                              : isDark
+                                ? "rgba(245, 158, 11, 0.2)"
+                                : "#FEF3C7",
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.activePillText,
+                        {
+                          color:
+                            order.refundStatus === "REFUNDED" ||
+                            order.refundStatus === "REPLACED"
+                              ? isDark
+                                ? "#34D399"
+                                : "#059669"
+                              : order.refundStatus === "REJECTED"
+                                ? isDark
+                                  ? "#F87171"
+                                  : "#DC2626"
+                                : isDark
+                                  ? "#FBBF24"
+                                  : "#D97706",
+                          fontWeight: "700",
+                        },
+                      ]}
+                    >
+                      {order.refundStatus === "REQUESTED"
+                        ? "Under Review"
+                        : order.refundStatus === "APPROVED"
+                          ? "Approved"
+                          : order.refundStatus === "REFUNDED"
+                            ? "Refunded"
+                            : order.refundStatus === "REPLACED"
+                              ? "Replaced"
+                              : "Declined"}
+                    </Text>
+                  </View>
+                ) : isActive ? (
                   <View style={styles.activeBadgeContainer}>
                     <View style={styles.blueDot} />
                     <View

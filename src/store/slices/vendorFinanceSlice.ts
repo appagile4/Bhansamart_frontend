@@ -12,6 +12,8 @@ export interface VendorMetrics {
   availableWithdrawalBalance: number;
   pendingSettlement: number;
   codCashWithDeliveryBoys: number;
+  pendingRecoveries?: number;
+  platformCommissionRate?: number;
   storeRating: number;
 }
 
@@ -26,10 +28,17 @@ export interface VendorTransactionRecord {
     | "COD_HANDOVER"
     | "WITHDRAWAL"
     | "PLATFORM_FEE"
-    | "DIRECT_QR_PAYMENT";
+    | "DIRECT_QR_PAYMENT"
+    | "REFUND_DEDUCTION"
+    | "COMMISSION_REVERSAL"
+    | "COMMISSION_DEDUCTION"
+    | "RECOVERY_ADJUSTMENT";
   amount: number;
   grossAmount: number;
   commission: number;
+  commissionRate?: number;
+  commissionBase?: number;
+  refund?: any;
   netAmount: number;
   paymentMethod: string;
   status:
@@ -39,7 +48,8 @@ export interface VendorTransactionRecord {
     | "SUBMITTED"
     | "COMPLETED"
     | "FAILED"
-    | "DIRECT_SETTLED";
+    | "DIRECT_SETTLED"
+    | "RECOVERED";
   idempotencyKey?: string;
   notes?: string;
   createdAt: string;

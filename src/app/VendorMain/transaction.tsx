@@ -128,8 +128,15 @@ export default function VendorTransactionScreen() {
 
   const renderTransactionCard = ({ item }: { item: VendorTransactionRecord }) => {
     const isDirectQr = item.type === "DIRECT_QR_PAYMENT";
-    const isCredit = item.type === "ORDER_EARNING" || item.type === "COD_HANDOVER";
+    const isCredit =
+      item.type === "ORDER_EARNING" ||
+      item.type === "COD_HANDOVER" ||
+      item.type === "COMMISSION_REVERSAL";
     const isCodCustody = item.type === "COD_COLLECTION";
+    const isRefundOrDeduction =
+      item.type === "REFUND_DEDUCTION" ||
+      item.type === "COMMISSION_DEDUCTION" ||
+      item.type === "RECOVERY_ADJUSTMENT";
 
     let iconName: any = isCredit ? "arrow-down-left" : "arrow-up-right";
     let iconColor = isCredit ? "#16A34A" : "#DC2626";
@@ -143,6 +150,22 @@ export default function VendorTransactionScreen() {
       iconName = "clock";
       iconColor = "#D97706";
       iconBg = "#FFFBEB";
+    } else if (item.type === "REFUND_DEDUCTION") {
+      iconName = "rotate-ccw";
+      iconColor = "#DC2626";
+      iconBg = "#FEF2F2";
+    } else if (item.type === "COMMISSION_REVERSAL") {
+      iconName = "refresh-cw";
+      iconColor = "#16A34A";
+      iconBg = "#F0FDF4";
+    } else if (item.type === "COMMISSION_DEDUCTION") {
+      iconName = "percent";
+      iconColor = "#EA580C";
+      iconBg = "#FFF7ED";
+    } else if (item.type === "RECOVERY_ADJUSTMENT") {
+      iconName = "shield-alert";
+      iconColor = "#7C3AED";
+      iconBg = "#F5F3FF";
     }
 
     const typeLabel =
@@ -156,6 +179,14 @@ export default function VendorTransactionScreen() {
         ? "Bank Withdrawal"
         : item.type === "DIRECT_QR_PAYMENT"
         ? "Direct Store QR Paid"
+        : item.type === "REFUND_DEDUCTION"
+        ? "Customer Refund Deduction"
+        : item.type === "COMMISSION_REVERSAL"
+        ? "Commission Reversal (+1.5%)"
+        : item.type === "COMMISSION_DEDUCTION"
+        ? "Platform Commission (-1.5%)"
+        : item.type === "RECOVERY_ADJUSTMENT"
+        ? "Deficit Recovery Offset"
         : "Platform Fee";
 
     return (
@@ -176,7 +207,7 @@ export default function VendorTransactionScreen() {
             </Text>
             {item.grossAmount > 0 && item.commission > 0 && (
               <Text style={styles.txnBreakdown}>
-                Gross: NPR {item.grossAmount} &middot; Fee (0%): NPR {item.commission}
+                Gross: NPR {item.grossAmount} &middot; Superadmin Fee (1.5%): NPR {item.commission}
               </Text>
             )}
           </View>
@@ -186,10 +217,18 @@ export default function VendorTransactionScreen() {
           <Text
             style={[
               styles.txnAmount,
-              { color: isDirectQr ? "#0284C7" : isCodCustody ? "#D97706" : isCredit ? "#15803D" : "#0F172A" },
+              {
+                color: isDirectQr
+                  ? "#0284C7"
+                  : isCodCustody
+                  ? "#D97706"
+                  : isCredit
+                  ? "#15803D"
+                  : "#DC2626",
+              },
             ]}
           >
-            {isCodCustody ? "" : isDirectQr ? "✓ " : isCredit ? "+" : "-"} NPR {item.amount.toLocaleString()}
+            {isCodCustody ? "" : isDirectQr ? "✓ " : isCredit ? "+" : "-"} NPR {Math.abs(item.amount).toLocaleString()}
           </Text>
           <View
             style={[
@@ -199,6 +238,7 @@ export default function VendorTransactionScreen() {
               item.status === "DIRECT_SETTLED" && { backgroundColor: "#E0F2FE" },
               item.status === "CASH_IN_CUSTODY" && { backgroundColor: "#FEF9C3" },
               item.status === "PENDING" && { backgroundColor: "#EFF6FF" },
+              item.status === "RECOVERED" && { backgroundColor: "#F3E8FF" },
             ]}
           >
             <Text
@@ -209,6 +249,7 @@ export default function VendorTransactionScreen() {
                 item.status === "DIRECT_SETTLED" && { color: "#0369A1" },
                 item.status === "CASH_IN_CUSTODY" && { color: "#854D0E" },
                 item.status === "PENDING" && { color: "#1D4ED8" },
+                item.status === "RECOVERED" && { color: "#7E22CE" },
               ]}
             >
               {item.status === "CASH_IN_CUSTODY"
@@ -276,6 +317,16 @@ export default function VendorTransactionScreen() {
             <MaterialCommunityIcons name="hand-coin" size={scale(16)} color="#854D0E" />
             <Text style={styles.codAlertText}>
               NPR {metrics.codCashWithDeliveryBoys.toLocaleString()} Cash on Delivery currently with riders.
+            </Text>
+          </View>
+        )}
+
+        {/* Pending Recovery Deficit Alert Pill */}
+        {(metrics.pendingRecoveries || 0) > 0 && (
+          <View style={[styles.codAlertBanner, { backgroundColor: "#FEF2F2", borderColor: "#FCA5A5" }]}>
+            <MaterialCommunityIcons name="alert-circle-outline" size={scale(16)} color="#DC2626" />
+            <Text style={[styles.codAlertText, { color: "#991B1B" }]}>
+              NPR {(metrics.pendingRecoveries || 0).toLocaleString()} Pending Recovery Deficit: Deducted automatically from future payouts due to post-withdrawal refund.
             </Text>
           </View>
         )}

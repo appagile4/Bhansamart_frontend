@@ -86,3 +86,88 @@ export const updateOrderStatusApi = async (
   const response = await api.patch(`/orders/${orderId}/status`, payload);
   return response.data;
 };
+
+/**
+ * Customer cancels order
+ */
+export const cancelOrderApi = async (
+  orderId: string,
+  reason: string = "Cancelled by customer"
+) => {
+  const response = await api.post(`/orders/${orderId}/cancel`, { reason });
+  return response.data;
+};
+
+export interface RequestRefundPayload {
+  orderId: string;
+  claimType: "CANCELLATION" | "RETURN" | "DEFECTIVE" | "REPLACEMENT" | "WRONG_ITEM";
+  reason: string;
+  description?: string;
+  items?: {
+    productId: string;
+    quantity: number;
+  }[];
+  proofImages?: string[];
+  customerPayoutDetails?: {
+    method?: string;
+    upiId?: string;
+    accountNumber?: string;
+    bankName?: string;
+    accountHolderName?: string;
+  };
+}
+
+/**
+ * Customer submits return / refund / replacement request
+ */
+export const requestRefundApi = async (payload: RequestRefundPayload) => {
+  const response = await api.post("/refunds/request", payload);
+  return response.data;
+};
+
+/**
+ * Customer fetches their refunds
+ */
+export const fetchMyRefundsApi = async () => {
+  const response = await api.get("/refunds/my-refunds");
+  return response.data;
+};
+
+/**
+ * Vendor fetches refund / return claims
+ */
+export const fetchVendorRefundsApi = async (params?: {
+  status?: string;
+  claimType?: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const response = await api.get("/refunds/vendor", { params });
+  return response.data;
+};
+
+/**
+ * Vendor approves refund claim
+ */
+export const approveRefundApi = async (
+  refundId: string,
+  resolutionNotes?: string
+) => {
+  const response = await api.post(`/refunds/${refundId}/approve`, {
+    resolutionNotes,
+  });
+  return response.data;
+};
+
+/**
+ * Vendor rejects refund claim
+ */
+export const rejectRefundApi = async (
+  refundId: string,
+  rejectionReason: string
+) => {
+  const response = await api.post(`/refunds/${refundId}/reject`, {
+    rejectionReason,
+  });
+  return response.data;
+};

@@ -103,11 +103,24 @@ const TransactionRow = memo(function TransactionRow({
               ? "COD Delivery Collection"
               : txn.type === "COD_HANDOVER"
               ? "COD Store Handover"
+              : txn.type === "REFUND_DEDUCTION"
+              ? "Customer Refund Deduction"
+              : txn.type === "COMMISSION_REVERSAL"
+              ? "1.5% Commission Reversal"
+              : txn.type === "COMMISSION_DEDUCTION"
+              ? "1.5% Superadmin Commission"
+              : txn.type === "RECOVERY_ADJUSTMENT"
+              ? "Deficit Recovery Offset"
               : "Store Order Settlement"}
           </Text>
           <Text style={styles.txnSub} numberOfLines={1}>
             {txn.notes || (txn.order?.orderNumber ? `Order #${txn.order.orderNumber}` : dateStr)}
           </Text>
+          {txn.commission > 0 && (
+            <Text style={{ fontSize: scale(10), color: "#64748B", marginTop: scale(2) }}>
+              Gross: NPR {txn.grossAmount} &bull; Admin Fee (1.5%): NPR {txn.commission}
+            </Text>
+          )}
           <Text style={styles.txnDate}>{dateStr}</Text>
         </View>
       </View>
@@ -116,10 +129,21 @@ const TransactionRow = memo(function TransactionRow({
         <Text
           style={[
             styles.txnAmount,
-            { color: isWithdrawal ? "#DC2626" : "#016073" },
+            {
+              color:
+                isWithdrawal ||
+                txn.type === "REFUND_DEDUCTION" ||
+                txn.type === "COMMISSION_DEDUCTION"
+                  ? "#DC2626"
+                  : "#016073",
+            },
           ]}
         >
-          {isWithdrawal ? "-" : "+"}NPR {(txn.netAmount || txn.amount || 0).toLocaleString()}
+          {isWithdrawal ||
+          txn.type === "REFUND_DEDUCTION" ||
+          txn.type === "COMMISSION_DEDUCTION"
+            ? "-"
+            : "+"}NPR {Math.abs(txn.netAmount || txn.amount || 0).toLocaleString()}
         </Text>
         <View style={[styles.statusBadge, { backgroundColor: statusBg }]}>
           <Text style={[styles.statusBadgeText, { color: statusColor }]}>

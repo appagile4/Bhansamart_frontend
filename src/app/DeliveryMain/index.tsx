@@ -20,9 +20,13 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useRef, useState } from "react";
+import * as Location from "expo-location";
+import deliveryService from "@/store/services/deliveryService";
 import {
   ActivityIndicator,
   Alert,
+  AppState,
+  AppStateStatus,
   KeyboardAvoidingView,
   Linking,
   Modal,
@@ -132,8 +136,17 @@ export default function DeliveryDashboardScreen() {
   });
   const navMapRef = useRef<MapView | null>(null);
 
-  // Delivery partner's current coordinate
+  // Live GPS Coordinates Fix
+  const [liveCoordinates, setLiveCoordinates] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+
+  // Delivery partner's current coordinate (prefers live high-accuracy GPS)
   const partnerCoord = useMemo(() => {
+    if (liveCoordinates) {
+      return { latitude: liveCoordinates.latitude, longitude: liveCoordinates.longitude };
+    }
     let lat = 27.705;
     let lng = 85.315;
     if (
@@ -144,7 +157,7 @@ export default function DeliveryDashboardScreen() {
       lat = Number(partner.currentLocation.coordinates[1]) || 27.705;
     }
     return { latitude: lat, longitude: lng };
-  }, [partner]);
+  }, [liveCoordinates, partner]);
 
   // Compute bounding region for navigation modal
   const navMapRegion = useMemo(() => {
@@ -290,19 +303,131 @@ export default function DeliveryDashboardScreen() {
     }
   }, [offeredAssignment, dispatch]);
 
-  // Periodic GPS Location Beacon when Online
+  // ── Continuous Real-Time GPS Tracking (Foreground & Background Active) ──
   useEffect(() => {
-    if (availability === "ONLINE" || availability === "BUSY") {
-      const gpsInterval = setInterval(() => {
-        // Emit coordinates (Kathmandu central with subtle jitter for simulation)
-        const lat = 27.7172 + (Math.random() - 0.5) * 0.005;
-        const lng = 85.324 + (Math.random() - 0.5) * 0.005;
-        socketService.emitDeliveryLocation(lat, lng, 0, 20);
-      }, 10000);
+    let locationSubscription: Location.LocationSubscription | null = null;
+    let fallbackInterval: any = null;
+    let isTrackingActive = true;
 
-      return () => clearInterval(gpsInterval);
-    }
-  }, [availability]);
+    const sendLocationUpdate = (latitude: number, longitude: number, heading = 0, speed = 0) => {
+      setLiveCoordinates({ latitude, longitude });
+      // 1. Emit via real-time WebSocket for instant proximity matching
+      socketService.emitDeliveryLocation(latitude, longitude, heading, speed);
+      // 2. Persist in MongoDB database via location controller
+      deliveryService.updateLocation({ latitude, longitude, heading, speed }).catch(() => {});
+    };
+
+    const startLiveTracking = async () => {
+      if (availability !== "ONLINE" && availability !== "BUSY") {
+        return;
+      }
+
+      try {
+        // Request foreground high-accuracy GPS permission
+        const { status: fgStatus } = await Location.requestForegroundPermissionsAsync();
+        if (fgStatus === "granted") {
+          // Attempt background permission for continuous tracking when app is minimized
+          try {
+            await Location.requestBackgroundPermissionsAsync();
+          } catch (bgErr) {
+            console.log("Background location permission skipped/optional:", bgErr);
+          }
+
+          // Fetch initial instant fix
+          try {
+            const initialFix = await Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.High,
+            });
+            if (initialFix?.coords && isTrackingActive) {
+              sendLocationUpdate(
+                initialFix.coords.latitude,
+                initialFix.coords.longitude,
+                initialFix.coords.heading || 0,
+                initialFix.coords.speed || 0
+              );
+            }
+          } catch (initErr) {
+            console.log("Initial GPS fix warning:", initErr);
+          }
+
+          // Start continuous high-accuracy watcher (every 5 seconds / 5 meters)
+          locationSubscription = await Location.watchPositionAsync(
+            {
+              accuracy: Location.Accuracy.High,
+              timeInterval: 5000,
+              distanceInterval: 5,
+            },
+            (loc) => {
+              if (isTrackingActive && loc?.coords) {
+                sendLocationUpdate(
+                  loc.coords.latitude,
+                  loc.coords.longitude,
+                  loc.coords.heading || 0,
+                  loc.coords.speed || 0
+                );
+              }
+            }
+          );
+        }
+      } catch (err) {
+        console.warn("GPS Location tracking initialization error:", err);
+      }
+
+      // Continuous heartbeat beacon (ensures location stays fresh in database even if static or running in background)
+      fallbackInterval = setInterval(async () => {
+        if (!isTrackingActive || (availability !== "ONLINE" && availability !== "BUSY")) return;
+
+        try {
+          const loc = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          if (loc?.coords) {
+            sendLocationUpdate(
+              loc.coords.latitude,
+              loc.coords.longitude,
+              loc.coords.heading || 0,
+              loc.coords.speed || 0
+            );
+            return;
+          }
+        } catch (_) {}
+
+        // Fallback to active coordinates heartbeat
+        const baseLat = liveCoordinates?.latitude || partner?.currentLocation?.coordinates?.[1] || 27.7172;
+        const baseLng = liveCoordinates?.longitude || partner?.currentLocation?.coordinates?.[0] || 85.3240;
+        sendLocationUpdate(baseLat, baseLng, 0, 0);
+      }, 10000);
+    };
+
+    startLiveTracking();
+
+    // AppState change listener: updates continue when app transitions between active and background
+    const appStateSub = AppState.addEventListener("change", (nextAppState: AppStateStatus) => {
+      if (nextAppState === "active" || nextAppState === "background") {
+        if (availability === "ONLINE" || availability === "BUSY") {
+          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
+            .then((loc) => {
+              if (loc?.coords) {
+                sendLocationUpdate(
+                  loc.coords.latitude,
+                  loc.coords.longitude,
+                  loc.coords.heading || 0,
+                  loc.coords.speed || 0
+                );
+              }
+            })
+            .catch(() => {});
+        }
+      }
+    });
+
+    return () => {
+      isTrackingActive = false;
+      if (locationSubscription) locationSubscription.remove();
+      if (fallbackInterval) clearInterval(fallbackInterval);
+      appStateSub.remove();
+    };
+  }, [availability, partner]);
 
   // Availability Toggle
   const handleToggleAvailability = async () => {

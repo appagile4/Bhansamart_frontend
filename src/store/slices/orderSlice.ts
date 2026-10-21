@@ -67,6 +67,11 @@ export interface OrderRecord {
   vendorPickupOtp?: string;
   assignedDeliveryBoy?: any;
   deliveryBoyLocation?: any;
+  refundStatus?: string;
+  refundDetails?: any;
+  financialLedger?: any;
+  paymentDetails?: any;
+  codDetails?: any;
   createdAt: string;
   updatedAt?: string;
 }
@@ -114,7 +119,7 @@ export const fetchCustomerOrders = createAsyncThunk(
   async (params: { page?: number; limit?: number } | undefined, { rejectWithValue }) => {
     try {
       const response = await fetchCustomerOrdersApi(params);
-      return response.data;
+      return response?.data !== undefined ? response.data : response;
     } catch (error: any) {
       return rejectWithValue(
         error.message || "Failed to fetch orders."
@@ -197,12 +202,21 @@ export const orderSlice = createSlice({
     },
     // Real-time listener: Order status updated (Both Customer and Vendor)
     orderStatusUpdatedRealtime: (state, action: PayloadAction<any>) => {
-      const { _id, orderStatus, rejectionReason, statusHistory } = action.payload;
+      const {
+        _id,
+        orderStatus,
+        refundStatus,
+        refundDetails,
+        rejectionReason,
+        statusHistory,
+      } = action.payload;
       if (!_id) return;
 
       // Update currentOrder if open
       if (state.currentOrder && String(state.currentOrder._id) === String(_id)) {
-        state.currentOrder.orderStatus = orderStatus;
+        if (orderStatus) state.currentOrder.orderStatus = orderStatus;
+        if (refundStatus !== undefined) state.currentOrder.refundStatus = refundStatus;
+        if (refundDetails !== undefined) state.currentOrder.refundDetails = refundDetails;
         if (rejectionReason) state.currentOrder.rejectionReason = rejectionReason;
         if (statusHistory) state.currentOrder.statusHistory = statusHistory;
       }
@@ -212,7 +226,9 @@ export const orderSlice = createSlice({
         (o) => String(o._id) === String(_id)
       );
       if (custIdx !== -1) {
-        state.customerOrders[custIdx].orderStatus = orderStatus;
+        if (orderStatus) state.customerOrders[custIdx].orderStatus = orderStatus;
+        if (refundStatus !== undefined) state.customerOrders[custIdx].refundStatus = refundStatus;
+        if (refundDetails !== undefined) state.customerOrders[custIdx].refundDetails = refundDetails;
         if (rejectionReason) state.customerOrders[custIdx].rejectionReason = rejectionReason;
       }
 
@@ -259,7 +275,16 @@ export const orderSlice = createSlice({
     });
     builder.addCase(fetchCustomerOrders.fulfilled, (state, action) => {
       state.customerLoading = false;
-      state.customerOrders = action.payload;
+      const payload = action.payload;
+      if (Array.isArray(payload)) {
+        state.customerOrders = payload;
+      } else if (payload && Array.isArray(payload.data)) {
+        state.customerOrders = payload.data;
+      } else if (payload && Array.isArray(payload.orders)) {
+        state.customerOrders = payload.orders;
+      } else {
+        state.customerOrders = [];
+      }
     });
     builder.addCase(fetchCustomerOrders.rejected, (state, action) => {
       state.customerLoading = false;
