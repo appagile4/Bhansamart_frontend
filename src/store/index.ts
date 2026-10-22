@@ -12,6 +12,7 @@ import vendorFinanceReducer from "./slices/vendorFinanceSlice";
 import referralReducer from "./slices/referralSlice";
 import paymentReducer from "./slices/paymentSlice";
 import brandReducer from "./slices/brandSlice";
+import adminReducer from "./slices/adminSlice";
 
 export const store = configureStore({
   reducer: {
@@ -28,13 +29,13 @@ export const store = configureStore({
     referral: referralReducer,
     payment: paymentReducer,
     brand: brandReducer,
+    admin: adminReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: false,
     }),
 });
-
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;

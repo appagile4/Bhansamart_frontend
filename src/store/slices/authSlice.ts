@@ -24,6 +24,15 @@ export interface UserProfile {
   referralCode?: string;
   rewardPoints?: number;
   isEmailVerified: boolean;
+  assignedVendors?: string[];
+  adminPermissions?: {
+    canManageVendors?: boolean;
+    canEditProducts?: boolean;
+    canManageTickets?: boolean;
+    canViewOrders?: boolean;
+    canSendNotifications?: boolean;
+    canViewAnalytics?: boolean;
+  };
 }
 
 export interface AuthState {

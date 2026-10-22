@@ -1,5 +1,6 @@
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { clearAuthError, loginUser } from "@/store/slices/authSlice";
+import storage from "@/utils/storage";
 import { moderateScale, scale } from "@/theme";
 import {
   Feather,
@@ -30,7 +31,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 export default function LoginScreen() {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { isLoading, error, isAuthenticated } = useAppSelector(
+  const { isLoading, error, isAuthenticated, user } = useAppSelector(
     (state) => state.auth,
   );
 
@@ -53,9 +54,17 @@ export default function LoginScreen() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.replace("/customerMain" as any);
+      if (user?.role === "superadmin" || user?.role === "admin") {
+        router.replace("/AdminMain" as any);
+      } else if (user?.role === "vendor") {
+        router.replace("/VendorMain" as any);
+      } else if (user?.role === "delivery_boy") {
+        router.replace("/DeliveryMain" as any);
+      } else {
+        router.replace("/customerMain" as any);
+      }
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, user?.role, router]);
 
   useEffect(() => {
     return () => {
@@ -79,7 +88,17 @@ export default function LoginScreen() {
       ).unwrap();
 
       if (result?.token) {
-        router.replace("/customerMain" as any);
+        const userRole = result?.user?.role;
+        if (userRole === "superadmin" || userRole === "admin") {
+          await storage.setItem("bhansa_admin_token", result.token);
+          router.replace("/AdminMain" as any);
+        } else if (userRole === "vendor") {
+          router.replace("/VendorMain" as any);
+        } else if (userRole === "delivery_boy") {
+          router.replace("/DeliveryMain" as any);
+        } else {
+          router.replace("/customerMain" as any);
+        }
       }
     } catch (err: any) {
       if (err?.raw?.data?.isEmailVerified === false) {

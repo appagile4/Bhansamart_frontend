@@ -33,10 +33,13 @@ api.interceptors.request.use(
       const customerToken = await storage.getItem("bhansa_token");
       const vendorToken = await storage.getItem("bhansa_vendor_token");
       const deliveryToken = await storage.getItem("bhansa_delivery_token");
+      const adminToken = await storage.getItem("bhansa_admin_token");
 
       // Prioritize token based on target endpoint
       let token = customerToken;
-      if (config.url?.includes("/delivery")) {
+      if (config.url?.includes("/admin")) {
+        token = adminToken || customerToken || vendorToken;
+      } else if (config.url?.includes("/delivery")) {
         token = deliveryToken || vendorToken || customerToken;
       } else if (
         config.url?.includes("/vendor") ||
@@ -46,7 +49,7 @@ api.interceptors.request.use(
       ) {
         token = vendorToken || customerToken;
       } else {
-        token = customerToken || deliveryToken || vendorToken;
+        token = customerToken || adminToken || deliveryToken || vendorToken;
       }
 
       if (token && config.headers) {

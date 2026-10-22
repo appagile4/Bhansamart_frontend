@@ -53,6 +53,7 @@ const Index = () => {
 
     const checkAuthAndRoute = async () => {
       try {
+        const adminToken = await storage.getItem("bhansa_admin_token");
         const customerToken = await storage.getItem("bhansa_token");
         const vendorToken = await storage.getItem("bhansa_vendor_token");
         const deliveryToken = await storage.getItem("bhansa_delivery_token");
@@ -73,7 +74,7 @@ const Index = () => {
           }
         }
 
-        if (customerToken && !currentCustomerUser) {
+        if ((customerToken || adminToken) && !currentCustomerUser) {
           try {
             const rawCU = await storage.getItem("bhansa_user");
             if (rawCU) currentCustomerUser = JSON.parse(rawCU);
@@ -85,7 +86,16 @@ const Index = () => {
         const timer = setTimeout(() => {
           if (!isMounted) return;
 
-          // 1. Vendor check (Pending / Draft vs Approved / Active)
+          // 1. Superadmin / Staff Admin check
+          const userRole = (currentCustomerUser?.role || customerUser?.role || "").toLowerCase();
+          if (adminToken || userRole === "superadmin" || userRole === "admin") {
+            if (adminToken || customerToken || isCustomerAuthenticated) {
+              router.replace("/AdminMain" as any);
+              return;
+            }
+          }
+
+          // 2. Vendor check (Pending / Draft vs Approved / Active)
           if (vendorToken || isVendorAuthenticated) {
             const status = (
               currentVendorDetails?.status ||
@@ -107,20 +117,20 @@ const Index = () => {
             }
           }
 
-          // 2. Delivery Partner check
+          // 3. Delivery Partner check
           if (deliveryToken) {
             router.replace("/DeliveryMain" as any);
             return;
           }
 
-          // 3. Customer check
+          // 4. Customer check
           if (customerToken || isCustomerAuthenticated) {
             // Customer: Navigate to Customer Dashboard
             router.replace("/customerMain" as any);
             return;
           }
 
-          // 4. Unauthenticated / No Token: Navigate to Login
+          // 5. Unauthenticated / No Token: Navigate to Login
           router.replace("/(auth)/login");
         }, 2200);
 
