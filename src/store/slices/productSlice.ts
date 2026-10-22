@@ -81,6 +81,10 @@ export interface ProductItem {
   };
   returnPolicy?: string;
   warranty?: string;
+  isReturnable?: boolean;
+  returnWindowDays?: number;
+  isReplaceable?: boolean;
+  isRefundable?: boolean;
   images: ProductImage[];
   variants?: ProductVariant[];
   tags?: string[];

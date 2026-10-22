@@ -461,6 +461,74 @@ export default function ProductDetailScreen() {
           </View>
         </View>
 
+        {/* Customer Return, Replace & Refund Guarantee Banner */}
+        <View
+          style={[
+            styles.guaranteeBanner,
+            isDark && { backgroundColor: "#101922", borderColor: "#1E2A38" },
+          ]}
+        >
+          {/* Return Policy Pill */}
+          <View style={styles.guaranteePill}>
+            <MaterialCommunityIcons
+              name="keyboard-return"
+              size={scale(16)}
+              color={product?.isReturnable ? "#10B981" : "#94A3B8"}
+            />
+            <Text
+              style={[
+                styles.guaranteeText,
+                isDark && { color: "#CBD5E1" },
+                !product?.isReturnable && { color: "#94A3B8" },
+              ]}
+            >
+              {product?.isReturnable
+                ? `${product.returnWindowDays || 7} Days Return`
+                : "Non-Returnable"}
+            </Text>
+          </View>
+
+          <View style={styles.guaranteeDivider} />
+
+          {/* Replacement Pill */}
+          <View style={styles.guaranteePill}>
+            <MaterialCommunityIcons
+              name="swap-horizontal"
+              size={scale(16)}
+              color={product?.isReplaceable ? "#0284C7" : "#94A3B8"}
+            />
+            <Text
+              style={[
+                styles.guaranteeText,
+                isDark && { color: "#CBD5E1" },
+                !product?.isReplaceable && { color: "#94A3B8" },
+              ]}
+            >
+              {product?.isReplaceable ? "Replacement" : "No Replacement"}
+            </Text>
+          </View>
+
+          <View style={styles.guaranteeDivider} />
+
+          {/* Refund Pill */}
+          <View style={styles.guaranteePill}>
+            <MaterialCommunityIcons
+              name="cash-refund"
+              size={scale(16)}
+              color={product?.isRefundable ? "#10B981" : "#94A3B8"}
+            />
+            <Text
+              style={[
+                styles.guaranteeText,
+                isDark && { color: "#CBD5E1" },
+                !product?.isRefundable && { color: "#94A3B8" },
+              ]}
+            >
+              {product?.isRefundable ? "Refundable" : "Non-Refundable"}
+            </Text>
+          </View>
+        </View>
+
         {/* 3. Store / Seller Card */}
         <TouchableOpacity
           activeOpacity={0.8}
@@ -1708,5 +1776,33 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(13),
     fontWeight: "700",
     color: "#94A3B8",
+  },
+  guaranteeBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: scale(10),
+    marginHorizontal: scale(12),
+    marginBottom: scale(8),
+    paddingVertical: scale(10),
+    paddingHorizontal: scale(6),
+  },
+  guaranteePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(4),
+  },
+  guaranteeText: {
+    fontSize: moderateScale(11),
+    fontWeight: "600",
+    color: "#334155",
+  },
+  guaranteeDivider: {
+    width: 1,
+    height: scale(16),
+    backgroundColor: "#CBD5E1",
   },
 });

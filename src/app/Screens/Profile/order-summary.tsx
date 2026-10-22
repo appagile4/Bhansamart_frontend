@@ -289,6 +289,49 @@ export default function OrderSummaryScreen() {
   const [payoutUpi, setPayoutUpi] = useState("");
   const [submittingRefund, setSubmittingRefund] = useState(false);
 
+  const hasEligibleClaimItems = useMemo(() => {
+    if (!order?.items || order.items.length === 0) return true;
+    return order.items.some(
+      (it: any) => it.isReturnable || it.isReplaceable || it.isRefundable,
+    );
+  }, [order?.items]);
+
+  const hasReturnableItems = useMemo(() => {
+    if (!order?.items || order.items.length === 0) return true;
+    return order.items.some((it: any) => it.isReturnable);
+  }, [order?.items]);
+
+  const hasReplaceableItems = useMemo(() => {
+    if (!order?.items || order.items.length === 0) return true;
+    return order.items.some((it: any) => it.isReplaceable);
+  }, [order?.items]);
+
+  const hasRefundableItems = useMemo(() => {
+    if (!order?.items || order.items.length === 0) return true;
+    return order.items.some((it: any) => it.isRefundable || it.isReturnable);
+  }, [order?.items]);
+
+  const availableClaimOptions = useMemo(() => {
+    const list: {
+      id: "RETURN" | "DEFECTIVE" | "REPLACEMENT" | "WRONG_ITEM";
+      label: string;
+    }[] = [];
+    if (hasReturnableItems || hasRefundableItems) {
+      list.push({ id: "RETURN", label: "Return & Refund" });
+    }
+    if (hasReplaceableItems) {
+      list.push({ id: "REPLACEMENT", label: "Replacement" });
+    }
+    if (hasReturnableItems || hasReplaceableItems) {
+      list.push({ id: "DEFECTIVE", label: "Defective" });
+      list.push({ id: "WRONG_ITEM", label: "Wrong Item" });
+    }
+    if (list.length === 0) {
+      list.push({ id: "RETURN", label: "Return & Refund" });
+    }
+    return list;
+  }, [hasReturnableItems, hasReplaceableItems, hasRefundableItems]);
+
   const handleCopyOrderId = () => {
     setCopied(true);
     Alert.alert("Copied", `Order ID copied to clipboard!`);
@@ -1594,28 +1637,56 @@ export default function OrderSummaryScreen() {
             (!order?.refundStatus ||
               order?.refundStatus === "NONE" ||
               order?.refundStatus === "NOT_APPLICABLE") && (
-              <TouchableOpacity
-                style={[
-                  styles.actionBtnOutline,
-                  { borderColor: isDark ? "#38BDF8" : "#0284C7" },
-                ]}
-                onPress={() => setRefundModalVisible(true)}
-                activeOpacity={0.8}
-              >
-                <Feather
-                  name="rotate-ccw"
-                  size={scale(16)}
-                  color={isDark ? "#38BDF8" : "#0284C7"}
-                />
-                <Text
+              hasEligibleClaimItems ? (
+                <TouchableOpacity
                   style={[
-                    styles.actionBtnOutlineText,
-                    { color: isDark ? "#38BDF8" : "#0284C7" },
+                    styles.actionBtnOutline,
+                    { borderColor: isDark ? "#38BDF8" : "#0284C7" },
                   ]}
+                  onPress={() => {
+                    setClaimType(availableClaimOptions[0]?.id || "RETURN");
+                    setRefundModalVisible(true);
+                  }}
+                  activeOpacity={0.8}
                 >
-                  Request Return, Refund or Replacement
-                </Text>
-              </TouchableOpacity>
+                  <Feather
+                    name="rotate-ccw"
+                    size={scale(16)}
+                    color={isDark ? "#38BDF8" : "#0284C7"}
+                  />
+                  <Text
+                    style={[
+                      styles.actionBtnOutlineText,
+                      { color: isDark ? "#38BDF8" : "#0284C7" },
+                    ]}
+                  >
+                    Request Return, Refund or Replacement
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: scale(6),
+                    backgroundColor: isDark ? "#1E293B" : "#F1F5F9",
+                    padding: scale(10),
+                    borderRadius: scale(8),
+                    marginTop: scale(6),
+                  }}
+                >
+                  <Feather name="info" size={scale(15)} color="#64748B" />
+                  <Text
+                    style={{
+                      fontSize: moderateScale(11),
+                      color: "#64748B",
+                      flex: 1,
+                    }}
+                  >
+                    Items in this order are marked non-returnable and non-replaceable by the seller.
+                  </Text>
+                </View>
+              )
             )}
         </View>
 
@@ -1721,14 +1792,7 @@ export default function OrderSummaryScreen() {
                   flexWrap: "wrap",
                 }}
               >
-                {(
-                  [
-                    { id: "RETURN", label: "Return & Refund" },
-                    { id: "DEFECTIVE", label: "Defective" },
-                    { id: "REPLACEMENT", label: "Replacement" },
-                    { id: "WRONG_ITEM", label: "Wrong Item" },
-                  ] as const
-                ).map((ct) => (
+                {availableClaimOptions.map((ct) => (
                   <TouchableOpacity
                     key={ct.id}
                     style={[

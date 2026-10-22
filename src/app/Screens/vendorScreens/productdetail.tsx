@@ -140,7 +140,24 @@ export default function VendorProductDetailScreen() {
       : 24);
 
   // Real Policies and Metadata
-  const returnPolicy = product?.returnPolicy || "14 days";
+  const returnPolicy =
+    product?.isReturnable !== undefined
+      ? product.isReturnable
+        ? `${product.returnWindowDays || 7} Days Returnable`
+        : "Non-Returnable"
+      : product?.returnPolicy || "7 Days Returnable";
+  const replacementPolicy =
+    product?.isReplaceable !== undefined
+      ? product.isReplaceable
+        ? "Available"
+        : "Not Available"
+      : "Available";
+  const refundPolicy =
+    product?.isRefundable !== undefined
+      ? product.isRefundable
+        ? "Eligible"
+        : "Non-Refundable"
+      : "Eligible";
   const warranty = product?.warranty || "Not Available";
   const brandName = product?.brand || "Amul";
   const categoryName = product?.category || "Chocolate";
@@ -419,6 +436,16 @@ export default function VendorProductDetailScreen() {
                 <View style={styles.metaItem}>
                   <Text style={styles.metaLabel}>Return</Text>
                   <Text style={styles.metaValue}>{returnPolicy}</Text>
+                </View>
+
+                <View style={styles.metaItem}>
+                  <Text style={styles.metaLabel}>Replacement</Text>
+                  <Text style={styles.metaValue}>{replacementPolicy}</Text>
+                </View>
+
+                <View style={styles.metaItem}>
+                  <Text style={styles.metaLabel}>Refund</Text>
+                  <Text style={styles.metaValue}>{refundPolicy}</Text>
                 </View>
 
                 <View style={styles.metaItem}>

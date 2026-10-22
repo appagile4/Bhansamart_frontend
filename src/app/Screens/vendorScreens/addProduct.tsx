@@ -22,6 +22,7 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -267,6 +268,12 @@ export default function AddProductScreen() {
     newArrivals: true,
   });
 
+  // Return, Replace & Refund Policy
+  const [isReturnable, setIsReturnable] = useState(false);
+  const [returnWindowDays, setReturnWindowDays] = useState("7");
+  const [isReplaceable, setIsReplaceable] = useState(false);
+  const [isRefundable, setIsRefundable] = useState(false);
+
   // 6. Product Tags
   const [tags, setTags] = useState<string[]>(["Fresh", "Organic", "Pantry"]);
   const [newTagInput, setNewTagInput] = useState("");
@@ -352,6 +359,19 @@ export default function AddProductScreen() {
 
       if (currentProduct.tags && Array.isArray(currentProduct.tags)) {
         setTags(currentProduct.tags);
+      }
+
+      if (currentProduct.isReturnable !== undefined) {
+        setIsReturnable(!!currentProduct.isReturnable);
+      }
+      if (currentProduct.returnWindowDays != null) {
+        setReturnWindowDays(String(currentProduct.returnWindowDays));
+      }
+      if (currentProduct.isReplaceable !== undefined) {
+        setIsReplaceable(!!currentProduct.isReplaceable);
+      }
+      if (currentProduct.isRefundable !== undefined) {
+        setIsRefundable(!!currentProduct.isRefundable);
       }
 
       if (
@@ -574,6 +594,13 @@ export default function AddProductScreen() {
       );
       formData.append("variants", JSON.stringify(variants));
       formData.append("tags", JSON.stringify(tags));
+      formData.append("isReturnable", String(isReturnable));
+      formData.append(
+        "returnWindowDays",
+        String(parseInt(returnWindowDays, 10) || 7),
+      );
+      formData.append("isReplaceable", String(isReplaceable));
+      formData.append("isRefundable", String(isRefundable));
 
       // Separate existing remote images from new local files
       const existingImages = selectedPhotos.filter(
@@ -1388,7 +1415,229 @@ export default function AddProductScreen() {
             </View>
           </View>
 
-          {/* ================= CARD 7: PRODUCT TAGS ================= */}
+          {/* ================= CARD 7: RETURN, REPLACEMENT & REFUND POLICY ================= */}
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <MaterialCommunityIcons
+                name="shield-sync-outline"
+                size={scale(20)}
+                color="#016073"
+              />
+              <View style={{ flex: 1, marginLeft: scale(6) }}>
+                <Text style={styles.cardTitle}>Return, Replace & Refund Policy</Text>
+                <Text style={styles.cardSubtitle}>
+                  Activate customer policies. Only products with these toggles turned on will be eligible for return, replacement, or refund.
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.cardBody}>
+              {/* 1. Returnable Switch */}
+              <View style={styles.policyRow}>
+                <View style={styles.policyIconWrap}>
+                  <MaterialCommunityIcons
+                    name="keyboard-return"
+                    size={scale(22)}
+                    color={isReturnable ? "#016073" : "#94A3B8"}
+                  />
+                </View>
+                <View style={{ flex: 1, marginRight: scale(10) }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: scale(6),
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <Text style={styles.policyTitle}>Allow Product Return</Text>
+                    <View
+                      style={[
+                        styles.policyBadge,
+                        {
+                          backgroundColor: isReturnable
+                            ? "rgba(16, 185, 129, 0.15)"
+                            : "rgba(239, 68, 68, 0.1)",
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.policyBadgeText,
+                          { color: isReturnable ? "#10B981" : "#EF4444" },
+                        ]}
+                      >
+                        {isReturnable ? "Returnable" : "Non-Returnable"}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.policyDesc}>
+                    Customer can return this product within the return window if they change their mind or are unsatisfied.
+                  </Text>
+                </View>
+                <Switch
+                  value={isReturnable}
+                  onValueChange={setIsReturnable}
+                  trackColor={{ false: "#CBD5E1", true: "#86C4CB" }}
+                  thumbColor={isReturnable ? "#016073" : "#F8FAFC"}
+                />
+              </View>
+
+              {/* Return Window Days (shown when Returnable is active) */}
+              {isReturnable && (
+                <View style={styles.returnWindowBox}>
+                  <Text style={styles.returnWindowLabel}>
+                    Return Window (Days):
+                  </Text>
+                  <View style={styles.returnWindowPills}>
+                    {["3", "7", "10", "14", "30"].map((days) => {
+                      const isSelected = returnWindowDays === days;
+                      return (
+                        <TouchableOpacity
+                          key={days}
+                          activeOpacity={0.8}
+                          onPress={() => setReturnWindowDays(days)}
+                          style={[
+                            styles.windowPill,
+                            isSelected && styles.windowPillActive,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.windowPillText,
+                              isSelected && styles.windowPillTextActive,
+                            ]}
+                          >
+                            {days} Days
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              )}
+
+              <View style={styles.policyDivider} />
+
+              {/* 2. Replaceable Switch */}
+              <View style={styles.policyRow}>
+                <View style={styles.policyIconWrap}>
+                  <MaterialCommunityIcons
+                    name="swap-horizontal-bold"
+                    size={scale(22)}
+                    color={isReplaceable ? "#0284C7" : "#94A3B8"}
+                  />
+                </View>
+                <View style={{ flex: 1, marginRight: scale(10) }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: scale(6),
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <Text style={styles.policyTitle}>Allow Product Replacement</Text>
+                    <View
+                      style={[
+                        styles.policyBadge,
+                        {
+                          backgroundColor: isReplaceable
+                            ? "rgba(2, 132, 199, 0.15)"
+                            : "rgba(239, 68, 68, 0.1)",
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.policyBadgeText,
+                          { color: isReplaceable ? "#0284C7" : "#EF4444" },
+                        ]}
+                      >
+                        {isReplaceable ? "Replaceable" : "No Replacement"}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.policyDesc}>
+                    Customer can request a free replacement if the delivered product is defective, damaged, or wrong item.
+                  </Text>
+                </View>
+                <Switch
+                  value={isReplaceable}
+                  onValueChange={setIsReplaceable}
+                  trackColor={{ false: "#CBD5E1", true: "#93C5FD" }}
+                  thumbColor={isReplaceable ? "#0284C7" : "#F8FAFC"}
+                />
+              </View>
+
+              <View style={styles.policyDivider} />
+
+              {/* 3. Refundable Switch */}
+              <View style={styles.policyRow}>
+                <View style={styles.policyIconWrap}>
+                  <MaterialCommunityIcons
+                    name="cash-refund"
+                    size={scale(22)}
+                    color={isRefundable ? "#10B981" : "#94A3B8"}
+                  />
+                </View>
+                <View style={{ flex: 1, marginRight: scale(10) }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: scale(6),
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <Text style={styles.policyTitle}>Allow Money Refund</Text>
+                    <View
+                      style={[
+                        styles.policyBadge,
+                        {
+                          backgroundColor: isRefundable
+                            ? "rgba(16, 185, 129, 0.15)"
+                            : "rgba(239, 68, 68, 0.1)",
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.policyBadgeText,
+                          { color: isRefundable ? "#10B981" : "#EF4444" },
+                        ]}
+                      >
+                        {isRefundable ? "Refundable" : "Non-Refundable"}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.policyDesc}>
+                    Permit monetary refunds back to the customer's bank account, UPI, or payment gateway upon return/claim approval.
+                  </Text>
+                </View>
+                <Switch
+                  value={isRefundable}
+                  onValueChange={setIsRefundable}
+                  trackColor={{ false: "#CBD5E1", true: "#6EE7B7" }}
+                  thumbColor={isRefundable ? "#10B981" : "#F8FAFC"}
+                />
+              </View>
+
+              {/* Policy Guidance Alert Box */}
+              <View style={styles.policyAlertBox}>
+                <Ionicons
+                  name="information-circle-outline"
+                  size={scale(18)}
+                  color="#0369A1"
+                />
+                <Text style={styles.policyAlertText}>
+                  Only products with these flags activated will permit customers to initiate return, replacement, or refund claims on their order.
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* ================= CARD 8: PRODUCT TAGS ================= */}
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <MaterialCommunityIcons
@@ -2414,5 +2663,106 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(10),
     color: "#64748B",
     marginTop: scale(1),
+  },
+  cardSubtitle: {
+    fontSize: moderateScale(11),
+    color: "#64748B",
+    marginTop: scale(2),
+    lineHeight: moderateScale(15),
+  },
+  policyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: scale(10),
+  },
+  policyIconWrap: {
+    width: scale(38),
+    height: scale(38),
+    borderRadius: scale(19),
+    backgroundColor: "#F1F5F9",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: scale(10),
+  },
+  policyTitle: {
+    fontSize: moderateScale(13),
+    fontWeight: "700",
+    color: "#1E293B",
+  },
+  policyDesc: {
+    fontSize: moderateScale(11),
+    color: "#64748B",
+    marginTop: scale(2),
+    lineHeight: moderateScale(15),
+  },
+  policyBadge: {
+    paddingHorizontal: scale(6),
+    paddingVertical: scale(2),
+    borderRadius: scale(4),
+  },
+  policyBadgeText: {
+    fontSize: moderateScale(9),
+    fontWeight: "800",
+  },
+  policyDivider: {
+    height: 1,
+    backgroundColor: "#F1F5F9",
+    marginVertical: scale(6),
+  },
+  returnWindowBox: {
+    backgroundColor: "#F8FAFC",
+    borderRadius: scale(8),
+    padding: scale(10),
+    marginTop: scale(4),
+    marginBottom: scale(8),
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  returnWindowLabel: {
+    fontSize: moderateScale(11),
+    fontWeight: "700",
+    color: "#475569",
+    marginBottom: scale(6),
+  },
+  returnWindowPills: {
+    flexDirection: "row",
+    gap: scale(8),
+    flexWrap: "wrap",
+  },
+  windowPill: {
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(5),
+    borderRadius: scale(6),
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    backgroundColor: "#FFFFFF",
+  },
+  windowPillActive: {
+    borderColor: "#016073",
+    backgroundColor: "#E6F4F6",
+  },
+  windowPillText: {
+    fontSize: moderateScale(11),
+    fontWeight: "600",
+    color: "#64748B",
+  },
+  windowPillTextActive: {
+    color: "#016073",
+    fontWeight: "700",
+  },
+  policyAlertBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(6),
+    backgroundColor: "rgba(3, 105, 161, 0.08)",
+    padding: scale(10),
+    borderRadius: scale(8),
+    marginTop: scale(10),
+  },
+  policyAlertText: {
+    fontSize: moderateScale(11),
+    color: "#0369A1",
+    flex: 1,
+    lineHeight: moderateScale(15),
   },
 });

@@ -1161,55 +1161,151 @@ export default function AdminCatalogScreen() {
         subtitle="Categories & Moderation"
       />
       {/* Top Segmented Bar */}
-      <View
-        style={[
-          styles.segmentBar,
-          { backgroundColor: cardBg, borderColor: border },
-        ]}
-      >
-        <TouchableOpacity
+      <View style={styles.segmentContainer}>
+        <View
           style={[
-            styles.segmentBtn,
-            activeTab === "categories" && styles.segmentBtnActive,
+            styles.segmentTrack,
+            {
+              backgroundColor: isDark ? "#111827" : "#E2E8F0",
+              borderColor: border,
+            },
           ]}
-          onPress={() => setActiveTab("categories")}
         >
-          <MaterialCommunityIcons
-            name="shape-outline"
-            size={scale(16)}
-            color={activeTab === "categories" ? "#10B981" : textSecondary}
-          />
-          <Text
+          {/* Categories Tab */}
+          <TouchableOpacity
+            activeOpacity={0.8}
             style={[
-              styles.segmentText,
-              { color: activeTab === "categories" ? "#10B981" : textSecondary },
+              styles.segmentItem,
+              activeTab === "categories" && [
+                styles.segmentItemActive,
+                {
+                  backgroundColor: isDark ? "#1F2937" : "#FFFFFF",
+                  shadowColor: isDark ? "#000000" : "#64748B",
+                },
+              ],
             ]}
+            onPress={() => setActiveTab("categories")}
           >
-            Categories & Subcategories
-          </Text>
-        </TouchableOpacity>
+            <View
+              style={[
+                styles.segmentIconWrap,
+                activeTab === "categories"
+                  ? { backgroundColor: "rgba(16, 185, 129, 0.15)" }
+                  : { backgroundColor: "transparent" },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name="shape-outline"
+                size={scale(16)}
+                color={activeTab === "categories" ? "#10B981" : textSecondary}
+              />
+            </View>
+            <Text
+              style={[
+                styles.segmentLabel,
+                {
+                  color:
+                    activeTab === "categories" ? textPrimary : textSecondary,
+                  fontWeight: activeTab === "categories" ? "800" : "600",
+                },
+              ]}
+              numberOfLines={1}
+            >
+              Categories
+            </Text>
+            {unifiedCategories.length > 0 && (
+              <View
+                style={[
+                  styles.segmentCountBadge,
+                  activeTab === "categories"
+                    ? styles.segmentCountBadgeActive
+                    : [
+                        styles.segmentCountBadgeInactive,
+                        { backgroundColor: isDark ? "#374151" : "#CBD5E1" },
+                      ],
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.segmentCountBadgeText,
+                    activeTab === "categories"
+                      ? styles.segmentCountBadgeTextActive
+                      : { color: isDark ? "#9CA3AF" : "#475569" },
+                  ]}
+                >
+                  {unifiedCategories.length}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[
-            styles.segmentBtn,
-            activeTab === "products" && styles.segmentBtnActive,
-          ]}
-          onPress={() => setActiveTab("products")}
-        >
-          <MaterialCommunityIcons
-            name="cube-scan"
-            size={scale(16)}
-            color={activeTab === "products" ? "#10B981" : textSecondary}
-          />
-          <Text
+          {/* Products Moderation Tab */}
+          <TouchableOpacity
+            activeOpacity={0.8}
             style={[
-              styles.segmentText,
-              { color: activeTab === "products" ? "#10B981" : textSecondary },
+              styles.segmentItem,
+              activeTab === "products" && [
+                styles.segmentItemActive,
+                {
+                  backgroundColor: isDark ? "#1F2937" : "#FFFFFF",
+                  shadowColor: isDark ? "#000000" : "#64748B",
+                },
+              ],
             ]}
+            onPress={() => setActiveTab("products")}
           >
-            Product Moderation ({productsTotal})
-          </Text>
-        </TouchableOpacity>
+            <View
+              style={[
+                styles.segmentIconWrap,
+                activeTab === "products"
+                  ? { backgroundColor: "rgba(16, 185, 129, 0.15)" }
+                  : { backgroundColor: "transparent" },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name="cube-scan"
+                size={scale(16)}
+                color={activeTab === "products" ? "#10B981" : textSecondary}
+              />
+            </View>
+            <Text
+              style={[
+                styles.segmentLabel,
+                {
+                  color: activeTab === "products" ? textPrimary : textSecondary,
+                  fontWeight: activeTab === "products" ? "800" : "600",
+                },
+              ]}
+              numberOfLines={1}
+            >
+              Product
+            </Text>
+            {productsTotal > 0 && (
+              <View
+                style={[
+                  styles.segmentCountBadge,
+                  activeTab === "products"
+                    ? styles.segmentCountBadgeActive
+                    : [
+                        styles.segmentCountBadgeInactive,
+                        { backgroundColor: isDark ? "#374151" : "#CBD5E1" },
+                      ],
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.segmentCountBadgeText,
+                    activeTab === "products"
+                      ? styles.segmentCountBadgeTextActive
+                      : { color: isDark ? "#9CA3AF" : "#475569" },
+                  ]}
+                >
+                  {productsTotal}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Main Content */}
@@ -1783,28 +1879,62 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  segmentBar: {
-    flexDirection: "row",
-    borderBottomWidth: 1,
+  segmentContainer: {
     paddingHorizontal: scale(16),
-    paddingTop: scale(8),
+    paddingTop: scale(10),
+    paddingBottom: scale(6),
   },
-  segmentBtn: {
+  segmentTrack: {
     flexDirection: "row",
     alignItems: "center",
+    borderRadius: scale(12),
+    padding: scale(4),
+    borderWidth: 1,
+  },
+  segmentItem: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: scale(8),
+    paddingHorizontal: scale(8),
+    borderRadius: scale(9),
     gap: scale(6),
-    paddingVertical: scale(10),
-    paddingHorizontal: scale(14),
-    borderBottomWidth: 2,
-    borderBottomColor: "transparent",
-    marginRight: scale(8),
   },
-  segmentBtnActive: {
-    borderBottomColor: "#10B981",
+  segmentItemActive: {
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  segmentText: {
-    fontSize: moderateScale(13),
-    fontWeight: "700",
+  segmentIconWrap: {
+    width: scale(26),
+    height: scale(26),
+    borderRadius: scale(13),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  segmentLabel: {
+    fontSize: moderateScale(12.5),
+  },
+  segmentCountBadge: {
+    paddingHorizontal: scale(7),
+    paddingVertical: scale(2),
+    borderRadius: scale(10),
+    minWidth: scale(20),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  segmentCountBadgeActive: {
+    backgroundColor: "#10B981",
+  },
+  segmentCountBadgeInactive: {},
+  segmentCountBadgeText: {
+    fontSize: moderateScale(10),
+    fontWeight: "800",
+  },
+  segmentCountBadgeTextActive: {
+    color: "#FFFFFF",
   },
   actionHeader: {
     flexDirection: "row",
