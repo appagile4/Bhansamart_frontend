@@ -383,8 +383,16 @@ export const adminSlice = createSlice({
 
     // Products
     builder.addCase(fetchAdminProducts.fulfilled, (state, action) => {
-      state.products = action.payload.data;
-      state.productsTotal = action.payload.total;
+      const page = action.meta.arg?.page || 1;
+      const incoming = action.payload.data || [];
+      if (page > 1) {
+        const existingIds = new Set(state.products.map((p) => p._id));
+        const uniqueIncoming = incoming.filter((p: any) => !existingIds.has(p._id));
+        state.products = [...state.products, ...uniqueIncoming];
+      } else {
+        state.products = incoming;
+      }
+      state.productsTotal = action.payload.total || 0;
     });
 
     // Transactions

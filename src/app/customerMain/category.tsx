@@ -83,7 +83,7 @@ const CategoryGridCardItem = memo(function CategoryGridCardItem({
   );
 });
 
-const ALL_CATEGORY_SECTIONS: SectionCategoryData[] = [
+export const ALL_CATEGORY_SECTIONS: SectionCategoryData[] = [
   {
     id: "grocery-kitchen",
     title: "Grocery & Kitchen",
