@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Linking,
   Platform,
   RefreshControl,
   StyleSheet,
@@ -32,6 +33,7 @@ export default function AdminLiveRadarScreen() {
   const theme = useTheme();
   const isDark = theme.mode === "dark";
   const dispatch = useAppDispatch();
+  const mapRef = useRef<any>(null);
 
   const [activeFilter, setActiveFilter] = useState<"ALL" | "VENDORS" | "RIDERS">("ALL");
   const [selectedEntity, setSelectedEntity] = useState<any | null>(null);
@@ -58,19 +60,49 @@ export default function AdminLiveRadarScreen() {
   const textPrimary = isDark ? "#F8FAFC" : "#0F172A";
   const textSecondary = isDark ? "#94A3B8" : "#64748B";
 
+  // Focus map camera on entity location
+  const handleSelectEntity = (item: any) => {
+    setSelectedEntity(item);
+    const lat = Number(item.latitude || item.location?.coordinates?.[1] || 0);
+    const lng = Number(item.longitude || item.location?.coordinates?.[0] || 0);
+
+    if (lat && lng && mapRef.current?.animateToRegion) {
+      mapRef.current.animateToRegion(
+        {
+          latitude: lat,
+          longitude: lng,
+          latitudeDelta: 0.015,
+          longitudeDelta: 0.015,
+        },
+        700
+      );
+    }
+  };
+
+  const openInExternalMaps = (lat: number, lng: number, label: string) => {
+    const url = Platform.select({
+      ios: `maps:0,0?q=${label}@${lat},${lng}`,
+      android: `geo:0,0?q=${lat},${lng}(${encodeURIComponent(label)})`,
+      default: `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,
+    });
+    if (url) {
+      Linking.openURL(url).catch((err) => console.error("Could not open maps", err));
+    }
+  };
+
   const renderEntityCard = ({ item }: { item: any }) => {
-    const isVendor = !!item.storeName;
-    const coords = item.location?.coordinates || [0, 0];
-    const isSelected = selectedEntity?._id === item._id;
+    const isVendor = item.type === "vendor" || !!item.storeName;
+    const coords = item.location?.coordinates || [item.longitude || 0, item.latitude || 0];
+    const isSelected = (selectedEntity?._id || selectedEntity?.id) === (item._id || item.id);
 
     return (
       <TouchableOpacity
         style={[
           styles.entityCard,
           { backgroundColor: cardBg, borderColor: isSelected ? "#10B981" : border },
-          isSelected && { borderWidth: 2 },
+          isSelected && { borderWidth: 2, backgroundColor: isDark ? "#162524" : "#F0FDF4" },
         ]}
-        onPress={() => setSelectedEntity(item)}
+        onPress={() => handleSelectEntity(item)}
       >
         <View style={styles.entityRow}>
           <View
@@ -88,7 +120,7 @@ export default function AdminLiveRadarScreen() {
           <View style={{ flex: 1, marginLeft: scale(10) }}>
             <View style={styles.entityTitleRow}>
               <Text style={[styles.entityName, { color: textPrimary }]} numberOfLines={1}>
-                {isVendor ? item.storeName : (item.name || item.user?.name || "Rider")}
+                {item.storeName || item.name || item.user?.name || (isVendor ? "Store" : "Rider")}
               </Text>
               <View
                 style={[
@@ -114,21 +146,27 @@ export default function AdminLiveRadarScreen() {
                     },
                   ]}
                 >
-                  {isVendor ? "Store" : item.isOnline ? "Online Rider" : "Offline"}
+                  {isVendor ? (item.isOpen !== false ? "Open" : "Closed") : item.isOnline ? "Online Rider" : "Offline"}
                 </Text>
               </View>
             </View>
 
             <View style={styles.entitySubRow}>
-              <Feather name="map-pin" size={scale(11)} color={textSecondary} />
-              <Text style={[styles.coordText, { color: textSecondary }]}>
-                {coords[1] ? `${coords[1]?.toFixed(4)}, ${coords[0]?.toFixed(4)}` : "No coordinates set"}
+              <Feather name="map-pin" size={scale(11)} color={isSelected ? "#10B981" : textSecondary} />
+              <Text style={[styles.coordText, { color: isSelected ? "#10B981" : textSecondary, fontWeight: isSelected ? "700" : "500" }]}>
+                {coords[1] ? `${Number(coords[1]).toFixed(4)}, ${Number(coords[0]).toFixed(4)}` : "No coordinates set"}
               </Text>
-              {isVendor && item.location?.city ? (
-                <Text style={[styles.cityText, { color: textSecondary }]}>• {item.location.city}</Text>
+              {item.phone ? (
+                <Text style={[styles.cityText, { color: textSecondary }]}>• {item.phone}</Text>
               ) : null}
             </View>
           </View>
+
+          {isSelected && (
+            <View style={styles.selectedIndicator}>
+              <Feather name="target" size={scale(18)} color="#10B981" />
+            </View>
+          )}
         </View>
       </TouchableOpacity>
     );
@@ -141,13 +179,23 @@ export default function AdminLiveRadarScreen() {
       ? riders
       : [...vendors, ...riders];
 
-  // Siliguri / central fallback coordinates
+  // Central fallback coordinates
   const defaultRegion = {
     latitude: 26.7271,
     longitude: 88.3953,
     latitudeDelta: 0.15,
     longitudeDelta: 0.15,
   };
+
+  const selectedLat = Number(selectedEntity?.latitude || selectedEntity?.location?.coordinates?.[1] || 0);
+  const selectedLng = Number(selectedEntity?.longitude || selectedEntity?.location?.coordinates?.[0] || 0);
+  const selectedName =
+    selectedEntity?.businessDetails?.businessName ||
+    selectedEntity?.storeName ||
+    selectedEntity?.sellerDetails?.sellerName ||
+    selectedEntity?.name ||
+    selectedEntity?.user?.name ||
+    "Selected Location";
 
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
@@ -202,6 +250,7 @@ export default function AdminLiveRadarScreen() {
       {MapView ? (
         <View style={styles.mapContainer}>
           <MapView
+            ref={mapRef}
             style={StyleSheet.absoluteFill}
             initialRegion={defaultRegion}
             showsUserLocation
@@ -209,32 +258,40 @@ export default function AdminLiveRadarScreen() {
           >
             {/* Vendor Pins */}
             {(activeFilter === "ALL" || activeFilter === "VENDORS") &&
-              vendors.map((v: any) => {
-                const [lng, lat] = v.location?.coordinates || [0, 0];
+              vendors.map((v: any, idx: number) => {
+                const lat = Number(v.latitude || v.location?.coordinates?.[1] || 0);
+                const lng = Number(v.longitude || v.location?.coordinates?.[0] || 0);
                 if (!lat || !lng) return null;
+                const isSelected = (selectedEntity?._id || selectedEntity?.id) === (v._id || v.id);
+
                 return (
                   <Marker
-                    key={v._id}
+                    key={v._id || v.id || `v_${idx}`}
                     coordinate={{ latitude: lat, longitude: lng }}
-                    title={v.storeName}
-                    description={`Status: ${v.verificationStatus}`}
-                    pinColor="#10B981"
+                    title={v.businessDetails?.businessName || v.storeName || v.sellerDetails?.sellerName || v.name || "Store"}
+                    description={`Status: ${v.isOpen !== false ? "Open" : "Closed"}`}
+                    pinColor={isSelected ? "#F59E0B" : "#10B981"}
+                    onPress={() => handleSelectEntity(v)}
                   />
                 );
               })}
 
             {/* Rider Pins */}
             {(activeFilter === "ALL" || activeFilter === "RIDERS") &&
-              riders.map((r: any) => {
-                const [lng, lat] = r.location?.coordinates || [0, 0];
+              riders.map((r: any, idx: number) => {
+                const lat = Number(r.latitude || r.location?.coordinates?.[1] || 0);
+                const lng = Number(r.longitude || r.location?.coordinates?.[0] || 0);
                 if (!lat || !lng) return null;
+                const isSelected = (selectedEntity?._id || selectedEntity?.id) === (r._id || r.id);
+
                 return (
                   <Marker
-                    key={r._id}
+                    key={r._id || r.id || `r_${idx}`}
                     coordinate={{ latitude: lat, longitude: lng }}
                     title={r.name || r.user?.name || "Rider"}
-                    description={r.isOnline ? "Online & Ready" : "Offline"}
-                    pinColor="#3B82F6"
+                    description={r.availability || (r.isOnline ? "Online & Ready" : "Offline")}
+                    pinColor={isSelected ? "#F59E0B" : "#3B82F6"}
+                    onPress={() => handleSelectEntity(r)}
                   />
                 );
               })}
@@ -251,6 +308,39 @@ export default function AdminLiveRadarScreen() {
         </View>
       )}
 
+      {/* Selected Entity Focus Floating Strip */}
+      {selectedEntity && selectedLat !== 0 && selectedLng !== 0 && (
+        <View style={[styles.focusCard, { backgroundColor: cardBg, borderColor: "#10B981" }]}>
+          <View style={styles.focusInfoRow}>
+            <View style={styles.focusIconWrap}>
+              <MaterialCommunityIcons
+                name={selectedEntity.type === "vendor" || selectedEntity.storeName ? "storefront" : "moped"}
+                size={scale(18)}
+                color="#FFFFFF"
+              />
+            </View>
+            <View style={{ flex: 1, marginLeft: scale(10) }}>
+              <Text style={[styles.focusTitle, { color: textPrimary }]} numberOfLines={1}>
+                {selectedName}
+              </Text>
+              <Text style={[styles.focusSub, { color: textSecondary }]}>
+                {selectedLat.toFixed(5)}, {selectedLng.toFixed(5)}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.navBtn}
+              onPress={() => openInExternalMaps(selectedLat, selectedLng, selectedName)}
+            >
+              <Feather name="navigation" size={scale(14)} color="#FFFFFF" />
+              <Text style={styles.navBtnText}>Directions</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.closeFocusBtn} onPress={() => setSelectedEntity(null)}>
+              <Feather name="x" size={scale(16)} color={textSecondary} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {/* Entity Directory List */}
       <View style={styles.listWrapper}>
         <Text style={[styles.listHeader, { color: textSecondary }]}>
@@ -258,7 +348,7 @@ export default function AdminLiveRadarScreen() {
         </Text>
         <FlatList
           data={listData}
-          keyExtractor={(item) => item._id}
+          keyExtractor={(item, index) => String(item._id || item.id || `entity_${index}`)}
           renderItem={renderEntityCard}
           contentContainerStyle={styles.listContent}
           refreshControl={<RefreshControl refreshing={loading} onRefresh={onRefresh} tintColor="#10B981" />}
@@ -348,6 +438,51 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(12),
     textAlign: "center",
   },
+  focusCard: {
+    marginHorizontal: scale(16),
+    marginTop: scale(8),
+    borderRadius: scale(10),
+    borderWidth: 1.5,
+    padding: scale(10),
+  },
+  focusInfoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  focusIconWrap: {
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(8),
+    backgroundColor: "#10B981",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  focusTitle: {
+    fontSize: moderateScale(13),
+    fontWeight: "800",
+  },
+  focusSub: {
+    fontSize: moderateScale(11),
+    marginTop: scale(1),
+  },
+  navBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#10B981",
+    borderRadius: scale(6),
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(6),
+    gap: scale(4),
+  },
+  navBtnText: {
+    color: "#FFFFFF",
+    fontSize: moderateScale(11),
+    fontWeight: "700",
+  },
+  closeFocusBtn: {
+    marginLeft: scale(8),
+    padding: scale(4),
+  },
   listWrapper: {
     flex: 1,
     marginTop: scale(10),
@@ -412,6 +547,9 @@ const styles = StyleSheet.create({
   },
   cityText: {
     fontSize: moderateScale(11),
+  },
+  selectedIndicator: {
+    marginLeft: scale(8),
   },
   emptyContainer: {
     alignItems: "center",

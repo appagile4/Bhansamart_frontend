@@ -9,12 +9,14 @@ import {
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { createOrder } from "@/store/slices/orderSlice";
 import socketService from "@/store/services/socketService";
+import { fetchCheckoutPaymentMethodsApi } from "@/store/services/paymentService";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -57,8 +59,68 @@ export default function CheckoutScreen() {
     params.paymentMethod || "Cash on delivery"
   );
 
+  const [checkoutConfig, setCheckoutConfig] = useState<any>(null);
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+
+  useEffect(() => {
+    const loadPaymentConfig = async () => {
+      try {
+        const res = await fetchCheckoutPaymentMethodsApi();
+        const payload = res?.data || res;
+        if (payload?.paymentMethods) {
+          setCheckoutConfig(payload);
+          const activeMethods = payload.paymentMethods || [];
+          if (activeMethods.length > 0 && !params.paymentMethod) {
+            const hasCod = activeMethods.some(
+              (m: any) => m.methodKey === "cod" && m.isEnabled !== false
+            );
+            if (!hasCod && activeMethods[0]?.displayName) {
+              setPaymentMethod(activeMethods[0].displayName);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("[Checkout] Failed to load checkout payment config", err);
+      }
+    };
+    loadPaymentConfig();
+  }, [params.paymentMethod]);
+
   const handlingCharge = cartItems.length > 0 ? 30 : 0;
   const grandTotal = itemsTotal + handlingCharge;
+
+  const availableMethods = useMemo(() => {
+    if (checkoutConfig?.paymentMethods && checkoutConfig.paymentMethods.length > 0) {
+      return checkoutConfig.paymentMethods.filter((m: any) => m.isEnabled !== false);
+    }
+    return [
+      {
+        methodKey: "cod",
+        displayName: "Cash on delivery",
+        isEnabled: true,
+        instructions: "Pay with cash at your doorstep upon delivery",
+        maxAmount: 10000,
+      },
+      {
+        methodKey: "esewa",
+        displayName: "eSewa Mobile Wallet",
+        isEnabled: true,
+        instructions: "Instant transfer via eSewa",
+      },
+      {
+        methodKey: "khalti",
+        displayName: "Khalti Digital Wallet",
+        isEnabled: true,
+        instructions: "Fast checkout using Khalti",
+      },
+      {
+        methodKey: "bank_transfer",
+        displayName: "Direct Bank Transfer",
+        isEnabled: true,
+        instructions: "Direct NEFT / IPS bank transfer to platform treasury",
+      },
+    ];
+  }, [checkoutConfig]);
 
   const dispatch = useAppDispatch();
   const { customerLoading } = useAppSelector((state) => state.order);
@@ -77,6 +139,28 @@ export default function CheckoutScreen() {
 
     if (!deliveryAddress) {
       Alert.alert("Missing Address", "Please select or enter a valid delivery address.");
+      return;
+    }
+
+    // Validate COD limit or disabled payment methods
+    const currentMethodObj = availableMethods.find(
+      (m: any) =>
+        m.displayName?.toLowerCase() === paymentMethod.toLowerCase() ||
+        (m.methodKey === "cod" && paymentMethod.toLowerCase().includes("delivery")) ||
+        (m.methodKey === "bank_transfer" && paymentMethod.toLowerCase().includes("bank"))
+    );
+
+    if (
+      currentMethodObj?.methodKey === "cod" &&
+      currentMethodObj.maxAmount &&
+      currentMethodObj.maxAmount > 0 &&
+      grandTotal > currentMethodObj.maxAmount
+    ) {
+      Alert.alert(
+        "COD Limit Exceeded",
+        `Cash on Delivery is limited to Rs. ${currentMethodObj.maxAmount}. Please choose a digital wallet or bank transfer to proceed.`
+      );
+      setPaymentModalVisible(true);
       return;
     }
 
@@ -284,8 +368,45 @@ export default function CheckoutScreen() {
               {/* Payment */}
               <View style={styles.orderDetailItem}>
                 <Text style={styles.detailLabel}>Payment</Text>
-                <Text style={styles.detailValue}>Pay on delivery</Text>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => setPaymentModalVisible(true)}
+                  style={{ flexDirection: "row", alignItems: "center", gap: scale(4) }}
+                >
+                  <Text style={[styles.detailValue, { fontWeight: "700", color: "#0B4D58" }]}>
+                    {paymentMethod}
+                  </Text>
+                  <Feather name="chevron-right" size={scale(14)} color="#0B4D58" />
+                </TouchableOpacity>
               </View>
+
+              {/* Direct Bank Account Card if Bank selected */}
+              {paymentMethod.toLowerCase().includes("bank") && checkoutConfig?.bankDetails && (
+                <View style={styles.bankReferenceBox}>
+                  <View style={styles.bankHeaderRow}>
+                    <MaterialCommunityIcons name="bank" size={scale(15)} color="#059669" />
+                    <Text style={styles.bankNameText}>
+                      {checkoutConfig.bankDetails.bankName || "Platform Bank"}
+                    </Text>
+                  </View>
+                  <Text style={styles.bankDetailRowText}>
+                    A/C: {checkoutConfig.bankDetails.accountNumber}
+                  </Text>
+                  <Text style={styles.bankDetailRowText}>
+                    Holder: {checkoutConfig.bankDetails.accountHolderName}
+                  </Text>
+                  {checkoutConfig.bankDetails.ifscOrRoutingCode ? (
+                    <Text style={styles.bankDetailRowText}>
+                      Code: {checkoutConfig.bankDetails.ifscOrRoutingCode}
+                    </Text>
+                  ) : null}
+                  {checkoutConfig.bankDetails.instructions ? (
+                    <Text style={styles.bankInstructionsText}>
+                      Note: {checkoutConfig.bankDetails.instructions}
+                    </Text>
+                  ) : null}
+                </View>
+              )}
 
               {/* Deliver To */}
               <View style={styles.orderDetailItem}>
@@ -324,9 +445,7 @@ export default function CheckoutScreen() {
           {/* Left Payment info */}
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={() =>
-              router.push("/Screens/Profile/paymentsetting" as any)
-            }
+            onPress={() => setPaymentModalVisible(true)}
             style={styles.paymentLeft}
           >
             <MaterialCommunityIcons
@@ -372,6 +491,255 @@ export default function CheckoutScreen() {
             </View>
           </TouchableOpacity>
         </View>
+
+        {/* Payment Method Selector Bottom Sheet Modal */}
+        <Modal
+          visible={paymentModalVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setPaymentModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <TouchableOpacity
+              style={styles.modalBackdrop}
+              activeOpacity={1}
+              onPress={() => setPaymentModalVisible(false)}
+            />
+            <View style={styles.modalContent}>
+              <View style={styles.modalIndicator} />
+
+              <View style={styles.modalHeaderRow}>
+                <View>
+                  <Text style={styles.modalTitle}>Choose Payment Method</Text>
+                  <Text style={styles.modalSubtitle}>
+                    Active payment gateways & wallets
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setPaymentModalVisible(false)}
+                  style={styles.modalCloseBtn}
+                >
+                  <Ionicons name="close" size={scale(18)} color="#64748B" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.methodsList}
+              >
+                {availableMethods.map((method: any) => {
+                  const isSelected =
+                    paymentMethod.toLowerCase() === method.displayName?.toLowerCase() ||
+                    (method.methodKey === "cod" && paymentMethod.toLowerCase().includes("delivery")) ||
+                    (method.methodKey === "bank_transfer" && paymentMethod.toLowerCase().includes("bank"));
+
+                  const isCodOverLimit =
+                    method.methodKey === "cod" &&
+                    method.maxAmount &&
+                    method.maxAmount > 0 &&
+                    grandTotal > method.maxAmount;
+
+                  let iconElement = (
+                    <MaterialCommunityIcons
+                      name="credit-card-outline"
+                      size={scale(20)}
+                      color="#475569"
+                    />
+                  );
+                  let badgeBg = "#F1F5F9";
+                  let badgeTextColor = "#475569";
+                  let badgeText = "";
+
+                  if (method.methodKey === "cod") {
+                    iconElement = (
+                      <MaterialCommunityIcons
+                        name="cash-multiple"
+                        size={scale(20)}
+                        color="#059669"
+                      />
+                    );
+                    badgeBg = "#ECFDF5";
+                    badgeTextColor = "#059669";
+                    badgeText = method.maxAmount ? `Up to Rs.${method.maxAmount}` : "Cash";
+                  } else if (method.methodKey === "esewa") {
+                    iconElement = (
+                      <Ionicons
+                        name="wallet-outline"
+                        size={scale(20)}
+                        color="#16A34A"
+                      />
+                    );
+                    badgeBg = "#DCFCE7";
+                    badgeTextColor = "#16A34A";
+                    badgeText = "eSewa Direct";
+                  } else if (method.methodKey === "khalti") {
+                    iconElement = (
+                      <MaterialCommunityIcons
+                        name="wallet"
+                        size={scale(20)}
+                        color="#7C3AED"
+                      />
+                    );
+                    badgeBg = "#F3E8FF";
+                    badgeTextColor = "#7C3AED";
+                    badgeText = "Khalti Wallet";
+                  } else if (method.methodKey === "upi") {
+                    iconElement = (
+                      <MaterialCommunityIcons
+                        name="qrcode-scan"
+                        size={scale(20)}
+                        color="#0284C7"
+                      />
+                    );
+                    badgeBg = "#E0F2FE";
+                    badgeTextColor = "#0284C7";
+                    badgeText = "Fonepay / UPI";
+                  } else if (method.methodKey === "bank_transfer") {
+                    iconElement = (
+                      <MaterialCommunityIcons
+                        name="bank"
+                        size={scale(20)}
+                        color="#D97706"
+                      />
+                    );
+                    badgeBg = "#FEF3C7";
+                    badgeTextColor = "#D97706";
+                    badgeText = "Direct Treasury";
+                  } else if (method.methodKey === "wallet") {
+                    iconElement = (
+                      <MaterialCommunityIcons
+                        name="wallet-giftcard"
+                        size={scale(20)}
+                        color="#0D9488"
+                      />
+                    );
+                    badgeBg = "#CCFBF1";
+                    badgeTextColor = "#0D9488";
+                    badgeText = "Store Wallet";
+                  } else if (method.methodKey === "card") {
+                    iconElement = (
+                      <Feather
+                        name="credit-card"
+                        size={scale(20)}
+                        color="#4F46E5"
+                      />
+                    );
+                    badgeBg = "#EEF2FF";
+                    badgeTextColor = "#4F46E5";
+                    badgeText = "Cards";
+                  }
+
+                  return (
+                    <TouchableOpacity
+                      key={method.methodKey || method.displayName}
+                      activeOpacity={isCodOverLimit ? 1 : 0.7}
+                      onPress={() => {
+                        if (isCodOverLimit) {
+                          Alert.alert(
+                            "COD Exceeded",
+                            `Cash on Delivery is limited to Rs.${method.maxAmount}. Your cart total is Rs.${grandTotal}.`
+                          );
+                          return;
+                        }
+                        setPaymentMethod(method.displayName);
+                        setPaymentModalVisible(false);
+                      }}
+                      style={[
+                        styles.methodCard,
+                        isSelected && styles.methodCardSelected,
+                        isCodOverLimit && { opacity: 0.5 },
+                      ]}
+                    >
+                      <View style={styles.methodCardLeft}>
+                        <View style={styles.methodIconBox}>{iconElement}</View>
+                        <View style={{ flex: 1 }}>
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: scale(6),
+                              flexWrap: "wrap",
+                            }}
+                          >
+                            <Text style={styles.methodTitle}>
+                              {method.displayName}
+                            </Text>
+                            {badgeText ? (
+                              <View
+                                style={[
+                                  styles.badgePill,
+                                  { backgroundColor: badgeBg },
+                                ]}
+                              >
+                                <Text
+                                  style={[
+                                    styles.badgeText,
+                                    { color: badgeTextColor },
+                                  ]}
+                                >
+                                  {badgeText}
+                                </Text>
+                              </View>
+                            ) : null}
+                          </View>
+                          {method.accountIdentifier ? (
+                            <Text style={styles.methodAccountText}>
+                              ID: {method.accountIdentifier}
+                            </Text>
+                          ) : null}
+                          {method.instructions ? (
+                            <Text
+                              style={styles.methodInstructionsText}
+                              numberOfLines={1}
+                            >
+                              {method.instructions}
+                            </Text>
+                          ) : null}
+                          {isCodOverLimit ? (
+                            <Text style={styles.codLimitWarning}>
+                              Cart exceeds max limit of Rs.{method.maxAmount}
+                            </Text>
+                          ) : null}
+                        </View>
+                      </View>
+
+                      <Ionicons
+                        name={
+                          isSelected ? "checkmark-circle" : "ellipse-outline"
+                        }
+                        size={scale(22)}
+                        color={isSelected ? "#0B4D58" : "#CBD5E1"}
+                      />
+                    </TouchableOpacity>
+                  );
+                })}
+
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    setPaymentModalVisible(false);
+                    router.push("/Screens/Profile/paymentsetting" as any);
+                  }}
+                  style={styles.managePaymentBtn}
+                >
+                  <Ionicons
+                    name="settings-outline"
+                    size={scale(16)}
+                    color="#64748B"
+                  />
+                  <Text style={styles.managePaymentText}>
+                    Manage Saved Cards & Wallets
+                  </Text>
+                  <Feather
+                    name="chevron-right"
+                    size={scale(15)}
+                    color="#94A3B8"
+                  />
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
       </View>
     </View>
   );
@@ -655,5 +1023,168 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(13.5),
     fontWeight: "700",
     color: "#ffffff",
+  },
+  bankReferenceBox: {
+    backgroundColor: "#F0FDF4",
+    borderWidth: 1,
+    borderColor: "#BBF7D0",
+    borderRadius: scale(10),
+    padding: scale(12),
+    gap: moderateScale(4),
+    marginTop: moderateScale(4),
+  },
+  bankHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(6),
+    marginBottom: moderateScale(2),
+  },
+  bankNameText: {
+    fontSize: moderateScale(13),
+    fontWeight: "700",
+    color: "#065F46",
+  },
+  bankDetailRowText: {
+    fontSize: moderateScale(12),
+    color: "#047857",
+    fontWeight: "500",
+  },
+  bankInstructionsText: {
+    fontSize: moderateScale(11),
+    color: "#059669",
+    fontStyle: "italic",
+    marginTop: moderateScale(2),
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.45)",
+    justifyContent: "flex-end",
+  },
+  modalBackdrop: {
+    flex: 1,
+  },
+  modalContent: {
+    backgroundColor: "#ffffff",
+    borderTopLeftRadius: scale(20),
+    borderTopRightRadius: scale(20),
+    paddingHorizontal: scale(16),
+    paddingTop: moderateScale(12),
+    paddingBottom: moderateScale(28),
+    maxHeight: "80%",
+  },
+  modalIndicator: {
+    width: scale(36),
+    height: 4,
+    backgroundColor: "#CBD5E1",
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: moderateScale(12),
+  },
+  modalHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: moderateScale(14),
+  },
+  modalTitle: {
+    fontSize: moderateScale(16.5),
+    fontWeight: "800",
+    color: "#1E293B",
+  },
+  modalSubtitle: {
+    fontSize: moderateScale(11.5),
+    color: "#64748B",
+    marginTop: moderateScale(2),
+  },
+  modalCloseBtn: {
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(16),
+    backgroundColor: "#F1F5F9",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  methodsList: {
+    gap: moderateScale(10),
+    paddingBottom: moderateScale(16),
+  },
+  methodCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#ffffff",
+    borderWidth: 1.5,
+    borderColor: "#E2E8F0",
+    borderRadius: scale(12),
+    padding: scale(12),
+  },
+  methodCardSelected: {
+    borderColor: "#0B4D58",
+    backgroundColor: "#F0FDF4",
+  },
+  methodCardLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(12),
+    flex: 1,
+  },
+  methodIconBox: {
+    width: scale(38),
+    height: scale(38),
+    borderRadius: scale(10),
+    backgroundColor: "#F8FAFC",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  methodTitle: {
+    fontSize: moderateScale(13.5),
+    fontWeight: "700",
+    color: "#1E293B",
+  },
+  badgePill: {
+    paddingHorizontal: scale(6),
+    paddingVertical: moderateScale(2),
+    borderRadius: scale(6),
+  },
+  badgeText: {
+    fontSize: moderateScale(9.5),
+    fontWeight: "700",
+  },
+  methodAccountText: {
+    fontSize: moderateScale(11.5),
+    fontWeight: "600",
+    color: "#059669",
+    marginTop: moderateScale(2),
+  },
+  methodInstructionsText: {
+    fontSize: moderateScale(11),
+    color: "#64748B",
+    marginTop: moderateScale(2),
+  },
+  codLimitWarning: {
+    fontSize: moderateScale(10.5),
+    color: "#DC2626",
+    fontWeight: "600",
+    marginTop: moderateScale(2),
+  },
+  managePaymentBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: scale(10),
+    padding: scale(12),
+    marginTop: moderateScale(4),
+  },
+  managePaymentText: {
+    fontSize: moderateScale(12.5),
+    fontWeight: "600",
+    color: "#475569",
+    flex: 1,
+    marginLeft: scale(8),
   },
 });

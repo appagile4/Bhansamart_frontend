@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -11,6 +11,8 @@ import { useRouter } from "expo-router";
 import { useAppSelector } from "@/store/hooks";
 import AdminSideMenu from "./AdminSideMenu";
 import { moderateScale, scale, useTheme } from "@/theme";
+import { fetchStaffNotificationsAdminApi } from "@/store/services/adminService";
+import socketService from "@/store/services/socketService";
 
 interface AdminHeaderProps {
   title?: string;
@@ -30,6 +32,32 @@ export default function AdminHeader({
   const isSuperadmin = user?.role === "superadmin";
 
   const [menuVisible, setMenuVisible] = useState(false);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadUnread = async () => {
+      try {
+        const res = await fetchStaffNotificationsAdminApi({ unreadOnly: true, limit: 1 });
+        if (isMounted && res?.pagination?.total !== undefined) {
+          setUnreadCount(res.pagination.total);
+        }
+      } catch (err) {
+        // Silent catch for background unread fetch
+      }
+    };
+    loadUnread();
+
+    // Listen for live staff notifications
+    const unsubscribe = socketService.onStaffNotification(() => {
+      setUnreadCount((prev) => prev + 1);
+    });
+
+    return () => {
+      isMounted = false;
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
 
   const bg = isDark ? "#121A20" : "#FFFFFF";
   const border = isDark ? "#263238" : "#E2E8F0";
@@ -58,7 +86,7 @@ export default function AdminHeader({
               </TouchableOpacity>
             )}
 
-            <View style={{ marginLeft: scale(10) }}>
+            <View style={{ marginLeft: scale(10), flex: 1 }}>
               <Text style={[styles.headerTitle, { color: textPrimary }]} numberOfLines={1}>
                 {title}
               </Text>
@@ -90,25 +118,43 @@ export default function AdminHeader({
             </View>
           </View>
 
-          {/* Right Action: Profile Avatar Button */}
-          <TouchableOpacity
-            style={[
-              styles.profileBtn,
-              {
-                backgroundColor: isSuperadmin
-                  ? (isDark ? "rgba(168, 85, 247, 0.2)" : "#F3E8FF")
-                  : (isDark ? "rgba(2, 132, 199, 0.2)" : "#E0F2FE"),
-                borderColor: border,
-              },
-            ]}
-            onPress={() => router.navigate("/AdminMain/profile" as any)}
-          >
-            <MaterialCommunityIcons
-              name={isSuperadmin ? "shield-crown-outline" : "shield-account-outline"}
-              size={scale(18)}
-              color={isSuperadmin ? "#A855F7" : "#0284C7"}
-            />
-          </TouchableOpacity>
+          {/* Right Action Buttons */}
+          <View style={styles.rightActionsRow}>
+            {/* Notification Bell with Badge */}
+            <TouchableOpacity
+              style={[styles.bellBtn, { borderColor: border }]}
+              onPress={() => router.navigate("/Screens/adminScreens/notifications" as any)}
+            >
+              <Feather name="bell" size={scale(17)} color={textPrimary} />
+              {unreadCount > 0 && (
+                <View style={styles.unreadBadge}>
+                  <Text style={styles.unreadBadgeText}>
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+
+            {/* Profile Avatar Button */}
+            <TouchableOpacity
+              style={[
+                styles.profileBtn,
+                {
+                  backgroundColor: isSuperadmin
+                    ? (isDark ? "rgba(168, 85, 247, 0.2)" : "#F3E8FF")
+                    : (isDark ? "rgba(2, 132, 199, 0.2)" : "#E0F2FE"),
+                  borderColor: border,
+                },
+              ]}
+              onPress={() => router.navigate("/AdminMain/profile" as any)}
+            >
+              <MaterialCommunityIcons
+                name={isSuperadmin ? "shield-crown-outline" : "shield-account-outline"}
+                size={scale(18)}
+                color={isSuperadmin ? "#A855F7" : "#0284C7"}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
       </SafeAreaView>
 
@@ -134,6 +180,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
+    marginRight: scale(10),
+  },
+  rightActionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(8),
   },
   iconBtn: {
     width: scale(36),
@@ -142,6 +194,34 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
+  },
+  bellBtn: {
+    width: scale(36),
+    height: scale(36),
+    borderRadius: scale(18),
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
+  unreadBadge: {
+    position: "absolute",
+    top: -scale(3),
+    right: -scale(3),
+    backgroundColor: "#EF4444",
+    borderRadius: scale(9),
+    minWidth: scale(18),
+    height: scale(18),
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: scale(3),
+    borderWidth: 1.5,
+    borderColor: "#FFFFFF",
+  },
+  unreadBadgeText: {
+    color: "#FFFFFF",
+    fontSize: moderateScale(9),
+    fontWeight: "900",
   },
   headerTitle: {
     fontSize: moderateScale(15),
@@ -171,3 +251,4 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 });
+

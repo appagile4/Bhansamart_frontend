@@ -242,3 +242,183 @@ export const fetchAdminAuditLogsApi = async (params?: {
   const response = await api.get("/admin/audit-logs", { params });
   return response.data;
 };
+
+// 13. StaffAdmin Scoped Operations
+export const fetchStaffAssignedVendorsApi = async () => {
+  const response = await api.get("/admin/staff-operations/assigned-vendors");
+  return response.data;
+};
+
+export const fetchVendorSalesAnalyticsApi = async (params?: {
+  vendorId?: string;
+  range?: string;
+  startDate?: string;
+  endDate?: string;
+}) => {
+  const response = await api.get("/admin/staff-operations/sales-analytics", { params });
+  return response.data;
+};
+
+export const fetchVendorProductsAnalyticsApi = async (params?: {
+  vendorId?: string;
+  page?: number;
+  limit?: number;
+  search?: string;
+  sort?: string;
+}) => {
+  const response = await api.get("/admin/staff-operations/products-analytics", { params });
+  return response.data;
+};
+
+export const fetchDeliveryAssignmentsAdminApi = async (params?: {
+  vendorId?: string;
+  status?: string;
+  deliveryBoyId?: string;
+}) => {
+  const response = await api.get("/admin/staff-operations/delivery-assignments", { params });
+  return response.data;
+};
+
+export const fetchDeliveryBoyProfileAdminApi = async (id: string) => {
+  const response = await api.get(`/admin/staff-operations/delivery-boy-profile/${id}`);
+  return response.data;
+};
+
+export const fetchDeliveryCodReconciliationAdminApi = async (params?: {
+  deliveryBoyId?: string;
+  vendorId?: string;
+  status?: string;
+}) => {
+  const response = await api.get("/admin/staff-operations/delivery-cod-reconciliation", { params });
+  return response.data;
+};
+
+export const raiseCodDisputeAdminApi = async (payload: {
+  deliveryBoyId: string;
+  disputedAmount: number;
+  reason: string;
+  notes?: string;
+}) => {
+  const response = await api.post("/admin/staff-operations/delivery-cod-dispute", payload);
+  return response.data;
+};
+
+export const fetchVendorWithdrawalsAdminApi = async (params?: {
+  vendorId?: string;
+  status?: string;
+  escalationStatus?: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const response = await api.get("/admin/staff-operations/withdrawals", { params });
+  return response.data;
+};
+
+export const examineVendorWithdrawalAdminApi = async (
+  id: string,
+  payload: {
+    internalNotes?: string;
+    escalationStatus?: string;
+    rejectionReason?: string;
+  }
+) => {
+  const response = await api.patch(`/admin/staff-operations/withdrawals/${id}/examine`, payload);
+  return response.data;
+};
+
+export const fetchBrandsReviewQueueAdminApi = async (params?: {
+  status?: string;
+  vendorId?: string;
+  search?: string;
+}) => {
+  const response = await api.get("/admin/staff-operations/brands-queue", { params });
+  return response.data;
+};
+
+export const reviewBrandAdminApi = async (
+  id: string,
+  payload: {
+    action: "approve" | "reject" | "request_info";
+    reviewerNotes?: string;
+  }
+) => {
+  const response = await api.patch(`/admin/staff-operations/brands-queue/${id}/review`, payload);
+  return response.data;
+};
+
+export const fetchRefundsQueueAdminApi = async (params?: {
+  status?: string;
+  vendorId?: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const response = await api.get("/admin/staff-operations/refunds-queue", { params });
+  return response.data;
+};
+
+export const staffExamineRefundActionApi = async (
+  id: string,
+  payload: {
+    decision: "FORWARD_TO_FINANCE" | "REQUIRE_RETURN_PICKUP" | "REJECTED";
+    examinationNotes?: string;
+    conditionScore?: string;
+    estimatedDepreciation?: number;
+  }
+) => {
+  const response = await api.patch(`/admin/staff-operations/refunds/${id}/examine`, payload);
+  return response.data;
+};
+
+export const updateRefundPickupActionApi = async (
+  id: string,
+  payload: {
+    deliveryBoyId?: string;
+    pickupStatus?: string;
+    pickupNotes?: string;
+    trackingNumber?: string;
+  }
+) => {
+  const response = await api.patch(`/admin/staff-operations/refunds/${id}/pickup`, payload);
+  return response.data;
+};
+
+export const recordRefundInspectionActionApi = async (
+  id: string,
+  payload: {
+    passed: boolean;
+    conditionGrade?: "A" | "B" | "C" | "DAMAGED" | "WRONG_ITEM";
+    inspectionNotes?: string;
+    depreciationPercentage?: number;
+    recommendedAction?: string;
+  }
+) => {
+  const response = await api.patch(`/admin/staff-operations/refunds/${id}/inspection`, payload);
+  return response.data;
+};
+
+export const finalizeRefundPayoutActionApi = async (
+  id: string,
+  payload: {
+    action: "approve" | "reject";
+    notes?: string;
+  }
+) => {
+  const response = await api.patch(`/admin/staff-operations/refunds/${id}/finalize-payout`, payload);
+  return response.data;
+};
+
+export const fetchStaffNotificationsAdminApi = async (params?: {
+  page?: number;
+  limit?: number;
+  type?: string;
+  unreadOnly?: boolean;
+}) => {
+  const response = await api.get("/admin/staff-operations/notifications", { params });
+  return response.data;
+};
+
+export const markStaffNotificationReadApi = async (id: string) => {
+  const response = await api.patch(`/admin/staff-operations/notifications/${id}/read`);
+  return response.data;
+};
+

@@ -434,14 +434,26 @@ export default function DeliveryDashboardScreen() {
     const nextStatus = availability === "ONLINE" ? "OFFLINE" : "ONLINE";
 
     if (nextStatus === "ONLINE") {
-      if (partner?.approvalStatus !== "APPROVED") {
+      const isApproved = partner?.approvalStatus === "APPROVED";
+      const depositPaid =
+        partner?.securityDeposit?.status === "PAID" || securityDeposit?.status === "PAID";
+      const docsOk = documentsVerified || partner?.areAllDocumentsVerified;
+
+      if (!isApproved) {
         Alert.alert(
           "Approval Required",
           `Your partner profile is currently '${partner?.approvalStatus || "PENDING_APPROVAL"}'. Admin must review and approve your account before you can go online.`,
+          [
+            {
+              text: "View Profile",
+              onPress: () => router.push("/DeliveryMain/profile" as any),
+            },
+            { text: "Cancel", style: "cancel" },
+          ],
         );
         return;
       }
-      if (securityDeposit.status !== "PAID") {
+      if (!depositPaid) {
         Alert.alert(
           "Security Deposit Required",
           "You must pay the mandatory ₹1,000 security deposit before you can go online to receive orders.",
@@ -455,7 +467,7 @@ export default function DeliveryDashboardScreen() {
         );
         return;
       }
-      if (!documentsVerified) {
+      if (!docsOk && !isApproved) {
         Alert.alert(
           "Documents Pending",
           "All 4 documents (PAN, Aadhaar, License, RC) must be verified before going online.",
@@ -788,7 +800,12 @@ export default function DeliveryDashboardScreen() {
           </View>
 
           {/* Online / Offline Switch */}
-          <View style={styles.toggleWrapper}>
+          <TouchableOpacity
+            style={styles.toggleWrapper}
+            onPress={handleToggleAvailability}
+            disabled={actionLoading || availability === "BUSY"}
+            activeOpacity={0.85}
+          >
             <Text
               style={[
                 styles.toggleStatusLabel,
@@ -805,7 +822,7 @@ export default function DeliveryDashboardScreen() {
               trackColor={{ false: "#64748B", true: "#10B981" }}
               thumbColor="#FFFFFF"
             />
-          </View>
+          </TouchableOpacity>
         </View>
       </LinearGradient>
 

@@ -170,7 +170,9 @@ export const togglePartnerAvailability = createAsyncThunk(
       const res = await deliveryService.toggleAvailability(status);
       return res;
     } catch (error: any) {
-      return rejectWithValue(error.message || "Failed to toggle availability");
+      return rejectWithValue(
+        error.response?.data?.message || error.message || "Failed to toggle availability"
+      );
     }
   }
 );
@@ -425,6 +427,14 @@ export const deliverySlice = createSlice({
         state.canGoOnline = !!action.payload.canGoOnline;
         state.documentsVerified = !!action.payload.documentsVerified;
         state.availability = action.payload.partner?.availability || "OFFLINE";
+        if (action.payload.partner?.securityDeposit) {
+          state.securityDeposit = {
+            status: action.payload.partner.securityDeposit.status || "PENDING",
+            paidAmount: action.payload.partner.securityDeposit.paidAmount || 0,
+            requiredAmount: action.payload.partner.securityDeposit.requiredAmount || 1000,
+            history: action.payload.partner.securityDeposit.history || [],
+          };
+        }
       })
       .addCase(initializeDeliveryAuth.rejected, (state) => {
         state.isInitialized = true;
@@ -462,10 +472,17 @@ export const deliverySlice = createSlice({
         state.partner = action.payload.deliveryBoy;
         state.token = action.payload.token;
         state.availability = action.payload.deliveryBoy?.availability || "OFFLINE";
+        if (action.payload.deliveryBoy?.securityDeposit) {
+          state.securityDeposit = {
+            status: action.payload.deliveryBoy.securityDeposit.status || "PENDING",
+            paidAmount: action.payload.deliveryBoy.securityDeposit.paidAmount || 0,
+            requiredAmount: action.payload.deliveryBoy.securityDeposit.requiredAmount || 1000,
+            history: action.payload.deliveryBoy.securityDeposit.history || [],
+          };
+        }
       })
-      .addCase(loginDeliveryPartner.rejected, (state, action) => {
+      .addCase(loginDeliveryPartner.rejected, (state) => {
         state.loading = false;
-        state.error = action.payload as string;
       });
 
     // fetchDeliveryProfile
@@ -474,6 +491,14 @@ export const deliverySlice = createSlice({
       state.canGoOnline = !!action.payload.canGoOnline;
       state.documentsVerified = !!action.payload.documentsVerified;
       state.availability = action.payload.deliveryBoy?.availability || "OFFLINE";
+      if (action.payload.deliveryBoy?.securityDeposit) {
+        state.securityDeposit = {
+          status: action.payload.deliveryBoy.securityDeposit.status || "PENDING",
+          paidAmount: action.payload.deliveryBoy.securityDeposit.paidAmount || 0,
+          requiredAmount: action.payload.deliveryBoy.securityDeposit.requiredAmount || 1000,
+          history: action.payload.deliveryBoy.securityDeposit.history || [],
+        };
+      }
     });
 
     // togglePartnerAvailability

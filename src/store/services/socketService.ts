@@ -22,7 +22,7 @@ class SocketService {
    * Connect socket with authentication token from storage
    */
   public async connect(
-    roleOrIsVendor: boolean | "vendor" | "delivery" | "customer" = "customer"
+    roleOrIsVendor: boolean | "vendor" | "delivery" | "customer" | "admin" = "customer"
   ): Promise<Socket | null> {
     if (this.socket && this.socket.connected) {
       return this.socket;
@@ -34,6 +34,7 @@ class SocketService {
 
     try {
       this.isConnecting = true;
+      const adminToken = await storage.getItem("bhansa_admin_token");
       const customerToken = await storage.getItem("bhansa_token");
       const vendorToken = await storage.getItem("bhansa_vendor_token");
       const deliveryToken = await storage.getItem("bhansa_delivery_token");
@@ -46,12 +47,14 @@ class SocketService {
             : "customer"
           : roleOrIsVendor;
 
-      if (roleStr === "delivery") {
+      if (roleStr === "admin") {
+        token = adminToken || customerToken;
+      } else if (roleStr === "delivery") {
         token = deliveryToken;
       } else if (roleStr === "vendor") {
         token = vendorToken || customerToken;
       } else {
-        token = customerToken || vendorToken;
+        token = customerToken || vendorToken || adminToken;
       }
 
       if (!token) {
@@ -411,6 +414,52 @@ class SocketService {
     this.socket?.on("vendor:availability:changed", wrappedHandler);
     return () => {
       this.socket?.off("vendor:availability:changed", wrappedHandler);
+    };
+  }
+
+  /**
+   * Listen for real-time StaffAdmin operational events
+   */
+  public onStaffNotification(handler: (event: string, data: any) => void): () => void {
+    const events = [
+      "staff_order",
+      "staff_withdrawal:new",
+      "staff_withdrawal:updated",
+      "staff_brand:new",
+      "staff_brand:updated",
+      "staff_refund:new",
+      "staff_refund:vendor_responded",
+      "staff_refund:updated",
+      "staff_cod:dispute",
+      "staff_alert",
+    ];
+
+    const listeners = events.map((evt) => {
+      const fn = (data: any) => handler(evt, data);
+      this.socket?.on(evt, fn);
+      return { evt, fn };
+    });
+
+    return () => {
+      listeners.forEach(({ evt, fn }) => {
+        this.socket?.off(evt, fn);
+      });
+    };
+  }
+
+  /**
+   * Listen for real-time delivery rider availability status & location updates
+   */
+  public onDeliveryRiderStatus(handler: (data: any) => void): () => void {
+    const wrappedHandler = (data: any) => {
+      handler(data);
+    };
+
+    this.socket?.on("delivery:rider:status", wrappedHandler);
+    this.socket?.on("delivery:location:update", wrappedHandler);
+    return () => {
+      this.socket?.off("delivery:rider:status", wrappedHandler);
+      this.socket?.off("delivery:location:update", wrappedHandler);
     };
   }
 

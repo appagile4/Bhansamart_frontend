@@ -64,6 +64,30 @@ export const ADMIN_MENU_ITEMS: MenuItem[] = [
     route: "/AdminMain/catalog",
   },
   {
+    id: "vendor-analytics",
+    label: "Vendor Sales Analytics",
+    icon: "chart-line",
+    route: "/Screens/adminScreens/vendor-analytics",
+  },
+  {
+    id: "refunds-workflow",
+    label: "Returns & Refund Claims",
+    icon: "keyboard-return",
+    route: "/Screens/adminScreens/refunds-workflow",
+  },
+  {
+    id: "brands-review",
+    label: "Brand Review Queue",
+    icon: "certificate-outline",
+    route: "/Screens/adminScreens/brands-review",
+  },
+  {
+    id: "withdrawals",
+    label: "Withdrawal Requests",
+    icon: "cash-fast",
+    route: "/Screens/adminScreens/withdrawals",
+  },
+  {
     id: "finance",
     label: "Financial Ledger (1.5%)",
     icon: "cash-register",

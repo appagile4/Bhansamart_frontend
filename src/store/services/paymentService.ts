@@ -160,3 +160,11 @@ export const getPaymentStatusApi = async (orderId: string) => {
   const response = await api.get(`/payments/status/${orderId}`);
   return response.data;
 };
+
+/**
+ * Fetch platform active checkout payment methods and bank details configured by superadmin
+ */
+export const fetchCheckoutPaymentMethodsApi = async () => {
+  const response = await api.get("/checkout/payment-methods");
+  return response.data;
+};
