@@ -13,6 +13,7 @@ import {
 import { moderateScale, scale, useTheme } from "@/theme";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -97,7 +98,7 @@ export default function StaffAdminDashboardScreen() {
       setError(
         err?.message ||
           err?.raw?.message ||
-          "Failed to load dashboard data. Tap retry."
+          "Failed to load dashboard data. Tap retry.",
       );
     } finally {
       setLoading(false);
@@ -172,6 +173,7 @@ export default function StaffAdminDashboardScreen() {
     <View
       style={[styles.root, { backgroundColor: isDark ? "#0A0F12" : "#F8FAFC" }]}
     >
+      <StatusBar style={isDark ? "light" : "dark"} />
       {/* 1. Header */}
       <StaffAdminHeader
         title="BhansaMart Ops"

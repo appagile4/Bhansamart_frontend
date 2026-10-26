@@ -23,6 +23,18 @@ import {
   reviewBrandAdminApi,
 } from "@/store/services/adminService";
 
+const resolveBrandLogoUrl = (brand: any): string => {
+  if (!brand) return "https://images.unsplash.com/photo-1599305445671-ac291c95aaa9?w=100&q=80";
+  if (typeof brand.logo === "string" && brand.logo.trim()) return brand.logo.trim();
+  if (brand.logo && typeof brand.logo === "object") {
+    if (typeof brand.logo.url === "string" && brand.logo.url.trim()) return brand.logo.url.trim();
+    if (typeof brand.logo.uri === "string" && brand.logo.uri.trim()) return brand.logo.uri.trim();
+    if (typeof brand.logo.secure_url === "string" && brand.logo.secure_url.trim()) return brand.logo.secure_url.trim();
+  }
+  if (typeof brand.imageUrl === "string" && brand.imageUrl.trim()) return brand.imageUrl.trim();
+  return "https://images.unsplash.com/photo-1599305445671-ac291c95aaa9?w=100&q=80";
+};
+
 export default function StaffAdminBrandSubmissionsScreen() {
   const router = useRouter();
   const theme = useTheme();
@@ -159,10 +171,7 @@ export default function StaffAdminBrandSubmissionsScreen() {
                     <View style={styles.brandLeft}>
                       <Image
                         source={{
-                          uri:
-                            item.logo ||
-                            item.imageUrl ||
-                            "https://images.unsplash.com/photo-1599305445671-ac291c95aaa9?w=100&q=80",
+                          uri: resolveBrandLogoUrl(item),
                         }}
                         style={styles.logoImg}
                         contentFit="cover"
@@ -245,10 +254,7 @@ export default function StaffAdminBrandSubmissionsScreen() {
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: moderateScale(12) }}>
                 <Image
                   source={{
-                    uri:
-                      selectedBrand.logo ||
-                      selectedBrand.imageUrl ||
-                      "https://images.unsplash.com/photo-1599305445671-ac291c95aaa9?w=300&q=80",
+                    uri: resolveBrandLogoUrl(selectedBrand),
                   }}
                   style={styles.modalLogo}
                   contentFit="contain"

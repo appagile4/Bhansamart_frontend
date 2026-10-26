@@ -24,6 +24,20 @@ import {
   fetchVendorProductsAnalyticsApi,
 } from "@/store/services/adminService";
 
+const resolveProductImageUrl = (item: any): string => {
+  if (!item) return "https://images.unsplash.com/photo-1542838132-92c53300491e?w=300&q=80";
+  const first = Array.isArray(item.images) && item.images.length > 0 ? item.images[0] : null;
+  if (typeof first === "string" && first.trim()) return first.trim();
+  if (first && typeof first === "object") {
+    if (typeof first.url === "string" && first.url.trim()) return first.url.trim();
+    if (typeof first.uri === "string" && first.uri.trim()) return first.uri.trim();
+    if (typeof first.secure_url === "string" && first.secure_url.trim()) return first.secure_url.trim();
+  }
+  if (typeof item.imageUrl === "string" && item.imageUrl.trim()) return item.imageUrl.trim();
+  if (typeof item.image === "string" && item.image.trim()) return item.image.trim();
+  return "https://images.unsplash.com/photo-1542838132-92c53300491e?w=300&q=80";
+};
+
 export default function StaffAdminProductsScreen() {
   const router = useRouter();
   const theme = useTheme();
@@ -205,10 +219,7 @@ export default function StaffAdminProductsScreen() {
                 >
                   <Image
                     source={{
-                      uri:
-                        item.images?.[0] ||
-                        item.imageUrl ||
-                        "https://images.unsplash.com/photo-1542838132-92c53300491e?w=200&q=80",
+                      uri: resolveProductImageUrl(item),
                     }}
                     style={styles.productImg}
                     contentFit="cover"
@@ -303,10 +314,7 @@ export default function StaffAdminProductsScreen() {
               <ScrollView showsVerticalScrollIndicator={false}>
                 <Image
                   source={{
-                    uri:
-                      selectedProduct.images?.[0] ||
-                      selectedProduct.imageUrl ||
-                      "https://images.unsplash.com/photo-1542838132-92c53300491e?w=500&q=80",
+                    uri: resolveProductImageUrl(selectedProduct),
                   }}
                   style={styles.modalImg}
                   contentFit="cover"
