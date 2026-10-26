@@ -823,7 +823,9 @@ export default function VendorDashboardScreen() {
         visible={Boolean(newOrderAlert)}
         transparent
         animationType="slide"
-        onRequestClose={() => dispatch(dismissNewOrderAlert())}
+        onRequestClose={() => {
+          dispatch(dismissNewOrderAlert());
+        }}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>

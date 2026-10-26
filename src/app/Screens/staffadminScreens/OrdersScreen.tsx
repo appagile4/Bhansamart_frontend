@@ -53,18 +53,24 @@ export default function StaffAdminOrdersScreen() {
 
   const loadOrders = async () => {
     try {
-      const res = await api.get("/admin/staff-operations/delivery-assignments", {
+      const res = await api.get("/admin/staff-operations/orders", {
         params: {
           vendorId: selectedVendorId !== "all" ? selectedVendorId : undefined,
+          status: statusFilter !== "ALL" ? statusFilter : undefined,
+          search: search.trim() || undefined,
         },
       });
-      // Fallback to general order listing if assignments structure differs
-      const list = res.data?.data?.orders || res.data?.orders || res.data?.data || [];
+      const list = res.data?.data?.orders || res.data?.orders || [];
       if (Array.isArray(list)) {
         setOrders(list);
       }
-    } catch (e) {
-      // In case fallback needed, fetch from dashboard recent orders or orders endpoint
+    } catch (e: any) {
+      console.error("[OrdersScreen] Error loading orders:", {
+        message: e?.message,
+        statusCode: e?.statusCode,
+        raw: e?.raw,
+      });
+      // Fallback to dashboard recent orders
       try {
         const fallbackRes = await fetchStaffDashboardOverviewApi({
           vendorId: selectedVendorId !== "all" ? selectedVendorId : undefined,
@@ -73,7 +79,7 @@ export default function StaffAdminOrdersScreen() {
           setOrders(fallbackRes.data.recentOrders);
         }
       } catch (err) {
-        console.warn("[Orders] Fallback fetch error", err);
+        console.error("[OrdersScreen] Fallback fetch error:", err);
       }
     } finally {
       setLoading(false);

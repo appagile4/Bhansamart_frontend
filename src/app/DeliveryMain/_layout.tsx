@@ -5,9 +5,11 @@ import {
 } from "@/store/slices/deliverySlice";
 import socketService from "@/store/services/socketService";
 import { useRouter } from "expo-router";
-import { NativeTabs } from "expo-router/unstable-native-tabs";
+import { NativeTabs } from "expo-router/native-tabs";
+import { Tabs } from "expo-router/tabs";
 import { useEffect } from "react";
-import { Alert } from "react-native";
+import { Alert, Platform } from "react-native";
+import ModernAndroidTabBar from "@/components/navigation/ModernAndroidTabBar";
 
 const DELIVERY_PRIMARY = "#0F766E";
 
@@ -46,25 +48,49 @@ export default function DeliveryTabLayout() {
     }
   }, [isAuthenticated, dispatch]);
 
+  // iOS: Keep existing native tab bar unchanged
+  if (Platform.OS === "ios") {
+    return (
+      <NativeTabs tintColor={DELIVERY_PRIMARY} indicatorColor={DELIVERY_PRIMARY}>
+        {/* 1. DASHBOARD & ACTIVE ORDERS */}
+        <NativeTabs.Trigger name="index">
+          <NativeTabs.Trigger.Icon sf="bicycle" md="moped" />
+          <NativeTabs.Trigger.Label>Deliveries</NativeTabs.Trigger.Label>
+        </NativeTabs.Trigger>
+
+        {/* 2. EARNINGS & SECURITY DEPOSIT */}
+        <NativeTabs.Trigger name="wallet">
+          <NativeTabs.Trigger.Icon sf="banknote" md="account_balance_wallet" />
+          <NativeTabs.Trigger.Label>Earnings</NativeTabs.Trigger.Label>
+        </NativeTabs.Trigger>
+
+        {/* 3. PROFILE & KYC DOCUMENTS */}
+        <NativeTabs.Trigger name="profile">
+          <NativeTabs.Trigger.Icon sf="person.crop.circle" md="person" />
+          <NativeTabs.Trigger.Label>Profile & KYC</NativeTabs.Trigger.Label>
+        </NativeTabs.Trigger>
+      </NativeTabs>
+    );
+  }
+
+  // Android: Custom modern tab bar matching design
   return (
-    <NativeTabs tintColor={DELIVERY_PRIMARY} indicatorColor={DELIVERY_PRIMARY}>
-      {/* 1. DASHBOARD & ACTIVE ORDERS */}
-      <NativeTabs.Trigger name="index">
-        <NativeTabs.Trigger.Icon sf="bicycle" md="moped" />
-        <NativeTabs.Trigger.Label>Deliveries</NativeTabs.Trigger.Label>
-      </NativeTabs.Trigger>
-
-      {/* 2. EARNINGS & SECURITY DEPOSIT */}
-      <NativeTabs.Trigger name="wallet">
-        <NativeTabs.Trigger.Icon sf="banknote" md="account_balance_wallet" />
-        <NativeTabs.Trigger.Label>Earnings</NativeTabs.Trigger.Label>
-      </NativeTabs.Trigger>
-
-      {/* 3. PROFILE & KYC DOCUMENTS */}
-      <NativeTabs.Trigger name="profile">
-        <NativeTabs.Trigger.Icon sf="person.crop.circle" md="person" />
-        <NativeTabs.Trigger.Label>Profile & KYC</NativeTabs.Trigger.Label>
-      </NativeTabs.Trigger>
-    </NativeTabs>
+    <Tabs
+      tabBar={(props) => (
+        <ModernAndroidTabBar
+          {...props}
+          role="delivery"
+          tintColor={DELIVERY_PRIMARY}
+        />
+      )}
+      screenOptions={{
+        headerShown: false,
+        tabBarShowLabel: false,
+      }}
+    >
+      <Tabs.Screen name="index" />
+      <Tabs.Screen name="wallet" />
+      <Tabs.Screen name="profile" />
+    </Tabs>
   );
 }

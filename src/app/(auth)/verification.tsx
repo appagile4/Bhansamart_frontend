@@ -37,7 +37,7 @@ export default function VerificationScreen() {
   const mode = params.mode || "register"; // 'register' or 'reset'
 
   const [otp, setOtp] = useState<string[]>(["", "", "", "", "", ""]);
-  const inputsRef = useRef<(TextInput | null)[]>([]);
+  const inputsRef = useRef<any[]>([]);
 
   useEffect(() => {
     return () => {

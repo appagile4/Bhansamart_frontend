@@ -22,7 +22,7 @@ export default function SecurityVerificationScreen() {
   const isDark = theme.mode === "dark";
   const [step, setStep] = useState<VerificationStep>("choose_method");
   const [otp, setOtp] = useState<string[]>(["7", "2", "5", "5", "0"]);
-  const inputRefs = useRef<(TextInput | null)[]>([]);
+  const inputRefs = useRef<any[]>([]);
 
   const handleOtpChange = (value: string, index: number) => {
     const newOtp = [...otp];

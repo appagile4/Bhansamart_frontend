@@ -56,7 +56,7 @@ export default function VendorLoginScreen() {
   const [otpCode, setOtpCode] = useState(["", "", "", "", "", ""]);
   const [resendTimer, setResendTimer] = useState(60);
   const [isResendActive, setIsResendActive] = useState(false);
-  const otpInputRefs = useRef<(TextInput | null)[]>([]);
+  const otpInputRefs = useRef<any[]>([]);
 
   // When vendor is authenticated, route based on approval status
   useEffect(() => {

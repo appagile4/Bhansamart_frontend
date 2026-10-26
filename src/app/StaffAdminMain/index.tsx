@@ -1,8 +1,21 @@
-import React, { useEffect, useMemo, useState } from "react";
+import AdminStoreFilterDropdown, {
+  getStoreDisplayName,
+} from "@/components/AdminStoreFilterDropdown";
+import DashboardStatCard from "@/components/staffAdminComponent/DashboardStatCard";
+import RequestStatusBadge from "@/components/staffAdminComponent/RequestStatusBadge";
+import SalesChart from "@/components/staffAdminComponent/SalesChart";
+import StaffAdminHeader from "@/components/staffAdminComponent/StaffAdminHeader";
+import { useAppSelector } from "@/store/hooks";
+import {
+  fetchStaffAssignedVendorsApi,
+  fetchStaffDashboardOverviewApi,
+} from "@/store/services/adminService";
+import { moderateScale, scale, useTheme } from "@/theme";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
-  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -11,21 +24,6 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
-import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useAppSelector } from "@/store/hooks";
-import { moderateScale, scale, useTheme } from "@/theme";
-import StaffAdminHeader from "@/components/staffAdminComponent/StaffAdminHeader";
-import DashboardStatCard from "@/components/staffAdminComponent/DashboardStatCard";
-import SalesChart from "@/components/staffAdminComponent/SalesChart";
-import RequestStatusBadge from "@/components/staffAdminComponent/RequestStatusBadge";
-import AdminStoreFilterDropdown, {
-  getStoreDisplayName,
-} from "@/components/AdminStoreFilterDropdown";
-import {
-  fetchStaffAssignedVendorsApi,
-  fetchStaffDashboardOverviewApi,
-} from "@/store/services/adminService";
 
 const TIMEFRAMES = [
   { id: "today", label: "Today" },
@@ -48,7 +46,8 @@ export default function StaffAdminDashboardScreen() {
   const kpiColumns = isTablet ? 4 : 2;
   const paddingH = isTablet ? scale(24) : scale(16);
   const gap = isTablet ? scale(14) : scale(10);
-  const cardWidth = (windowWidth - paddingH * 2 - gap * (kpiColumns - 1)) / kpiColumns;
+  const cardWidth =
+    (windowWidth - paddingH * 2 - gap * (kpiColumns - 1)) / kpiColumns;
 
   // State
   const [selectedTimeframe, setSelectedTimeframe] = useState("today");
@@ -67,8 +66,12 @@ export default function StaffAdminDashboardScreen() {
       if (res?.vendors) {
         setAssignedVendors(res.vendors);
       }
-    } catch (err) {
-      console.warn("[StaffAdmin] Error fetching assigned vendors", err);
+    } catch (err: any) {
+      console.error("[StaffAdmin] Error fetching assigned vendors:", {
+        message: err?.message,
+        statusCode: err?.statusCode,
+        raw: err?.raw,
+      });
     }
   };
 
@@ -84,12 +87,29 @@ export default function StaffAdminDashboardScreen() {
         setDashboardData(res.data);
       }
     } catch (err: any) {
-      setError(err?.message || "Failed to load dashboard data. Tap retry.");
+      console.error("[StaffAdmin Dashboard] Failed to load dashboard data:", {
+        message: err?.message,
+        statusCode: err?.statusCode,
+        errors: err?.errors,
+        raw: err?.raw,
+        stack: err?.stack || err?.raw?.stack,
+      });
+      setError(
+        err?.message ||
+          err?.raw?.message ||
+          "Failed to load dashboard data. Tap retry."
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
+
+  useEffect(() => {
+    if (error) {
+      console.warn("[StaffAdmin Dashboard State Error]:", error);
+    }
+  }, [error]);
 
   useEffect(() => {
     loadVendors();
@@ -139,7 +159,9 @@ export default function StaffAdminDashboardScreen() {
 
   const selectedStoreObj = useMemo(() => {
     if (selectedVendorId === "all") return null;
-    return assignedVendors.find((v) => (v._id || v.id) === selectedVendorId) || null;
+    return (
+      assignedVendors.find((v) => (v._id || v.id) === selectedVendorId) || null
+    );
   }, [assignedVendors, selectedVendorId]);
 
   const selectedStoreName = selectedStoreObj
@@ -147,7 +169,9 @@ export default function StaffAdminDashboardScreen() {
     : `All Assigned Stores (${assignedVendors.length})`;
 
   return (
-    <View style={[styles.root, { backgroundColor: isDark ? "#0A0F12" : "#F8FAFC" }]}>
+    <View
+      style={[styles.root, { backgroundColor: isDark ? "#0A0F12" : "#F8FAFC" }]}
+    >
       {/* 1. Header */}
       <StaffAdminHeader
         title="BhansaMart Ops"
@@ -164,7 +188,10 @@ export default function StaffAdminDashboardScreen() {
             tintColor="#0284C7"
           />
         }
-        contentContainerStyle={[styles.scrollContent, { paddingHorizontal: paddingH }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingHorizontal: paddingH },
+        ]}
       >
         {/* 2. Store Scope Switcher */}
         <View style={styles.sectionHeader}>
@@ -198,8 +225,8 @@ export default function StaffAdminDashboardScreen() {
                     backgroundColor: isSelected
                       ? "#0284C7"
                       : isDark
-                      ? "#151D24"
-                      : "#FFFFFF",
+                        ? "#151D24"
+                        : "#FFFFFF",
                     borderColor: isSelected ? "#0284C7" : border,
                   },
                 ]}
@@ -232,9 +259,20 @@ export default function StaffAdminDashboardScreen() {
 
         {error && (
           <View style={styles.errorBox}>
-            <MaterialCommunityIcons name="alert-circle-outline" size={scale(20)} color="#EF4444" />
+            <MaterialCommunityIcons
+              name="alert-circle-outline"
+              size={scale(20)}
+              color="#EF4444"
+            />
             <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity onPress={loadDashboard} style={styles.retryBtn}>
+            <TouchableOpacity
+              onPress={() => {
+                console.log("[StaffAdmin] Retrying dashboard load...");
+                setLoading(true);
+                loadDashboard();
+              }}
+              style={styles.retryBtn}
+            >
               <Text style={styles.retryText}>Retry</Text>
             </TouchableOpacity>
           </View>
@@ -242,13 +280,21 @@ export default function StaffAdminDashboardScreen() {
 
         {/* 4. Priority Operational Action Items (Pending Work) */}
         <View style={styles.sectionHeader}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: scale(6) }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: scale(6),
+            }}
+          >
             <Text style={[styles.sectionTitle, { color: textPrimary }]}>
               Operational Pending Work
             </Text>
             {tasks.totalPendingTasks > 0 && (
               <View style={styles.taskCountBadge}>
-                <Text style={styles.taskCountText}>{tasks.totalPendingTasks}</Text>
+                <Text style={styles.taskCountText}>
+                  {tasks.totalPendingTasks}
+                </Text>
               </View>
             )}
           </View>
@@ -261,14 +307,27 @@ export default function StaffAdminDashboardScreen() {
           {/* Refund Review Queue */}
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => router.push("/Screens/staffadminScreens/ReturnsRefundsScreen" as any)}
+            onPress={() =>
+              router.push(
+                "/Screens/staffadminScreens/ReturnsRefundsScreen" as any,
+              )
+            }
             style={[
               styles.actionItemCard,
               { backgroundColor: cardBg, borderColor: border },
             ]}
           >
-            <View style={[styles.actionIconBox, { backgroundColor: "rgba(220, 38, 38, 0.1)" }]}>
-              <MaterialCommunityIcons name="keyboard-return" size={scale(20)} color="#DC2626" />
+            <View
+              style={[
+                styles.actionIconBox,
+                { backgroundColor: "rgba(220, 38, 38, 0.1)" },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name="keyboard-return"
+                size={scale(20)}
+                color="#DC2626"
+              />
             </View>
             <View style={{ flex: 1 }}>
               <View style={styles.actionTitleRow}>
@@ -276,31 +335,52 @@ export default function StaffAdminDashboardScreen() {
                   Refund Claims
                 </Text>
                 {tasks.pendingRefunds > 0 && (
-                  <View style={[styles.pillAlert, { backgroundColor: "#FEF2F2" }]}>
+                  <View
+                    style={[styles.pillAlert, { backgroundColor: "#FEF2F2" }]}
+                  >
                     <Text style={[styles.pillAlertText, { color: "#DC2626" }]}>
                       {tasks.pendingRefunds} Pending
                     </Text>
                   </View>
                 )}
               </View>
-              <Text style={[styles.actionCardSubtitle, { color: textSecondary }]}>
+              <Text
+                style={[styles.actionCardSubtitle, { color: textSecondary }]}
+              >
                 Vendor-accepted returns for examination
               </Text>
             </View>
-            <Feather name="chevron-right" size={scale(16)} color={textSecondary} />
+            <Feather
+              name="chevron-right"
+              size={scale(16)}
+              color={textSecondary}
+            />
           </TouchableOpacity>
 
           {/* Brand Review Queue */}
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => router.push("/Screens/staffadminScreens/BrandSubmissionsScreen" as any)}
+            onPress={() =>
+              router.push(
+                "/Screens/staffadminScreens/BrandSubmissionsScreen" as any,
+              )
+            }
             style={[
               styles.actionItemCard,
               { backgroundColor: cardBg, borderColor: border },
             ]}
           >
-            <View style={[styles.actionIconBox, { backgroundColor: "rgba(124, 58, 237, 0.1)" }]}>
-              <MaterialCommunityIcons name="certificate-outline" size={scale(20)} color="#7C3AED" />
+            <View
+              style={[
+                styles.actionIconBox,
+                { backgroundColor: "rgba(124, 58, 237, 0.1)" },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name="certificate-outline"
+                size={scale(20)}
+                color="#7C3AED"
+              />
             </View>
             <View style={{ flex: 1 }}>
               <View style={styles.actionTitleRow}>
@@ -308,31 +388,50 @@ export default function StaffAdminDashboardScreen() {
                   Brand Submissions
                 </Text>
                 {tasks.pendingBrands > 0 && (
-                  <View style={[styles.pillAlert, { backgroundColor: "#F5F3FF" }]}>
+                  <View
+                    style={[styles.pillAlert, { backgroundColor: "#F5F3FF" }]}
+                  >
                     <Text style={[styles.pillAlertText, { color: "#7C3AED" }]}>
                       {tasks.pendingBrands} Review
                     </Text>
                   </View>
                 )}
               </View>
-              <Text style={[styles.actionCardSubtitle, { color: textSecondary }]}>
+              <Text
+                style={[styles.actionCardSubtitle, { color: textSecondary }]}
+              >
                 Vendor brand logos & certificates
               </Text>
             </View>
-            <Feather name="chevron-right" size={scale(16)} color={textSecondary} />
+            <Feather
+              name="chevron-right"
+              size={scale(16)}
+              color={textSecondary}
+            />
           </TouchableOpacity>
 
           {/* Withdrawal Escalations */}
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => router.push("/Screens/staffadminScreens/WithdrawalsScreen" as any)}
+            onPress={() =>
+              router.push("/Screens/staffadminScreens/WithdrawalsScreen" as any)
+            }
             style={[
               styles.actionItemCard,
               { backgroundColor: cardBg, borderColor: border },
             ]}
           >
-            <View style={[styles.actionIconBox, { backgroundColor: "rgba(217, 119, 6, 0.1)" }]}>
-              <MaterialCommunityIcons name="cash-fast" size={scale(20)} color="#D97706" />
+            <View
+              style={[
+                styles.actionIconBox,
+                { backgroundColor: "rgba(217, 119, 6, 0.1)" },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name="cash-fast"
+                size={scale(20)}
+                color="#D97706"
+              />
             </View>
             <View style={{ flex: 1 }}>
               <View style={styles.actionTitleRow}>
@@ -340,31 +439,50 @@ export default function StaffAdminDashboardScreen() {
                   Withdrawal Requests
                 </Text>
                 {tasks.pendingWithdrawals > 0 && (
-                  <View style={[styles.pillAlert, { backgroundColor: "#FFFBEB" }]}>
+                  <View
+                    style={[styles.pillAlert, { backgroundColor: "#FFFBEB" }]}
+                  >
                     <Text style={[styles.pillAlertText, { color: "#D97706" }]}>
                       {tasks.pendingWithdrawals} Pending
                     </Text>
                   </View>
                 )}
               </View>
-              <Text style={[styles.actionCardSubtitle, { color: textSecondary }]}>
+              <Text
+                style={[styles.actionCardSubtitle, { color: textSecondary }]}
+              >
                 Examine ledger balance & escalate to Superadmin
               </Text>
             </View>
-            <Feather name="chevron-right" size={scale(16)} color={textSecondary} />
+            <Feather
+              name="chevron-right"
+              size={scale(16)}
+              color={textSecondary}
+            />
           </TouchableOpacity>
 
           {/* Support Tickets */}
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => router.push("/Screens/staffadminScreens/TicketsScreen" as any)}
+            onPress={() =>
+              router.push("/Screens/staffadminScreens/TicketsScreen" as any)
+            }
             style={[
               styles.actionItemCard,
               { backgroundColor: cardBg, borderColor: border },
             ]}
           >
-            <View style={[styles.actionIconBox, { backgroundColor: "rgba(37, 99, 235, 0.1)" }]}>
-              <MaterialCommunityIcons name="ticket-confirmation-outline" size={scale(20)} color="#2563EB" />
+            <View
+              style={[
+                styles.actionIconBox,
+                { backgroundColor: "rgba(37, 99, 235, 0.1)" },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name="ticket-confirmation-outline"
+                size={scale(20)}
+                color="#2563EB"
+              />
             </View>
             <View style={{ flex: 1 }}>
               <View style={styles.actionTitleRow}>
@@ -372,18 +490,26 @@ export default function StaffAdminDashboardScreen() {
                   Vendor Support Tickets
                 </Text>
                 {tasks.openTickets > 0 && (
-                  <View style={[styles.pillAlert, { backgroundColor: "#EFF6FF" }]}>
+                  <View
+                    style={[styles.pillAlert, { backgroundColor: "#EFF6FF" }]}
+                  >
                     <Text style={[styles.pillAlertText, { color: "#2563EB" }]}>
                       {tasks.openTickets} Open
                     </Text>
                   </View>
                 )}
               </View>
-              <Text style={[styles.actionCardSubtitle, { color: textSecondary }]}>
+              <Text
+                style={[styles.actionCardSubtitle, { color: textSecondary }]}
+              >
                 Inquiries, issues & dispute resolutions
               </Text>
             </View>
-            <Feather name="chevron-right" size={scale(16)} color={textSecondary} />
+            <Feather
+              name="chevron-right"
+              size={scale(16)}
+              color={textSecondary}
+            />
           </TouchableOpacity>
         </View>
 
@@ -409,7 +535,11 @@ export default function StaffAdminDashboardScreen() {
             badgeColor="#ECFDF5"
             badgeTextColor="#059669"
             width={cardWidth}
-            onPress={() => router.push("/Screens/staffadminScreens/SalesAnalyticsScreen" as any)}
+            onPress={() =>
+              router.push(
+                "/Screens/staffadminScreens/SalesAnalyticsScreen" as any,
+              )
+            }
           />
 
           <DashboardStatCard
@@ -420,7 +550,9 @@ export default function StaffAdminDashboardScreen() {
             iconColor="#0284C7"
             iconBg="rgba(2, 132, 199, 0.12)"
             width={cardWidth}
-            onPress={() => router.push("/Screens/staffadminScreens/OrdersScreen" as any)}
+            onPress={() =>
+              router.push("/Screens/staffadminScreens/OrdersScreen" as any)
+            }
           />
 
           <DashboardStatCard
@@ -441,11 +573,17 @@ export default function StaffAdminDashboardScreen() {
             icon="cube-outline"
             iconColor="#D97706"
             iconBg="rgba(217, 119, 6, 0.12)"
-            badgeText={kpi.outOfStockProducts > 0 ? `${kpi.outOfStockProducts} Low` : undefined}
+            badgeText={
+              kpi.outOfStockProducts > 0
+                ? `${kpi.outOfStockProducts} Low`
+                : undefined
+            }
             badgeColor="#FEF2F2"
             badgeTextColor="#DC2626"
             width={cardWidth}
-            onPress={() => router.push("/Screens/staffadminScreens/ProductsScreen" as any)}
+            onPress={() =>
+              router.push("/Screens/staffadminScreens/ProductsScreen" as any)
+            }
           />
 
           <DashboardStatCard
@@ -456,7 +594,11 @@ export default function StaffAdminDashboardScreen() {
             iconColor="#0D9488"
             iconBg="rgba(13, 148, 136, 0.12)"
             width={cardWidth}
-            onPress={() => router.push("/Screens/staffadminScreens/CODReconciliationScreen" as any)}
+            onPress={() =>
+              router.push(
+                "/Screens/staffadminScreens/CODReconciliationScreen" as any,
+              )
+            }
           />
 
           <DashboardStatCard
@@ -467,7 +609,11 @@ export default function StaffAdminDashboardScreen() {
             iconColor="#4F46E5"
             iconBg="rgba(79, 70, 229, 0.12)"
             width={cardWidth}
-            onPress={() => router.push("/Screens/staffadminScreens/SalesAnalyticsScreen" as any)}
+            onPress={() =>
+              router.push(
+                "/Screens/staffadminScreens/SalesAnalyticsScreen" as any,
+              )
+            }
           />
         </View>
 
@@ -491,56 +637,112 @@ export default function StaffAdminDashboardScreen() {
 
         <View style={styles.modulesGrid}>
           <TouchableOpacity
-            style={[styles.moduleCard, { backgroundColor: cardBg, borderColor: border }]}
+            style={[
+              styles.moduleCard,
+              { backgroundColor: cardBg, borderColor: border },
+            ]}
             activeOpacity={0.7}
-            onPress={() => router.push("/Screens/staffadminScreens/ProductsScreen" as any)}
+            onPress={() =>
+              router.push("/Screens/staffadminScreens/ProductsScreen" as any)
+            }
           >
-            <View style={[styles.moduleIconBox, { backgroundColor: "#EFF6FF" }]}>
-              <MaterialCommunityIcons name="cube-scan" size={scale(20)} color="#2563EB" />
+            <View
+              style={[styles.moduleIconBox, { backgroundColor: "#EFF6FF" }]}
+            >
+              <MaterialCommunityIcons
+                name="cube-scan"
+                size={scale(20)}
+                color="#2563EB"
+              />
             </View>
-            <Text style={[styles.moduleTitle, { color: textPrimary }]}>Product Moderation</Text>
+            <Text style={[styles.moduleTitle, { color: textPrimary }]}>
+              Product Moderation
+            </Text>
             <Text style={[styles.moduleDesc, { color: textSecondary }]}>
               Stock, pricing & approvals
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.moduleCard, { backgroundColor: cardBg, borderColor: border }]}
+            style={[
+              styles.moduleCard,
+              { backgroundColor: cardBg, borderColor: border },
+            ]}
             activeOpacity={0.7}
-            onPress={() => router.push("/Screens/staffadminScreens/OrdersScreen" as any)}
+            onPress={() =>
+              router.push("/Screens/staffadminScreens/OrdersScreen" as any)
+            }
           >
-            <View style={[styles.moduleIconBox, { backgroundColor: "#ECFDF5" }]}>
-              <MaterialCommunityIcons name="package-variant" size={scale(20)} color="#059669" />
+            <View
+              style={[styles.moduleIconBox, { backgroundColor: "#ECFDF5" }]}
+            >
+              <MaterialCommunityIcons
+                name="package-variant"
+                size={scale(20)}
+                color="#059669"
+              />
             </View>
-            <Text style={[styles.moduleTitle, { color: textPrimary }]}>Order Tracking</Text>
+            <Text style={[styles.moduleTitle, { color: textPrimary }]}>
+              Order Tracking
+            </Text>
             <Text style={[styles.moduleDesc, { color: textSecondary }]}>
               Live fulfillment status
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.moduleCard, { backgroundColor: cardBg, borderColor: border }]}
+            style={[
+              styles.moduleCard,
+              { backgroundColor: cardBg, borderColor: border },
+            ]}
             activeOpacity={0.7}
-            onPress={() => router.push("/Screens/staffadminScreens/DeliveryManagementScreen" as any)}
+            onPress={() =>
+              router.push(
+                "/Screens/staffadminScreens/DeliveryManagementScreen" as any,
+              )
+            }
           >
-            <View style={[styles.moduleIconBox, { backgroundColor: "#F0FDF4" }]}>
-              <MaterialCommunityIcons name="moped" size={scale(20)} color="#059669" />
+            <View
+              style={[styles.moduleIconBox, { backgroundColor: "#F0FDF4" }]}
+            >
+              <MaterialCommunityIcons
+                name="moped"
+                size={scale(20)}
+                color="#059669"
+              />
             </View>
-            <Text style={[styles.moduleTitle, { color: textPrimary }]}>Rider Fleet</Text>
+            <Text style={[styles.moduleTitle, { color: textPrimary }]}>
+              Rider Fleet
+            </Text>
             <Text style={[styles.moduleDesc, { color: textSecondary }]}>
               Deliveries & assignments
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.moduleCard, { backgroundColor: cardBg, borderColor: border }]}
+            style={[
+              styles.moduleCard,
+              { backgroundColor: cardBg, borderColor: border },
+            ]}
             activeOpacity={0.7}
-            onPress={() => router.push("/Screens/staffadminScreens/CODReconciliationScreen" as any)}
+            onPress={() =>
+              router.push(
+                "/Screens/staffadminScreens/CODReconciliationScreen" as any,
+              )
+            }
           >
-            <View style={[styles.moduleIconBox, { backgroundColor: "#FFFBEB" }]}>
-              <MaterialCommunityIcons name="cash-register" size={scale(20)} color="#D97706" />
+            <View
+              style={[styles.moduleIconBox, { backgroundColor: "#FFFBEB" }]}
+            >
+              <MaterialCommunityIcons
+                name="cash-register"
+                size={scale(20)}
+                color="#D97706"
+              />
             </View>
-            <Text style={[styles.moduleTitle, { color: textPrimary }]}>COD Reconciliation</Text>
+            <Text style={[styles.moduleTitle, { color: textPrimary }]}>
+              COD Reconciliation
+            </Text>
             <Text style={[styles.moduleDesc, { color: textSecondary }]}>
               Cash audit & disputes
             </Text>
@@ -549,7 +751,14 @@ export default function StaffAdminDashboardScreen() {
 
         {/* 8. Recent Orders Feed */}
         <View style={styles.sectionHeader}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", flex: 1 }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flex: 1,
+            }}
+          >
             <View>
               <Text style={[styles.sectionTitle, { color: textPrimary }]}>
                 Recent Orders
@@ -559,7 +768,9 @@ export default function StaffAdminDashboardScreen() {
               </Text>
             </View>
             <TouchableOpacity
-              onPress={() => router.push("/Screens/staffadminScreens/OrdersScreen" as any)}
+              onPress={() =>
+                router.push("/Screens/staffadminScreens/OrdersScreen" as any)
+              }
               style={styles.viewAllBtn}
             >
               <Text style={styles.viewAllText}>View All</Text>
@@ -573,21 +784,33 @@ export default function StaffAdminDashboardScreen() {
             {dashboardData.recentOrders.map((ord: any) => (
               <View
                 key={ord._id}
-                style={[styles.recentItemCard, { backgroundColor: cardBg, borderColor: border }]}
+                style={[
+                  styles.recentItemCard,
+                  { backgroundColor: cardBg, borderColor: border },
+                ]}
               >
                 <View style={styles.recentHeaderRow}>
                   <View style={{ gap: moderateScale(2) }}>
-                    <Text style={[styles.orderNumberText, { color: textPrimary }]}>
+                    <Text
+                      style={[styles.orderNumberText, { color: textPrimary }]}
+                    >
                       #{ord.orderNumber}
                     </Text>
-                    <Text style={[styles.recentStoreName, { color: textSecondary }]}>
+                    <Text
+                      style={[styles.recentStoreName, { color: textSecondary }]}
+                    >
                       Store: {ord.vendorName}
                     </Text>
                   </View>
                   <RequestStatusBadge status={ord.orderStatus} type="order" />
                 </View>
 
-                <View style={[styles.recentMetaRow, { borderTopColor: isDark ? "#222D35" : "#F1F5F9" }]}>
+                <View
+                  style={[
+                    styles.recentMetaRow,
+                    { borderTopColor: isDark ? "#222D35" : "#F1F5F9" },
+                  ]}
+                >
                   <Text style={[styles.metaPrice, { color: textPrimary }]}>
                     Rs. {Number(ord.totalAmount || 0).toLocaleString()}
                   </Text>
@@ -599,8 +822,17 @@ export default function StaffAdminDashboardScreen() {
             ))}
           </View>
         ) : (
-          <View style={[styles.emptyBox, { backgroundColor: cardBg, borderColor: border }]}>
-            <MaterialCommunityIcons name="cart-off" size={scale(28)} color={textSecondary} />
+          <View
+            style={[
+              styles.emptyBox,
+              { backgroundColor: cardBg, borderColor: border },
+            ]}
+          >
+            <MaterialCommunityIcons
+              name="cart-off"
+              size={scale(28)}
+              color={textSecondary}
+            />
             <Text style={[styles.emptyText, { color: textSecondary }]}>
               No recent orders in this timeframe.
             </Text>
