@@ -90,6 +90,10 @@ const Index = () => {
           const userRole = (currentCustomerUser?.role || customerUser?.role || "").toLowerCase();
           if (adminToken || userRole === "superadmin" || userRole === "admin") {
             if (adminToken || customerToken || isCustomerAuthenticated) {
+              if (userRole === "admin") {
+                router.replace("/StaffAdminMain" as any);
+                return;
+              }
               router.replace("/AdminMain" as any);
               return;
             }

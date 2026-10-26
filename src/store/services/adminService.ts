@@ -244,6 +244,16 @@ export const fetchAdminAuditLogsApi = async (params?: {
 };
 
 // 13. StaffAdmin Scoped Operations
+export const fetchStaffDashboardOverviewApi = async (params?: {
+  vendorId?: string;
+  timeframe?: string;
+  startDate?: string;
+  endDate?: string;
+}) => {
+  const response = await api.get("/admin/staff-operations/dashboard-overview", { params });
+  return response.data;
+};
+
 export const fetchStaffAssignedVendorsApi = async () => {
   const response = await api.get("/admin/staff-operations/assigned-vendors");
   return response.data;

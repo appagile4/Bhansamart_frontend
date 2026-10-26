@@ -54,7 +54,11 @@ export default function AdminLoginScreen() {
 
       if (result?.token) {
         await storage.setItem("bhansa_admin_token", result.token);
-        router.replace("/AdminMain" as any);
+        if (role === "admin") {
+          router.replace("/StaffAdminMain" as any);
+        } else {
+          router.replace("/AdminMain" as any);
+        }
       }
     } catch (err: any) {
       Alert.alert(

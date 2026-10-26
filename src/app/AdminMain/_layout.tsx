@@ -15,7 +15,9 @@ export default function AdminTabLayout() {
     if (isInitialized) {
       if (!isAuthenticated) {
         router.replace("/(auth)/admin-login" as any);
-      } else if (user?.role !== "superadmin" && user?.role !== "admin") {
+      } else if (user?.role === "admin") {
+        router.replace("/StaffAdminMain" as any);
+      } else if (user?.role !== "superadmin") {
         router.replace("/(auth)/login" as any);
       }
     }
