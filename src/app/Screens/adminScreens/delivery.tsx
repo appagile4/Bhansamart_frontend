@@ -488,7 +488,7 @@ export default function AdminDeliveryBoysScreen() {
                   <MaterialCommunityIcons name="moped-electric" size={scale(48)} color="#64748B" />
                   <Text style={[styles.emptyText, { color: textSecondary }]}>No delivery riders found.</Text>
                 </View>
-              ) : null
+              ) : undefined
             }
           />
         </>

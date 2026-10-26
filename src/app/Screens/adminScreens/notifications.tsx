@@ -405,7 +405,7 @@ export default function AdminNotificationsScreen() {
                   <Feather name="chevron-right" size={scale(16)} color={notifPage >= notifTotalPages ? textSecondary : textPrimary} />
                 </TouchableOpacity>
               </View>
-            ) : null
+            ) : undefined
           }
         />
       ) : (

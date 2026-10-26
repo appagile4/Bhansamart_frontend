@@ -279,7 +279,7 @@ export default function VendorCodHandoverScreen() {
                 </View>
               ))}
             </View>
-          ) : null
+          ) : undefined
         }
       />
 

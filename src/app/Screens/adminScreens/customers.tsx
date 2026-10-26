@@ -148,7 +148,7 @@ export default function AdminCustomersScreen() {
               <MaterialCommunityIcons name="account-group-outline" size={scale(48)} color="#64748B" />
               <Text style={[styles.emptyText, { color: textSecondary }]}>No customers registered yet.</Text>
             </View>
-          ) : null
+          ) : undefined
         }
       />
     </View>

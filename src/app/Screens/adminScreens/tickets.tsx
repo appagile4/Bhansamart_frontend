@@ -196,7 +196,7 @@ export default function AdminTicketsScreen() {
               <MaterialCommunityIcons name="ticket-confirmation-outline" size={scale(48)} color="#64748B" />
               <Text style={[styles.emptyText, { color: textSecondary }]}>No support tickets found.</Text>
             </View>
-          ) : null
+          ) : undefined
         }
       />
 

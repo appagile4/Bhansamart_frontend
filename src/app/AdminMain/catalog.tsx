@@ -1418,7 +1418,7 @@ export default function AdminCatalogScreen() {
                     No categories match your search.
                   </Text>
                 </View>
-              ) : null
+              ) : undefined
             }
           />
         </View>
@@ -1492,7 +1492,7 @@ export default function AdminCatalogScreen() {
                     All {productsTotal} products loaded
                   </Text>
                 </View>
-              ) : null
+              ) : undefined
             }
             ListEmptyComponent={
               !loading ? (
@@ -1506,7 +1506,7 @@ export default function AdminCatalogScreen() {
                     No products found.
                   </Text>
                 </View>
-              ) : null
+              ) : undefined
             }
           />
         </View>

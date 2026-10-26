@@ -465,7 +465,7 @@ export default function AdminAdminsScreen() {
                 </TouchableOpacity>
               ) : null}
             </View>
-          ) : null
+          ) : undefined
         }
         renderItem={({ item }) => {
           const storeCount = item.assignedVendors?.length || item.assignedVendorsCount || 0;

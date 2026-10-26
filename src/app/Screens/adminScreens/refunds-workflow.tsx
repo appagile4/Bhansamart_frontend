@@ -544,7 +544,7 @@ export default function AdminRefundsWorkflowScreen() {
                 <Feather name="chevron-right" size={scale(16)} color={page >= totalPages ? textSecondary : textPrimary} />
               </TouchableOpacity>
             </View>
-          ) : null
+          ) : undefined
         }
       />
 

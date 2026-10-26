@@ -357,7 +357,7 @@ export default function AdminLiveRadarScreen() {
               <View style={styles.emptyContainer}>
                 <Text style={[styles.emptyText, { color: textSecondary }]}>No entities in this sector.</Text>
               </View>
-            ) : null
+            ) : undefined
           }
         />
       </View>

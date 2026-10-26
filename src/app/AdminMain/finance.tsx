@@ -184,7 +184,7 @@ export default function AdminFinanceScreen() {
                   No withdrawal requests pending approval.
                 </Text>
               </View>
-            ) : null
+            ) : undefined
           }
           renderItem={({ item }) => {
             const isPending = item.status === "PENDING";

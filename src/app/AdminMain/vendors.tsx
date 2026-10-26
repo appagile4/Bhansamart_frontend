@@ -241,7 +241,7 @@ export default function AdminVendorsScreen() {
                 No vendors match the selected filter criteria.
               </Text>
             </View>
-          ) : null
+          ) : undefined
         }
         renderItem={({ item }) => {
           const itemStatus = (

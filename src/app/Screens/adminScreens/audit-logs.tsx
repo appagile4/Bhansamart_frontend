@@ -145,7 +145,7 @@ export default function AdminAuditLogsScreen() {
               <MaterialCommunityIcons name="clipboard-text-clock-outline" size={scale(48)} color="#64748B" />
               <Text style={[styles.emptyText, { color: textSecondary }]}>No audit log records recorded yet.</Text>
             </View>
-          ) : null
+          ) : undefined
         }
       />
 

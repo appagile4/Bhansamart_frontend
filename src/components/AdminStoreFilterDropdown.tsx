@@ -261,7 +261,7 @@ export default function AdminStoreFilterDropdown({
                     +{vendors.length - 6} more ▾
                   </Text>
                 </TouchableOpacity>
-              ) : null
+              ) : undefined
             }
           />
         </View>
