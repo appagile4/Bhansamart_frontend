@@ -20,8 +20,12 @@ import AdminHeader from "@/components/AdminHeader";
 import {
   fetchStaffNotificationsAdminApi,
   markStaffNotificationReadApi,
+  searchNotificationRecipientsApi,
 } from "@/store/services/adminService";
 import socketService from "@/store/services/socketService";
+
+type AudienceType = "ALL" | "CUSTOMERS" | "VENDORS" | "DELIVERY_BOYS" | "ADMIN_STAFF" | "SPECIFIC";
+type SpecificRole = "customer" | "vendor" | "delivery_boy" | "admin";
 
 export default function AdminNotificationsScreen() {
   const router = useRouter();
@@ -44,16 +48,24 @@ export default function AdminNotificationsScreen() {
   const [notifTotal, setNotifTotal] = useState(0);
 
   // Broadcasts State
-  const [audience, setAudience] = useState<"ALL" | "CUSTOMERS" | "VENDORS" | "DELIVERY_BOYS">("ALL");
+  const [audience, setAudience] = useState<AudienceType>("ALL");
+  const [targetRole, setTargetRole] = useState<SpecificRole>("customer");
+  const [selectedRecipient, setSelectedRecipient] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [screenTarget, setScreenTarget] = useState("");
 
-  const audiences = [
+  const audiences: { label: string; value: AudienceType; icon: any }[] = [
     { label: "Everyone (All Users)", value: "ALL", icon: "bullhorn-outline" },
     { label: "Customers Only", value: "CUSTOMERS", icon: "account-group-outline" },
-    { label: "Vendors Only", value: "VENDORS", icon: "store-outline" },
+    { label: "Vendors Only", value: "VENDORS", icon: "storefront-outline" },
     { label: "Delivery Boys Only", value: "DELIVERY_BOYS", icon: "moped" },
+    { label: "Staff Admins Only", value: "ADMIN_STAFF", icon: "shield-account-outline" },
+    { label: "Specific User", value: "SPECIFIC", icon: "account-search-outline" },
   ];
 
   const notifFilters = [
@@ -162,37 +174,77 @@ export default function AdminNotificationsScreen() {
     }
   };
 
+  // Debounced search for specific recipient
+  useEffect(() => {
+    if (audience !== "SPECIFIC") {
+      setSearchResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        setSearchLoading(true);
+        const res = await searchNotificationRecipientsApi({
+          role: targetRole,
+          q: searchQuery.trim(),
+        });
+        if (res?.data) {
+          setSearchResults(res.data);
+        }
+      } catch (err) {
+        console.warn("[Search Recipients Error]:", err);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [audience, targetRole, searchQuery]);
+
   const handleSendBroadcast = async () => {
     if (!title.trim() || !body.trim()) {
-      Alert.alert("Validation Error", "Please provide both title and notification message body.");
+      Alert.alert("Validation Error", "Please provide both headline/title and message body.");
       return;
     }
 
+    if (audience === "SPECIFIC" && !selectedRecipient) {
+      Alert.alert("Target Required", "Please search and select a specific recipient to dispatch this notification.");
+      return;
+    }
+
+    const audienceLabel =
+      audience === "SPECIFIC"
+        ? `${selectedRecipient.name} (${selectedRecipient.role?.toUpperCase()})`
+        : audiences.find((a) => a.value === audience)?.label || audience;
+
     Alert.alert(
-      "Confirm Targeted Notification",
-      `Are you sure you want to broadcast this message to "${audience}"?`,
+      "Confirm Notification Dispatch",
+      `Are you sure you want to send this notification to "${audienceLabel}"?`,
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Broadcast Now",
+          text: "Send Now",
           onPress: async () => {
             try {
               const res = await dispatch(
                 sendAdminTargetedNotification({
                   targetAudience: audience,
+                  targetRole: audience === "SPECIFIC" ? targetRole : undefined,
+                  targetId: audience === "SPECIFIC" ? (selectedRecipient.id || selectedRecipient._id) : undefined,
                   title: title.trim(),
                   body: body.trim(),
+                  deepLink: screenTarget.trim() || undefined,
                   data: screenTarget.trim() ? { screen: screenTarget.trim() } : {},
                 })
               ).unwrap();
 
               Alert.alert(
-                "Broadcast Sent Successfully!",
-                `Delivered notification to ${res?.recipientCount || "all active"} accounts via push & socket.`
+                "Dispatched Successfully!",
+                `Delivered notification to ${res?.recipientCount ?? "all active"} account(s) via real-time socket and in-app feed.`
               );
               setTitle("");
               setBody("");
               setScreenTarget("");
+              setSelectedRecipient(null);
+              setSearchQuery("");
             } catch (err: any) {
               Alert.alert("Error", err?.message || "Failed to broadcast notification");
             }
@@ -432,7 +484,13 @@ export default function AdminNotificationsScreen() {
                       { borderColor: isSelected ? "#10B981" : border },
                       isSelected && { backgroundColor: isDark ? "rgba(16, 185, 129, 0.15)" : "#ECFDF5" },
                     ]}
-                    onPress={() => setAudience(item.value as any)}
+                    onPress={() => {
+                      setAudience(item.value);
+                      if (item.value !== "SPECIFIC") {
+                        setSelectedRecipient(null);
+                        setSearchQuery("");
+                      }
+                    }}
                   >
                     <MaterialCommunityIcons
                       name={item.icon as any}
@@ -452,6 +510,164 @@ export default function AdminNotificationsScreen() {
               })}
             </View>
           </View>
+
+          {/* Specific Recipient Picker Card */}
+          {audience === "SPECIFIC" && (
+            <View style={[styles.card, { backgroundColor: cardBg, borderColor: border }]}>
+              <View style={styles.cardHeader}>
+                <Feather name="user-check" size={scale(18)} color="#10B981" />
+                <Text style={[styles.cardTitle, { color: textPrimary }]}>Pick Specific Recipient</Text>
+              </View>
+
+              {/* Target Role Selector Tabs */}
+              <View style={[styles.specificRoleTabs, { borderColor: border }]}>
+                {(
+                  [
+                    { role: "customer", label: "Customer", icon: "account-outline" },
+                    { role: "vendor", label: "Vendor", icon: "storefront-outline" },
+                    { role: "delivery_boy", label: "Delivery Boy", icon: "moped" },
+                    { role: "admin", label: "Staff Admin", icon: "shield-account-outline" },
+                  ] as const
+                ).map((r) => {
+                  const isActive = targetRole === r.role;
+                  return (
+                    <TouchableOpacity
+                      key={r.role}
+                      style={[
+                        styles.specificRoleBtn,
+                        isActive && { backgroundColor: "#10B981" },
+                      ]}
+                      onPress={() => {
+                        setTargetRole(r.role);
+                        setSelectedRecipient(null);
+                        setSearchQuery("");
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name={r.icon as any}
+                        size={scale(14)}
+                        color={isActive ? "#FFFFFF" : textSecondary}
+                      />
+                      <Text
+                        style={[
+                          styles.specificRoleText,
+                          { color: isActive ? "#FFFFFF" : textSecondary },
+                        ]}
+                      >
+                        {r.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Selected Recipient Card */}
+              {selectedRecipient ? (
+                <View style={[styles.recipientCard, { borderColor: "#10B981", backgroundColor: isDark ? "rgba(16, 185, 129, 0.08)" : "#F0FDF4" }]}>
+                  <View style={styles.recipientAvatarBox}>
+                    <MaterialCommunityIcons
+                      name={
+                        targetRole === "vendor"
+                          ? "storefront"
+                          : targetRole === "delivery_boy"
+                          ? "moped"
+                          : targetRole === "admin"
+                          ? "shield-account"
+                          : "account"
+                      }
+                      size={scale(22)}
+                      color="#10B981"
+                    />
+                  </View>
+                  <View style={styles.recipientInfo}>
+                    <Text style={[styles.recipientName, { color: textPrimary }]}>
+                      {selectedRecipient.name}
+                    </Text>
+                    <Text style={[styles.recipientContact, { color: textSecondary }]}>
+                      {selectedRecipient.phone || selectedRecipient.email || "No direct phone"}
+                    </Text>
+                    <View style={styles.recipientBadge}>
+                      <Text style={styles.recipientBadgeText}>
+                        {targetRole.toUpperCase().replace("_", " ")}
+                      </Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.clearRecipientBtn}
+                    onPress={() => {
+                      setSelectedRecipient(null);
+                      setSearchQuery("");
+                    }}
+                  >
+                    <Feather name="x" size={scale(18)} color="#EF4444" />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                /* Search Box and Live Results */
+                <View style={{ marginTop: scale(10) }}>
+                  <Text style={[styles.inputLabel, { color: textPrimary }]}>
+                    Search {targetRole.replace("_", " ")} by name, phone or email
+                  </Text>
+                  <View style={[styles.searchBox, { borderColor: border, backgroundColor: bg }]}>
+                    <Feather name="search" size={scale(16)} color={textSecondary} />
+                    <TextInput
+                      style={[styles.searchInput, { color: textPrimary }]}
+                      placeholder={`Type to search ${targetRole.replace("_", " ")}...`}
+                      placeholderTextColor={textSecondary}
+                      value={searchQuery}
+                      onChangeText={setSearchQuery}
+                    />
+                    {searchLoading && <ActivityIndicator size="small" color="#10B981" />}
+                  </View>
+
+                  {/* Dropdown Results */}
+                  {searchResults.length > 0 && (
+                    <View style={[styles.resultsDropdown, { backgroundColor: cardBg, borderColor: border }]}>
+                      {searchResults.map((item) => (
+                        <TouchableOpacity
+                          key={item.id || item._id}
+                          style={[styles.resultItem, { borderBottomColor: border }]}
+                          onPress={() => {
+                            setSelectedRecipient(item);
+                            setSearchResults([]);
+                          }}
+                        >
+                          <View style={styles.resultItemLeft}>
+                            <MaterialCommunityIcons
+                              name={
+                                targetRole === "vendor"
+                                  ? "storefront-outline"
+                                  : targetRole === "delivery_boy"
+                                  ? "moped"
+                                  : targetRole === "admin"
+                                  ? "shield-account-outline"
+                                  : "account-outline"
+                              }
+                              size={scale(18)}
+                              color="#10B981"
+                            />
+                            <View style={{ marginLeft: scale(8) }}>
+                              <Text style={[styles.resultName, { color: textPrimary }]}>{item.name}</Text>
+                              <Text style={[styles.resultSub, { color: textSecondary }]}>
+                                {item.phone || item.email || "No contact info"}
+                              </Text>
+                            </View>
+                          </View>
+                          <Feather name="check-circle" size={scale(16)} color="#10B981" />
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+
+                  {searchQuery.trim().length > 0 && !searchLoading && searchResults.length === 0 && (
+                    <Text style={[styles.noResultText, { color: textSecondary }]}>
+                      No matching {targetRole.replace("_", " ")}s found.
+                    </Text>
+                  )}
+                </View>
+              )}
+            </View>
+          )}
 
           {/* Compose Notification Card */}
           <View style={[styles.card, { backgroundColor: cardBg, borderColor: border }]}>
@@ -760,5 +976,114 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: moderateScale(14),
     fontWeight: "800",
+  },
+  specificRoleTabs: {
+    flexDirection: "row",
+    borderWidth: 1,
+    borderRadius: scale(8),
+    overflow: "hidden",
+    marginBottom: scale(12),
+  },
+  specificRoleBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: scale(8),
+    gap: scale(4),
+  },
+  specificRoleText: {
+    fontSize: moderateScale(10),
+    fontWeight: "700",
+  },
+  recipientCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: scale(10),
+    borderWidth: 1,
+    padding: scale(12),
+    marginTop: scale(6),
+  },
+  recipientAvatarBox: {
+    width: scale(38),
+    height: scale(38),
+    borderRadius: scale(19),
+    backgroundColor: "rgba(16, 185, 129, 0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: scale(10),
+  },
+  recipientInfo: {
+    flex: 1,
+  },
+  recipientName: {
+    fontSize: moderateScale(13),
+    fontWeight: "800",
+  },
+  recipientContact: {
+    fontSize: moderateScale(11),
+    marginTop: scale(2),
+  },
+  recipientBadge: {
+    backgroundColor: "rgba(16, 185, 129, 0.15)",
+    alignSelf: "flex-start",
+    paddingHorizontal: scale(6),
+    paddingVertical: scale(2),
+    borderRadius: scale(4),
+    marginTop: scale(4),
+  },
+  recipientBadgeText: {
+    color: "#10B981",
+    fontSize: moderateScale(9),
+    fontWeight: "800",
+  },
+  clearRecipientBtn: {
+    padding: scale(6),
+  },
+  searchBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderRadius: scale(8),
+    paddingHorizontal: scale(10),
+    gap: scale(8),
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: scale(9),
+    fontSize: moderateScale(12),
+  },
+  resultsDropdown: {
+    borderWidth: 1,
+    borderRadius: scale(8),
+    marginTop: scale(6),
+    maxHeight: scale(180),
+    overflow: "hidden",
+  },
+  resultItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: scale(12),
+    paddingVertical: scale(10),
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  resultItemLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  resultName: {
+    fontSize: moderateScale(12),
+    fontWeight: "700",
+  },
+  resultSub: {
+    fontSize: moderateScale(10),
+    marginTop: scale(2),
+  },
+  noResultText: {
+    fontSize: moderateScale(11),
+    textAlign: "center",
+    paddingVertical: scale(10),
   },
 });

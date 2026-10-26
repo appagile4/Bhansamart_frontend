@@ -219,10 +219,20 @@ export const sendAdminTargetedNotificationApi = async (payload: {
   title: string;
   body: string;
   targetAudience: string;
+  targetRole?: string;
   targetId?: string;
   deepLink?: string;
+  data?: any;
 }) => {
   const response = await api.post("/admin/notifications/send", payload);
+  return response.data;
+};
+
+export const searchNotificationRecipientsApi = async (params: {
+  role: string;
+  q?: string;
+}) => {
+  const response = await api.get("/admin/notifications/search-recipients", { params });
   return response.data;
 };
 
@@ -429,6 +439,72 @@ export const fetchStaffNotificationsAdminApi = async (params?: {
 
 export const markStaffNotificationReadApi = async (id: string) => {
   const response = await api.patch(`/admin/staff-operations/notifications/${id}/read`);
+  return response.data;
+};
+
+// 14. Vendor Broadcast Notifications (Granular Super Admin Permissions & Scoping)
+export interface BroadcastPermissionsData {
+  canBroadcastToAssignedVendors: boolean;
+  canBroadcastToSpecificVendors: boolean;
+  canBroadcastToAllVendors: boolean;
+  isSuperAdmin: boolean;
+  hasAnyBroadcastPermission: boolean;
+  assignedVendors?: any[];
+}
+
+export const fetchBroadcastPermissionsApi = async (): Promise<{
+  success: boolean;
+  data: BroadcastPermissionsData;
+}> => {
+  const response = await api.get("/admin/broadcasts/permissions");
+  return response.data;
+};
+
+export const fetchBroadcastEligibleVendorsApi = async (params?: {
+  search?: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const response = await api.get("/admin/broadcasts/eligible-vendors", { params });
+  return response.data;
+};
+
+export const fetchBroadcastRecipientPreviewApi = async (params: {
+  targetType: "ASSIGNED_VENDORS" | "SPECIFIC_VENDORS" | "ALL_VENDORS";
+  vendorIds?: string[];
+}) => {
+  const response = await api.get("/admin/broadcasts/recipient-preview", {
+    params: {
+      targetType: params.targetType,
+      vendorIds: params.vendorIds ? params.vendorIds.join(",") : undefined,
+    },
+  });
+  return response.data;
+};
+
+export interface SendBroadcastPayload {
+  title: string;
+  message: string;
+  targetType: "ASSIGNED_VENDORS" | "SPECIFIC_VENDORS" | "ALL_VENDORS";
+  vendorIds?: string[];
+  notificationType?: "GENERAL" | "ANNOUNCEMENT" | "ORDER_UPDATE" | "PROMOTION" | "IMPORTANT_NOTICE";
+  imageUrl?: string;
+  scheduledAt?: string | null;
+  idempotencyKey?: string;
+}
+
+export const sendVendorBroadcastApi = async (payload: SendBroadcastPayload) => {
+  const response = await api.post("/admin/broadcasts/send", payload);
+  return response.data;
+};
+
+export const fetchBroadcastHistoryApi = async (params?: {
+  page?: number;
+  limit?: number;
+  targetType?: string;
+  search?: string;
+}) => {
+  const response = await api.get("/admin/broadcasts/history", { params });
   return response.data;
 };
 

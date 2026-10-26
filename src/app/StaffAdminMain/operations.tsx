@@ -82,6 +82,16 @@ export default function StaffAdminOperationsScreen() {
       route: "/Screens/staffadminScreens/OrdersScreen",
       badge: "Orders",
     },
+    {
+      id: "broadcasts",
+      title: "Vendor Broadcast Notifications",
+      subtitle: "Dispatch announcements, alerts & urgent notices with RBAC targeting",
+      icon: "bullhorn-outline" as const,
+      iconColor: "#0EA5E9",
+      iconBg: "rgba(14, 165, 233, 0.1)",
+      route: "/Screens/staffadminScreens/BroadcastNotificationScreen",
+      badge: "Broadcast",
+    },
   ];
 
   return (

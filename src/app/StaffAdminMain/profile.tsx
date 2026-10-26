@@ -72,6 +72,9 @@ export default function StaffAdminProfileScreen() {
     canExamineRefunds: true,
     canReconcileCod: true,
     canTrackDeliveries: true,
+    canBroadcastToAssignedVendors: false,
+    canBroadcastToSpecificVendors: false,
+    canBroadcastToAllVendors: false,
   };
 
   return (

@@ -34,6 +34,9 @@ interface AdminPermissions {
   canViewOrders: boolean;
   canSendNotifications: boolean;
   canViewAnalytics: boolean;
+  canBroadcastToAssignedVendors: boolean;
+  canBroadcastToSpecificVendors: boolean;
+  canBroadcastToAllVendors: boolean;
 }
 
 const DEFAULT_PERMISSIONS: AdminPermissions = {
@@ -43,6 +46,9 @@ const DEFAULT_PERMISSIONS: AdminPermissions = {
   canViewOrders: true,
   canSendNotifications: true,
   canViewAnalytics: true,
+  canBroadcastToAssignedVendors: true,
+  canBroadcastToSpecificVendors: false,
+  canBroadcastToAllVendors: false,
 };
 
 export default function AdminAdminsScreen() {
@@ -110,6 +116,9 @@ export default function AdminAdminsScreen() {
       canViewOrders: admin.adminPermissions?.canViewOrders ?? true,
       canSendNotifications: admin.adminPermissions?.canSendNotifications ?? true,
       canViewAnalytics: admin.adminPermissions?.canViewAnalytics ?? true,
+      canBroadcastToAssignedVendors: admin.adminPermissions?.canBroadcastToAssignedVendors ?? false,
+      canBroadcastToSpecificVendors: admin.adminPermissions?.canBroadcastToSpecificVendors ?? false,
+      canBroadcastToAllVendors: admin.adminPermissions?.canBroadcastToAllVendors ?? false,
     });
     setStoreSearch("");
     setModalVisible(true);
@@ -726,6 +735,32 @@ export default function AdminAdminsScreen() {
                     Tickets
                   </Text>
                 </View>
+
+                {/* Broadcast Permissions Badges */}
+                {perms.canBroadcastToAllVendors ? (
+                  <View style={[styles.permPill, { backgroundColor: "rgba(236, 72, 153, 0.1)" }]}>
+                    <MaterialCommunityIcons name="bullhorn-outline" size={scale(11)} color="#EC4899" />
+                    <Text style={[styles.permPillText, { color: "#EC4899" }]}>Broadcast: All</Text>
+                  </View>
+                ) : null}
+                {perms.canBroadcastToSpecificVendors ? (
+                  <View style={[styles.permPill, { backgroundColor: "rgba(16, 185, 129, 0.1)" }]}>
+                    <MaterialCommunityIcons name="account-multiple-check-outline" size={scale(11)} color="#10B981" />
+                    <Text style={[styles.permPillText, { color: "#10B981" }]}>Broadcast: Specific</Text>
+                  </View>
+                ) : null}
+                {perms.canBroadcastToAssignedVendors ? (
+                  <View style={[styles.permPill, { backgroundColor: "rgba(2, 132, 199, 0.1)" }]}>
+                    <MaterialCommunityIcons name="storefront-check-outline" size={scale(11)} color="#0284C7" />
+                    <Text style={[styles.permPillText, { color: "#0284C7" }]}>Broadcast: Assigned</Text>
+                  </View>
+                ) : null}
+                {!perms.canBroadcastToAllVendors && !perms.canBroadcastToSpecificVendors && !perms.canBroadcastToAssignedVendors ? (
+                  <View style={[styles.permPill, { backgroundColor: "rgba(148, 163, 184, 0.1)" }]}>
+                    <MaterialCommunityIcons name="volume-mute" size={scale(11)} color="#94A3B8" />
+                    <Text style={[styles.permPillText, { color: "#94A3B8" }]}>No Broadcast</Text>
+                  </View>
+                ) : null}
               </View>
 
               {/* Action Button */}
@@ -1079,6 +1114,91 @@ export default function AdminAdminsScreen() {
                         setPermissions((prev) => ({ ...prev, canViewAnalytics: val }))
                       }
                       trackColor={{ false: "#64748B", true: "#06B6D4" }}
+                      thumbColor="#FFFFFF"
+                    />
+                  </View>
+                </View>
+              </View>
+
+              {/* 4. Vendor Broadcast Targeting Permissions */}
+              <View style={styles.formSection}>
+                <Text style={[styles.sectionHeading, { color: textPrimary }]}>
+                  4. Vendor Broadcast Targeting Permissions
+                </Text>
+                <Text style={[styles.sectionSub, { color: textSecondary }]}>
+                  Super Admin controlled options determining how this Staff Admin can broadcast to stores
+                </Text>
+
+                <View style={[styles.permsCard, { backgroundColor: isDark ? "#10161C" : "#F8FAFC", borderColor: border }]}>
+                  {/* Send to Assigned Vendors */}
+                  <View style={styles.permToggleRow}>
+                    <View style={styles.permInfo}>
+                      <MaterialCommunityIcons name="storefront-check-outline" size={scale(18)} color="#0284C7" />
+                      <View style={{ marginLeft: scale(10), flex: 1 }}>
+                        <Text style={[styles.permTitle, { color: textPrimary }]}>
+                          Send to Assigned Vendors
+                        </Text>
+                        <Text style={[styles.permDesc, { color: textSecondary }]}>
+                          Staff Admin can send notifications only to stores assigned to them
+                        </Text>
+                      </View>
+                    </View>
+                    <Switch
+                      value={permissions.canBroadcastToAssignedVendors}
+                      onValueChange={(val) =>
+                        setPermissions((prev) => ({ ...prev, canBroadcastToAssignedVendors: val }))
+                      }
+                      trackColor={{ false: "#64748B", true: "#0284C7" }}
+                      thumbColor="#FFFFFF"
+                    />
+                  </View>
+
+                  <View style={[styles.permDivider, { backgroundColor: border }]} />
+
+                  {/* Send to Specific Vendors */}
+                  <View style={styles.permToggleRow}>
+                    <View style={styles.permInfo}>
+                      <MaterialCommunityIcons name="account-multiple-check-outline" size={scale(18)} color="#10B981" />
+                      <View style={{ marginLeft: scale(10), flex: 1 }}>
+                        <Text style={[styles.permTitle, { color: textPrimary }]}>
+                          Send to Specific Vendors
+                        </Text>
+                        <Text style={[styles.permDesc, { color: textSecondary }]}>
+                          Staff Admin can search and pick one or multiple individual stores
+                        </Text>
+                      </View>
+                    </View>
+                    <Switch
+                      value={permissions.canBroadcastToSpecificVendors}
+                      onValueChange={(val) =>
+                        setPermissions((prev) => ({ ...prev, canBroadcastToSpecificVendors: val }))
+                      }
+                      trackColor={{ false: "#64748B", true: "#10B981" }}
+                      thumbColor="#FFFFFF"
+                    />
+                  </View>
+
+                  <View style={[styles.permDivider, { backgroundColor: border }]} />
+
+                  {/* Send to All Vendors */}
+                  <View style={styles.permToggleRow}>
+                    <View style={styles.permInfo}>
+                      <MaterialCommunityIcons name="bullhorn-outline" size={scale(18)} color="#EC4899" />
+                      <View style={{ marginLeft: scale(10), flex: 1 }}>
+                        <Text style={[styles.permTitle, { color: textPrimary }]}>
+                          Send to All Vendors
+                        </Text>
+                        <Text style={[styles.permDesc, { color: textSecondary }]}>
+                          Staff Admin can broadcast notifications platform-wide to all eligible vendors
+                        </Text>
+                      </View>
+                    </View>
+                    <Switch
+                      value={permissions.canBroadcastToAllVendors}
+                      onValueChange={(val) =>
+                        setPermissions((prev) => ({ ...prev, canBroadcastToAllVendors: val }))
+                      }
+                      trackColor={{ false: "#64748B", true: "#EC4899" }}
                       thumbColor="#FFFFFF"
                     />
                   </View>
