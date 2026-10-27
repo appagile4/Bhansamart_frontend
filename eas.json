@@ -15,7 +15,14 @@
       }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://169.58.31.214:5001/api",
+        "EXPO_PUBLIC_SOCKET_URL": "http://169.58.31.214:5001"
+      }
     },
     "production": {
       "autoIncrement": true

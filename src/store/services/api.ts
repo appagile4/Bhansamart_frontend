@@ -3,15 +3,17 @@ import axios from "axios";
 
 /**
  * Configure dynamic backend URL:
- * - Defaults to LAN IP: http://192.168.29.235:5000/api (works for Physical Devices, Web, and Emulators)
+ * - Defaults to LAN IP: http://169.58.31.214:5001/api (works for Physical Devices, Web, and Emulators)
  * - Can be overridden dynamically with process.env.EXPO_PUBLIC_API_URL
  */
+const LIVE_API_URL = "http://169.58.31.214:5001/api";
+
 const getDefaultApiUrl = () => {
-  if (process.env.EXPO_PUBLIC_API_URL) {
-    return process.env.EXPO_PUBLIC_API_URL;
+  const envUrl = process.env.EXPO_PUBLIC_API_URL;
+  if (envUrl && !envUrl.includes("192.168.") && !envUrl.includes("localhost:5000")) {
+    return envUrl;
   }
-  // Host IP for local development & physical device testing
-  return "http://192.168.29.235:5000/api";
+  return LIVE_API_URL;
 };
 
 export const API_BASE_URL = getDefaultApiUrl();
@@ -23,7 +25,7 @@ const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 15000,
+  timeout: 30000,
 });
 
 // Request interceptor: Attach JWT token from resilient universal storage
@@ -56,7 +58,7 @@ api.interceptors.request.use(
         config.headers.Authorization = `Bearer ${token}`;
       }
 
-      // Geo-fencing: Automatically attach customer delivery coordinates to all product catalog queries
+      // Attach customer delivery coordinates only if the user explicitly has stored coordinates
       if (
         config.method?.toLowerCase() === "get" &&
         (config.url === "/products" ||
@@ -76,19 +78,17 @@ api.interceptors.request.use(
               }
             } catch {}
           }
-          if (config.params.lat == null) {
-            // Default to Rohini Sector 24 coordinates
-            config.params.lat = 28.7208;
-            config.params.lng = 77.1042;
-          }
         }
       }
     } catch (error) {
-      console.warn("[API Interceptor] Failed to read token/coords from storage", error);
+      console.warn(
+        "[API Interceptor] Failed to read token/coords from storage",
+        error,
+      );
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 // Response interceptor: Extract message & format error
@@ -106,7 +106,7 @@ api.interceptors.response.use(
       raw: error.response?.data,
     };
     return Promise.reject(customError);
-  }
+  },
 );
 
 export default api;

@@ -6,10 +6,11 @@ import { API_BASE_URL } from "./api";
  * Resolve Socket.IO base URL from API_BASE_URL
  */
 const getSocketUrl = () => {
-  if (process.env.EXPO_PUBLIC_SOCKET_URL) {
-    return process.env.EXPO_PUBLIC_SOCKET_URL;
+  const envSocket = process.env.EXPO_PUBLIC_SOCKET_URL;
+  if (envSocket && !envSocket.includes("192.168.") && !envSocket.includes("localhost:5000")) {
+    return envSocket;
   }
-  // Strip trailing /api from API_BASE_URL (e.g., http://192.168.29.235:5000/api -> http://192.168.29.235:5000)
+  // Strip trailing /api from API_BASE_URL (e.g., http://169.58.31.214:5001/api -> http://169.58.31.214:5001)
   return API_BASE_URL.replace(/\/api\/?$/, "");
 };
 
@@ -22,7 +23,12 @@ class SocketService {
    * Connect socket with authentication token from storage
    */
   public async connect(
-    roleOrIsVendor: boolean | "vendor" | "delivery" | "customer" | "admin" = "customer"
+    roleOrIsVendor:
+      | boolean
+      | "vendor"
+      | "delivery"
+      | "customer"
+      | "admin" = "customer",
   ): Promise<Socket | null> {
     if (this.socket && this.socket.connected) {
       return this.socket;
@@ -58,7 +64,9 @@ class SocketService {
       }
 
       if (!token) {
-        console.log(`[SocketService] No auth token found for role '${roleStr}'; skipping socket connection`);
+        console.log(
+          `[SocketService] No auth token found for role '${roleStr}'; skipping socket connection`,
+        );
         this.isConnecting = false;
         return null;
       }
@@ -73,21 +81,27 @@ class SocketService {
       }
 
       const socketUrl = getSocketUrl();
-      console.log(`[SocketService] Connecting to ${socketUrl} (Role: ${roleStr})`);
+      console.log(
+        `[SocketService] Connecting to ${socketUrl} (Role: ${roleStr})`,
+      );
 
       this.socket = io(socketUrl, {
         auth: {
           token,
         },
-        transports: ["websocket", "polling"],
+        transports: ["polling", "websocket"],
+        upgrade: true,
         reconnection: true,
-        reconnectionAttempts: 10,
+        reconnectionAttempts: 15,
         reconnectionDelay: 2000,
-        timeout: 15000,
+        reconnectionDelayMax: 10000,
+        timeout: 30000,
       });
 
       this.socket.on("connect", () => {
-        console.log(`[SocketService] Connected successfully! ID: ${this.socket?.id}`);
+        console.log(
+          `[SocketService] Connected successfully! ID: ${this.socket?.id} (Transport: ${this.socket?.io?.engine?.transport?.name})`,
+        );
         // Re-subscribe to active rooms after reconnection
         this.activeSubscriptions.forEach((room) => {
           if (room.startsWith("order:")) {
@@ -100,8 +114,17 @@ class SocketService {
         });
       });
 
+      this.socket.io?.engine?.on("upgrade", (transport) => {
+        console.log(`[SocketService] Transport upgraded to ${transport.name}`);
+      });
+
       this.socket.on("connect_error", (err) => {
-        console.warn("[SocketService Connect Error]:", err.message);
+        // If websocket upgrade fails, socket.io automatically remains on polling
+        if (err.message !== "websocket error") {
+          console.warn("[SocketService Connect Error]:", err.message);
+        } else {
+          console.log("[SocketService] WebSocket unavailable; operating via resilient HTTP polling transport.");
+        }
       });
 
       this.socket.on("disconnect", (reason) => {
@@ -148,7 +171,10 @@ class SocketService {
         if (res?.success) {
           console.log(`[SocketService] Subscribed to order room: ${orderId}`);
         } else {
-          console.warn(`[SocketService] Subscription to order ${orderId} rejected:`, res?.message);
+          console.warn(
+            `[SocketService] Subscription to order ${orderId} rejected:`,
+            res?.message,
+          );
         }
       });
     }
@@ -179,7 +205,10 @@ class SocketService {
     }
 
     const wrappedHandler = (order: any) => {
-      console.log(`[SocketService] Received vendor:order:new:`, order?.orderNumber);
+      console.log(
+        `[SocketService] Received vendor:order:new:`,
+        order?.orderNumber,
+      );
       handler(order);
     };
 
@@ -195,7 +224,11 @@ class SocketService {
    */
   public onOrderStatusUpdated(handler: (update: any) => void): () => void {
     const wrappedHandler = (update: any) => {
-      console.log(`[SocketService] Received status update for Order:`, update?.orderNumber, update?.orderStatus);
+      console.log(
+        `[SocketService] Received status update for Order:`,
+        update?.orderNumber,
+        update?.orderStatus,
+      );
       handler(update);
     };
 
@@ -213,7 +246,10 @@ class SocketService {
    */
   public onVendorNotification(handler: (notif: any) => void): () => void {
     const wrappedHandler = (notif: any) => {
-      console.log(`[SocketService] Received vendor:notification:`, notif?.title);
+      console.log(
+        `[SocketService] Received vendor:notification:`,
+        notif?.title,
+      );
       handler(notif);
     };
 
@@ -230,7 +266,10 @@ class SocketService {
    */
   public onCustomerNotification(handler: (notif: any) => void): () => void {
     const wrappedHandler = (notif: any) => {
-      console.log(`[SocketService] Received customer notification:`, notif?.title);
+      console.log(
+        `[SocketService] Received customer notification:`,
+        notif?.title,
+      );
       handler(notif);
     };
 
@@ -300,13 +339,17 @@ class SocketService {
         return reject(new Error("Socket is not connected. Reconnecting..."));
       }
 
-      this.socket.emit("vendor:order:reject", { orderId, reason }, (response: any) => {
-        if (response?.success) {
-          resolve(response.order);
-        } else {
-          reject(new Error(response?.message || "Failed to reject order"));
-        }
-      });
+      this.socket.emit(
+        "vendor:order:reject",
+        { orderId, reason },
+        (response: any) => {
+          if (response?.success) {
+            resolve(response.order);
+          } else {
+            reject(new Error(response?.message || "Failed to reject order"));
+          }
+        },
+      );
     });
   }
 
@@ -315,7 +358,10 @@ class SocketService {
    */
   public onDeliveryOrderRequest(handler: (offer: any) => void): () => void {
     const wrappedHandler = (offer: any) => {
-      console.log(`[SocketService] Received delivery order request:`, offer?.orderNumber);
+      console.log(
+        `[SocketService] Received delivery order request:`,
+        offer?.orderNumber,
+      );
       handler(offer);
     };
 
@@ -332,7 +378,7 @@ class SocketService {
     latitude: number,
     longitude: number,
     heading: number = 0,
-    speed: number = 0
+    speed: number = 0,
   ): Promise<any> {
     return new Promise((resolve) => {
       if (!this.socket || !this.socket.connected) {
@@ -344,7 +390,7 @@ class SocketService {
         { latitude, longitude, heading, speed },
         (res: any) => {
           resolve(res);
-        }
+        },
       );
     });
   }
@@ -380,7 +426,10 @@ class SocketService {
   /**
    * Emit customer current GPS coordinates for real-time proximity discovery
    */
-  public emitCustomerLocation(latitude: number, longitude: number): Promise<any> {
+  public emitCustomerLocation(
+    latitude: number,
+    longitude: number,
+  ): Promise<any> {
     return new Promise((resolve) => {
       if (!this.socket || !this.socket.connected) {
         return resolve({ success: false, message: "Socket not connected" });
@@ -391,7 +440,7 @@ class SocketService {
         { latitude, longitude },
         (res: any) => {
           resolve(res);
-        }
+        },
       );
     });
   }
@@ -441,7 +490,9 @@ class SocketService {
   /**
    * Listen for real-time StaffAdmin operational events
    */
-  public onStaffNotification(handler: (event: string, data: any) => void): () => void {
+  public onStaffNotification(
+    handler: (event: string, data: any) => void,
+  ): () => void {
     const events = [
       "staff_order",
       "staff_withdrawal:new",

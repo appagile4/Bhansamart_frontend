@@ -84,7 +84,6 @@ export const setupNotificationChannelsAsync = async () => {
       enableLights: true,
       showBadge: true,
       lockscreenVisibility: publicVisibility,
-      bypassDnd: true,
     });
 
     // B. Delivery Channel (Heads-up, MAX priority for rider dispatches)
@@ -98,7 +97,6 @@ export const setupNotificationChannelsAsync = async () => {
       enableLights: true,
       showBadge: true,
       lockscreenVisibility: publicVisibility,
-      bypassDnd: true,
     });
 
     // C. Announcements & Broadcasts (Heads-up, high priority)
@@ -125,7 +123,6 @@ export const setupNotificationChannelsAsync = async () => {
       enableLights: true,
       showBadge: true,
       lockscreenVisibility: publicVisibility,
-      bypassDnd: true,
     });
 
     // E. General Updates (High importance default)

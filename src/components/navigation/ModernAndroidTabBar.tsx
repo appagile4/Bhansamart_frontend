@@ -1,57 +1,92 @@
-import React from "react";
-import {
-  Platform,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useAppSelector } from "@/store/hooks";
+import { useTheme } from "@/theme";
 import {
   Ionicons,
   MaterialCommunityIcons,
   MaterialIcons,
 } from "@expo/vector-icons";
-import { useTheme } from "@/theme";
 import type { BottomTabBarProps } from "expo-router/tabs";
-import { useAppSelector } from "@/store/hooks";
+import { useEffect } from "react";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface ModernAndroidTabBarProps extends BottomTabBarProps {
   tintColor?: string;
   role?: "admin" | "staff" | "customer" | "delivery" | "vendor";
 }
 
-export default function ModernAndroidTabBar(props: ModernAndroidTabBarProps) {
-  const { state, descriptors, tintColor, role } = props;
-  const insets = useSafeAreaInsets();
-  const theme = useTheme();
-  const isDark = theme.mode === "dark";
+interface TabItemProps {
+  route: any;
+  descriptor: any;
+  isFocused: boolean;
+  primaryColor: string;
+  inactiveColor: string;
+  isDark: boolean;
+  cartCount: number;
+  role?: string;
+  onPress: () => void;
+  onLongPress: () => void;
+}
 
-  // Cart count for customer badge
-  const cartItems = useAppSelector((s) => s.cart?.items || []);
-  const cartCount = cartItems.reduce(
-    (sum: number, item: any) => sum + (item.quantity || 1),
-    0
-  );
+const SPRING_CONFIG = {
+  damping: 15,
+  stiffness: 180,
+  mass: 0.6,
+};
 
-  const primaryColor =
-    tintColor || theme.colors.primary || "#0284C7";
-  const inactiveColor = isDark ? "#64748B" : "#94A3B8";
-  const barBg = isDark ? "#121920" : "#FFFFFF";
-  const borderColor = isDark ? "#1E293B" : "#F1F5F9";
+function TabItem({
+  route,
+  descriptor,
+  isFocused,
+  primaryColor,
+  inactiveColor,
+  isDark,
+  cartCount,
+  role,
+  onPress,
+  onLongPress,
+}: TabItemProps) {
+  const options = descriptor?.options || {};
+  const progress = useSharedValue(isFocused ? 1 : 0);
+  const scale = useSharedValue(1);
 
-  const renderTabIcon = (
-    routeName: string,
-    isFocused: boolean,
-    color: string
-  ) => {
-    switch (routeName) {
-      // ── Customer Main Routes ──
+  useEffect(() => {
+    progress.value = withTiming(isFocused ? 1 : 0, { duration: 220 });
+  }, [isFocused]);
+
+  const animatedContainerStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const animatedPillStyle = useAnimatedStyle(() => ({
+    opacity: progress.value,
+    transform: [{ scaleX: withSpring(isFocused ? 1 : 0.8, SPRING_CONFIG) }],
+    backgroundColor: isDark ? "rgba(255, 255, 255, 0.08)" : `${primaryColor}18`,
+  }));
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.92, SPRING_CONFIG);
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, SPRING_CONFIG);
+  };
+
+  const renderIcon = (color: string) => {
+    const iconSize = 22;
+
+    switch (route.name) {
       case "category":
         return (
           <Ionicons
             name={isFocused ? "grid" : "grid-outline"}
-            size={24}
+            size={iconSize}
             color={color}
           />
         );
@@ -59,7 +94,7 @@ export default function ModernAndroidTabBar(props: ModernAndroidTabBarProps) {
         return (
           <Ionicons
             name={isFocused ? "repeat" : "repeat-outline"}
-            size={24}
+            size={iconSize}
             color={color}
           />
         );
@@ -68,11 +103,19 @@ export default function ModernAndroidTabBar(props: ModernAndroidTabBarProps) {
           <View style={styles.iconWrapper}>
             <Ionicons
               name={isFocused ? "cart" : "cart-outline"}
-              size={24}
+              size={iconSize}
               color={color}
             />
             {cartCount > 0 && (
-              <View style={[styles.cartBadge, { backgroundColor: primaryColor }]}>
+              <View
+                style={[
+                  styles.cartBadge,
+                  {
+                    backgroundColor: primaryColor,
+                    borderColor: isDark ? "#161F28" : "#FFFFFF",
+                  },
+                ]}
+              >
                 <Text style={styles.cartBadgeText}>
                   {cartCount > 99 ? "99+" : cartCount}
                 </Text>
@@ -80,13 +123,11 @@ export default function ModernAndroidTabBar(props: ModernAndroidTabBarProps) {
             )}
           </View>
         );
-
-      // ── Vendor Main Routes ──
       case "dashboard":
         return (
           <Ionicons
             name={isFocused ? "stats-chart" : "stats-chart-outline"}
-            size={24}
+            size={iconSize}
             color={color}
           />
         );
@@ -94,7 +135,7 @@ export default function ModernAndroidTabBar(props: ModernAndroidTabBarProps) {
         return (
           <Ionicons
             name={isFocused ? "bag-handle" : "bag-handle-outline"}
-            size={24}
+            size={iconSize}
             color={color}
           />
         );
@@ -102,7 +143,7 @@ export default function ModernAndroidTabBar(props: ModernAndroidTabBarProps) {
         return (
           <Ionicons
             name={isFocused ? "cube" : "cube-outline"}
-            size={24}
+            size={iconSize}
             color={color}
           />
         );
@@ -110,7 +151,7 @@ export default function ModernAndroidTabBar(props: ModernAndroidTabBarProps) {
         return (
           <Ionicons
             name={isFocused ? "bicycle" : "bicycle-outline"}
-            size={24}
+            size={iconSize}
             color={color}
           />
         );
@@ -118,54 +159,37 @@ export default function ModernAndroidTabBar(props: ModernAndroidTabBarProps) {
         return (
           <Ionicons
             name={isFocused ? "card" : "card-outline"}
-            size={24}
+            size={iconSize}
             color={color}
           />
         );
-
-      // ── Delivery Boy Routes ──
       case "wallet":
         return (
           <Ionicons
             name={isFocused ? "wallet" : "wallet-outline"}
-            size={24}
+            size={iconSize}
             color={color}
           />
         );
-
-      // ── StaffAdmin Specific Routes ──
       case "operations":
         return (
-          <MaterialIcons
-            name="assignment"
-            size={24}
-            color={color}
-          />
+          <MaterialIcons name="assignment" size={iconSize} color={color} />
         );
       case "deliveries":
         return (
-          <MaterialIcons
-            name="local-shipping"
-            size={24}
+          <MaterialIcons name="local-shipping" size={iconSize} color={color} />
+        );
+      case "vendors":
+        return role === "staff" ? (
+          <MaterialCommunityIcons
+            name={isFocused ? "storefront" : "storefront-outline"}
+            size={iconSize}
             color={color}
           />
-        );
-
-      // ── Admin & StaffAdmin Routes ──
-      case "vendors":
-        if (role === "staff") {
-          return (
-            <MaterialCommunityIcons
-              name={isFocused ? "storefront" : "storefront-outline"}
-              size={24}
-              color={color}
-            />
-          );
-        }
-        return (
+        ) : (
           <Ionicons
             name={isFocused ? "search" : "search-outline"}
-            size={24}
+            size={iconSize}
             color={color}
           />
         );
@@ -182,7 +206,7 @@ export default function ModernAndroidTabBar(props: ModernAndroidTabBarProps) {
           >
             <Ionicons
               name="add"
-              size={16}
+              size={14}
               color={isFocused ? "#FFFFFF" : color}
             />
           </View>
@@ -191,36 +215,31 @@ export default function ModernAndroidTabBar(props: ModernAndroidTabBarProps) {
         return (
           <Ionicons
             name={isFocused ? "notifications" : "notifications-outline"}
-            size={24}
+            size={iconSize}
             color={color}
           />
         );
       case "profile":
-        if (role === "staff") {
-          return (
-            <Ionicons
-              name={isFocused ? "person-circle" : "person-circle-outline"}
-              size={25}
-              color={color}
-            />
-          );
-        }
-        return (
+        return role === "staff" ? (
+          <Ionicons
+            name={isFocused ? "person-circle" : "person-circle-outline"}
+            size={iconSize + 2}
+            color={color}
+          />
+        ) : (
           <Ionicons
             name={isFocused ? "person" : "person-outline"}
-            size={24}
+            size={iconSize}
             color={color}
           />
         );
-
-      // ── Default / Home Index ──
       case "index":
       default:
         if (role === "delivery") {
           return (
             <Ionicons
               name={isFocused ? "bicycle" : "bicycle-outline"}
-              size={24}
+              size={iconSize}
               color={color}
             />
           );
@@ -229,7 +248,7 @@ export default function ModernAndroidTabBar(props: ModernAndroidTabBarProps) {
           return (
             <MaterialCommunityIcons
               name={isFocused ? "view-dashboard" : "view-dashboard-outline"}
-              size={24}
+              size={iconSize}
               color={color}
             />
           );
@@ -237,93 +256,150 @@ export default function ModernAndroidTabBar(props: ModernAndroidTabBarProps) {
         return (
           <Ionicons
             name={isFocused ? "home" : "home-outline"}
-            size={24}
+            size={iconSize}
             color={color}
           />
         );
     }
   };
 
+  const activeColor = isFocused ? primaryColor : inactiveColor;
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={isFocused ? { selected: true } : {}}
+      accessibilityLabel={options.tabBarAccessibilityLabel}
+      testID={options.tabBarButtonTestID}
+      onPress={onPress}
+      onLongPress={onLongPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      style={styles.tabItem}
+    >
+      <Animated.View style={[styles.tabContent, animatedContainerStyle]}>
+        <Animated.View
+          style={[styles.activePillIndicator, animatedPillStyle]}
+        />
+        {renderIcon(activeColor)}
+      </Animated.View>
+    </Pressable>
+  );
+}
+
+export default function ModernAndroidTabBar(props: ModernAndroidTabBarProps) {
+  const { state, descriptors, tintColor, role } = props;
+  const insets = useSafeAreaInsets();
+  const theme = useTheme();
+  const isDark = theme.mode === "dark";
+
+  const cartItems = useAppSelector((s) => s.cart?.items || []);
+  const cartCount = cartItems.reduce(
+    (sum: number, item: any) => sum + (item.quantity || 1),
+    0,
+  );
+
+  const primaryColor = tintColor || theme.colors.primary || "#0284C7";
+  const inactiveColor = isDark ? "#8E9AA8" : "#94A3B8";
+  const barBg = isDark ? "#12181F" : "#FFFFFF";
+  const borderColor = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)";
+
   return (
     <View
       style={[
-        styles.tabBar,
+        styles.container,
         {
-          backgroundColor: barBg,
-          borderTopColor: borderColor,
-          paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
+          paddingBottom: Math.max(insets.bottom, 22),
         },
       ]}
     >
-      {state.routes.map((route: any, index: number) => {
-        const descriptor = descriptors[route.key];
-        const options = descriptor?.options || {};
-        const isFocused = state.index === index;
-        const color = isFocused ? primaryColor : inactiveColor;
+      <View
+        style={[
+          styles.tabBar,
+          {
+            backgroundColor: barBg,
+            borderColor,
+          },
+        ]}
+      >
+        {state.routes.map((route: any, index: number) => {
+          const descriptor = descriptors[route.key];
+          const isFocused = state.index === index;
 
-        const onPress = () => {
-          if (props.emitter) {
-            const event = props.emitter.emit({
-              type: "tabPress",
-              target: route.key,
-              canPreventDefault: true,
-            });
-            if (!isFocused && !event?.defaultPrevented) {
-              if (props.navigateToTab) {
-                props.navigateToTab(route.key);
-              } else if ((descriptor as any)?.navigation) {
-                (descriptor as any).navigation.navigate(route.name);
+          const onPress = () => {
+            if (props.emitter) {
+              const event = props.emitter.emit({
+                type: "tabPress",
+                target: route.key,
+                canPreventDefault: true,
+              });
+              if (!isFocused && !event?.defaultPrevented) {
+                if (props.navigateToTab) {
+                  props.navigateToTab(route.key);
+                } else if ((descriptor as any)?.navigation) {
+                  (descriptor as any).navigation.navigate(route.name);
+                }
               }
+            } else if (props.navigateToTab) {
+              props.navigateToTab(route.key);
             }
-          } else if (props.navigateToTab) {
-            props.navigateToTab(route.key);
-          }
-        };
+          };
 
-        const onLongPress = () => {
-          props.emitter?.emit({
-            type: "tabLongPress",
-            target: route.key,
-          });
-        };
+          const onLongPress = () => {
+            props.emitter?.emit({
+              type: "tabLongPress",
+              target: route.key,
+            });
+          };
 
-        return (
-          <TouchableOpacity
-            key={route.key}
-            accessibilityRole="button"
-            accessibilityState={isFocused ? { selected: true } : {}}
-            accessibilityLabel={options.tabBarAccessibilityLabel}
-            testID={options.tabBarButtonTestID}
-            onPress={onPress}
-            onLongPress={onLongPress}
-            activeOpacity={0.7}
-            style={styles.tabItem}
-          >
-            {renderTabIcon(route.name, isFocused, color)}
-          </TouchableOpacity>
-        );
-      })}
+          return (
+            <TabItem
+              key={route.key}
+              route={route}
+              descriptor={descriptor}
+              isFocused={isFocused}
+              primaryColor={primaryColor}
+              inactiveColor={inactiveColor}
+              isDark={isDark}
+              cartCount={cartCount}
+              role={role}
+              onPress={onPress}
+              onLongPress={onLongPress}
+            />
+          );
+        })}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    backgroundColor: "transparent",
+  },
   tabBar: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-around",
-    borderTopWidth: StyleSheet.hairlineWidth || 1,
-    paddingTop: 8,
-    minHeight: 56,
+    justifyContent: "space-between",
+    width: "92%",
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 1,
+    paddingHorizontal: 8,
     ...Platform.select({
       android: {
-        elevation: 8,
+        elevation: 12,
       },
       default: {
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.1,
+        shadowRadius: 16,
       },
     }),
   },
@@ -331,7 +407,19 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 6,
+    height: "100%",
+  },
+  tabContent: {
+    alignItems: "center",
+    justifyContent: "center",
+    width: 96,
+    height: 50,
+  },
+  activePillIndicator: {
+    position: "absolute",
+    width: "100%",
+    height: "100%",
+    borderRadius: 40,
   },
   iconWrapper: {
     position: "relative",
@@ -340,23 +428,25 @@ const styles = StyleSheet.create({
   },
   cartBadge: {
     position: "absolute",
-    top: -4,
-    right: -8,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
-    paddingHorizontal: 3,
+    top: -6,
+    right: -10,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    paddingHorizontal: 4,
     alignItems: "center",
     justifyContent: "center",
   },
   cartBadgeText: {
     color: "#FFFFFF",
     fontSize: 9,
-    fontWeight: "700",
+    fontWeight: "800",
+    letterSpacing: -0.2,
   },
   plusSquareIcon: {
-    width: 22,
-    height: 22,
+    width: 20,
+    height: 20,
     borderRadius: 6,
     borderWidth: 1.8,
     alignItems: "center",
