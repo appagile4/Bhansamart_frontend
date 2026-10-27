@@ -34,8 +34,8 @@ export const getNotificationsModule = (): typeof import("expo-notifications") | 
 
 /**
  * 1. Configure Foreground Notification Behavior:
- * Suppress system tray notification while app is actively FOREGROUNDED,
- * allowing the in-app animated banner to display without double notification.
+ * Displays Heads-Up pop-up banner, plays sound, updates badge,
+ * and maintains the notification in the device's system tray & lockscreen.
  */
 const configureForegroundHandler = () => {
   const Notifications = getNotificationsModule();
@@ -43,11 +43,11 @@ const configureForegroundHandler = () => {
     try {
       Notifications.setNotificationHandler({
         handleNotification: async () => ({
-          shouldShowAlert: false, // Suppress OS tray notification in foreground
-          shouldPlaySound: false,
-          shouldSetBadge: false,
-          shouldShowBanner: false,
-          shouldShowList: false,
+          shouldShowAlert: true,   // Display OS notification banner/alert
+          shouldPlaySound: true,   // Play audible chime
+          shouldSetBadge: true,   // Increment app badge number
+          shouldShowBanner: true, // Drop-down heads-up banner on top of screen
+          shouldShowList: true,   // Add to notification center / status bar tray
         }),
       });
     } catch (e: any) {
@@ -59,7 +59,9 @@ const configureForegroundHandler = () => {
 configureForegroundHandler();
 
 /**
- * 2. Setup High-Priority Android Notification Channels
+ * 2. Setup High-Priority Android Notification Channels (Android 8.0+ / Android 13+)
+ * Configures MAX importance, vibration, light, and PUBLIC lockscreen visibility
+ * so notifications pop down (heads-up) and are readable on lock screens.
  */
 export const setupNotificationChannelsAsync = async () => {
   if (Platform.OS !== "android") return;
@@ -67,44 +69,123 @@ export const setupNotificationChannelsAsync = async () => {
   if (!Notifications?.setNotificationChannelAsync) return;
 
   try {
+    const maxImportance = Notifications.AndroidImportance?.MAX ?? 5;
+    const highImportance = Notifications.AndroidImportance?.HIGH ?? 4;
+    const publicVisibility = Notifications.AndroidNotificationVisibility?.PUBLIC ?? 1;
+
+    // A. Orders Channel (Heads-up, MAX priority, audible & vibrating)
     await Notifications.setNotificationChannelAsync("orders", {
       name: "Orders & Fulfillment",
-      importance: Notifications.AndroidImportance?.MAX ?? 5,
+      description: "Live alerts for new customer orders, status changes, and fulfillment updates",
+      importance: maxImportance,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: "#0284C7",
       sound: "default",
       enableVibrate: true,
+      enableLights: true,
       showBadge: true,
+      lockscreenVisibility: publicVisibility,
+      bypassDnd: true,
     });
 
+    // B. Delivery Channel (Heads-up, MAX priority for rider dispatches)
     await Notifications.setNotificationChannelAsync("delivery", {
       name: "Delivery Tasks & Navigation",
-      importance: Notifications.AndroidImportance?.MAX ?? 5,
+      description: "Real-time task offers, navigation, and customer delivery coordination",
+      importance: maxImportance,
       vibrationPattern: [0, 300, 200, 300],
       lightColor: "#10B981",
       sound: "default",
       enableVibrate: true,
+      enableLights: true,
       showBadge: true,
+      lockscreenVisibility: publicVisibility,
+      bypassDnd: true,
     });
 
+    // C. Announcements & Broadcasts (Heads-up, high priority)
     await Notifications.setNotificationChannelAsync("broadcasts", {
       name: "Announcements & Broadcasts",
-      importance: Notifications.AndroidImportance?.HIGH ?? 4,
+      description: "Store broadcasts, promotions, offers, and general announcements",
+      importance: maxImportance,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: "#EC4899",
       sound: "default",
       enableVibrate: true,
+      enableLights: true,
       showBadge: true,
+      lockscreenVisibility: publicVisibility,
     });
 
+    // D. Staff & Security Alerts (Heads-up, MAX priority)
+    await Notifications.setNotificationChannelAsync("alerts", {
+      name: "Staff & System Alerts",
+      description: "High-priority administrative notices and operational alerts",
+      importance: maxImportance,
+      vibrationPattern: [0, 350, 250, 350],
+      lightColor: "#EF4444",
+      sound: "default",
+      enableVibrate: true,
+      enableLights: true,
+      showBadge: true,
+      lockscreenVisibility: publicVisibility,
+      bypassDnd: true,
+    });
+
+    // E. General Updates (High importance default)
     await Notifications.setNotificationChannelAsync("default", {
       name: "General Updates",
-      importance: Notifications.AndroidImportance?.DEFAULT ?? 3,
+      description: "Standard account notifications and updates",
+      importance: highImportance,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: "#6366F1",
       sound: "default",
+      enableVibrate: true,
+      enableLights: true,
       showBadge: true,
+      lockscreenVisibility: publicVisibility,
     });
   } catch (err: any) {
     console.warn("[PushService] Notification channels setup note:", err?.message);
+  }
+};
+
+// Initialize channels on boot
+setupNotificationChannelsAsync().catch(() => {});
+
+/**
+ * Triggers an immediate local Heads-Up Notification on device
+ * (Useful for testing heads-up banner & tray display)
+ */
+export const presentLocalHeadsUpNotificationAsync = async ({
+  title,
+  body,
+  data = {},
+  channelId = "orders",
+}: {
+  title: string;
+  body: string;
+  data?: NotificationPayloadData;
+  channelId?: "orders" | "delivery" | "broadcasts" | "alerts" | "default";
+}) => {
+  const Notifications = getNotificationsModule();
+  if (!Notifications?.scheduleNotificationAsync) return null;
+  try {
+    return await Notifications.scheduleNotificationAsync({
+      content: {
+        title: title || "BhansaMart",
+        body: body || "",
+        data: data as Record<string, unknown>,
+        sound: "default",
+        priority: "max",
+      },
+      trigger: {
+        channelId,
+      } as any, // Triggers immediately on the specified high-priority channel
+    });
+  } catch (err: any) {
+    console.warn("[PushService] Local heads-up notification trigger note:", err?.message);
+    return null;
   }
 };
 
@@ -305,4 +386,5 @@ export default {
   unregisterDevicePushTokenAsync,
   initPushNotificationListeners,
   setupNotificationChannelsAsync,
+  presentLocalHeadsUpNotificationAsync,
 };
