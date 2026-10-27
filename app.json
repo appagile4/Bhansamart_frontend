@@ -22,7 +22,8 @@
         "googleMaps": {
           "apiKey": "AIzaSyBxnSInFpg3Ds3frC6HUBA9xOyBJ0ftx3U"
         }
-      }
+      },
+      "package": "com.bhansamart.app"
     },
     "web": {
       "output": "static",
@@ -56,13 +57,19 @@
       ]
     ],
     "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
       "eas": {
-        "projectId": "8b938f2a-7c91-4d32-9c44-bhansamart01"
+        "projectId": "847bae5a-0ac2-4562-b0ad-da3d3b49babc"
       }
     },
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "owner": "agileapp977"
   }
 }
