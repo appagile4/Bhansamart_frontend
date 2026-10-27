@@ -80,7 +80,6 @@ export const setupNotificationChannelsAsync = async () => {
       importance: maxImportance,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: "#0284C7",
-      sound: "default",
       enableVibrate: true,
       enableLights: true,
       showBadge: true,
@@ -95,7 +94,6 @@ export const setupNotificationChannelsAsync = async () => {
       importance: maxImportance,
       vibrationPattern: [0, 300, 200, 300],
       lightColor: "#10B981",
-      sound: "default",
       enableVibrate: true,
       enableLights: true,
       showBadge: true,
@@ -110,7 +108,6 @@ export const setupNotificationChannelsAsync = async () => {
       importance: maxImportance,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: "#EC4899",
-      sound: "default",
       enableVibrate: true,
       enableLights: true,
       showBadge: true,
@@ -124,7 +121,6 @@ export const setupNotificationChannelsAsync = async () => {
       importance: maxImportance,
       vibrationPattern: [0, 350, 250, 350],
       lightColor: "#EF4444",
-      sound: "default",
       enableVibrate: true,
       enableLights: true,
       showBadge: true,
@@ -139,7 +135,6 @@ export const setupNotificationChannelsAsync = async () => {
       importance: highImportance,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: "#6366F1",
-      sound: "default",
       enableVibrate: true,
       enableLights: true,
       showBadge: true,
@@ -176,7 +171,6 @@ export const presentLocalHeadsUpNotificationAsync = async ({
         title: title || "BhansaMart",
         body: body || "",
         data: data as Record<string, unknown>,
-        sound: "default",
         priority: "max",
       },
       trigger: {
@@ -207,9 +201,15 @@ export const registerForPushNotificationsAsync = async (
 
     const Notifications = getNotificationsModule();
     if (!Notifications) {
-      console.log("[PushService] Native push module not active in this runtime (e.g. Expo Go limitation)");
+      if (isRunningInExpoGo()) {
+        console.log("[PushService] Runtime: Expo Go detected. Remote FCM push tokens are unavailable in Expo Go from SDK 53+. Please use an Expo Development Build (npx expo run:android / eas build) to receive remote push notifications.");
+      } else {
+        console.warn("[PushService] Notifications native module unavailable in current environment.");
+      }
       return null;
     }
+
+    console.log(`[PushService] Runtime: ${__DEV__ ? "Development Build (expo-dev-client)" : "Production Build"}. Initializing push notifications for ${role}.`);
 
     // Configure notification channels on Android
     await setupNotificationChannelsAsync();
@@ -249,7 +249,7 @@ export const registerForPushNotificationsAsync = async (
       Constants.expoConfig?.extra?.eas?.projectId ||
       Constants.easConfig?.projectId ||
       process.env.EXPO_PUBLIC_EAS_PROJECT_ID ||
-      "8b938f2a-7c91-4d32-9c44-bhansamart01";
+      "847bae5a-0ac2-4562-b0ad-da3d3b49babc";
 
     // Retrieve Expo Push Token
     let token: string | null = null;

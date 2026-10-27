@@ -40,6 +40,11 @@ yarn-error.*
 
 example
 
+# Firebase and credentials
+*firebase-adminsdk*.json
+service-account*.json
+google-services*.json
+
 # generated native folders
 /ios
 /android

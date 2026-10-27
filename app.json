@@ -8,7 +8,8 @@
     "scheme": "dc",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.bhansamart.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -23,7 +24,14 @@
           "apiKey": "AIzaSyBxnSInFpg3Ds3frC6HUBA9xOyBJ0ftx3U"
         }
       },
-      "package": "com.bhansamart.app"
+      "package": "com.bhansamart.app",
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "POST_NOTIFICATIONS",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "WAKE_LOCK"
+      ]
     },
     "web": {
       "output": "static",
@@ -52,7 +60,8 @@
         {
           "icon": "./assets/images/icon.png",
           "color": "#208AEF",
-          "sounds": []
+          "sounds": [],
+          "defaultChannel": "default"
         }
       ]
     ],
