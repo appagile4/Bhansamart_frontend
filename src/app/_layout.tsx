@@ -9,6 +9,7 @@ import {
 } from "@/store/slices/wishlistSlice";
 import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
+import { LogBox } from "react-native";
 import { Provider } from "react-redux";
 import InAppNotificationBanner, { InAppBannerMessage } from "@/components/common/InAppNotificationBanner";
 import {
@@ -16,6 +17,11 @@ import {
   registerForPushNotificationsAsync,
 } from "@/services/pushNotificationService";
 import socketService from "@/store/services/socketService";
+
+// Suppress internal React Navigation / Expo Router development-only reconciliation warnings
+LogBox.ignoreLogs([
+  "The action 'ROUTE_NAMES_CHANGED'",
+]);
 
 function AppContent() {
   const dispatch = useAppDispatch();
@@ -73,6 +79,10 @@ function AppContent() {
         <Stack.Screen name="index" options={{ gestureEnabled: false }} />
         <Stack.Screen name="(auth)" options={{ gestureEnabled: false }} />
         <Stack.Screen name="customerMain" options={{ gestureEnabled: false }} />
+        <Stack.Screen name="StaffAdminMain" options={{ gestureEnabled: false }} />
+        <Stack.Screen name="AdminMain" options={{ gestureEnabled: false }} />
+        <Stack.Screen name="VendorMain" options={{ gestureEnabled: false }} />
+        <Stack.Screen name="DeliveryMain" options={{ gestureEnabled: false }} />
       </Stack>
     </CartProvider>
   );
