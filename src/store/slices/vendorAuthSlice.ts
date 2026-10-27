@@ -1,6 +1,10 @@
 import storage from "@/utils/storage";
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import {
+  registerForPushNotificationsAsync,
+  unregisterDevicePushTokenAsync,
+} from "@/services/pushNotificationService";
+import {
   vendorAuthService,
   VendorLoginPayload,
   VendorRegisterPayload,
@@ -172,6 +176,7 @@ export const registerVendorAction = createAsyncThunk(
       if (data.vendor) {
         await storage.setItem("bhansa_vendor_details", JSON.stringify(data.vendor));
       }
+      registerForPushNotificationsAsync("vendor").catch(() => {});
       return data;
     } catch (err: any) {
       return rejectWithValue(
@@ -196,6 +201,7 @@ export const loginVendorPasswordAction = createAsyncThunk(
       if (data.vendor) {
         await storage.setItem("bhansa_vendor_details", JSON.stringify(data.vendor));
       }
+      registerForPushNotificationsAsync("vendor").catch(() => {});
       return data;
     } catch (err: any) {
       return rejectWithValue(
@@ -238,6 +244,7 @@ export const verifyVendorOtpAction = createAsyncThunk(
       if (data.vendor) {
         await storage.setItem("bhansa_vendor_details", JSON.stringify(data.vendor));
       }
+      registerForPushNotificationsAsync("vendor").catch(() => {});
       return data;
     } catch (err: any) {
       return rejectWithValue(
@@ -251,6 +258,7 @@ export const verifyVendorOtpAction = createAsyncThunk(
 export const logoutVendorAction = createAsyncThunk(
   "vendorAuth/logout",
   async () => {
+    await unregisterDevicePushTokenAsync().catch(() => {});
     await storage.removeItem("bhansa_vendor_token");
     await storage.removeItem("bhansa_vendor_user");
     await storage.removeItem("bhansa_vendor_details");

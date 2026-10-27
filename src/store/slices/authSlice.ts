@@ -1,6 +1,10 @@
 import storage from "@/utils/storage";
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import {
+  registerForPushNotificationsAsync,
+  unregisterDevicePushTokenAsync,
+} from "@/services/pushNotificationService";
+import {
   authService,
   ChangePasswordPayload,
   LoginPayload,
@@ -165,6 +169,9 @@ export const loginUser = createAsyncThunk(
       await storage.setItem("bhansa_token", token);
       await storage.setItem("bhansa_user", JSON.stringify(user));
 
+      // Register device for push notifications
+      registerForPushNotificationsAsync(user.role || "customer").catch(() => {});
+
       return { user, token, message: response.message };
     } catch (error: any) {
       return rejectWithValue(error);
@@ -287,6 +294,7 @@ export const removeAvatarImage = createAsyncThunk(
 // Logout
 export const logoutUser = createAsyncThunk("auth/logout", async () => {
   try {
+    await unregisterDevicePushTokenAsync().catch(() => {});
     await authService.logout();
   } catch (error) {
     console.warn("[Auth] Logout request warning:", error);

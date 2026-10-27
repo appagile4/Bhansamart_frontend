@@ -45,8 +45,21 @@
       "expo-sharing",
       "expo-asset",
       "expo-font",
-      "expo-status-bar"
+      "expo-status-bar",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#208AEF",
+          "sounds": []
+        }
+      ]
     ],
+    "extra": {
+      "eas": {
+        "projectId": "8b938f2a-7c91-4d32-9c44-bhansamart01"
+      }
+    },
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
