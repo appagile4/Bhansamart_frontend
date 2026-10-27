@@ -1,4 +1,17 @@
-import React, { useCallback, useEffect, useState } from "react";
+import AdminHeader from "@/components/AdminHeader";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
+  fetchAdminNotificationHistoryApi,
+  fetchStaffNotificationsAdminApi,
+  markStaffNotificationReadApi,
+  searchNotificationRecipientsApi,
+} from "@/store/services/adminService";
+import socketService from "@/store/services/socketService";
+import { sendAdminTargetedNotification } from "@/store/slices/adminSlice";
+import { moderateScale, scale, useTheme } from "@/theme";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -14,21 +27,14 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { sendAdminTargetedNotification } from "@/store/slices/adminSlice";
-import { moderateScale, scale, useTheme } from "@/theme";
-import AdminHeader from "@/components/AdminHeader";
-import {
-  fetchStaffNotificationsAdminApi,
-  fetchAdminNotificationHistoryApi,
-  markStaffNotificationReadApi,
-  searchNotificationRecipientsApi,
-} from "@/store/services/adminService";
-import socketService from "@/store/services/socketService";
 
-type AudienceType = "ALL" | "CUSTOMERS" | "VENDORS" | "DELIVERY_BOYS" | "ADMIN_STAFF" | "SPECIFIC";
+type AudienceType =
+  | "ALL"
+  | "CUSTOMERS"
+  | "VENDORS"
+  | "DELIVERY_BOYS"
+  | "ADMIN_STAFF"
+  | "SPECIFIC";
 type SpecificRole = "customer" | "vendor" | "delivery_boy" | "admin";
 
 export default function AdminNotificationsScreen() {
@@ -39,7 +45,9 @@ export default function AdminNotificationsScreen() {
 
   const { actionLoading } = useAppSelector((state) => state.admin);
 
-  const [activeTab, setActiveTab] = useState<"alerts" | "broadcast" | "history">("alerts");
+  const [activeTab, setActiveTab] = useState<
+    "alerts" | "broadcast" | "history"
+  >("alerts");
 
   // Operational Alerts State
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -73,15 +81,29 @@ export default function AdminNotificationsScreen() {
   const [historySearch, setHistorySearch] = useState("");
 
   // Detail Modal State
-  const [selectedHistoryItem, setSelectedHistoryItem] = useState<any | null>(null);
+  const [selectedHistoryItem, setSelectedHistoryItem] = useState<any | null>(
+    null,
+  );
 
   const audiences: { label: string; value: AudienceType; icon: any }[] = [
     { label: "Everyone (All Users)", value: "ALL", icon: "bullhorn-outline" },
-    { label: "Customers Only", value: "CUSTOMERS", icon: "account-group-outline" },
+    {
+      label: "Customers Only",
+      value: "CUSTOMERS",
+      icon: "account-group-outline",
+    },
     { label: "Vendors Only", value: "VENDORS", icon: "storefront-outline" },
     { label: "Delivery Boys Only", value: "DELIVERY_BOYS", icon: "moped" },
-    { label: "Staff Admins Only", value: "ADMIN_STAFF", icon: "shield-account-outline" },
-    { label: "Specific User", value: "SPECIFIC", icon: "account-search-outline" },
+    {
+      label: "Staff Admins Only",
+      value: "ADMIN_STAFF",
+      icon: "shield-account-outline",
+    },
+    {
+      label: "Specific User",
+      value: "SPECIFIC",
+      icon: "account-search-outline",
+    },
   ];
 
   const notifFilters = [
@@ -119,7 +141,7 @@ export default function AdminNotificationsScreen() {
         setNotifLoading(false);
       }
     },
-    [typeFilter, unreadOnly]
+    [typeFilter, unreadOnly],
   );
 
   // Load Broadcast History
@@ -144,7 +166,7 @@ export default function AdminNotificationsScreen() {
         setHistoryLoading(false);
       }
     },
-    [historySearch]
+    [historySearch],
   );
 
   useEffect(() => {
@@ -194,7 +216,9 @@ export default function AdminNotificationsScreen() {
     try {
       await markStaffNotificationReadApi(id);
       setNotifications((prev) =>
-        prev.map((n) => (n._id === id || n.id === id ? { ...n, isRead: true } : n))
+        prev.map((n) =>
+          n._id === id || n.id === id ? { ...n, isRead: true } : n,
+        ),
       );
     } catch (err) {
       console.error("Failed to mark notification as read", err);
@@ -258,12 +282,18 @@ export default function AdminNotificationsScreen() {
 
   const handleSendBroadcast = async () => {
     if (!title.trim() || !body.trim()) {
-      Alert.alert("Validation Error", "Please provide both headline/title and message body.");
+      Alert.alert(
+        "Validation Error",
+        "Please provide both headline/title and message body.",
+      );
       return;
     }
 
     if (audience === "SPECIFIC" && !selectedRecipient) {
-      Alert.alert("Target Required", "Please search and select a specific recipient to dispatch this notification.");
+      Alert.alert(
+        "Target Required",
+        "Please search and select a specific recipient to dispatch this notification.",
+      );
       return;
     }
 
@@ -285,12 +315,17 @@ export default function AdminNotificationsScreen() {
                 sendAdminTargetedNotification({
                   targetAudience: audience,
                   targetRole: audience === "SPECIFIC" ? targetRole : undefined,
-                  targetId: audience === "SPECIFIC" ? (selectedRecipient.id || selectedRecipient._id) : undefined,
+                  targetId:
+                    audience === "SPECIFIC"
+                      ? selectedRecipient.id || selectedRecipient._id
+                      : undefined,
                   title: title.trim(),
                   body: body.trim(),
                   deepLink: screenTarget.trim() || undefined,
-                  data: screenTarget.trim() ? { screen: screenTarget.trim() } : {},
-                })
+                  data: screenTarget.trim()
+                    ? { screen: screenTarget.trim() }
+                    : {},
+                }),
               ).unwrap();
 
               Alert.alert(
@@ -305,7 +340,7 @@ export default function AdminNotificationsScreen() {
                     },
                   },
                   { text: "OK" },
-                ]
+                ],
               );
               setTitle("");
               setBody("");
@@ -313,11 +348,14 @@ export default function AdminNotificationsScreen() {
               setSelectedRecipient(null);
               setSearchQuery("");
             } catch (err: any) {
-              Alert.alert("Error", err?.message || "Failed to broadcast notification");
+              Alert.alert(
+                "Error",
+                err?.message || "Failed to broadcast notification",
+              );
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -346,13 +384,25 @@ export default function AdminNotificationsScreen() {
       case "staff_order":
         return { name: "shopping-bag", lib: Feather, color: "#10B981" };
       case "staff_withdrawal":
-        return { name: "bank-outline", lib: MaterialCommunityIcons, color: "#F59E0B" };
+        return {
+          name: "bank-outline",
+          lib: MaterialCommunityIcons,
+          color: "#F59E0B",
+        };
       case "staff_brand":
-        return { name: "tag-outline", lib: MaterialCommunityIcons, color: "#0EA5E9" };
+        return {
+          name: "tag-outline",
+          lib: MaterialCommunityIcons,
+          color: "#0EA5E9",
+        };
       case "staff_refund":
         return { name: "rotate-ccw", lib: Feather, color: "#EF4444" };
       case "staff_cod":
-        return { name: "cash-multiple", lib: MaterialCommunityIcons, color: "#A855F7" };
+        return {
+          name: "cash-multiple",
+          lib: MaterialCommunityIcons,
+          color: "#A855F7",
+        };
       case "staff_delivery":
         return { name: "moped", lib: MaterialCommunityIcons, color: "#6366F1" };
       default:
@@ -363,29 +413,61 @@ export default function AdminNotificationsScreen() {
   const getAudienceBadgeInfo = (aud: string) => {
     switch (aud) {
       case "CUSTOMERS":
-        return { label: "CUSTOMERS", color: "#0284C7", icon: "account-group-outline" };
+        return {
+          label: "CUSTOMERS",
+          color: "#0284C7",
+          icon: "account-group-outline",
+        };
       case "VENDORS":
       case "ASSIGNED_VENDORS":
-        return { label: "VENDORS", color: "#F59E0B", icon: "storefront-outline" };
+        return {
+          label: "VENDORS",
+          color: "#F59E0B",
+          icon: "storefront-outline",
+        };
       case "DELIVERY_BOYS":
         return { label: "DELIVERY BOYS", color: "#10B981", icon: "moped" };
       case "ADMIN_STAFF":
-        return { label: "STAFF ADMIN", color: "#6366F1", icon: "shield-account-outline" };
+        return {
+          label: "STAFF ADMIN",
+          color: "#6366F1",
+          icon: "shield-account-outline",
+        };
       case "SPECIFIC":
-        return { label: "DIRECT USER", color: "#EC4899", icon: "account-outline" };
+        return {
+          label: "DIRECT USER",
+          color: "#EC4899",
+          icon: "account-outline",
+        };
       default:
-        return { label: "ALL USERS", color: "#10B981", icon: "bullhorn-outline" };
+        return {
+          label: "ALL USERS",
+          color: "#10B981",
+          icon: "bullhorn-outline",
+        };
     }
   };
 
   return (
     <View style={[styles.root, { backgroundColor: bg }]}>
-      <AdminHeader title="Notifications" subtitle="Operational Feeds & App Broadcasts" showBack />
+      <AdminHeader
+        title="Notifications"
+        subtitle="Operational Feeds & App Broadcasts"
+        showBack
+      />
 
       {/* Top Segmented Navigation Bar (3 Tabs) */}
-      <View style={[styles.segmentBar, { backgroundColor: cardBg, borderColor: border }]}>
+      <View
+        style={[
+          styles.segmentBar,
+          { backgroundColor: cardBg, borderColor: border },
+        ]}
+      >
         <TouchableOpacity
-          style={[styles.segmentBtn, activeTab === "alerts" && styles.segmentBtnActive]}
+          style={[
+            styles.segmentBtn,
+            activeTab === "alerts" && styles.segmentBtnActive,
+          ]}
           onPress={() => setActiveTab("alerts")}
         >
           <MaterialCommunityIcons
@@ -394,7 +476,10 @@ export default function AdminNotificationsScreen() {
             color={activeTab === "alerts" ? "#10B981" : textSecondary}
           />
           <Text
-            style={[styles.segmentText, { color: activeTab === "alerts" ? "#10B981" : textSecondary }]}
+            style={[
+              styles.segmentText,
+              { color: activeTab === "alerts" ? "#10B981" : textSecondary },
+            ]}
             numberOfLines={1}
           >
             Alerts ({notifTotal})
@@ -402,7 +487,10 @@ export default function AdminNotificationsScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.segmentBtn, activeTab === "broadcast" && styles.segmentBtnActive]}
+          style={[
+            styles.segmentBtn,
+            activeTab === "broadcast" && styles.segmentBtnActive,
+          ]}
           onPress={() => setActiveTab("broadcast")}
         >
           <MaterialCommunityIcons
@@ -411,7 +499,10 @@ export default function AdminNotificationsScreen() {
             color={activeTab === "broadcast" ? "#10B981" : textSecondary}
           />
           <Text
-            style={[styles.segmentText, { color: activeTab === "broadcast" ? "#10B981" : textSecondary }]}
+            style={[
+              styles.segmentText,
+              { color: activeTab === "broadcast" ? "#10B981" : textSecondary },
+            ]}
             numberOfLines={1}
           >
             Broadcast
@@ -419,7 +510,10 @@ export default function AdminNotificationsScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.segmentBtn, activeTab === "history" && styles.segmentBtnActive]}
+          style={[
+            styles.segmentBtn,
+            activeTab === "history" && styles.segmentBtnActive,
+          ]}
           onPress={() => setActiveTab("history")}
         >
           <MaterialCommunityIcons
@@ -428,7 +522,10 @@ export default function AdminNotificationsScreen() {
             color={activeTab === "history" ? "#10B981" : textSecondary}
           />
           <Text
-            style={[styles.segmentText, { color: activeTab === "history" ? "#10B981" : textSecondary }]}
+            style={[
+              styles.segmentText,
+              { color: activeTab === "history" ? "#10B981" : textSecondary },
+            ]}
             numberOfLines={1}
           >
             History ({historyTotal})
@@ -441,12 +538,22 @@ export default function AdminNotificationsScreen() {
         <FlatList
           data={notifications}
           keyExtractor={(item, idx) => item._id || item.id || String(idx)}
-          refreshControl={<RefreshControl refreshing={notifRefreshing} onRefresh={onRefreshAlerts} tintColor="#10B981" />}
+          refreshControl={
+            <RefreshControl
+              refreshing={notifRefreshing}
+              onRefresh={onRefreshAlerts}
+              tintColor="#10B981"
+            />
+          }
           contentContainerStyle={styles.listContent}
           ListHeaderComponent={
             <>
               {/* Filter Pills */}
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pillScroll}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.pillScroll}
+              >
                 {notifFilters.map((nf) => {
                   const isSel = typeFilter === nf.value;
                   return (
@@ -459,7 +566,12 @@ export default function AdminNotificationsScreen() {
                       ]}
                       onPress={() => setTypeFilter(nf.value)}
                     >
-                      <Text style={[styles.pillText, { color: isSel ? "#10B981" : textSecondary }]}>
+                      <Text
+                        style={[
+                          styles.pillText,
+                          { color: isSel ? "#10B981" : textSecondary },
+                        ]}
+                      >
                         {nf.label}
                       </Text>
                     </TouchableOpacity>
@@ -473,12 +585,27 @@ export default function AdminNotificationsScreen() {
                   style={[
                     styles.unreadTogglePill,
                     { borderColor: border, backgroundColor: cardBg },
-                    unreadOnly && { backgroundColor: "rgba(16, 185, 129, 0.15)", borderColor: "#10B981" },
+                    unreadOnly && {
+                      backgroundColor: "rgba(16, 185, 129, 0.15)",
+                      borderColor: "#10B981",
+                    },
                   ]}
                   onPress={() => setUnreadOnly(!unreadOnly)}
                 >
-                  <View style={[styles.unreadDot, { backgroundColor: unreadOnly ? "#10B981" : textSecondary }]} />
-                  <Text style={[styles.unreadToggleText, { color: unreadOnly ? "#10B981" : textSecondary }]}>
+                  <View
+                    style={[
+                      styles.unreadDot,
+                      {
+                        backgroundColor: unreadOnly ? "#10B981" : textSecondary,
+                      },
+                    ]}
+                  />
+                  <Text
+                    style={[
+                      styles.unreadToggleText,
+                      { color: unreadOnly ? "#10B981" : textSecondary },
+                    ]}
+                  >
                     Unread Only
                   </Text>
                 </TouchableOpacity>
@@ -499,41 +626,78 @@ export default function AdminNotificationsScreen() {
                 activeOpacity={0.8}
                 style={[
                   styles.notifCard,
-                  { backgroundColor: cardBg, borderColor: isUnread ? icon.color : border },
-                  isUnread && { borderLeftWidth: scale(4), borderLeftColor: icon.color },
+                  {
+                    backgroundColor: cardBg,
+                    borderColor: isUnread ? icon.color : border,
+                  },
+                  isUnread && {
+                    borderLeftWidth: scale(4),
+                    borderLeftColor: icon.color,
+                  },
                 ]}
                 onPress={() => handleNotificationPress(item)}
               >
                 <View style={styles.notifRow}>
-                  <View style={[styles.iconWrap, { backgroundColor: `${icon.color}18` }]}>
-                    <IconLib name={icon.name} size={scale(18)} color={icon.color} />
+                  <View
+                    style={[
+                      styles.iconWrap,
+                      { backgroundColor: `${icon.color}18` },
+                    ]}
+                  >
+                    <IconLib
+                      name={icon.name}
+                      size={scale(18)}
+                      color={icon.color}
+                    />
                   </View>
 
                   <View style={{ flex: 1, marginLeft: scale(10) }}>
                     <View style={styles.notifHeaderRow}>
-                      <Text style={[styles.notifTitle, { color: textPrimary }]} numberOfLines={1}>
+                      <Text
+                        style={[styles.notifTitle, { color: textPrimary }]}
+                        numberOfLines={1}
+                      >
                         {item.title}
                       </Text>
-                      {isUnread && <View style={[styles.activeDot, { backgroundColor: icon.color }]} />}
+                      {isUnread && (
+                        <View
+                          style={[
+                            styles.activeDot,
+                            { backgroundColor: icon.color },
+                          ]}
+                        />
+                      )}
                     </View>
 
-                    <Text style={[styles.notifMessage, { color: textSecondary }]} numberOfLines={2}>
+                    <Text
+                      style={[styles.notifMessage, { color: textSecondary }]}
+                      numberOfLines={2}
+                    >
                       {item.message || item.body}
                     </Text>
 
                     <View style={styles.notifFooterRow}>
-                      <Text style={[styles.notifTime, { color: textSecondary }]}>
-                        {item.createdAt ? new Date(item.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Just now"}
+                      <Text
+                        style={[styles.notifTime, { color: textSecondary }]}
+                      >
+                        {item.createdAt
+                          ? new Date(item.createdAt).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : "Just now"}
                       </Text>
 
-                      {isUnread && item._id && !item._id.startsWith("live_") && (
-                        <TouchableOpacity
-                          style={styles.markReadBtn}
-                          onPress={() => handleMarkAsRead(item._id)}
-                        >
-                          <Text style={styles.markReadText}>Mark read</Text>
-                        </TouchableOpacity>
-                      )}
+                      {isUnread &&
+                        item._id &&
+                        !item._id.startsWith("live_") && (
+                          <TouchableOpacity
+                            style={styles.markReadBtn}
+                            onPress={() => handleMarkAsRead(item._id)}
+                          >
+                            <Text style={styles.markReadText}>Mark read</Text>
+                          </TouchableOpacity>
+                        )}
                     </View>
                   </View>
                 </View>
@@ -544,14 +708,28 @@ export default function AdminNotificationsScreen() {
             notifLoading ? (
               <View style={styles.centerWrap}>
                 <ActivityIndicator size="large" color="#10B981" />
-                <Text style={[styles.emptyText, { color: textSecondary, marginTop: scale(10) }]}>
+                <Text
+                  style={[
+                    styles.emptyText,
+                    { color: textSecondary, marginTop: scale(10) },
+                  ]}
+                >
                   Fetching operational feed...
                 </Text>
               </View>
             ) : (
               <View style={styles.centerWrap}>
-                <MaterialCommunityIcons name="bell-sleep-outline" size={scale(48)} color={textSecondary} />
-                <Text style={[styles.emptyText, { color: textSecondary, marginTop: scale(10) }]}>
+                <MaterialCommunityIcons
+                  name="bell-sleep-outline"
+                  size={scale(48)}
+                  color={textSecondary}
+                />
+                <Text
+                  style={[
+                    styles.emptyText,
+                    { color: textSecondary, marginTop: scale(10) },
+                  ]}
+                >
                   All caught up! No operational alerts found.
                 </Text>
               </View>
@@ -563,10 +741,24 @@ export default function AdminNotificationsScreen() {
                 <TouchableOpacity
                   disabled={notifPage <= 1}
                   onPress={() => loadNotifications(notifPage - 1)}
-                  style={[styles.pageBtn, notifPage <= 1 && styles.pageBtnDisabled]}
+                  style={[
+                    styles.pageBtn,
+                    notifPage <= 1 && styles.pageBtnDisabled,
+                  ]}
                 >
-                  <Feather name="chevron-left" size={scale(16)} color={notifPage <= 1 ? textSecondary : textPrimary} />
-                  <Text style={[styles.pageBtnText, { color: notifPage <= 1 ? textSecondary : textPrimary }]}>Prev</Text>
+                  <Feather
+                    name="chevron-left"
+                    size={scale(16)}
+                    color={notifPage <= 1 ? textSecondary : textPrimary}
+                  />
+                  <Text
+                    style={[
+                      styles.pageBtnText,
+                      { color: notifPage <= 1 ? textSecondary : textPrimary },
+                    ]}
+                  >
+                    Prev
+                  </Text>
                 </TouchableOpacity>
                 <Text style={[styles.pageInfoText, { color: textSecondary }]}>
                   Page {notifPage} of {notifTotalPages}
@@ -574,10 +766,31 @@ export default function AdminNotificationsScreen() {
                 <TouchableOpacity
                   disabled={notifPage >= notifTotalPages}
                   onPress={() => loadNotifications(notifPage + 1)}
-                  style={[styles.pageBtn, notifPage >= notifTotalPages && styles.pageBtnDisabled]}
+                  style={[
+                    styles.pageBtn,
+                    notifPage >= notifTotalPages && styles.pageBtnDisabled,
+                  ]}
                 >
-                  <Text style={[styles.pageBtnText, { color: notifPage >= notifTotalPages ? textSecondary : textPrimary }]}>Next</Text>
-                  <Feather name="chevron-right" size={scale(16)} color={notifPage >= notifTotalPages ? textSecondary : textPrimary} />
+                  <Text
+                    style={[
+                      styles.pageBtnText,
+                      {
+                        color:
+                          notifPage >= notifTotalPages
+                            ? textSecondary
+                            : textPrimary,
+                      },
+                    ]}
+                  >
+                    Next
+                  </Text>
+                  <Feather
+                    name="chevron-right"
+                    size={scale(16)}
+                    color={
+                      notifPage >= notifTotalPages ? textSecondary : textPrimary
+                    }
+                  />
                 </TouchableOpacity>
               </View>
             ) : undefined
@@ -590,7 +803,7 @@ export default function AdminNotificationsScreen() {
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
-          keyboardVerticalOffset={Platform.OS === "ios" ? scale(88) : 0}
+          keyboardVerticalOffset={0}
         >
           <ScrollView
             style={[styles.container, { backgroundColor: bg }]}
@@ -599,10 +812,17 @@ export default function AdminNotificationsScreen() {
             keyboardShouldPersistTaps="handled"
           >
             {/* Audience Selector Card */}
-            <View style={[styles.card, { backgroundColor: cardBg, borderColor: border }]}>
+            <View
+              style={[
+                styles.card,
+                { backgroundColor: cardBg, borderColor: border },
+              ]}
+            >
               <View style={styles.cardHeader}>
                 <Feather name="users" size={scale(18)} color="#10B981" />
-                <Text style={[styles.cardTitle, { color: textPrimary }]}>Select Target Audience</Text>
+                <Text style={[styles.cardTitle, { color: textPrimary }]}>
+                  Select Target Audience
+                </Text>
               </View>
 
               <View style={styles.audienceGrid}>
@@ -614,7 +834,11 @@ export default function AdminNotificationsScreen() {
                       style={[
                         styles.audienceOption,
                         { borderColor: isSelected ? "#10B981" : border },
-                        isSelected && { backgroundColor: isDark ? "rgba(16, 185, 129, 0.15)" : "#ECFDF5" },
+                        isSelected && {
+                          backgroundColor: isDark
+                            ? "rgba(16, 185, 129, 0.15)"
+                            : "#ECFDF5",
+                        },
                       ]}
                       onPress={() => {
                         setAudience(item.value);
@@ -632,7 +856,10 @@ export default function AdminNotificationsScreen() {
                       <Text
                         style={[
                           styles.audienceLabel,
-                          { color: isSelected ? "#10B981" : textPrimary, fontWeight: isSelected ? "700" : "500" },
+                          {
+                            color: isSelected ? "#10B981" : textPrimary,
+                            fontWeight: isSelected ? "700" : "500",
+                          },
                         ]}
                       >
                         {item.label}
@@ -645,20 +872,45 @@ export default function AdminNotificationsScreen() {
 
             {/* Specific Recipient Picker Card */}
             {audience === "SPECIFIC" && (
-              <View style={[styles.card, { backgroundColor: cardBg, borderColor: border }]}>
+              <View
+                style={[
+                  styles.card,
+                  { backgroundColor: cardBg, borderColor: border },
+                ]}
+              >
                 <View style={styles.cardHeader}>
                   <Feather name="user-check" size={scale(18)} color="#10B981" />
-                  <Text style={[styles.cardTitle, { color: textPrimary }]}>Pick Specific Recipient</Text>
+                  <Text style={[styles.cardTitle, { color: textPrimary }]}>
+                    Pick Specific Recipient
+                  </Text>
                 </View>
 
                 {/* Target Role Selector Tabs */}
-                <View style={[styles.specificRoleTabs, { borderColor: border }]}>
+                <View
+                  style={[styles.specificRoleTabs, { borderColor: border }]}
+                >
                   {(
                     [
-                      { role: "customer", label: "Customer", icon: "account-outline" },
-                      { role: "vendor", label: "Vendor", icon: "storefront-outline" },
-                      { role: "delivery_boy", label: "Delivery Boy", icon: "moped" },
-                      { role: "admin", label: "Staff Admin", icon: "shield-account-outline" },
+                      {
+                        role: "customer",
+                        label: "Customer",
+                        icon: "account-outline",
+                      },
+                      {
+                        role: "vendor",
+                        label: "Vendor",
+                        icon: "storefront-outline",
+                      },
+                      {
+                        role: "delivery_boy",
+                        label: "Delivery Boy",
+                        icon: "moped",
+                      },
+                      {
+                        role: "admin",
+                        label: "Staff Admin",
+                        icon: "shield-account-outline",
+                      },
                     ] as const
                   ).map((r) => {
                     const isActive = targetRole === r.role;
@@ -695,28 +947,47 @@ export default function AdminNotificationsScreen() {
 
                 {/* Selected Recipient Card */}
                 {selectedRecipient ? (
-                  <View style={[styles.recipientCard, { borderColor: "#10B981", backgroundColor: isDark ? "rgba(16, 185, 129, 0.08)" : "#F0FDF4" }]}>
+                  <View
+                    style={[
+                      styles.recipientCard,
+                      {
+                        borderColor: "#10B981",
+                        backgroundColor: isDark
+                          ? "rgba(16, 185, 129, 0.08)"
+                          : "#F0FDF4",
+                      },
+                    ]}
+                  >
                     <View style={styles.recipientAvatarBox}>
                       <MaterialCommunityIcons
                         name={
                           targetRole === "vendor"
                             ? "storefront"
                             : targetRole === "delivery_boy"
-                            ? "moped"
-                            : targetRole === "admin"
-                            ? "shield-account"
-                            : "account"
+                              ? "moped"
+                              : targetRole === "admin"
+                                ? "shield-account"
+                                : "account"
                         }
                         size={scale(22)}
                         color="#10B981"
                       />
                     </View>
                     <View style={styles.recipientInfo}>
-                      <Text style={[styles.recipientName, { color: textPrimary }]}>
+                      <Text
+                        style={[styles.recipientName, { color: textPrimary }]}
+                      >
                         {selectedRecipient.name}
                       </Text>
-                      <Text style={[styles.recipientContact, { color: textSecondary }]}>
-                        {selectedRecipient.phone || selectedRecipient.email || "No direct phone"}
+                      <Text
+                        style={[
+                          styles.recipientContact,
+                          { color: textSecondary },
+                        ]}
+                      >
+                        {selectedRecipient.phone ||
+                          selectedRecipient.email ||
+                          "No direct phone"}
                       </Text>
                       <View style={styles.recipientBadge}>
                         <Text style={styles.recipientBadgeText}>
@@ -738,10 +1009,20 @@ export default function AdminNotificationsScreen() {
                   /* Search Box and Live Results */
                   <View style={{ marginTop: scale(10) }}>
                     <Text style={[styles.inputLabel, { color: textPrimary }]}>
-                      Search {targetRole.replace("_", " ")} by name, phone or email
+                      Search {targetRole.replace("_", " ")} by name, phone or
+                      email
                     </Text>
-                    <View style={[styles.searchBox, { borderColor: border, backgroundColor: bg }]}>
-                      <Feather name="search" size={scale(16)} color={textSecondary} />
+                    <View
+                      style={[
+                        styles.searchBox,
+                        { borderColor: border, backgroundColor: bg },
+                      ]}
+                    >
+                      <Feather
+                        name="search"
+                        size={scale(16)}
+                        color={textSecondary}
+                      />
                       <TextInput
                         style={[styles.searchInput, { color: textPrimary }]}
                         placeholder={`Type to search ${targetRole.replace("_", " ")}...`}
@@ -749,16 +1030,26 @@ export default function AdminNotificationsScreen() {
                         value={searchQuery}
                         onChangeText={setSearchQuery}
                       />
-                      {searchLoading && <ActivityIndicator size="small" color="#10B981" />}
+                      {searchLoading && (
+                        <ActivityIndicator size="small" color="#10B981" />
+                      )}
                     </View>
 
                     {/* Dropdown Results */}
                     {searchResults.length > 0 && (
-                      <View style={[styles.resultsDropdown, { backgroundColor: cardBg, borderColor: border }]}>
+                      <View
+                        style={[
+                          styles.resultsDropdown,
+                          { backgroundColor: cardBg, borderColor: border },
+                        ]}
+                      >
                         {searchResults.map((item) => (
                           <TouchableOpacity
                             key={item.id || item._id}
-                            style={[styles.resultItem, { borderBottomColor: border }]}
+                            style={[
+                              styles.resultItem,
+                              { borderBottomColor: border },
+                            ]}
                             onPress={() => {
                               setSelectedRecipient(item);
                               setSearchResults([]);
@@ -770,60 +1061,110 @@ export default function AdminNotificationsScreen() {
                                   targetRole === "vendor"
                                     ? "storefront-outline"
                                     : targetRole === "delivery_boy"
-                                    ? "moped"
-                                    : targetRole === "admin"
-                                    ? "shield-account-outline"
-                                    : "account-outline"
+                                      ? "moped"
+                                      : targetRole === "admin"
+                                        ? "shield-account-outline"
+                                        : "account-outline"
                                 }
                                 size={scale(18)}
                                 color="#10B981"
                               />
                               <View style={{ marginLeft: scale(8) }}>
-                                <Text style={[styles.resultName, { color: textPrimary }]}>{item.name}</Text>
-                                <Text style={[styles.resultSub, { color: textSecondary }]}>
-                                  {item.phone || item.email || "No contact info"}
+                                <Text
+                                  style={[
+                                    styles.resultName,
+                                    { color: textPrimary },
+                                  ]}
+                                >
+                                  {item.name}
+                                </Text>
+                                <Text
+                                  style={[
+                                    styles.resultSub,
+                                    { color: textSecondary },
+                                  ]}
+                                >
+                                  {item.phone ||
+                                    item.email ||
+                                    "No contact info"}
                                 </Text>
                               </View>
                             </View>
-                            <Feather name="check-circle" size={scale(16)} color="#10B981" />
+                            <Feather
+                              name="check-circle"
+                              size={scale(16)}
+                              color="#10B981"
+                            />
                           </TouchableOpacity>
                         ))}
                       </View>
                     )}
 
-                    {searchQuery.trim().length > 0 && !searchLoading && searchResults.length === 0 && (
-                      <Text style={[styles.noResultText, { color: textSecondary }]}>
-                        No matching {targetRole.replace("_", " ")}s found.
-                      </Text>
-                    )}
+                    {searchQuery.trim().length > 0 &&
+                      !searchLoading &&
+                      searchResults.length === 0 && (
+                        <Text
+                          style={[
+                            styles.noResultText,
+                            { color: textSecondary },
+                          ]}
+                        >
+                          No matching {targetRole.replace("_", " ")}s found.
+                        </Text>
+                      )}
                   </View>
                 )}
               </View>
             )}
 
             {/* Compose Notification Card */}
-            <View style={[styles.card, { backgroundColor: cardBg, borderColor: border }]}>
+            <View
+              style={[
+                styles.card,
+                { backgroundColor: cardBg, borderColor: border },
+              ]}
+            >
               <View style={styles.cardHeader}>
                 <Feather name="edit-3" size={scale(18)} color="#10B981" />
-                <Text style={[styles.cardTitle, { color: textPrimary }]}>Notification Content</Text>
+                <Text style={[styles.cardTitle, { color: textPrimary }]}>
+                  Notification Content
+                </Text>
               </View>
 
-              <Text style={[styles.inputLabel, { color: textPrimary }]}>Headline / Title *</Text>
+              <Text style={[styles.inputLabel, { color: textPrimary }]}>
+                Headline / Title *
+              </Text>
               <TextInput
-                style={[styles.input, { color: textPrimary, borderColor: border, backgroundColor: bg }]}
+                style={[
+                  styles.input,
+                  {
+                    color: textPrimary,
+                    borderColor: border,
+                    backgroundColor: bg,
+                  },
+                ]}
                 placeholder="e.g. Flash Sale: 20% Off Fresh Vegetables Today!"
                 placeholderTextColor={textSecondary}
                 value={title}
                 onChangeText={setTitle}
               />
 
-              <Text style={[styles.inputLabel, { color: textPrimary, marginTop: scale(14) }]}>
+              <Text
+                style={[
+                  styles.inputLabel,
+                  { color: textPrimary, marginTop: scale(14) },
+                ]}
+              >
                 Message Body *
               </Text>
               <TextInput
                 style={[
                   styles.textArea,
-                  { color: textPrimary, borderColor: border, backgroundColor: bg },
+                  {
+                    color: textPrimary,
+                    borderColor: border,
+                    backgroundColor: bg,
+                  },
                 ]}
                 placeholder="Write the full broadcast message content..."
                 placeholderTextColor={textSecondary}
@@ -833,11 +1174,23 @@ export default function AdminNotificationsScreen() {
                 onChangeText={setBody}
               />
 
-              <Text style={[styles.inputLabel, { color: textPrimary, marginTop: scale(14) }]}>
+              <Text
+                style={[
+                  styles.inputLabel,
+                  { color: textPrimary, marginTop: scale(14) },
+                ]}
+              >
                 Deep Link / Target Screen (Optional)
               </Text>
               <TextInput
-                style={[styles.input, { color: textPrimary, borderColor: border, backgroundColor: bg }]}
+                style={[
+                  styles.input,
+                  {
+                    color: textPrimary,
+                    borderColor: border,
+                    backgroundColor: bg,
+                  },
+                ]}
                 placeholder="e.g. /(tabs)/home or /Screens/customerScreens/offers"
                 placeholderTextColor={textSecondary}
                 value={screenTarget}
@@ -869,12 +1222,23 @@ export default function AdminNotificationsScreen() {
         <FlatList
           data={historyList}
           keyExtractor={(item, idx) => item._id || item.id || String(idx)}
-          refreshControl={<RefreshControl refreshing={historyRefreshing} onRefresh={onRefreshHistory} tintColor="#10B981" />}
+          refreshControl={
+            <RefreshControl
+              refreshing={historyRefreshing}
+              onRefresh={onRefreshHistory}
+              tintColor="#10B981"
+            />
+          }
           contentContainerStyle={styles.listContent}
           ListHeaderComponent={
             <View style={{ marginBottom: scale(12) }}>
               {/* Search History */}
-              <View style={[styles.searchBox, { borderColor: border, backgroundColor: cardBg }]}>
+              <View
+                style={[
+                  styles.searchBox,
+                  { borderColor: border, backgroundColor: cardBg },
+                ]}
+              >
                 <Feather name="search" size={scale(16)} color={textSecondary} />
                 <TextInput
                   style={[styles.searchInput, { color: textPrimary }]}
@@ -906,52 +1270,104 @@ export default function AdminNotificationsScreen() {
             return (
               <TouchableOpacity
                 activeOpacity={0.75}
-                style={[styles.historyCard, { backgroundColor: cardBg, borderColor: border }]}
+                style={[
+                  styles.historyCard,
+                  { backgroundColor: cardBg, borderColor: border },
+                ]}
                 onPress={() => setSelectedHistoryItem(item)}
               >
                 {/* Header: Audience badge + Timestamp */}
                 <View style={styles.historyCardHeader}>
-                  <View style={[styles.audienceBadge, { backgroundColor: `${badge.color}15`, borderColor: `${badge.color}40` }]}>
-                    <MaterialCommunityIcons name={badge.icon as any} size={scale(12)} color={badge.color} />
-                    <Text style={[styles.audienceBadgeText, { color: badge.color }]}>
+                  <View
+                    style={[
+                      styles.audienceBadge,
+                      {
+                        backgroundColor: `${badge.color}15`,
+                        borderColor: `${badge.color}40`,
+                      },
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name={badge.icon as any}
+                      size={scale(12)}
+                      color={badge.color}
+                    />
+                    <Text
+                      style={[styles.audienceBadgeText, { color: badge.color }]}
+                    >
                       {badge.label}
                     </Text>
                   </View>
 
-                  <Text style={[styles.historyTimeText, { color: textSecondary }]}>
-                    {item.createdAt ? new Date(item.createdAt).toLocaleDateString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Recent"}
+                  <Text
+                    style={[styles.historyTimeText, { color: textSecondary }]}
+                  >
+                    {item.createdAt
+                      ? new Date(item.createdAt).toLocaleDateString([], {
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : "Recent"}
                   </Text>
                 </View>
 
                 {/* Title */}
-                <Text style={[styles.historyTitle, { color: textPrimary }]} numberOfLines={1}>
+                <Text
+                  style={[styles.historyTitle, { color: textPrimary }]}
+                  numberOfLines={1}
+                >
                   {item.title}
                 </Text>
 
                 {/* Message Body snippet */}
-                <Text style={[styles.historySnippet, { color: textSecondary }]} numberOfLines={2}>
+                <Text
+                  style={[styles.historySnippet, { color: textSecondary }]}
+                  numberOfLines={2}
+                >
                   {item.body}
                 </Text>
 
                 {/* Footer Metrics */}
                 <View style={styles.historyFooter}>
                   <View style={styles.historyMetricItem}>
-                    <MaterialCommunityIcons name="account-multiple-check-outline" size={scale(14)} color="#10B981" />
-                    <Text style={[styles.historyMetricText, { color: textPrimary }]}>
-                      {item.recipientCount ?? 1} {item.recipientCount === 1 ? "recipient" : "recipients"}
+                    <MaterialCommunityIcons
+                      name="account-multiple-check-outline"
+                      size={scale(14)}
+                      color="#10B981"
+                    />
+                    <Text
+                      style={[styles.historyMetricText, { color: textPrimary }]}
+                    >
+                      {item.recipientCount ?? 1}{" "}
+                      {item.recipientCount === 1 ? "recipient" : "recipients"}
                     </Text>
                   </View>
 
                   {item.senderName && (
                     <View style={styles.historyMetricItem}>
-                      <Feather name="user" size={scale(12)} color={textSecondary} />
-                      <Text style={[styles.historySenderText, { color: textSecondary }]}>
+                      <Feather
+                        name="user"
+                        size={scale(12)}
+                        color={textSecondary}
+                      />
+                      <Text
+                        style={[
+                          styles.historySenderText,
+                          { color: textSecondary },
+                        ]}
+                      >
                         By {item.senderName}
                       </Text>
                     </View>
                   )}
 
-                  <Feather name="chevron-right" size={scale(16)} color={textSecondary} />
+                  <Feather
+                    name="chevron-right"
+                    size={scale(16)}
+                    color={textSecondary}
+                  />
                 </View>
               </TouchableOpacity>
             );
@@ -960,15 +1376,31 @@ export default function AdminNotificationsScreen() {
             historyLoading ? (
               <View style={styles.centerWrap}>
                 <ActivityIndicator size="large" color="#10B981" />
-                <Text style={[styles.emptyText, { color: textSecondary, marginTop: scale(10) }]}>
+                <Text
+                  style={[
+                    styles.emptyText,
+                    { color: textSecondary, marginTop: scale(10) },
+                  ]}
+                >
                   Loading broadcast history...
                 </Text>
               </View>
             ) : (
               <View style={styles.centerWrap}>
-                <MaterialCommunityIcons name="history" size={scale(48)} color={textSecondary} />
-                <Text style={[styles.emptyText, { color: textSecondary, marginTop: scale(10) }]}>
-                  {historySearch ? "No matching broadcasts found." : "No broadcasts have been sent yet."}
+                <MaterialCommunityIcons
+                  name="history"
+                  size={scale(48)}
+                  color={textSecondary}
+                />
+                <Text
+                  style={[
+                    styles.emptyText,
+                    { color: textSecondary, marginTop: scale(10) },
+                  ]}
+                >
+                  {historySearch
+                    ? "No matching broadcasts found."
+                    : "No broadcasts have been sent yet."}
                 </Text>
               </View>
             )
@@ -979,10 +1411,24 @@ export default function AdminNotificationsScreen() {
                 <TouchableOpacity
                   disabled={historyPage <= 1}
                   onPress={() => loadBroadcastHistory(historyPage - 1)}
-                  style={[styles.pageBtn, historyPage <= 1 && styles.pageBtnDisabled]}
+                  style={[
+                    styles.pageBtn,
+                    historyPage <= 1 && styles.pageBtnDisabled,
+                  ]}
                 >
-                  <Feather name="chevron-left" size={scale(16)} color={historyPage <= 1 ? textSecondary : textPrimary} />
-                  <Text style={[styles.pageBtnText, { color: historyPage <= 1 ? textSecondary : textPrimary }]}>Prev</Text>
+                  <Feather
+                    name="chevron-left"
+                    size={scale(16)}
+                    color={historyPage <= 1 ? textSecondary : textPrimary}
+                  />
+                  <Text
+                    style={[
+                      styles.pageBtnText,
+                      { color: historyPage <= 1 ? textSecondary : textPrimary },
+                    ]}
+                  >
+                    Prev
+                  </Text>
                 </TouchableOpacity>
                 <Text style={[styles.pageInfoText, { color: textSecondary }]}>
                   Page {historyPage} of {historyTotalPages}
@@ -990,10 +1436,33 @@ export default function AdminNotificationsScreen() {
                 <TouchableOpacity
                   disabled={historyPage >= historyTotalPages}
                   onPress={() => loadBroadcastHistory(historyPage + 1)}
-                  style={[styles.pageBtn, historyPage >= historyTotalPages && styles.pageBtnDisabled]}
+                  style={[
+                    styles.pageBtn,
+                    historyPage >= historyTotalPages && styles.pageBtnDisabled,
+                  ]}
                 >
-                  <Text style={[styles.pageBtnText, { color: historyPage >= historyTotalPages ? textSecondary : textPrimary }]}>Next</Text>
-                  <Feather name="chevron-right" size={scale(16)} color={historyPage >= historyTotalPages ? textSecondary : textPrimary} />
+                  <Text
+                    style={[
+                      styles.pageBtnText,
+                      {
+                        color:
+                          historyPage >= historyTotalPages
+                            ? textSecondary
+                            : textPrimary,
+                      },
+                    ]}
+                  >
+                    Next
+                  </Text>
+                  <Feather
+                    name="chevron-right"
+                    size={scale(16)}
+                    color={
+                      historyPage >= historyTotalPages
+                        ? textSecondary
+                        : textPrimary
+                    }
+                  />
                 </TouchableOpacity>
               </View>
             ) : undefined
@@ -1009,16 +1478,42 @@ export default function AdminNotificationsScreen() {
         onRequestClose={() => setSelectedHistoryItem(null)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: cardBg, borderColor: border }]}>
+          <View
+            style={[
+              styles.modalContent,
+              { backgroundColor: cardBg, borderColor: border },
+            ]}
+          >
             {/* Modal Header */}
             <View style={styles.modalHeader}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: scale(8) }}>
-                <View style={[styles.iconWrap, { backgroundColor: "rgba(16, 185, 129, 0.15)" }]}>
-                  <MaterialCommunityIcons name="bullhorn-outline" size={scale(20)} color="#10B981" />
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: scale(8),
+                }}
+              >
+                <View
+                  style={[
+                    styles.iconWrap,
+                    { backgroundColor: "rgba(16, 185, 129, 0.15)" },
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name="bullhorn-outline"
+                    size={scale(20)}
+                    color="#10B981"
+                  />
                 </View>
                 <View>
-                  <Text style={[styles.modalHeaderTitle, { color: textPrimary }]}>Broadcast Details</Text>
-                  <Text style={[styles.modalHeaderSub, { color: textSecondary }]}>
+                  <Text
+                    style={[styles.modalHeaderTitle, { color: textPrimary }]}
+                  >
+                    Broadcast Details
+                  </Text>
+                  <Text
+                    style={[styles.modalHeaderSub, { color: textSecondary }]}
+                  >
                     Dispatched Notification Record
                   </Text>
                 </View>
@@ -1032,45 +1527,159 @@ export default function AdminNotificationsScreen() {
             </View>
 
             {/* Modal Scrollable Body */}
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalBody}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.modalBody}
+            >
               {selectedHistoryItem && (
                 <>
                   {/* Title Banner */}
-                  <View style={[styles.detailSection, { backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "#F8FAFC", borderColor: border }]}>
-                    <Text style={[styles.detailSectionLabel, { color: textSecondary }]}>HEADLINE / TITLE</Text>
-                    <Text style={[styles.detailTitleText, { color: textPrimary }]}>
+                  <View
+                    style={[
+                      styles.detailSection,
+                      {
+                        backgroundColor: isDark
+                          ? "rgba(255,255,255,0.03)"
+                          : "#F8FAFC",
+                        borderColor: border,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.detailSectionLabel,
+                        { color: textSecondary },
+                      ]}
+                    >
+                      HEADLINE / TITLE
+                    </Text>
+                    <Text
+                      style={[styles.detailTitleText, { color: textPrimary }]}
+                    >
                       {selectedHistoryItem.title}
                     </Text>
                   </View>
 
                   {/* Message Body Box */}
-                  <View style={[styles.detailSection, { backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "#F8FAFC", borderColor: border }]}>
-                    <Text style={[styles.detailSectionLabel, { color: textSecondary }]}>MESSAGE BODY</Text>
-                    <Text style={[styles.detailBodyText, { color: textPrimary }]}>
+                  <View
+                    style={[
+                      styles.detailSection,
+                      {
+                        backgroundColor: isDark
+                          ? "rgba(255,255,255,0.03)"
+                          : "#F8FAFC",
+                        borderColor: border,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.detailSectionLabel,
+                        { color: textSecondary },
+                      ]}
+                    >
+                      MESSAGE BODY
+                    </Text>
+                    <Text
+                      style={[styles.detailBodyText, { color: textPrimary }]}
+                    >
                       {selectedHistoryItem.body}
                     </Text>
                   </View>
 
                   {/* Target Audience & Metrics Row */}
                   <View style={styles.detailGridRow}>
-                    <View style={[styles.detailGridCard, { backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "#F8FAFC", borderColor: border }]}>
-                      <Text style={[styles.detailSectionLabel, { color: textSecondary }]}>AUDIENCE</Text>
+                    <View
+                      style={[
+                        styles.detailGridCard,
+                        {
+                          backgroundColor: isDark
+                            ? "rgba(255,255,255,0.03)"
+                            : "#F8FAFC",
+                          borderColor: border,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.detailSectionLabel,
+                          { color: textSecondary },
+                        ]}
+                      >
+                        AUDIENCE
+                      </Text>
                       {(() => {
-                        const badge = getAudienceBadgeInfo(selectedHistoryItem.targetAudience);
+                        const badge = getAudienceBadgeInfo(
+                          selectedHistoryItem.targetAudience,
+                        );
                         return (
-                          <View style={[styles.audienceBadge, { backgroundColor: `${badge.color}15`, borderColor: `${badge.color}40`, alignSelf: "flex-start", marginTop: scale(4) }]}>
-                            <MaterialCommunityIcons name={badge.icon as any} size={scale(12)} color={badge.color} />
-                            <Text style={[styles.audienceBadgeText, { color: badge.color }]}>{badge.label}</Text>
+                          <View
+                            style={[
+                              styles.audienceBadge,
+                              {
+                                backgroundColor: `${badge.color}15`,
+                                borderColor: `${badge.color}40`,
+                                alignSelf: "flex-start",
+                                marginTop: scale(4),
+                              },
+                            ]}
+                          >
+                            <MaterialCommunityIcons
+                              name={badge.icon as any}
+                              size={scale(12)}
+                              color={badge.color}
+                            />
+                            <Text
+                              style={[
+                                styles.audienceBadgeText,
+                                { color: badge.color },
+                              ]}
+                            >
+                              {badge.label}
+                            </Text>
                           </View>
                         );
                       })()}
                     </View>
 
-                    <View style={[styles.detailGridCard, { backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "#F8FAFC", borderColor: border }]}>
-                      <Text style={[styles.detailSectionLabel, { color: textSecondary }]}>RECIPIENTS</Text>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: scale(6), marginTop: scale(4) }}>
-                        <MaterialCommunityIcons name="account-check" size={scale(16)} color="#10B981" />
-                        <Text style={[styles.detailMetricValue, { color: textPrimary }]}>
+                    <View
+                      style={[
+                        styles.detailGridCard,
+                        {
+                          backgroundColor: isDark
+                            ? "rgba(255,255,255,0.03)"
+                            : "#F8FAFC",
+                          borderColor: border,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.detailSectionLabel,
+                          { color: textSecondary },
+                        ]}
+                      >
+                        RECIPIENTS
+                      </Text>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: scale(6),
+                          marginTop: scale(4),
+                        }}
+                      >
+                        <MaterialCommunityIcons
+                          name="account-check"
+                          size={scale(16)}
+                          color="#10B981"
+                        />
+                        <Text
+                          style={[
+                            styles.detailMetricValue,
+                            { color: textPrimary },
+                          ]}
+                        >
                           {selectedHistoryItem.recipientCount ?? 1} Accounts
                         </Text>
                       </View>
@@ -1079,9 +1688,31 @@ export default function AdminNotificationsScreen() {
 
                   {/* Specific Recipient details if targeted */}
                   {selectedHistoryItem.recipientName && (
-                    <View style={[styles.detailSection, { backgroundColor: isDark ? "rgba(16, 185, 129, 0.06)" : "#F0FDF4", borderColor: "#10B981" }]}>
-                      <Text style={[styles.detailSectionLabel, { color: "#10B981" }]}>TARGET RECIPIENT</Text>
-                      <Text style={[styles.detailRecipientText, { color: textPrimary }]}>
+                    <View
+                      style={[
+                        styles.detailSection,
+                        {
+                          backgroundColor: isDark
+                            ? "rgba(16, 185, 129, 0.06)"
+                            : "#F0FDF4",
+                          borderColor: "#10B981",
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.detailSectionLabel,
+                          { color: "#10B981" },
+                        ]}
+                      >
+                        TARGET RECIPIENT
+                      </Text>
+                      <Text
+                        style={[
+                          styles.detailRecipientText,
+                          { color: textPrimary },
+                        ]}
+                      >
                         👤 {selectedHistoryItem.recipientName}
                       </Text>
                     </View>
@@ -1089,11 +1720,44 @@ export default function AdminNotificationsScreen() {
 
                   {/* Deep Link / Target Screen */}
                   {selectedHistoryItem.deepLink ? (
-                    <View style={[styles.detailSection, { backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "#F8FAFC", borderColor: border }]}>
-                      <Text style={[styles.detailSectionLabel, { color: textSecondary }]}>DEEP LINK / TARGET SCREEN</Text>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: scale(6), marginTop: scale(2) }}>
-                        <Feather name="link-2" size={scale(14)} color="#10B981" />
-                        <Text style={[styles.detailDeepLinkText, { color: "#10B981" }]}>
+                    <View
+                      style={[
+                        styles.detailSection,
+                        {
+                          backgroundColor: isDark
+                            ? "rgba(255,255,255,0.03)"
+                            : "#F8FAFC",
+                          borderColor: border,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.detailSectionLabel,
+                          { color: textSecondary },
+                        ]}
+                      >
+                        DEEP LINK / TARGET SCREEN
+                      </Text>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: scale(6),
+                          marginTop: scale(2),
+                        }}
+                      >
+                        <Feather
+                          name="link-2"
+                          size={scale(14)}
+                          color="#10B981"
+                        />
+                        <Text
+                          style={[
+                            styles.detailDeepLinkText,
+                            { color: "#10B981" },
+                          ]}
+                        >
                           {selectedHistoryItem.deepLink}
                         </Text>
                       </View>
@@ -1101,22 +1765,63 @@ export default function AdminNotificationsScreen() {
                   ) : null}
 
                   {/* Sender & Timestamp Information */}
-                  <View style={[styles.detailSection, { backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "#F8FAFC", borderColor: border }]}>
-                    <Text style={[styles.detailSectionLabel, { color: textSecondary }]}>DISPATCH METADATA</Text>
+                  <View
+                    style={[
+                      styles.detailSection,
+                      {
+                        backgroundColor: isDark
+                          ? "rgba(255,255,255,0.03)"
+                          : "#F8FAFC",
+                        borderColor: border,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.detailSectionLabel,
+                        { color: textSecondary },
+                      ]}
+                    >
+                      DISPATCH METADATA
+                    </Text>
                     <View style={styles.metaInfoRow}>
-                      <Text style={[styles.metaInfoKey, { color: textSecondary }]}>Sender:</Text>
-                      <Text style={[styles.metaInfoVal, { color: textPrimary }]}>
-                        {selectedHistoryItem.senderName || "Administrator"} ({selectedHistoryItem.senderRole || "admin"})
+                      <Text
+                        style={[styles.metaInfoKey, { color: textSecondary }]}
+                      >
+                        Sender:
+                      </Text>
+                      <Text
+                        style={[styles.metaInfoVal, { color: textPrimary }]}
+                      >
+                        {selectedHistoryItem.senderName || "Administrator"} (
+                        {selectedHistoryItem.senderRole || "admin"})
                       </Text>
                     </View>
                     <View style={styles.metaInfoRow}>
-                      <Text style={[styles.metaInfoKey, { color: textSecondary }]}>Sent On:</Text>
-                      <Text style={[styles.metaInfoVal, { color: textPrimary }]}>
-                        {selectedHistoryItem.createdAt ? new Date(selectedHistoryItem.createdAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "N/A"}
+                      <Text
+                        style={[styles.metaInfoKey, { color: textSecondary }]}
+                      >
+                        Sent On:
+                      </Text>
+                      <Text
+                        style={[styles.metaInfoVal, { color: textPrimary }]}
+                      >
+                        {selectedHistoryItem.createdAt
+                          ? new Date(
+                              selectedHistoryItem.createdAt,
+                            ).toLocaleString([], {
+                              dateStyle: "medium",
+                              timeStyle: "short",
+                            })
+                          : "N/A"}
                       </Text>
                     </View>
                     <View style={styles.metaInfoRow}>
-                      <Text style={[styles.metaInfoKey, { color: textSecondary }]}>Channels:</Text>
+                      <Text
+                        style={[styles.metaInfoKey, { color: textSecondary }]}
+                      >
+                        Channels:
+                      </Text>
                       <Text style={[styles.metaInfoVal, { color: "#10B981" }]}>
                         In-App Tray • Socket Live • Mobile Push
                       </Text>
@@ -1129,7 +1834,13 @@ export default function AdminNotificationsScreen() {
             {/* Modal Bottom Actions */}
             <View style={[styles.modalActionsRow, { borderTopColor: border }]}>
               <TouchableOpacity
-                style={[styles.modalReuseBtn, { backgroundColor: "rgba(16, 185, 129, 0.15)", borderColor: "#10B981" }]}
+                style={[
+                  styles.modalReuseBtn,
+                  {
+                    backgroundColor: "rgba(16, 185, 129, 0.15)",
+                    borderColor: "#10B981",
+                  },
+                ]}
                 onPress={() => handleReuseHistoryTemplate(selectedHistoryItem)}
               >
                 <Feather name="copy" size={scale(15)} color="#10B981" />
@@ -1137,10 +1848,17 @@ export default function AdminNotificationsScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.modalCloseActionBtn, { backgroundColor: isDark ? "#263238" : "#E2E8F0" }]}
+                style={[
+                  styles.modalCloseActionBtn,
+                  { backgroundColor: isDark ? "#263238" : "#E2E8F0" },
+                ]}
                 onPress={() => setSelectedHistoryItem(null)}
               >
-                <Text style={[styles.modalCloseActionText, { color: textPrimary }]}>Close</Text>
+                <Text
+                  style={[styles.modalCloseActionText, { color: textPrimary }]}
+                >
+                  Close
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
