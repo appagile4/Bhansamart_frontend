@@ -1,4 +1,3 @@
-import "@/utils/expoPolyfills";
 import { CartProvider } from "@/context/cart-context";
 import store from "@/store";
 import { useAppDispatch } from "@/store/hooks";

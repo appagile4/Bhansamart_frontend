@@ -1,7 +1,7 @@
-import "@/utils/expoPolyfills";
 import { Platform } from "react-native";
 import * as Device from "expo-device";
 import Constants from "expo-constants";
+import { isRunningInExpoGo } from "expo";
 import api from "@/store/services/api";
 import storage from "@/utils/storage";
 import { navigateFromNotificationData, NotificationPayloadData } from "@/utils/notificationRouter";
@@ -10,10 +10,15 @@ const TOKEN_STORAGE_KEY = "bhansa_registered_push_token";
 
 /**
  * Lazy / resilient resolver for expo-notifications.
- * Ensures the app never crashes if native notification modules are missing (e.g. Expo Go).
+ * In Expo Go, native push notification modules (e.g. ExpoTopicSubscriptionModule) are not included.
+ * In development builds (npx expo run:android) and production standalone APKs, native push notifications are fully supported.
  */
 let notificationsModuleCache: typeof import("expo-notifications") | null = null;
 export const getNotificationsModule = (): typeof import("expo-notifications") | null => {
+  if (Platform.OS === "web") return null;
+  if (isRunningInExpoGo()) {
+    return null;
+  }
   if (notificationsModuleCache) return notificationsModuleCache;
   try {
     notificationsModuleCache = require("expo-notifications");
