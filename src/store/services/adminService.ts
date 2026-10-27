@@ -236,6 +236,15 @@ export const searchNotificationRecipientsApi = async (params: {
   return response.data;
 };
 
+export const fetchAdminNotificationHistoryApi = async (params?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+}) => {
+  const response = await api.get("/admin/notifications/history", { params });
+  return response.data;
+};
+
 // 11. Live Operational Map Data
 export const fetchAdminLiveMapDataApi = async () => {
   const response = await api.get("/admin/map/live-data");
