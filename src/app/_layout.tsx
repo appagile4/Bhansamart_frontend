@@ -17,6 +17,7 @@ import {
   registerForPushNotificationsAsync,
 } from "@/services/pushNotificationService";
 import socketService from "@/store/services/socketService";
+import { incrementUnread } from "@/utils/notificationSync";
 
 // Suppress internal React Navigation / Expo Router development-only reconciliation warnings
 LogBox.ignoreLogs([
@@ -39,6 +40,11 @@ function AppContent() {
 
     // 3. Initialize Notification Listeners (handles foreground popup + background tap + cold-start)
     const cleanupPushListeners = initPushNotificationListeners((foregroundNotif) => {
+      const targetRole = (foregroundNotif.data as any)?.targetRole || (foregroundNotif.data as any)?.role || "customer";
+      if (targetRole === "vendor") incrementUnread("vendor");
+      else if (targetRole === "admin" || targetRole === "staff") incrementUnread("admin");
+      else incrementUnread("customer");
+
       setBannerMessage({
         id: `push_${Date.now()}`,
         title: foregroundNotif.title,
@@ -49,6 +55,7 @@ function AppContent() {
 
     // 4. Socket foreground notification listener (vendor & store notifications)
     const unsubVendor = socketService.onVendorNotification((notif) => {
+      incrementUnread("vendor");
       setBannerMessage({
         id: `vendor_${Date.now()}`,
         title: notif.title || "Vendor Notification",

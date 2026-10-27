@@ -1,4 +1,5 @@
 import { moderateScale, scale, useTheme } from "@/theme";
+import { useUnreadNotifications } from "@/utils/notificationSync";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -16,6 +17,7 @@ interface HeaderProps {
   onSelectCategory?: (id: string) => void;
   onLocationPress?: () => void;
   onStorePress?: () => void;
+  onNotificationPress?: () => void;
   onProfilePress?: () => void;
   onSearchPress?: () => void;
   onVoicePress?: () => void;
@@ -28,6 +30,7 @@ export default function Header({
   onSelectCategory,
   onLocationPress,
   onStorePress,
+  onNotificationPress,
   onProfilePress,
   onSearchPress,
   onVoicePress,
@@ -35,8 +38,17 @@ export default function Header({
   const router = useRouter();
   const theme = useTheme();
   const isDark = theme.mode === "dark";
+  const { unreadCount } = useUnreadNotifications("customer");
   const [activeCategory, setActiveCategory] = useState(selectedCategory);
   const [searchValue, setSearchValue] = useState("");
+
+  const handleNotificationPress = () => {
+    if (onNotificationPress) {
+      onNotificationPress();
+    } else {
+      router.push("/Screens/Profile/notifications" as any);
+    }
+  };
 
   const handleCategorySelect = (id: string) => {
     setActiveCategory(id);
@@ -121,6 +133,35 @@ export default function Header({
                 size={scale(22)}
                 color={isDark ? "#F8FAFC" : "#ffffff"}
               />
+            </TouchableOpacity>
+
+            {/* Notification Bell Icon with Live Badge */}
+            <TouchableOpacity
+              activeOpacity={0.75}
+              onPress={handleNotificationPress}
+              style={[
+                styles.notifButton,
+                isDark && {
+                  backgroundColor: "#151D24",
+                  borderRadius: scale(19),
+                  borderWidth: 1,
+                  borderColor: "#303B45",
+                },
+              ]}
+              accessibilityLabel="Notifications"
+            >
+              <Feather
+                name="bell"
+                size={scale(19)}
+                color={isDark ? "#F8FAFC" : "#ffffff"}
+              />
+              {unreadCount > 0 && (
+                <View style={styles.notifBadge} pointerEvents="none">
+                  <Text style={styles.notifBadgeText}>
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
 
             {/* Profile Avatar Button */}
@@ -243,6 +284,33 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: scale(10),
+  },
+  notifButton: {
+    width: scale(38),
+    height: scale(38),
+    borderRadius: scale(19),
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
+  notifBadge: {
+    position: "absolute",
+    top: -scale(2),
+    right: -scale(3),
+    minWidth: scale(16),
+    height: scale(16),
+    borderRadius: scale(8),
+    backgroundColor: "#EF4444",
+    borderWidth: 1.5,
+    borderColor: "#FFFFFF",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: scale(3),
+  },
+  notifBadgeText: {
+    color: "#FFFFFF",
+    fontSize: scale(9),
+    fontWeight: "800",
   },
   storeButton: {
     width: scale(38),

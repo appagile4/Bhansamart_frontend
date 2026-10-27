@@ -218,8 +218,29 @@ class SocketService {
     };
 
     this.socket?.on("vendor:notification", wrappedHandler);
+    this.socket?.on("vendor:notification:broadcast", wrappedHandler);
     return () => {
       this.socket?.off("vendor:notification", wrappedHandler);
+      this.socket?.off("vendor:notification:broadcast", wrappedHandler);
+    };
+  }
+
+  /**
+   * Register listener for real-time Customer / Direct User Notifications
+   */
+  public onCustomerNotification(handler: (notif: any) => void): () => void {
+    const wrappedHandler = (notif: any) => {
+      console.log(`[SocketService] Received customer notification:`, notif?.title);
+      handler(notif);
+    };
+
+    this.socket?.on("notification:direct", wrappedHandler);
+    this.socket?.on("notification:broadcast", wrappedHandler);
+    this.socket?.on("notification", wrappedHandler);
+    return () => {
+      this.socket?.off("notification:direct", wrappedHandler);
+      this.socket?.off("notification:broadcast", wrappedHandler);
+      this.socket?.off("notification", wrappedHandler);
     };
   }
 
@@ -432,6 +453,7 @@ class SocketService {
       "staff_refund:updated",
       "staff_cod:dispute",
       "staff_alert",
+      "staff:notification",
     ];
 
     const listeners = events.map((evt) => {

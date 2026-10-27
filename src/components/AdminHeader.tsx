@@ -11,8 +11,7 @@ import { useRouter } from "expo-router";
 import { useAppSelector } from "@/store/hooks";
 import AdminSideMenu from "./AdminSideMenu";
 import { moderateScale, scale, useTheme } from "@/theme";
-import { fetchStaffNotificationsAdminApi } from "@/store/services/adminService";
-import socketService from "@/store/services/socketService";
+import { useUnreadNotifications } from "@/utils/notificationSync";
 
 interface AdminHeaderProps {
   title?: string;
@@ -32,32 +31,7 @@ export default function AdminHeader({
   const isSuperadmin = user?.role === "superadmin";
 
   const [menuVisible, setMenuVisible] = useState(false);
-  const [unreadCount, setUnreadCount] = useState<number>(0);
-
-  useEffect(() => {
-    let isMounted = true;
-    const loadUnread = async () => {
-      try {
-        const res = await fetchStaffNotificationsAdminApi({ unreadOnly: true, limit: 1 });
-        if (isMounted && res?.pagination?.total !== undefined) {
-          setUnreadCount(res.pagination.total);
-        }
-      } catch (err) {
-        // Silent catch for background unread fetch
-      }
-    };
-    loadUnread();
-
-    // Listen for live staff notifications
-    const unsubscribe = socketService.onStaffNotification(() => {
-      setUnreadCount((prev) => prev + 1);
-    });
-
-    return () => {
-      isMounted = false;
-      if (unsubscribe) unsubscribe();
-    };
-  }, []);
+  const { unreadCount } = useUnreadNotifications("admin");
 
   const bg = isDark ? "#121A20" : "#FFFFFF";
   const border = isDark ? "#263238" : "#E2E8F0";

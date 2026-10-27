@@ -1,4 +1,5 @@
 import { moderateScale, scale, useTheme } from "@/theme";
+import { useUnreadNotifications } from "@/utils/notificationSync";
 import {
   Feather,
   Ionicons,
@@ -62,9 +63,11 @@ export default function ProfileScreen() {
 
   const { customerOrders } = useAppSelector((state) => state.order);
   const { addresses } = useAppSelector((state) => state.address);
-  const { wallet, summary, unreadNotificationsCount } = useAppSelector(
+  const { wallet, summary, unreadNotificationsCount: storeUnreadCount } = useAppSelector(
     (state) => state.referral,
   );
+  const { unreadCount: liveUnreadCount } = useUnreadNotifications("customer");
+  const unreadNotificationsCount = Math.max(storeUnreadCount || 0, liveUnreadCount || 0);
 
   const [refreshing, setRefreshing] = useState(false);
 

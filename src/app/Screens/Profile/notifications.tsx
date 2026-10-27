@@ -5,6 +5,7 @@ import {
   markAllCustomerNotificationsRead,
 } from "@/store/slices/referralSlice";
 import { CustomerNotificationItem } from "@/store/services/referralService";
+import { decrementUnread, setUnread } from "@/utils/notificationSync";
 import { moderateScale, scale, useTheme } from "@/theme";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -195,6 +196,7 @@ export default function CustomerNotificationsScreen() {
   const handleNotificationPress = async (item: CustomerNotificationItem) => {
     if (!item.isRead) {
       dispatch(markCustomerNotificationRead(item._id));
+      decrementUnread("customer");
     }
 
     // Contextual routing based on notification type
@@ -213,6 +215,7 @@ export default function CustomerNotificationsScreen() {
   const handleMarkAllRead = () => {
     if (unreadNotificationsCount === 0) return;
     dispatch(markAllCustomerNotificationsRead());
+    setUnread("customer", 0);
   };
 
   return (

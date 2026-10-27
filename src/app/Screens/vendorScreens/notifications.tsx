@@ -5,6 +5,7 @@ import {
   markNotificationAsRead,
   VendorNotificationRecord,
 } from "@/store/slices/vendorFinanceSlice";
+import { decrementUnread, setUnread } from "@/utils/notificationSync";
 import { moderateScale, scale } from "@/theme";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -46,12 +47,14 @@ export default function VendorNotificationsScreen() {
 
   const handleMarkAllRead = () => {
     dispatch(markAllNotificationsAsRead());
+    setUnread("vendor", 0);
   };
 
   const handleNotificationPress = (item: VendorNotificationRecord) => {
     if (!item) return;
     if (!item.isRead && item._id) {
       dispatch(markNotificationAsRead(item._id));
+      decrementUnread("vendor");
     }
     const typeStr = item.type || "";
     if (item.order) {

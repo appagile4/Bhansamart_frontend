@@ -1,5 +1,6 @@
 import { useAppSelector } from "@/store/hooks";
 import { moderateScale, scale } from "@/theme";
+import { useUnreadNotifications } from "@/utils/notificationSync";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { usePathname, useRouter } from "expo-router";
@@ -45,11 +46,15 @@ export default function VendorHeader({
   const { vendorUser, vendorDetails } = useAppSelector(
     (state) => state.vendorAuth,
   );
+  const { unreadCount: liveUnreadCount } = useUnreadNotifications("vendor");
   const financeUnreadCount = useAppSelector(
     (state) => state.vendorFinance?.unreadCount ?? 0
   );
 
-  const unreadCount = customUnreadCount !== undefined ? customUnreadCount : financeUnreadCount;
+  const unreadCount =
+    customUnreadCount !== undefined
+      ? customUnreadCount
+      : (liveUnreadCount > 0 ? liveUnreadCount : financeUnreadCount);
   const [menuVisible, setMenuVisible] = useState(false);
 
   const defaultTitle =

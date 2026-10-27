@@ -8,6 +8,7 @@ import {
 } from "@/store/services/adminService";
 import socketService from "@/store/services/socketService";
 import { sendAdminTargetedNotification } from "@/store/slices/adminSlice";
+import { decrementUnread, setUnread } from "@/utils/notificationSync";
 import { moderateScale, scale, useTheme } from "@/theme";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -131,9 +132,12 @@ export default function AdminNotificationsScreen() {
         const res = await fetchStaffNotificationsAdminApi(params);
         if (res?.notifications) {
           setNotifications(res.notifications);
-          setNotifPage(res.pagination?.page || 1);
-          setNotifTotalPages(res.pagination?.pages || 1);
-          setNotifTotal(res.pagination?.total || 0);
+          setNotifPage(res.page || res.pagination?.page || 1);
+          setNotifTotalPages(res.totalPages || res.pagination?.pages || 1);
+          setNotifTotal(res.total || res.pagination?.total || 0);
+          if (res.unreadCount !== undefined) {
+            setUnread("admin", res.unreadCount);
+          }
         }
       } catch (err) {
         console.error("Failed to load staff notifications", err);
@@ -215,6 +219,7 @@ export default function AdminNotificationsScreen() {
   const handleMarkAsRead = async (id: string) => {
     try {
       await markStaffNotificationReadApi(id);
+      decrementUnread("admin");
       setNotifications((prev) =>
         prev.map((n) =>
           n._id === id || n.id === id ? { ...n, isRead: true } : n,

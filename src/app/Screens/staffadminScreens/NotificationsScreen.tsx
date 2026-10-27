@@ -19,6 +19,7 @@ import {
   markStaffNotificationReadApi,
 } from "@/store/services/adminService";
 import socketService from "@/store/services/socketService";
+import { decrementUnread, setUnread } from "@/utils/notificationSync";
 
 export default function StaffAdminNotificationsScreen() {
   const router = useRouter();
@@ -38,6 +39,9 @@ export default function StaffAdminNotificationsScreen() {
       });
       if (res?.notifications || res?.data || Array.isArray(res)) {
         setNotifications(res.notifications || res.data || res);
+        if (res?.unreadCount !== undefined) {
+          setUnread("staff", res.unreadCount);
+        }
       }
     } catch (e) {
       console.warn("[Notifications] Failed to load notifications", e);
@@ -70,6 +74,7 @@ export default function StaffAdminNotificationsScreen() {
     if (!item.isRead) {
       try {
         await markStaffNotificationReadApi(item._id || item.id);
+        decrementUnread("staff");
         setNotifications((prev) =>
           prev.map((n) => (n._id === item._id ? { ...n, isRead: true } : n))
         );

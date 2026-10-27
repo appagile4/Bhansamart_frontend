@@ -10,8 +10,7 @@ import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAppSelector } from "@/store/hooks";
 import { moderateScale, scale, useTheme } from "@/theme";
-import { fetchStaffNotificationsAdminApi } from "@/store/services/adminService";
-import socketService from "@/store/services/socketService";
+import { useUnreadNotifications } from "@/utils/notificationSync";
 
 interface StaffAdminHeaderProps {
   title?: string;
@@ -33,31 +32,7 @@ export default function StaffAdminHeader({
   const isDark = theme.mode === "dark";
   const user = useAppSelector((state) => state.auth.user);
 
-  const [unreadCount, setUnreadCount] = useState<number>(0);
-
-  useEffect(() => {
-    let isMounted = true;
-    const loadUnread = async () => {
-      try {
-        const res = await fetchStaffNotificationsAdminApi({ unreadOnly: true, limit: 1 });
-        if (isMounted && res?.pagination?.total !== undefined) {
-          setUnreadCount(res.pagination.total);
-        }
-      } catch (err) {
-        // Silent catch
-      }
-    };
-    loadUnread();
-
-    const unsubscribe = socketService.onStaffNotification(() => {
-      setUnreadCount((prev) => prev + 1);
-    });
-
-    return () => {
-      isMounted = false;
-      if (unsubscribe) unsubscribe();
-    };
-  }, []);
+  const { unreadCount } = useUnreadNotifications("staff");
 
   const headerBg = isDark ? "#0A0F12" : "#FFFFFF";
   const border = isDark ? "#222D35" : "#E2E8F0";
