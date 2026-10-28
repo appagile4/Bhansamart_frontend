@@ -22,6 +22,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const TIMEFRAMES = [
+  { id: "all", label: "All Time" },
   { id: "today", label: "Today" },
   { id: "yesterday", label: "Yesterday" },
   { id: "last7days", label: "7 Days" },
@@ -50,13 +51,13 @@ export default function AdminDashboardOverviewScreen() {
     (windowWidth - horizontalPadding * 2 - gridGap * (kpiColumns - 1)) /
     kpiColumns;
 
-  const [selectedTimeframe, setSelectedTimeframe] = useState("today");
+  const [selectedTimeframe, setSelectedTimeframe] = useState("all");
   const [chartMetric, setChartMetric] = useState<"sales" | "orders">("sales");
 
   const { stats, charts, loading } = useAppSelector((state) => state.admin);
   const { user } = useAppSelector((state) => state.auth);
 
-  const isSuperAdmin = user?.role === "superadmin";
+  const isSuperAdmin = user?.role === "superadmin" || stats?.isSuperAdmin === true;
 
   const loadData = () => {
     dispatch(fetchAdminDashboardStats({ timeframe: selectedTimeframe }));
@@ -78,10 +79,11 @@ export default function AdminDashboardOverviewScreen() {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const dateStr = d.toISOString().split("T")[0]; // YYYY-MM-DD
+      const localDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       const dayLabel =
         i === 0 ? "Today" : d.toLocaleDateString("en-US", { weekday: "short" });
       const dayNum = d.getDate();
-      const found = trends.find((t: any) => t._id === dateStr);
+      const found = trends.find((t: any) => t._id === dateStr || t._id === localDateStr);
 
       list.push({
         date: dateStr,
@@ -123,13 +125,18 @@ export default function AdminDashboardOverviewScreen() {
   const paymentBreakdown = useMemo(() => {
     const raw = charts?.paymentBreakdown || [];
 
-    let codItem = raw.find((p: any) => (p._id || "").toLowerCase() === "cod");
-    let digitalItems = raw.filter(
-      (p: any) => (p._id || "").toLowerCase() !== "cod",
+    const isCodId = (id: string) => {
+      const s = (id || "").toLowerCase();
+      return s.includes("cash") || s.includes("cod");
+    };
+
+    const codItems = raw.filter((p: any) => isCodId(p._id));
+    const digitalItems = raw.filter(
+      (p: any) => !isCodId(p._id) && (p._id || "").toLowerCase() !== "replacement (no charge)",
     );
 
-    const codAmount = codItem ? codItem.amount || 0 : 0;
-    const codCount = codItem ? codItem.count || 0 : 0;
+    const codAmount = codItems.reduce((acc: number, c: any) => acc + (c.amount || 0), 0);
+    const codCount = codItems.reduce((acc: number, c: any) => acc + (c.count || 0), 0);
     const digitalAmount = digitalItems.reduce(
       (acc: number, c: any) => acc + (c.amount || 0),
       0,
@@ -155,7 +162,7 @@ export default function AdminDashboardOverviewScreen() {
       },
       {
         id: "digital",
-        label: "Digital & Online (Khalti / Card)",
+        label: "Digital & Online (Khalti / Card / eSewa)",
         icon: "credit-card-check-outline",
         color: "#0284C7",
         gradient: ["#0284C7", "#0369A1"] as [string, string],
@@ -178,8 +185,8 @@ export default function AdminDashboardOverviewScreen() {
       total,
       completed,
       pending,
-      completedPct: Math.round((completed / safeTotal) * 100),
-      pendingPct: Math.round((pending / safeTotal) * 100),
+      completedPct: total > 0 ? Math.round((completed / safeTotal) * 100) : 0,
+      pendingPct: total > 0 ? Math.round((pending / safeTotal) * 100) : 0,
     };
   }, [kpi]);
 
@@ -358,7 +365,7 @@ export default function AdminDashboardOverviewScreen() {
                   ]}
                   numberOfLines={1}
                 >
-                  NPR {kpi.finances.netCommissionEarned}
+                  NPR {(kpi.finances.netCommissionEarned || 0).toLocaleString()}
                 </Text>
               </View>
 
@@ -388,7 +395,7 @@ export default function AdminDashboardOverviewScreen() {
                   ]}
                   numberOfLines={1}
                 >
-                  NPR {kpi.finances.grossTransactions}
+                  NPR {(kpi.finances.grossTransactions || 0).toLocaleString()}
                 </Text>
               </View>
 
@@ -418,7 +425,7 @@ export default function AdminDashboardOverviewScreen() {
                   ]}
                   numberOfLines={1}
                 >
-                  NPR {kpi.finances.vendorGrossEarnings}
+                  NPR {(kpi.finances.vendorGrossEarnings || 0).toLocaleString()}
                 </Text>
               </View>
 
@@ -458,7 +465,9 @@ export default function AdminDashboardOverviewScreen() {
         {/* ── Responsive KPI Metric Cards Grid ─────────────────────────── */}
         <View style={[styles.kpiGrid, { gap: gridGap }]}>
           {/* Orders Card */}
-          <View
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => router.push("/Screens/staffadminScreens/OrdersScreen" as any)}
             style={[
               styles.kpiCard,
               {
@@ -509,7 +518,7 @@ export default function AdminDashboardOverviewScreen() {
                 </Text>
               </View>
             </View>
-          </View>
+          </TouchableOpacity>
 
           {/* Gross Sales */}
           <TouchableOpacity
@@ -541,7 +550,7 @@ export default function AdminDashboardOverviewScreen() {
               style={[styles.kpiValue, { color: textPrimary }]}
               numberOfLines={1}
             >
-              NPR {kpi?.orders?.grossSales || 0}
+              NPR {(kpi?.orders?.grossSales || 0).toLocaleString()}
             </Text>
             <Text
               style={[styles.kpiSub, { color: textSecondary }]}

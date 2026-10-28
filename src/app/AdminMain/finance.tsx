@@ -33,21 +33,53 @@ export default function AdminFinanceScreen() {
   const [rejectionReason, setRejectionReason] = useState("");
   const [reviewAction, setReviewAction] = useState<"APPROVE" | "REJECT">("APPROVE");
   const [actionLoading, setActionLoading] = useState(false);
+  const [txnPage, setTxnPage] = useState(1);
+  const [isLoadingMoreTxn, setIsLoadingMoreTxn] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const { withdrawals, transactions, stats, loading } = useAppSelector(
+  const { withdrawals, transactions, transactionsTotal, stats, loading } = useAppSelector(
     (state) => state.admin
   );
   const { user } = useAppSelector((state) => state.auth);
   const isSuperAdmin = user?.role === "superadmin";
 
-  const loadData = () => {
-    dispatch(fetchAdminWithdrawals({ status: "ALL" }));
-    dispatch(fetchAdminTransactions({ limit: 50 }));
+  const loadData = async (fresh = false) => {
+    if (fresh) setIsRefreshing(true);
+    setTxnPage(1);
+    try {
+      await Promise.all([
+        dispatch(fetchAdminWithdrawals({ status: "ALL" })),
+        dispatch(fetchAdminTransactions({ page: 1, limit: 15 })),
+      ]);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   useEffect(() => {
     loadData();
   }, [dispatch]);
+
+  const handleLoadMoreTransactions = async () => {
+    if (isLoadingMoreTxn || loading) return;
+    if (transactions.length >= transactionsTotal && transactionsTotal > 0) return;
+
+    const nextPage = txnPage + 1;
+    setIsLoadingMoreTxn(true);
+    try {
+      await dispatch(
+        fetchAdminTransactions({
+          page: nextPage,
+          limit: 15,
+        }),
+      ).unwrap();
+      setTxnPage(nextPage);
+    } catch (err) {
+      console.error("Failed to load more transactions", err);
+    } finally {
+      setIsLoadingMoreTxn(false);
+    }
+  };
 
   const handleReviewSubmit = async () => {
     if (!selectedWithdrawal) return;
@@ -290,8 +322,34 @@ export default function AdminFinanceScreen() {
           keyExtractor={(item) => item._id}
           contentContainerStyle={styles.listContent}
           refreshControl={
-            <RefreshControl refreshing={loading} onRefresh={loadData} colors={["#0284C7"]} />
+            <RefreshControl refreshing={isRefreshing} onRefresh={() => loadData(true)} colors={["#0284C7"]} />
           }
+          onEndReached={handleLoadMoreTransactions}
+          onEndReachedThreshold={0.4}
+          ListFooterComponent={() => {
+            if (isLoadingMoreTxn) {
+              return (
+                <View style={styles.footerLoader}>
+                  <ActivityIndicator size="small" color="#0284C7" />
+                  <Text style={[styles.footerLoaderText, { color: textSecondary }]}>
+                    Loading more transactions...
+                  </Text>
+                </View>
+              );
+            }
+            if (transactions.length > 0 && transactions.length >= transactionsTotal) {
+              return (
+                <View style={styles.footerEnd}>
+                  <View style={[styles.footerLine, { backgroundColor: border }]} />
+                  <Text style={[styles.footerEndText, { color: textSecondary }]}>
+                    All {transactionsTotal} transactions loaded
+                  </Text>
+                  <View style={[styles.footerLine, { backgroundColor: border }]} />
+                </View>
+              );
+            }
+            return <View style={{ height: scale(24) }} />;
+          }}
           renderItem={({ item }) => (
             <View style={[styles.card, { backgroundColor: cardBg, borderColor: border }]}>
               <View style={styles.cardTop}>
@@ -604,5 +662,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(16),
     paddingVertical: scale(10),
     borderRadius: scale(8),
+  },
+  footerLoader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: scale(16),
+    gap: scale(8),
+  },
+  footerLoaderText: {
+    fontSize: moderateScale(12),
+    fontWeight: "600",
+  },
+  footerEnd: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: scale(16),
+    gap: scale(10),
+  },
+  footerLine: {
+    flex: 1,
+    height: 1,
+  },
+  footerEndText: {
+    fontSize: moderateScale(11),
+    fontWeight: "600",
   },
 });

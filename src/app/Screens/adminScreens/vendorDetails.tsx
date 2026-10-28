@@ -49,6 +49,8 @@ export default function AdminVendorDetailsScreen() {
   // Sub-tab filters
   const [orderFilter, setOrderFilter] = useState<"ALL" | "DELIVERED" | "ACTIVE" | "CANCELLED">("ALL");
   const [claimFilter, setClaimFilter] = useState<"ALL" | "REFUND" | "RETURN" | "REPLACEMENT" | "PENDING">("ALL");
+  const [visibleOrdersCount, setVisibleOrdersCount] = useState(10);
+  const [visibleTxnCount, setVisibleTxnCount] = useState(10);
 
   // Withdrawal review modal state
   const [selectedWithdrawal, setSelectedWithdrawal] = useState<any | null>(null);
@@ -573,146 +575,178 @@ export default function AdminVendorDetailsScreen() {
                   </View>
                 </View>
               ) : (
-                filteredOrders.map((ord: any) => {
-                  const st = (ord.orderStatus || "").toUpperCase();
-                  const isDelivered = st === "DELIVERED" || st === "COMPLETED";
-                  const isCancelled = st === "CANCELLED" || st === "REJECTED";
-                  const refStatus = (ord.refundStatus || "NONE").toUpperCase();
-                  const hasRefund = refStatus !== "NONE";
+                <>
+                  {filteredOrders.slice(0, visibleOrdersCount).map((ord: any) => {
+                    const st = (ord.orderStatus || "").toUpperCase();
+                    const isDelivered = st === "DELIVERED" || st === "COMPLETED";
+                    const isCancelled = st === "CANCELLED" || st === "REJECTED";
+                    const refStatus = (ord.refundStatus || "NONE").toUpperCase();
+                    const hasRefund = refStatus !== "NONE";
+                    const isCodOrder =
+                      (ord.paymentMethod || "").toLowerCase().includes("cash") ||
+                      (ord.paymentMethod || "").toLowerCase().includes("cod") ||
+                      ord.isCod === true;
+                    const orderComm = isCodOrder
+                      ? 0
+                      : ord.commissionAmount != null
+                      ? ord.commissionAmount
+                      : Math.round((ord.totalAmount || 0) * 0.015 * 100) / 100;
+                    const orderVendorNet = isCodOrder
+                      ? ord.totalAmount || 0
+                      : ord.vendorNetAmount != null
+                      ? ord.vendorNetAmount
+                      : Math.round(((ord.totalAmount || 0) - orderComm) * 100) / 100;
 
-                  return (
-                    <View
-                      key={ord._id}
-                      style={[
-                        styles.orderCardDetailed,
-                        { backgroundColor: cardBg, borderColor: border },
-                      ]}
-                    >
-                      {/* Top Bar: Order Number, Date, Status */}
-                      <View style={styles.orderCardHeader}>
-                        <View style={{ flex: 1 }}>
-                          <View style={{ flexDirection: "row", alignItems: "center", gap: scale(6), flexWrap: "wrap" }}>
-                            <Text style={[styles.orderNumberTextLarge, { color: textPrimary }]}>
-                              #{ord.orderNumber || ord._id.slice(-6).toUpperCase()}
+                    return (
+                      <View
+                        key={ord._id}
+                        style={[
+                          styles.orderCardDetailed,
+                          { backgroundColor: cardBg, borderColor: border },
+                        ]}
+                      >
+                        {/* Top Bar: Order Number, Date, Status */}
+                        <View style={styles.orderCardHeader}>
+                          <View style={{ flex: 1 }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: scale(6), flexWrap: "wrap" }}>
+                              <Text style={[styles.orderNumberTextLarge, { color: textPrimary }]}>
+                                #{ord.orderNumber || ord._id.slice(-6).toUpperCase()}
+                              </Text>
+                              {hasRefund && (
+                                <View style={[styles.claimTypeTag, { backgroundColor: "rgba(168, 85, 247, 0.15)" }]}>
+                                  <Text style={[styles.claimTypeTagText, { color: "#A855F7" }]}>
+                                    {refStatus}
+                                  </Text>
+                                </View>
+                              )}
+                            </View>
+                            <Text style={[styles.orderDateSub, { color: textSecondary }]}>
+                              {new Date(ord.createdAt).toLocaleDateString()} at{" "}
+                              {new Date(ord.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                             </Text>
-                            {hasRefund && (
-                              <View style={[styles.claimTypeTag, { backgroundColor: "rgba(168, 85, 247, 0.15)" }]}>
-                                <Text style={[styles.claimTypeTagText, { color: "#A855F7" }]}>
-                                  {refStatus}
-                                </Text>
-                              </View>
-                            )}
                           </View>
-                          <Text style={[styles.orderDateSub, { color: textSecondary }]}>
-                            {new Date(ord.createdAt).toLocaleDateString()} at{" "}
-                            {new Date(ord.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                          </Text>
-                        </View>
 
-                        <View
-                          style={[
-                            styles.orderStatusPill,
-                            {
-                              backgroundColor: isDelivered
-                                ? isDark ? "rgba(16, 185, 129, 0.2)" : "#D1FAE5"
-                                : isCancelled
-                                ? isDark ? "rgba(239, 68, 68, 0.2)" : "#FEE2E2"
-                                : isDark ? "rgba(245, 158, 11, 0.2)" : "#FEF3C7",
-                            },
-                          ]}
-                        >
-                          <Text
+                          <View
                             style={[
-                              styles.orderStatusPillText,
+                              styles.orderStatusPill,
                               {
-                                color: isDelivered ? "#10B981" : isCancelled ? "#EF4444" : "#F59E0B",
+                                backgroundColor: isDelivered
+                                  ? isDark ? "rgba(16, 185, 129, 0.2)" : "#D1FAE5"
+                                  : isCancelled
+                                  ? isDark ? "rgba(239, 68, 68, 0.2)" : "#FEE2E2"
+                                  : isDark ? "rgba(245, 158, 11, 0.2)" : "#FEF3C7",
                               },
                             ]}
                           >
-                            {st}
-                          </Text>
-                        </View>
-                      </View>
-
-                      {/* Buyer Details */}
-                      <View style={[styles.buyerInfoRow, { backgroundColor: isDark ? "#16202A" : "#F8FAFC", borderColor: border }]}>
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: scale(6), flex: 1 }}>
-                          <Feather name="user" size={scale(13)} color="#0284C7" />
-                          <Text style={[styles.buyerInfoText, { color: textPrimary }]} numberOfLines={1}>
-                            {ord.customer?.name || "Customer"}
-                          </Text>
-                        </View>
-                        {ord.customer?.phone ? (
-                          <View style={{ flexDirection: "row", alignItems: "center", gap: scale(4) }}>
-                            <Feather name="phone" size={scale(12)} color={textSecondary} />
-                            <Text style={[styles.buyerInfoSubText, { color: textSecondary }]}>
-                              {ord.customer.phone}
+                            <Text
+                              style={[
+                                styles.orderStatusPillText,
+                                {
+                                  color: isDelivered ? "#10B981" : isCancelled ? "#EF4444" : "#F59E0B",
+                                },
+                              ]}
+                            >
+                              {st}
                             </Text>
                           </View>
-                        ) : null}
-                      </View>
+                        </View>
 
-                      {/* Products In Order */}
-                      <View style={styles.orderProductsContainer}>
-                        <Text style={[styles.itemsHeaderLabel, { color: textSecondary }]}>
-                          PURCHASED PRODUCTS ({ord.items?.length || 0})
-                        </Text>
-                        {(ord.items || []).map((it: any, idx: number) => (
-                          <View key={idx} style={[styles.orderProductRow, { borderBottomColor: border }]}>
-                            {it.imageUrl ? (
-                              <Image source={{ uri: it.imageUrl }} style={styles.itemImageThumb} />
-                            ) : (
-                              <View style={[styles.itemImagePlaceholder, { backgroundColor: isDark ? "#263238" : "#E2E8F0" }]}>
-                                <MaterialCommunityIcons name="package-variant" size={scale(16)} color="#94A3B8" />
-                              </View>
-                            )}
-                            <View style={{ flex: 1, marginLeft: scale(10) }}>
-                              <Text style={[styles.productItemTitle, { color: textPrimary }]} numberOfLines={1}>
-                                {it.name}
-                              </Text>
-                              <Text style={[styles.productItemMeta, { color: textSecondary }]}>
-                                Qty: {it.quantity || 1} &bull; NPR {(it.price || 0).toLocaleString()} each
+                        {/* Buyer Details */}
+                        <View style={[styles.buyerInfoRow, { backgroundColor: isDark ? "#16202A" : "#F8FAFC", borderColor: border }]}>
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: scale(6), flex: 1 }}>
+                            <Feather name="user" size={scale(13)} color="#0284C7" />
+                            <Text style={[styles.buyerInfoText, { color: textPrimary }]} numberOfLines={1}>
+                              {ord.customer?.name || "Customer"}
+                            </Text>
+                          </View>
+                          {ord.customer?.phone ? (
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: scale(4) }}>
+                              <Feather name="phone" size={scale(12)} color={textSecondary} />
+                              <Text style={[styles.buyerInfoSubText, { color: textSecondary }]}>
+                                {ord.customer.phone}
                               </Text>
                             </View>
-                            <Text style={[styles.productItemTotal, { color: textPrimary }]}>
-                              NPR {((it.price || 0) * (it.quantity || 1)).toLocaleString()}
+                          ) : null}
+                        </View>
+
+                        {/* Products In Order */}
+                        <View style={styles.orderProductsContainer}>
+                          <Text style={[styles.itemsHeaderLabel, { color: textSecondary }]}>
+                            PURCHASED PRODUCTS ({ord.items?.length || 0})
+                          </Text>
+                          {(ord.items || []).map((it: any, idx: number) => (
+                            <View key={idx} style={[styles.orderProductRow, { borderBottomColor: border }]}>
+                              {it.imageUrl ? (
+                                <Image source={{ uri: it.imageUrl }} style={styles.itemImageThumb} />
+                              ) : (
+                                <View style={[styles.itemImagePlaceholder, { backgroundColor: isDark ? "#263238" : "#E2E8F0" }]}>
+                                  <MaterialCommunityIcons name="package-variant" size={scale(16)} color="#94A3B8" />
+                                </View>
+                              )}
+                              <View style={{ flex: 1, marginLeft: scale(10) }}>
+                                <Text style={[styles.productItemTitle, { color: textPrimary }]} numberOfLines={1}>
+                                  {it.name}
+                                </Text>
+                                <Text style={[styles.productItemMeta, { color: textSecondary }]}>
+                                  Qty: {it.quantity || 1} &bull; NPR {(it.price || 0).toLocaleString()} each
+                                </Text>
+                              </View>
+                              <Text style={[styles.productItemTotal, { color: textPrimary }]}>
+                                NPR {((it.price || 0) * (it.quantity || 1)).toLocaleString()}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
+
+                        {/* Order Financial Breakdown */}
+                        <View style={[styles.orderFinBreakdown, { borderTopColor: border }]}>
+                          <View style={styles.orderFinRow}>
+                            <Text style={[styles.orderFinLabel, { color: textSecondary }]}>Gross Sale Total</Text>
+                            <Text style={[styles.orderFinVal, { color: textPrimary }]}>
+                              NPR {(ord.totalAmount || 0).toLocaleString()}
                             </Text>
                           </View>
-                        ))}
-                      </View>
-
-                      {/* Order Financial Breakdown */}
-                      <View style={[styles.orderFinBreakdown, { borderTopColor: border }]}>
-                        <View style={styles.orderFinRow}>
-                          <Text style={[styles.orderFinLabel, { color: textSecondary }]}>Gross Sale Total</Text>
-                          <Text style={[styles.orderFinVal, { color: textPrimary }]}>
-                            NPR {(ord.totalAmount || 0).toLocaleString()}
-                          </Text>
-                        </View>
-                        <View style={styles.orderFinRow}>
-                          <Text style={[styles.orderFinLabel, { color: textSecondary }]}>Fixed 1.5% Commission</Text>
-                          <Text style={[styles.orderFinVal, { color: "#A855F7" }]}>
-                            - NPR {(ord.commissionAmount || Math.round((ord.totalAmount || 0) * 0.015 * 100) / 100).toLocaleString()}
-                          </Text>
-                        </View>
-                        <View style={styles.orderFinRow}>
-                          <Text style={[styles.orderFinLabelBold, { color: textPrimary }]}>Net Vendor Credit</Text>
-                          <Text style={[styles.orderFinValBold, { color: "#10B981" }]}>
-                            + NPR {(ord.vendorNetAmount || Math.round((ord.totalAmount || 0) * 0.985 * 100) / 100).toLocaleString()}
-                          </Text>
-                        </View>
-                        <View style={styles.orderPaymentFooter}>
-                          <Text style={[styles.paymentMethodLabel, { color: textSecondary }]}>
-                            Paid via: <Text style={{ color: textPrimary, fontWeight: "700" }}>{ord.paymentMethod || "Cash on delivery"}</Text>
-                          </Text>
-                          <Text style={[styles.paymentStatusTag, { color: ord.paymentStatus === "paid" ? "#10B981" : "#F59E0B" }]}>
-                            {(ord.paymentStatus || "PENDING").toUpperCase()}
-                          </Text>
+                          <View style={styles.orderFinRow}>
+                            <Text style={[styles.orderFinLabel, { color: textSecondary }]}>
+                              {isCodOrder ? "Platform Commission (COD 0%)" : "Fixed 1.5% Commission"}
+                            </Text>
+                            <Text style={[styles.orderFinVal, { color: isCodOrder ? "#10B981" : "#A855F7" }]}>
+                              {isCodOrder ? "NPR 0 (0% No Cut)" : `- NPR ${orderComm.toLocaleString()}`}
+                            </Text>
+                          </View>
+                          <View style={styles.orderFinRow}>
+                            <Text style={[styles.orderFinLabelBold, { color: textPrimary }]}>
+                              {isCodOrder ? "Net Vendor Cash (100%)" : "Net Vendor Credit"}
+                            </Text>
+                            <Text style={[styles.orderFinValBold, { color: "#10B981" }]}>
+                              + NPR {orderVendorNet.toLocaleString()}
+                            </Text>
+                          </View>
+                          <View style={styles.orderPaymentFooter}>
+                            <Text style={[styles.paymentMethodLabel, { color: textSecondary }]}>
+                              Paid via: <Text style={{ color: textPrimary, fontWeight: "700" }}>{ord.paymentMethod || "Cash on delivery"}</Text>
+                            </Text>
+                            <Text style={[styles.paymentStatusTag, { color: ord.paymentStatus === "paid" ? "#10B981" : "#F59E0B" }]}>
+                              {(ord.paymentStatus || "PENDING").toUpperCase()}
+                            </Text>
+                          </View>
                         </View>
                       </View>
-                    </View>
-                  );
-                })
+                    );
+                  })}
+                  {filteredOrders.length > visibleOrdersCount && (
+                    <TouchableOpacity
+                      style={[styles.loadMoreItemsBtn, { borderColor: border, backgroundColor: cardBg }]}
+                      onPress={() => setVisibleOrdersCount((prev) => prev + 10)}
+                      activeOpacity={0.7}
+                    >
+                      <Feather name="chevron-down" size={scale(16)} color="#0284C7" />
+                      <Text style={[styles.loadMoreItemsBtnText, { color: "#0284C7" }]}>
+                        Load More Orders ({filteredOrders.length - visibleOrdersCount} remaining)
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </>
               )}
             </View>
           </View>
@@ -742,7 +776,7 @@ export default function AdminVendorDetailsScreen() {
               <View style={styles.finBannerStatsRow}>
                 <View style={styles.finBannerStatBox}>
                   <Text style={[styles.finMiniLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>
-                    1.5% COMMISSION DEDUCTED
+                    COMMISSION (1.5% ONLINE / 0% COD)
                   </Text>
                   <Text style={[styles.finMiniVal, { color: "#A855F7" }]}>
                     NPR {(financials.totalCommissionPaid || 0).toLocaleString()}
@@ -784,9 +818,16 @@ export default function AdminVendorDetailsScreen() {
                 </View>
               ) : (
                 <View style={{ gap: scale(10), marginTop: scale(10) }}>
-                  {productTransactions.map((tx: any, idx: number) => {
+                  {productTransactions.slice(0, visibleTxnCount).map((tx: any, idx: number) => {
                     const isSettled = tx.status === "SETTLED" || tx.status === "COMPLETED";
                     const isReversed = tx.status === "REVERSED" || tx.type === "REFUND_DEDUCTION";
+                    const isCodTx =
+                      ["COD_COLLECTION", "COD_HANDOVER", "DIRECT_QR_PAYMENT"].includes(tx.type) ||
+                      (tx.paymentMethod || "").toLowerCase().includes("cash") ||
+                      (tx.paymentMethod || "").toLowerCase().includes("cod") ||
+                      tx.isCod === true;
+                    const txFee = isCodTx ? 0 : (tx.commission || 0);
+                    const txNet = isCodTx ? (tx.grossAmount || tx.netAmount || 0) : (tx.netAmount || 0);
 
                     return (
                       <View
@@ -806,7 +847,7 @@ export default function AdminVendorDetailsScreen() {
                               Order #{tx.orderNumber || "DIRECT"}
                             </Text>
                             <Text style={[styles.orderAmountText, { color: isReversed ? "#EF4444" : "#10B981" }]}>
-                              {isReversed ? "-" : "+"} NPR {(tx.netAmount || 0).toLocaleString()}
+                              {isReversed ? "-" : "+"} NPR {txNet.toLocaleString()}
                             </Text>
                           </View>
 
@@ -822,7 +863,7 @@ export default function AdminVendorDetailsScreen() {
 
                           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: scale(8), borderTopWidth: 1, borderTopColor: border, paddingTop: scale(6) }}>
                             <Text style={{ fontSize: moderateScale(11), color: textSecondary }}>
-                              Gross: NPR {(tx.grossAmount || 0).toLocaleString()} | Fee: NPR {(tx.commission || 0).toLocaleString()}
+                              Gross: NPR {(tx.grossAmount || 0).toLocaleString()} | Fee: NPR {txFee.toLocaleString()} {isCodTx ? "(0% COD)" : ""}
                             </Text>
                             <View
                               style={[
@@ -850,6 +891,18 @@ export default function AdminVendorDetailsScreen() {
                       </View>
                     );
                   })}
+                  {productTransactions.length > visibleTxnCount && (
+                    <TouchableOpacity
+                      style={[styles.loadMoreItemsBtn, { borderColor: border, backgroundColor: cardBg }]}
+                      onPress={() => setVisibleTxnCount((prev) => prev + 10)}
+                      activeOpacity={0.7}
+                    >
+                      <Feather name="chevron-down" size={scale(16)} color="#6366F1" />
+                      <Text style={[styles.loadMoreItemsBtnText, { color: "#6366F1" }]}>
+                        Load More Sales ({productTransactions.length - visibleTxnCount} remaining)
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               )}
             </View>
@@ -1075,7 +1128,9 @@ export default function AdminVendorDetailsScreen() {
                           </Text>
                         </View>
                         <View style={styles.orderFinRow}>
-                          <Text style={[styles.orderFinLabel, { color: textSecondary }]}>Commission Reversal (1.5%)</Text>
+                          <Text style={[styles.orderFinLabel, { color: textSecondary }]}>
+                            {clm.commissionReversal === 0 ? "Commission Reversal (COD 0%)" : "Commission Reversal (1.5%)"}
+                          </Text>
                           <Text style={[styles.orderFinVal, { color: "#10B981" }]}>
                             NPR {(clm.commissionReversal || 0).toLocaleString()}
                           </Text>
@@ -1179,7 +1234,7 @@ export default function AdminVendorDetailsScreen() {
               <View style={[styles.finMetricCard, { backgroundColor: cardBg, borderColor: border }]}>
                 <View style={styles.kpiTopRow}>
                   <Text style={[styles.finCardLabel, { color: textSecondary }]}>
-                    1.5% Commission Deducted
+                    Commission Deducted
                   </Text>
                   <View style={[styles.iconBoxMini, { backgroundColor: "rgba(168, 85, 247, 0.12)" }]}>
                     <MaterialCommunityIcons name="percent" size={scale(18)} color="#A855F7" />
@@ -1189,7 +1244,7 @@ export default function AdminVendorDetailsScreen() {
                   NPR {(financials.totalCommissionPaid || 0).toLocaleString()}
                 </Text>
                 <Text style={[styles.finCardSub, { color: textSecondary }]}>
-                  Fixed platform revenue share
+                  Fixed 1.5% online (0% on COD)
                 </Text>
               </View>
 
@@ -2616,5 +2671,19 @@ const styles = StyleSheet.create({
   paymentStatusTag: {
     fontSize: moderateScale(10),
     fontWeight: "800",
+  },
+  loadMoreItemsBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: scale(12),
+    borderRadius: scale(10),
+    borderWidth: 1,
+    marginTop: scale(10),
+    gap: scale(6),
+  },
+  loadMoreItemsBtnText: {
+    fontSize: moderateScale(12),
+    fontWeight: "700",
   },
 });

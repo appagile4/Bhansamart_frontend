@@ -367,8 +367,16 @@ export const adminSlice = createSlice({
 
     // Customers
     builder.addCase(fetchAdminCustomers.fulfilled, (state, action) => {
-      state.customers = action.payload.data;
-      state.customersTotal = action.payload.total;
+      const page = (action as any).meta?.arg?.page || action.payload.currentPage || 1;
+      const incoming = action.payload.data || [];
+      if (page > 1) {
+        const existingIds = new Set(state.customers.map((c) => c._id));
+        const uniqueIncoming = incoming.filter((c: any) => !existingIds.has(c._id));
+        state.customers = [...state.customers, ...uniqueIncoming];
+      } else {
+        state.customers = incoming;
+      }
+      state.customersTotal = action.payload.total ?? state.customers.length;
     });
 
     // Delivery Boys
@@ -397,8 +405,16 @@ export const adminSlice = createSlice({
 
     // Transactions
     builder.addCase(fetchAdminTransactions.fulfilled, (state, action) => {
-      state.transactions = action.payload.data;
-      state.transactionsTotal = action.payload.total;
+      const page = (action as any).meta?.arg?.page || action.payload.currentPage || 1;
+      const incoming = action.payload.data || [];
+      if (page > 1) {
+        const existingIds = new Set(state.transactions.map((t) => t._id));
+        const uniqueIncoming = incoming.filter((t: any) => !existingIds.has(t._id));
+        state.transactions = [...state.transactions, ...uniqueIncoming];
+      } else {
+        state.transactions = incoming;
+      }
+      state.transactionsTotal = action.payload.total ?? state.transactions.length;
     });
 
     // Withdrawals

@@ -14,25 +14,60 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchAdminCustomers } from "@/store/slices/adminSlice";
 import { moderateScale, scale, useTheme } from "@/theme";
 import AdminHeader from "@/components/AdminHeader";
+import { useRouter } from "expo-router";
 
 export default function AdminCustomersScreen() {
+  const router = useRouter();
   const theme = useTheme();
   const isDark = theme.mode === "dark";
   const dispatch = useAppDispatch();
 
+  const PAGE_SIZE = 15;
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
   const { customers, customersTotal, loading } = useAppSelector((state) => state.admin);
 
-  const loadCustomers = () => {
-    dispatch(fetchAdminCustomers({ search: search.trim() || undefined, limit: 50 }));
+  const loadCustomers = async (pageNum = 1, fresh = false) => {
+    if (pageNum === 1) {
+      if (fresh) setIsRefreshing(true);
+    } else {
+      setIsLoadingMore(true);
+    }
+
+    try {
+      await dispatch(
+        fetchAdminCustomers({
+          search: search.trim() || undefined,
+          page: pageNum,
+          limit: PAGE_SIZE,
+        })
+      ).unwrap();
+      setPage(pageNum);
+    } catch (err) {
+      console.error("Failed to load customers:", err);
+    } finally {
+      setIsRefreshing(false);
+      setIsLoadingMore(false);
+    }
   };
 
   useEffect(() => {
-    loadCustomers();
+    setPage(1);
+    loadCustomers(1);
   }, [dispatch]);
 
   const onRefresh = () => {
-    loadCustomers();
+    setPage(1);
+    loadCustomers(1, true);
+  };
+
+  const handleEndReached = () => {
+    if (isLoadingMore || loading || isRefreshing) return;
+    if (customers.length >= customersTotal) return;
+    loadCustomers(page + 1);
   };
 
   const bg = isDark ? "#080D0F" : "#F8FAFC";
@@ -51,7 +86,16 @@ export default function AdminCustomersScreen() {
       : "N/A";
 
     return (
-      <View style={[styles.customerCard, { backgroundColor: cardBg, borderColor: border }]}>
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={() =>
+          router.push({
+            pathname: "/Screens/staffadminScreens/customerdetails",
+            params: { customerId: item._id },
+          })
+        }
+        style={[styles.customerCard, { backgroundColor: cardBg, borderColor: border }]}
+      >
         <View style={styles.cardHeader}>
           <View style={[styles.avatarWrap, { backgroundColor: isDark ? "#1E293B" : "#F1F5F9" }]}>
             <Feather name="user" size={scale(20)} color="#10B981" />
@@ -97,7 +141,7 @@ export default function AdminCustomersScreen() {
             </Text>
           </View>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -112,15 +156,25 @@ export default function AdminCustomersScreen() {
           placeholder="Search customers by name, email or phone..."
           placeholderTextColor="#94A3B8"
           value={search}
-          onChangeText={setSearch}
-          onSubmitEditing={loadCustomers}
+          onChangeText={(txt) => {
+            setSearch(txt);
+            if (txt === "") {
+              setPage(1);
+              loadCustomers(1, true);
+            }
+          }}
+          onSubmitEditing={() => {
+            setPage(1);
+            loadCustomers(1, true);
+          }}
           returnKeyType="search"
         />
         {search ? (
           <TouchableOpacity
             onPress={() => {
               setSearch("");
-              dispatch(fetchAdminCustomers({ limit: 50 }));
+              setPage(1);
+              loadCustomers(1, true);
             }}
           >
             <Feather name="x" size={scale(16)} color="#94A3B8" />
@@ -141,7 +195,33 @@ export default function AdminCustomersScreen() {
         keyExtractor={(item) => item._id}
         renderItem={renderCustomerItem}
         contentContainerStyle={styles.listContent}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={onRefresh} tintColor="#10B981" />}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor="#10B981" />}
+        onEndReached={handleEndReached}
+        onEndReachedThreshold={0.4}
+        ListFooterComponent={() => {
+          if (isLoadingMore) {
+            return (
+              <View style={styles.footerLoader}>
+                <ActivityIndicator size="small" color="#10B981" />
+                <Text style={[styles.footerLoaderText, { color: textSecondary }]}>
+                  Loading more customers...
+                </Text>
+              </View>
+            );
+          }
+          if (customers.length > 0 && customers.length >= customersTotal) {
+            return (
+              <View style={styles.footerEnd}>
+                <View style={[styles.footerLine, { backgroundColor: border }]} />
+                <Text style={[styles.footerEndText, { color: textSecondary }]}>
+                  All {customersTotal} customers loaded
+                </Text>
+                <View style={[styles.footerLine, { backgroundColor: border }]} />
+              </View>
+            );
+          }
+          return <View style={{ height: scale(24) }} />;
+        }}
         ListEmptyComponent={
           !loading ? (
             <View style={styles.emptyContainer}>
@@ -255,5 +335,31 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: moderateScale(13),
+  },
+  footerLoader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: scale(16),
+    gap: scale(8),
+  },
+  footerLoaderText: {
+    fontSize: moderateScale(12),
+    fontWeight: "600",
+  },
+  footerEnd: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: scale(16),
+    gap: scale(10),
+  },
+  footerLine: {
+    flex: 1,
+    height: 1,
+  },
+  footerEndText: {
+    fontSize: moderateScale(11),
+    fontWeight: "600",
   },
 });

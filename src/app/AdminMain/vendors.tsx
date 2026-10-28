@@ -26,6 +26,7 @@ export default function AdminVendorsScreen() {
   const isDark = theme.mode === "dark";
   const dispatch = useAppDispatch();
 
+  const PAGE_SIZE = 8;
   const [search, setSearch] = useState("");
   const [filterVerification, setFilterVerification] = useState("");
   const [page, setPage] = useState(1);
@@ -49,7 +50,7 @@ export default function AdminVendorsScreen() {
           search: search.trim() || undefined,
           verification: filterVerification || undefined,
           page: pageNum,
-          limit: 10,
+          limit: PAGE_SIZE,
         }),
       ).unwrap();
       setPage(pageNum);
@@ -156,13 +157,21 @@ export default function AdminVendorsScreen() {
         ]}
       >
         <View style={[styles.searchBox, { borderColor: border }]}>
-          <Feather name="search" size={scale(16)} color="#94A3B8" />
+          <TouchableOpacity onPress={handleSearchSubmit} activeOpacity={0.7}>
+            <Feather name="search" size={scale(16)} color="#94A3B8" />
+          </TouchableOpacity>
           <TextInput
             style={[styles.searchInput, { color: textPrimary }]}
-            placeholder="Search by store or seller name..."
+            placeholder="Search by store, seller or phone..."
             placeholderTextColor="#94A3B8"
             value={search}
-            onChangeText={setSearch}
+            onChangeText={(txt) => {
+              setSearch(txt);
+              if (txt === "") {
+                setPage(1);
+                loadVendors(1);
+              }
+            }}
             onSubmitEditing={handleSearchSubmit}
             returnKeyType="search"
           />
@@ -253,6 +262,51 @@ export default function AdminVendorsScreen() {
           const isApproved =
             itemStatus === "approved" || itemStatus === "active";
           const isPending = itemStatus === "pending" || itemStatus === "draft";
+          const isOpen = item.isStoreOpen !== false;
+
+          const storeName =
+            item.businessDetails?.businessName?.trim() ||
+            item.brandDetails?.brandName?.trim() ||
+            item.sellerDetails?.sellerName?.trim() ||
+            item.userId?.name?.trim() ||
+            "Registered Store";
+
+          const sellerName =
+            item.sellerDetails?.sellerName?.trim() ||
+            item.userId?.name?.trim() ||
+            "Store Owner";
+
+          const phone =
+            item.businessDetails?.businessPhone?.trim() ||
+            item.sellerDetails?.sellerPhone?.trim() ||
+            item.userId?.phone?.trim() ||
+            item.phone?.trim() ||
+            "No phone";
+
+          const rawCity =
+            item.sellerDetails?.city?.trim() ||
+            item.shippingLocations?.city?.trim() ||
+            item.businessDetails?.address?.city?.trim() ||
+            (item.shippingLocations?.warehouseAddress?.toLowerCase().includes("kathmandu")
+              ? "Kathmandu"
+              : null);
+
+          const rawState =
+            item.shippingLocations?.state?.trim() ||
+            item.sellerDetails?.state?.trim() ||
+            item.businessDetails?.address?.state?.trim();
+
+          const locationParts = [rawCity, rawState].filter(Boolean);
+          const uniqueLocationParts = locationParts.filter(
+            (val, i, arr) => arr.indexOf(val) === i,
+          );
+          const city = uniqueLocationParts.join(", ") || "Nepal";
+
+          const walletBalance =
+            item.wallet?.currentBalance != null
+              ? item.wallet.currentBalance
+              : (item.walletBalance != null ? item.walletBalance : 0);
+          const ordersCount = item.totalOrders || 0;
 
           return (
             <View
@@ -263,18 +317,12 @@ export default function AdminVendorsScreen() {
             >
               {/* Top Row: Store Name & Badges */}
               <View style={styles.cardHeader}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.storeName, { color: textPrimary }]}>
-                    {item.businessDetails?.businessName ||
-                      item.brandDetails?.brandName ||
-                      "Registered Store"}
+                <View style={{ flex: 1, marginRight: scale(8) }}>
+                  <Text style={[styles.storeName, { color: textPrimary }]} numberOfLines={1}>
+                    {storeName}
                   </Text>
-                  <Text style={[styles.sellerName, { color: textSecondary }]}>
-                    {item.sellerDetails?.sellerName || "Store Owner"} &bull;{" "}
-                    {item.sellerDetails?.sellerPhone ||
-                      item.businessDetails?.businessPhone ||
-                      item.userId?.phone ||
-                      "No phone"}
+                  <Text style={[styles.sellerName, { color: textSecondary }]} numberOfLines={1}>
+                    {sellerName} &bull; {phone}
                   </Text>
                 </View>
 
@@ -321,12 +369,12 @@ export default function AdminVendorsScreen() {
                   <Text
                     style={{
                       fontSize: moderateScale(10),
-                      color: item.isStoreOpen ? "#10B981" : "#EF4444",
+                      color: isOpen ? "#10B981" : "#EF4444",
                       fontWeight: "700",
                       textAlign: "right",
                     }}
                   >
-                    {item.isStoreOpen ? "● OPEN" : "○ CLOSED"}
+                    {isOpen ? "● OPEN" : "○ CLOSED"}
                   </Text>
                 </View>
               </View>
@@ -336,7 +384,7 @@ export default function AdminVendorsScreen() {
               <View style={styles.infoRow}>
                 <View style={styles.infoCol}>
                   <Text style={styles.infoLabel}>Assigned Admin</Text>
-                  <Text style={[styles.infoValue, { color: textPrimary }]}>
+                  <Text style={[styles.infoValue, { color: textPrimary }]} numberOfLines={1}>
                     {item.assignedAdmin
                       ? item.assignedAdmin.name
                       : "Direct Operations"}
@@ -345,18 +393,18 @@ export default function AdminVendorsScreen() {
                 <View style={styles.infoCol}>
                   <Text style={styles.infoLabel}>Wallet Balance</Text>
                   <Text style={[styles.infoValue, { color: "#10B981" }]}>
-                    NPR{" "}
-                    {item.wallet?.currentBalance != null
-                      ? item.wallet.currentBalance
-                      : 0}
+                    NPR {walletBalance.toLocaleString()}
                   </Text>
+                  {ordersCount > 0 ? (
+                    <Text style={{ fontSize: moderateScale(9), color: textSecondary, marginTop: scale(1) }}>
+                      {ordersCount} {ordersCount === 1 ? "order" : "orders"}
+                    </Text>
+                  ) : null}
                 </View>
                 <View style={styles.infoCol}>
                   <Text style={styles.infoLabel}>City / Location</Text>
-                  <Text style={[styles.infoValue, { color: textPrimary }]}>
-                    {item.sellerDetails?.city ||
-                      item.shippingLocations?.city ||
-                      "Nepal"}
+                  <Text style={[styles.infoValue, { color: textPrimary }]} numberOfLines={1}>
+                    {city}
                   </Text>
                 </View>
               </View>
