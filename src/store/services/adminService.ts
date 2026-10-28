@@ -324,6 +324,7 @@ export const fetchDeliveryCodReconciliationAdminApi = async (params?: {
 
 export const raiseCodDisputeAdminApi = async (payload: {
   deliveryBoyId: string;
+  vendorId?: string;
   disputedAmount: number;
   reason: string;
   notes?: string;

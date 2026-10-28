@@ -8,20 +8,17 @@ import { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Animated,
-  Dimensions,
   Easing,
   Modal,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const DRAWER_WIDTH = Math.min(SCREEN_WIDTH * 0.82, scale(320));
 
 interface AdminSideMenuProps {
   visible: boolean;
@@ -159,72 +156,74 @@ export default function AdminSideMenu({
   const user = useAppSelector((state) => state.auth.user);
   const isSuperadmin = user?.role === "superadmin";
 
+  const { width: windowWidth } = useWindowDimensions();
+  const drawerWidth = Math.min(windowWidth * 0.82, scale(320));
+
   const [mounted, setMounted] = useState(visible);
 
-  // Animated Values for smooth sliding and backdrop fading
-  const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  // Single normalized driver: 0 (closed) to 1 (open)
+  const anim = useRef(new Animated.Value(visible ? 1 : 0)).current;
+  const isClosingRef = useRef(false);
 
   // Watch visible prop
   useEffect(() => {
     if (visible) {
+      isClosingRef.current = false;
       setMounted(true);
-      // Open: Slide smoothly from Left to Right (-DRAWER_WIDTH to 0)
-      Animated.parallel([
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 280,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 280,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } else if (mounted) {
-      // Close: Slide smoothly from Right to Left (0 to -DRAWER_WIDTH)
-      Animated.parallel([
-        Animated.timing(slideAnim, {
-          toValue: -DRAWER_WIDTH,
-          duration: 240,
-          easing: Easing.in(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 240,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
+      anim.stopAnimation();
+      Animated.timing(anim, {
+        toValue: 1,
+        duration: 250,
+        easing: Easing.bezier(0.16, 1, 0.3, 1), // Swift responsive start, gentle soft settle
+        useNativeDriver: true,
+      }).start();
+    } else if (mounted && !isClosingRef.current) {
+      isClosingRef.current = true;
+      anim.stopAnimation();
+      Animated.timing(anim, {
+        toValue: 0,
+        duration: 200,
+        easing: Easing.bezier(0.25, 0.1, 0.25, 1), // Natural smooth exit
+        useNativeDriver: true,
+      }).start(() => {
         setMounted(false);
+        isClosingRef.current = false;
       });
     }
   }, [visible]);
 
   // Smoothly close drawer and trigger action
   const handleAnimatedClose = (callback?: () => void) => {
-    Animated.parallel([
-      Animated.timing(slideAnim, {
-        toValue: -DRAWER_WIDTH,
-        duration: 240,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 240,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
+    if (isClosingRef.current) return;
+    isClosingRef.current = true;
+    anim.stopAnimation();
+
+    Animated.timing(anim, {
+      toValue: 0,
+      duration: 200,
+      easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+      useNativeDriver: true,
+    }).start(() => {
       setMounted(false);
+      isClosingRef.current = false;
       onClose();
       if (callback) {
         callback();
       }
     });
   };
+
+  const translateX = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-drawerWidth, 0],
+    extrapolate: "clamp",
+  });
+
+  const backdropOpacity = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+    extrapolate: "clamp",
+  });
 
   const handleNavigate = (route: string) => {
     const isCurrentPage =
@@ -301,10 +300,12 @@ export default function AdminSideMenu({
     >
       <View style={styles.rootOverlay}>
         {/* Animated Fade Backdrop */}
-        <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
-          <TouchableWithoutFeedback onPress={() => handleAnimatedClose()}>
-            <View style={StyleSheet.absoluteFill} />
-          </TouchableWithoutFeedback>
+        <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
+          <TouchableOpacity
+            activeOpacity={1}
+            style={StyleSheet.absoluteFill}
+            onPress={() => handleAnimatedClose()}
+          />
         </Animated.View>
 
         {/* Animated Slide Drawer: Smooth Left to Right / Right to Left */}
@@ -313,8 +314,8 @@ export default function AdminSideMenu({
             styles.drawerContainer,
             {
               backgroundColor: bg,
-              width: DRAWER_WIDTH,
-              transform: [{ translateX: slideAnim }],
+              width: drawerWidth,
+              transform: [{ translateX }],
             },
           ]}
         >

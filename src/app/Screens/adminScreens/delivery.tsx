@@ -11,6 +11,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
@@ -28,7 +29,12 @@ export default function AdminDeliveryBoysScreen() {
   const isDark = theme.mode === "dark";
   const dispatch = useAppDispatch();
 
+  const { width: windowWidth } = useWindowDimensions();
+  const isTablet = windowWidth >= 768;
+  const isSmallDevice = windowWidth < 380;
+
   const [activeTab, setActiveTab] = useState<"fleet" | "cod">("fleet");
+  const [viewMode, setViewMode] = useState<"list" | "grid">(isTablet ? "grid" : "list");
 
   // Fleet state
   const [search, setSearch] = useState("");
@@ -36,10 +42,16 @@ export default function AdminDeliveryBoysScreen() {
   const { deliveryBoys, loading: fleetLoading } = useAppSelector(
     (state) => state.admin,
   );
-  const [localRiders, setLocalRiders] = useState<any[]>(deliveryBoys || []);
+  const [localRiders, setLocalRiders] = useState<any[]>([]);
 
   useEffect(() => {
-    setLocalRiders(deliveryBoys || []);
+    if (Array.isArray(deliveryBoys)) {
+      setLocalRiders(deliveryBoys);
+    } else if ((deliveryBoys as any)?.data && Array.isArray((deliveryBoys as any).data)) {
+      setLocalRiders((deliveryBoys as any).data);
+    } else {
+      setLocalRiders([]);
+    }
   }, [deliveryBoys]);
 
   // Real-time Socket.IO Rider status & location listener
@@ -60,9 +72,7 @@ export default function AdminDeliveryBoysScreen() {
           if (rId !== targetId && rUserId !== targetId) return r;
 
           const newAvailability =
-            data.availability !== undefined
-              ? data.availability
-              : r.availability;
+            data.availability !== undefined ? data.availability : r.availability;
           const newIsOnline =
             data.isOnline !== undefined
               ? Boolean(data.isOnline)
@@ -102,14 +112,28 @@ export default function AdminDeliveryBoysScreen() {
     return avail === "BUSY" || Boolean(r?.activeOrderId || r?.currentOrder);
   };
 
+  // Fleet KPIs
   const onlineCount = useMemo(() => {
     return (localRiders || []).filter((r: any) => checkIsOnline(r)).length;
   }, [localRiders]);
 
+  const busyCount = useMemo(() => {
+    return (localRiders || []).filter((r: any) => checkIsBusy(r)).length;
+  }, [localRiders]);
+
+  const totalFleetCash = useMemo(() => {
+    return (localRiders || []).reduce((sum, r) => {
+      const c = r.codCashInCustody ?? r.cashInHand ?? r.cashCollected ?? 0;
+      return sum + c;
+    }, 0);
+  }, [localRiders]);
+
   // COD Reconciliation state
   const [codReconciliation, setCodReconciliation] = useState<any[]>([]);
+  const [codSummary, setCodSummary] = useState<any>(null);
   const [codLoading, setCodLoading] = useState(false);
   const [codRefreshing, setCodRefreshing] = useState(false);
+  const [codSearch, setCodSearch] = useState("");
 
   // Dispute modal state
   const [disputeRider, setDisputeRider] = useState<any | null>(null);
@@ -118,16 +142,29 @@ export default function AdminDeliveryBoysScreen() {
   const [disputeNotes, setDisputeNotes] = useState("");
   const [submittingDispute, setSubmittingDispute] = useState(false);
 
-  const loadRiders = () => {
-    dispatch(fetchAdminDeliveryBoys({ search: search.trim() || undefined }));
+  const loadRiders = async () => {
+    try {
+      const res = await dispatch(
+        fetchAdminDeliveryBoys({ search: search.trim() || undefined }),
+      ).unwrap();
+      if (Array.isArray(res)) {
+        setLocalRiders(res);
+      } else if (res?.data && Array.isArray(res.data)) {
+        setLocalRiders(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to load riders", err);
+    }
   };
 
   const loadCodData = async () => {
     try {
       setCodLoading(true);
       const res = await fetchDeliveryCodReconciliationAdminApi();
-      if (res?.reconciliations) {
-        setCodReconciliation(res.reconciliations);
+      const list = res?.reconciliation || res?.reconciliations || [];
+      setCodReconciliation(list);
+      if (res?.summary) {
+        setCodSummary(res.summary);
       }
     } catch (err) {
       console.error("Failed to load COD reconciliation data", err);
@@ -158,7 +195,8 @@ export default function AdminDeliveryBoysScreen() {
 
   const handleOpenDispute = (item: any) => {
     setDisputeRider(item);
-    setDisputeAmount(String(item.outstandingBalance || 0));
+    const outstandingVal = item.outstanding ?? item.outstandingBalance ?? 0;
+    setDisputeAmount(String(outstandingVal));
     setDisputeReason("");
     setDisputeNotes("");
   };
@@ -181,9 +219,10 @@ export default function AdminDeliveryBoysScreen() {
       setSubmittingDispute(true);
       await raiseCodDisputeAdminApi({
         deliveryBoyId:
+          disputeRider.deliveryBoyId ||
           disputeRider.deliveryBoy?._id ||
-          disputeRider.deliveryBoy?.id ||
-          disputeRider.deliveryBoyId,
+          disputeRider.deliveryBoy?.id,
+        vendorId: disputeRider.vendorId || disputeRider.vendor?._id,
         disputedAmount: Number(disputeAmount),
         reason: disputeReason.trim(),
         notes: disputeNotes.trim(),
@@ -191,7 +230,7 @@ export default function AdminDeliveryBoysScreen() {
 
       Alert.alert(
         "Dispute Logged",
-        "Audit dispute raised and forwarded to Finance & Delivery operations.",
+        "Cash mismatch dispute raised and forwarded to financial audit.",
       );
       setDisputeRider(null);
       loadCodData();
@@ -214,30 +253,228 @@ export default function AdminDeliveryBoysScreen() {
     });
   }, [localRiders, onlineOnly]);
 
-  const bg = isDark ? "#080D0F" : "#F8FAFC";
-  const cardBg = isDark ? "#151D24" : "#FFFFFF";
-  const border = isDark ? "#263238" : "#E2E8F0";
+  const filteredCodList = useMemo(() => {
+    if (!codSearch.trim()) return codReconciliation;
+    const q = codSearch.toLowerCase().trim();
+    return codReconciliation.filter((item: any) => {
+      const riderName = (
+        item.deliveryBoyName ||
+        item.deliveryBoy?.fullName ||
+        item.deliveryBoy?.name ||
+        ""
+      ).toLowerCase();
+      const storeName = (item.vendorName || "").toLowerCase();
+      const phone = (item.phone || item.deliveryBoy?.phone || "").toLowerCase();
+      return (
+        riderName.includes(q) ||
+        storeName.includes(q) ||
+        phone.includes(q)
+      );
+    });
+  }, [codReconciliation, codSearch]);
+
+  const bg = isDark ? "#0A0F12" : "#F4F6F9";
+  const cardBg = isDark ? "#141D22" : "#FFFFFF";
+  const border = isDark ? "#24323B" : "#E2E8F0";
   const textPrimary = isDark ? "#F8FAFC" : "#0F172A";
   const textSecondary = isDark ? "#94A3B8" : "#64748B";
 
+  // Status badge helper for COD
+  const getCodStatusBadge = (status: string) => {
+    switch (status) {
+      case "RECONCILED":
+      case "SETTLED":
+        return {
+          label: "Settled",
+          bg: isDark ? "rgba(16, 185, 129, 0.2)" : "#ECFDF5",
+          border: isDark ? "#059669" : "#A7F3D0",
+          color: "#10B981",
+        };
+      case "DISCREPANCY_REPORTED":
+      case "MISMATCH_DISPUTE":
+        return {
+          label: "Discrepancy Reported",
+          bg: isDark ? "rgba(239, 68, 68, 0.2)" : "#FEF2F2",
+          border: isDark ? "#DC2626" : "#FECACA",
+          color: "#EF4444",
+        };
+      case "AWAITING_HANDOVER":
+      case "PENDING_HANDOVER":
+      default:
+        return {
+          label: "Awaiting Handover",
+          bg: isDark ? "rgba(245, 158, 11, 0.2)" : "#FFFBEB",
+          border: isDark ? "#D97706" : "#FDE68A",
+          color: "#F59E0B",
+        };
+    }
+  };
+
+  // ─── RENDER RIDER (FLEET) ITEM ───
   const renderRiderItem = ({ item }: { item: any }) => {
     const isOnline = checkIsOnline(item);
     const isBusy = checkIsBusy(item);
-    const cashBalance =
-      item.cashInHand ?? item.codCashInCustody ?? item.cashCollected ?? 0;
+
     const riderName =
       item.fullName || item.name || item.user?.name || "Delivery Partner";
-    const riderPhone = item.phone || item.user?.phone || "No phone registered";
-    const vehicle =
-      item.vehicleNumber ||
-      item.vehicleDetails?.registrationNumber ||
-      item.vehicleType ||
-      "Not assigned";
+    const riderPhone =
+      item.phone || item.user?.phone || "No phone registered";
+
+    // Real vehicle details
+    const vehicleReg =
+      item.vehicleDetails?.registrationNumber || item.vehicleNumber;
+    const vehicleType =
+      item.vehicleDetails?.vehicleType || item.vehicleType || "Motorcycle";
+    const vehicleDisplay =
+      vehicleReg && vehicleReg !== "Not assigned"
+        ? `${vehicleType} • ${vehicleReg}`
+        : vehicleType;
+
+    // Real cash balance in custody
+    const cashBalance =
+      item.codCashInCustody ?? item.cashInHand ?? item.cashCollected ?? 0;
+
+    // Real deliveries & wallet
     const totalDeliveries =
       item.completedDeliveries ?? item.metrics?.totalDeliveries ?? 0;
-    const coordinates =
-      item.location?.coordinates || item.currentLocation?.coordinates;
+    const rating = item.metrics?.rating
+      ? Number(item.metrics.rating).toFixed(1)
+      : "5.0";
 
+    // Service Area / City
+    const serviceLoc = item.serviceArea
+      ? `${item.serviceArea}, ${item.serviceCity || "Kathmandu"}`
+      : item.serviceCity || item.currentAddress?.city || "Kathmandu";
+
+    // Active order info if currently delivering
+    const activeOrderNumber =
+      item.activeOrderId?.orderNumber ||
+      (typeof item.activeOrderId === "string"
+        ? item.activeOrderId.slice(-6)
+        : null);
+
+    // Coordinates
+    const coords =
+      item.location?.coordinates || item.currentLocation?.coordinates;
+    const hasGps = coords && (coords[0] !== 0 || coords[1] !== 0);
+
+    // ─── GRID CARD ───
+    if (viewMode === "grid") {
+      return (
+        <View
+          style={[
+            styles.riderGridCard,
+            { backgroundColor: cardBg, borderColor: border },
+          ]}
+        >
+          <View style={styles.gridHeaderRow}>
+            <View
+              style={[
+                styles.avatarWrapSmall,
+                {
+                  backgroundColor: isOnline
+                    ? isDark
+                      ? "rgba(16, 185, 129, 0.2)"
+                      : "#ECFDF5"
+                    : isDark
+                    ? "#1E293B"
+                    : "#F1F5F9",
+                },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name="moped"
+                size={scale(18)}
+                color={isOnline ? "#10B981" : "#94A3B8"}
+              />
+            </View>
+            <View
+              style={[
+                styles.statusBadgeCompact,
+                {
+                  backgroundColor: isOnline
+                    ? isDark
+                      ? "rgba(16, 185, 129, 0.2)"
+                      : "#ECFDF5"
+                    : isDark
+                    ? "rgba(148, 163, 184, 0.15)"
+                    : "#F1F5F9",
+                  borderColor: isOnline ? "#10B981" : border,
+                },
+              ]}
+            >
+              <View
+                style={[
+                  styles.statusDot,
+                  { backgroundColor: isOnline ? "#10B981" : "#94A3B8" },
+                ]}
+              />
+              <Text
+                style={[
+                  styles.statusBadgeTextCompact,
+                  { color: isOnline ? "#10B981" : textSecondary },
+                ]}
+              >
+                {isBusy ? "Busy" : isOnline ? "Online" : "Offline"}
+              </Text>
+            </View>
+          </View>
+
+          <Text
+            style={[styles.riderName, { color: textPrimary, marginTop: scale(6) }]}
+            numberOfLines={1}
+          >
+            {riderName}
+          </Text>
+          <Text
+            style={[styles.contactText, { color: textSecondary }]}
+            numberOfLines={1}
+          >
+            {riderPhone}
+          </Text>
+
+          <View style={styles.gridMetricRow}>
+            <View>
+              <Text style={[styles.gridMetricLabel, { color: textSecondary }]}>
+                COD Cash
+              </Text>
+              <Text
+                style={[
+                  styles.gridMetricVal,
+                  { color: cashBalance > 0 ? "#10B981" : textPrimary },
+                ]}
+              >
+                NPR {cashBalance.toLocaleString()}
+              </Text>
+            </View>
+            <View style={{ alignItems: "flex-end" }}>
+              <Text style={[styles.gridMetricLabel, { color: textSecondary }]}>
+                Deliveries
+              </Text>
+              <Text style={[styles.gridMetricVal, { color: textPrimary }]}>
+                {totalDeliveries} ({rating} ★)
+              </Text>
+            </View>
+          </View>
+
+          <View style={[styles.gridFooterRow, { borderTopColor: border }]}>
+            <Text
+              style={[styles.gridVehicleText, { color: textSecondary }]}
+              numberOfLines={1}
+            >
+              <MaterialCommunityIcons
+                name="motorbike"
+                size={scale(11)}
+                color={textSecondary}
+              />{" "}
+              {vehicleDisplay}
+            </Text>
+          </View>
+        </View>
+      );
+    }
+
+    // ─── FULL LIST CARD ───
     return (
       <View
         style={[
@@ -251,10 +488,12 @@ export default function AdminDeliveryBoysScreen() {
               styles.avatarWrap,
               {
                 backgroundColor: isOnline
-                  ? "rgba(16, 185, 129, 0.15)"
+                  ? isDark
+                    ? "rgba(16, 185, 129, 0.2)"
+                    : "#ECFDF5"
                   : isDark
-                    ? "#1E293B"
-                    : "#F1F5F9",
+                  ? "#1E293B"
+                  : "#F1F5F9",
               },
             ]}
           >
@@ -264,18 +503,30 @@ export default function AdminDeliveryBoysScreen() {
               color={isOnline ? "#10B981" : "#94A3B8"}
             />
           </View>
+
           <View style={{ flex: 1, marginLeft: scale(12) }}>
             <View style={styles.titleRow}>
-              <Text style={[styles.riderName, { color: textPrimary }]}>
-                {riderName}
-              </Text>
+              <View style={{ flex: 1, marginRight: scale(8) }}>
+                <Text style={[styles.riderName, { color: textPrimary }]}>
+                  {riderName}
+                </Text>
+                <Text style={[styles.contactText, { color: textSecondary }]}>
+                  {riderPhone} • {serviceLoc}
+                </Text>
+              </View>
+
               <View
                 style={[
                   styles.statusBadge,
                   {
                     backgroundColor: isOnline
-                      ? "rgba(16, 185, 129, 0.15)"
-                      : "rgba(148, 163, 184, 0.15)",
+                      ? isDark
+                        ? "rgba(16, 185, 129, 0.2)"
+                        : "#ECFDF5"
+                      : isDark
+                      ? "rgba(148, 163, 184, 0.15)"
+                      : "#F1F5F9",
+                    borderColor: isOnline ? "#10B981" : border,
                   },
                 ]}
               >
@@ -288,87 +539,101 @@ export default function AdminDeliveryBoysScreen() {
                 <Text
                   style={[
                     styles.statusBadgeText,
-                    { color: isOnline ? "#10B981" : "#94A3B8" },
+                    { color: isOnline ? "#10B981" : textSecondary },
                   ]}
                 >
-                  {isOnline ? "Online" : "Offline"}
+                  {isBusy ? "On Delivery" : isOnline ? "Online & Ready" : "Offline"}
                 </Text>
               </View>
             </View>
-
-            <Text style={[styles.contactText, { color: textSecondary }]}>
-              {riderPhone}
-            </Text>
           </View>
         </View>
 
-        {/* Vehicle & Duty details */}
+        {/* Active Order Banner if busy */}
+        {activeOrderNumber && (
+          <View
+            style={[
+              styles.activeOrderBanner,
+              {
+                backgroundColor: isDark
+                  ? "rgba(245, 158, 11, 0.15)"
+                  : "#FFFBEB",
+                borderColor: isDark ? "#D97706" : "#FDE68A",
+              },
+            ]}
+          >
+            <Feather name="navigation" size={scale(12)} color="#F59E0B" />
+            <Text style={[styles.activeOrderText, { color: "#F59E0B" }]}>
+              Currently Delivering Order #{activeOrderNumber}
+            </Text>
+          </View>
+        )}
+
+        {/* Real Vehicle & Financial Details */}
         <View
           style={[
             styles.infoRow,
-            { backgroundColor: isDark ? "#10161C" : "#F8FAFC" },
+            { backgroundColor: bg, borderColor: border },
           ]}
         >
           <View style={styles.infoCol}>
             <Text style={[styles.infoLabel, { color: textSecondary }]}>
               Vehicle
             </Text>
-            <Text style={[styles.infoVal, { color: textPrimary }]}>
-              {vehicle}
+            <Text
+              style={[styles.infoVal, { color: textPrimary }]}
+              numberOfLines={1}
+            >
+              {vehicleDisplay}
             </Text>
           </View>
+
           <View style={styles.infoCol}>
             <Text style={[styles.infoLabel, { color: textSecondary }]}>
-              Current Duty
+              Deliveries
+            </Text>
+            <Text style={[styles.infoVal, { color: textPrimary }]}>
+              {totalDeliveries} ({rating} ★)
+            </Text>
+          </View>
+
+          <View style={[styles.infoCol, { alignItems: "flex-end" }]}>
+            <Text style={[styles.infoLabel, { color: textSecondary }]}>
+              Cash in Custody
             </Text>
             <Text
               style={[
                 styles.infoVal,
                 {
-                  color: isBusy
-                    ? "#F59E0B"
-                    : isOnline
-                      ? "#10B981"
-                      : textSecondary,
+                  color: cashBalance > 0 ? "#10B981" : textPrimary,
+                  fontWeight: "900",
                 },
               ]}
             >
-              {isBusy
-                ? "On Delivery"
-                : isOnline
-                  ? "Idle / Available"
-                  : "Offline"}
-            </Text>
-          </View>
-          <View style={styles.infoCol}>
-            <Text style={[styles.infoLabel, { color: textSecondary }]}>
-              Cash on Hand
-            </Text>
-            <Text
-              style={[
-                styles.infoVal,
-                { color: cashBalance > 0 ? "#10B981" : textPrimary },
-              ]}
-            >
-              ₹{cashBalance.toLocaleString("en-IN")}
+              NPR {cashBalance.toLocaleString()}
             </Text>
           </View>
         </View>
 
-        {/* Coordinates / deliveries */}
+        {/* Real Coordinates & Location Status */}
         <View style={[styles.footerRow, { borderTopColor: border }]}>
           <View style={styles.footerItem}>
-            <Feather name="map-pin" size={scale(12)} color="#94A3B8" />
+            <Feather
+              name="map-pin"
+              size={scale(12)}
+              color={hasGps ? "#10B981" : "#94A3B8"}
+            />
             <Text style={[styles.footerText, { color: textSecondary }]}>
-              {coordinates && coordinates[0] !== 0 && coordinates[1] !== 0
-                ? `${coordinates[1]?.toFixed(4)}, ${coordinates[0]?.toFixed(4)}`
-                : "No GPS reported"}
+              {hasGps
+                ? `${coords[1]?.toFixed(4)}°N, ${coords[0]?.toFixed(4)}°E`
+                : "GPS updating"}
             </Text>
           </View>
+
           <View style={styles.footerItem}>
-            <Feather name="check-circle" size={scale(12)} color="#10B981" />
+            <Feather name="shield" size={scale(12)} color="#10B981" />
             <Text style={[styles.footerText, { color: textSecondary }]}>
-              {totalDeliveries} completed
+              Status: {item.approvalStatus || "Approved"}
             </Text>
           </View>
         </View>
@@ -376,17 +641,51 @@ export default function AdminDeliveryBoysScreen() {
     );
   };
 
+  // ─── RENDER COD RECONCILIATION ITEM ───
   const renderCodItem = ({ item }: { item: any }) => {
+    // Correct real data bindings
     const riderName =
-      item.deliveryBoy?.user?.name || item.deliveryBoy?.name || "Rider";
+      item.deliveryBoyName ||
+      item.deliveryBoy?.fullName ||
+      item.deliveryBoy?.user?.name ||
+      item.deliveryBoy?.name ||
+      "Delivery Partner";
+
     const riderPhone =
-      item.deliveryBoy?.user?.phone || item.deliveryBoy?.phone || "N/A";
-    const expected = item.totalExpectedCod || 0;
-    const handedOver = item.totalHandedOver || 0;
-    const outstanding = item.outstandingBalance || 0;
+      item.phone ||
+      item.deliveryBoy?.phone ||
+      item.deliveryBoy?.user?.phone ||
+      "No phone registered";
+
+    const storeName =
+      item.vendorName ||
+      item.vendor?.businessDetails?.businessName ||
+      "Store";
+
+    const ordersCount =
+      item.ordersCount || (item.orders ? item.orders.length : 0);
+
+    const expected = item.expectedCod ?? item.totalExpectedCod ?? 0;
+    const handedOver = item.totalHandedOver ?? item.totalSubmitted ?? 0;
+    const outstanding =
+      item.outstanding ??
+      item.outstandingBalance ??
+      Math.max(0, expected - handedOver);
+
+    const totalCollected = item.totalCollected ?? expected;
+    const discrepancies =
+      item.discrepanciesCount ||
+      (item.discrepancies ? item.discrepancies.length : 0);
+
     const status =
       item.reconciliationStatus ||
-      (outstanding <= 0 ? "SETTLED" : "PENDING_HANDOVER");
+      (discrepancies > 0
+        ? "DISCREPANCY_REPORTED"
+        : outstanding <= 0
+        ? "RECONCILED"
+        : "AWAITING_HANDOVER");
+
+    const statusBadge = getCodStatusBadge(status);
 
     return (
       <View
@@ -396,51 +695,54 @@ export default function AdminDeliveryBoysScreen() {
         ]}
       >
         <View style={styles.codCardHeader}>
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1, marginRight: scale(10) }}>
             <Text style={[styles.riderName, { color: textPrimary }]}>
               {riderName}
             </Text>
-            <Text style={[styles.contactText, { color: textSecondary }]}>
-              {riderPhone}
-            </Text>
+            <View style={styles.metaRow}>
+              <Text style={[styles.contactText, { color: textSecondary }]}>
+                {riderPhone}
+              </Text>
+              <Text style={styles.metaDivider}>•</Text>
+              <Text
+                style={[styles.vendorText, { color: textPrimary }]}
+                numberOfLines={1}
+              >
+                <Ionicons
+                  name="storefront-outline"
+                  size={scale(11)}
+                  color="#10B981"
+                />{" "}
+                <Text style={{ fontWeight: "700" }}>{storeName}</Text>
+              </Text>
+            </View>
           </View>
 
           <View
             style={[
               styles.statusBadge,
               {
-                backgroundColor:
-                  status === "SETTLED"
-                    ? "rgba(16, 185, 129, 0.15)"
-                    : status === "MISMATCH_DISPUTE"
-                      ? "rgba(239, 68, 68, 0.15)"
-                      : "rgba(245, 158, 11, 0.15)",
+                backgroundColor: statusBadge.bg,
+                borderColor: statusBadge.border,
               },
             ]}
           >
             <Text
               style={[
                 styles.statusBadgeText,
-                {
-                  color:
-                    status === "SETTLED"
-                      ? "#10B981"
-                      : status === "MISMATCH_DISPUTE"
-                        ? "#EF4444"
-                        : "#F59E0B",
-                },
+                { color: statusBadge.color },
               ]}
             >
-              {status}
+              {statusBadge.label}
             </Text>
           </View>
         </View>
 
-        {/* Ledger Breakdown */}
+        {/* Real Financial Ledger Breakdown */}
         <View
           style={[
             styles.ledgerRow,
-            { backgroundColor: isDark ? "#10161C" : "#F8FAFC" },
+            { backgroundColor: bg, borderColor: border },
           ]}
         >
           <View style={styles.ledgerCol}>
@@ -448,18 +750,26 @@ export default function AdminDeliveryBoysScreen() {
               Expected COD
             </Text>
             <Text style={[styles.ledgerVal, { color: textPrimary }]}>
-              ₹{expected.toLocaleString("en-IN")}
+              NPR {expected.toLocaleString()}
+            </Text>
+            <Text style={[styles.subCountText, { color: textSecondary }]}>
+              {ordersCount} {ordersCount === 1 ? "order" : "orders"}
             </Text>
           </View>
+
           <View style={styles.ledgerCol}>
             <Text style={[styles.infoLabel, { color: textSecondary }]}>
               Handed Over
             </Text>
             <Text style={[styles.ledgerVal, { color: "#10B981" }]}>
-              ₹{handedOver.toLocaleString("en-IN")}
+              NPR {handedOver.toLocaleString()}
+            </Text>
+            <Text style={[styles.subCountText, { color: textSecondary }]}>
+              Submitted to store
             </Text>
           </View>
-          <View style={styles.ledgerCol}>
+
+          <View style={[styles.ledgerCol, { alignItems: "flex-end" }]}>
             <Text style={[styles.infoLabel, { color: textSecondary }]}>
               Outstanding
             </Text>
@@ -469,24 +779,53 @@ export default function AdminDeliveryBoysScreen() {
                 { color: outstanding > 0 ? "#EF4444" : "#10B981" },
               ]}
             >
-              ₹{outstanding.toLocaleString("en-IN")}
+              NPR {outstanding.toLocaleString()}
+            </Text>
+            <Text style={[styles.subCountText, { color: textSecondary }]}>
+              {outstanding > 0 ? "In rider custody" : "Fully settled"}
             </Text>
           </View>
         </View>
 
+        {/* Discrepancies notification if reported */}
+        {discrepancies > 0 && (
+          <View
+            style={[
+              styles.discrepancyBanner,
+              {
+                backgroundColor: isDark
+                  ? "rgba(239, 68, 68, 0.15)"
+                  : "#FEF2F2",
+                borderColor: isDark ? "#DC2626" : "#FECACA",
+              },
+            ]}
+          >
+            <Ionicons name="alert-circle" size={scale(14)} color="#EF4444" />
+            <Text style={[styles.discrepancyText, { color: "#EF4444" }]}>
+              {discrepancies} {discrepancies === 1 ? "shortfall" : "shortfalls"}{" "}
+              reported by store manager
+            </Text>
+          </View>
+        )}
+
         {/* COD Dispute Action */}
         <View style={[styles.codFooter, { borderTopColor: border }]}>
           <Text style={[styles.formulaText, { color: textSecondary }]}>
-            Expected − Handed Over = ₹{outstanding.toLocaleString("en-IN")}
+            NPR {expected.toLocaleString()} − NPR {handedOver.toLocaleString()} ={" "}
+            <Text style={{ fontWeight: "800", color: textPrimary }}>
+              NPR {outstanding.toLocaleString()}
+            </Text>
           </Text>
 
-          <TouchableOpacity
-            style={[styles.disputeBtn, { borderColor: "#EF4444" }]}
-            onPress={() => handleOpenDispute(item)}
-          >
-            <Feather name="alert-circle" size={scale(12)} color="#EF4444" />
-            <Text style={styles.disputeBtnText}>Raise Dispute</Text>
-          </TouchableOpacity>
+          {outstanding > 0 && (
+            <TouchableOpacity
+              style={[styles.disputeBtn, { borderColor: "#EF4444" }]}
+              onPress={() => handleOpenDispute(item)}
+            >
+              <Feather name="alert-circle" size={scale(12)} color="#EF4444" />
+              <Text style={styles.disputeBtnText}>Report Mismatch</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     );
@@ -496,7 +835,7 @@ export default function AdminDeliveryBoysScreen() {
     <View style={[styles.container, { backgroundColor: bg }]}>
       <AdminHeader
         title="Delivery Operations"
-        subtitle="Fleet Tracking & Cash Reconciliation"
+        subtitle="Rider Fleet & COD Cash Collection"
         showBack
       />
 
@@ -525,7 +864,7 @@ export default function AdminDeliveryBoysScreen() {
               { color: activeTab === "fleet" ? "#10B981" : textSecondary },
             ]}
           >
-            Fleet Availability ({localRiders.length})
+            Rider Fleet ({localRiders.length})
           </Text>
         </TouchableOpacity>
 
@@ -547,40 +886,143 @@ export default function AdminDeliveryBoysScreen() {
               { color: activeTab === "cod" ? "#10B981" : textSecondary },
             ]}
           >
-            COD Reconciliation
+            COD Reconciliation ({codReconciliation.length})
           </Text>
         </TouchableOpacity>
       </View>
 
       {activeTab === "fleet" ? (
         <>
-          {/* Search Header */}
-          <View
-            style={[
-              styles.searchBar,
-              { backgroundColor: cardBg, borderColor: border },
-            ]}
-          >
-            <Feather name="search" size={scale(16)} color="#94A3B8" />
-            <TextInput
-              style={[styles.searchInput, { color: textPrimary }]}
-              placeholder="Search riders by name, phone or vehicle..."
-              placeholderTextColor="#94A3B8"
-              value={search}
-              onChangeText={setSearch}
-              onSubmitEditing={loadRiders}
-              returnKeyType="search"
-            />
-            {search ? (
-              <TouchableOpacity
-                onPress={() => {
-                  setSearch("");
-                  dispatch(fetchAdminDeliveryBoys({}));
-                }}
+          {/* Top Fleet KPI Overview Bar */}
+          <View style={styles.kpiRow}>
+            <View
+              style={[
+                styles.kpiCard,
+                { backgroundColor: cardBg, borderColor: border },
+              ]}
+            >
+              <Text style={[styles.kpiValue, { color: textPrimary }]}>
+                {localRiders.length}
+              </Text>
+              <Text style={[styles.kpiLabel, { color: textSecondary }]}>
+                Total Fleet
+              </Text>
+            </View>
+
+            <View
+              style={[
+                styles.kpiCard,
+                { backgroundColor: cardBg, borderColor: border },
+              ]}
+            >
+              <Text style={[styles.kpiValue, { color: "#10B981" }]}>
+                {onlineCount}
+              </Text>
+              <Text style={[styles.kpiLabel, { color: textSecondary }]}>
+                Online Ready
+              </Text>
+            </View>
+
+            <View
+              style={[
+                styles.kpiCard,
+                { backgroundColor: cardBg, borderColor: border },
+              ]}
+            >
+              <Text style={[styles.kpiValue, { color: "#F59E0B" }]}>
+                {busyCount}
+              </Text>
+              <Text style={[styles.kpiLabel, { color: textSecondary }]}>
+                On Delivery
+              </Text>
+            </View>
+
+            <View
+              style={[
+                styles.kpiCard,
+                { backgroundColor: cardBg, borderColor: border },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.kpiValue,
+                  { color: totalFleetCash > 0 ? "#10B981" : textPrimary },
+                ]}
               >
-                <Feather name="x" size={scale(16)} color="#94A3B8" />
+                NPR {totalFleetCash.toLocaleString()}
+              </Text>
+              <Text style={[styles.kpiLabel, { color: textSecondary }]}>
+                Custody Cash
+              </Text>
+            </View>
+          </View>
+
+          {/* Search & View Mode Header */}
+          <View style={styles.controlsRow}>
+            <View
+              style={[
+                styles.searchBar,
+                { backgroundColor: cardBg, borderColor: border },
+              ]}
+            >
+              <Feather name="search" size={scale(15)} color={textSecondary} />
+              <TextInput
+                style={[styles.searchInput, { color: textPrimary }]}
+                placeholder="Search riders by name, phone or vehicle..."
+                placeholderTextColor={textSecondary}
+                value={search}
+                onChangeText={setSearch}
+                onSubmitEditing={loadRiders}
+                returnKeyType="search"
+              />
+              {search ? (
+                <TouchableOpacity
+                  onPress={() => {
+                    setSearch("");
+                    dispatch(fetchAdminDeliveryBoys({}));
+                  }}
+                >
+                  <Feather name="x" size={scale(15)} color={textSecondary} />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+
+            {/* View Mode Toggle Button */}
+            <View
+              style={[
+                styles.viewToggleGroup,
+                { backgroundColor: cardBg, borderColor: border },
+              ]}
+            >
+              <TouchableOpacity
+                style={[
+                  styles.viewToggleBtn,
+                  viewMode === "list" && styles.viewToggleBtnActive,
+                ]}
+                onPress={() => setViewMode("list")}
+                activeOpacity={0.7}
+              >
+                <Feather
+                  name="list"
+                  size={scale(15)}
+                  color={viewMode === "list" ? "#FFFFFF" : textSecondary}
+                />
               </TouchableOpacity>
-            ) : null}
+              <TouchableOpacity
+                style={[
+                  styles.viewToggleBtn,
+                  viewMode === "grid" && styles.viewToggleBtnActive,
+                ]}
+                onPress={() => setViewMode("grid")}
+                activeOpacity={0.7}
+              >
+                <Feather
+                  name="grid"
+                  size={scale(15)}
+                  color={viewMode === "grid" ? "#FFFFFF" : textSecondary}
+                />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Filter Chips */}
@@ -590,11 +1032,15 @@ export default function AdminDeliveryBoysScreen() {
               onPress={() => setOnlineOnly(false)}
             >
               <Text
-                style={[styles.chipText, !onlineOnly && styles.chipTextActive]}
+                style={[
+                  styles.chipText,
+                  !onlineOnly && styles.chipTextActive,
+                ]}
               >
-                All ({localRiders.length})
+                All Riders ({localRiders.length})
               </Text>
             </TouchableOpacity>
+
             <TouchableOpacity
               style={[styles.chip, onlineOnly && styles.chipActive]}
               onPress={() => setOnlineOnly(true)}
@@ -603,9 +1049,12 @@ export default function AdminDeliveryBoysScreen() {
                 style={[styles.statusDot, { backgroundColor: "#10B981" }]}
               />
               <Text
-                style={[styles.chipText, onlineOnly && styles.chipTextActive]}
+                style={[
+                  styles.chipText,
+                  onlineOnly && styles.chipTextActive,
+                ]}
               >
-                Active Online Only ({onlineCount})
+                Active Online ({onlineCount})
               </Text>
             </TouchableOpacity>
           </View>
@@ -613,11 +1062,17 @@ export default function AdminDeliveryBoysScreen() {
           {/* List */}
           <FlatList
             data={filteredRiders}
-            keyExtractor={(item) =>
-              item._id || item.id || String(Math.random())
-            }
+            keyExtractor={(item) => item._id || item.id || String(Math.random())}
             renderItem={renderRiderItem}
-            contentContainerStyle={styles.listContent}
+            numColumns={viewMode === "grid" ? 2 : 1}
+            key={viewMode}
+            columnWrapperStyle={
+              viewMode === "grid" ? styles.gridColumnWrapper : undefined
+            }
+            contentContainerStyle={[
+              styles.listContent,
+              { paddingHorizontal: isTablet ? scale(20) : scale(16) },
+            ]}
             refreshControl={
               <RefreshControl
                 refreshing={fleetLoading}
@@ -634,7 +1089,7 @@ export default function AdminDeliveryBoysScreen() {
                     color="#64748B"
                   />
                   <Text style={[styles.emptyText, { color: textSecondary }]}>
-                    No delivery riders found.
+                    No delivery riders found matching filter.
                   </Text>
                 </View>
               ) : undefined
@@ -643,6 +1098,72 @@ export default function AdminDeliveryBoysScreen() {
         </>
       ) : (
         <>
+          {/* Top COD KPI Overview Bar */}
+          <View style={styles.kpiRow}>
+            <View
+              style={[
+                styles.kpiCard,
+                { backgroundColor: cardBg, borderColor: border },
+              ]}
+            >
+              <Text style={[styles.kpiValue, { color: textPrimary }]}>
+                NPR{" "}
+                {(
+                  codSummary?.totalExpectedCod ??
+                  codReconciliation.reduce(
+                    (s, i) => s + (i.expectedCod || 0),
+                    0,
+                  )
+                ).toLocaleString()}
+              </Text>
+              <Text style={[styles.kpiLabel, { color: textSecondary }]}>
+                Expected COD
+              </Text>
+            </View>
+
+            <View
+              style={[
+                styles.kpiCard,
+                { backgroundColor: cardBg, borderColor: border },
+              ]}
+            >
+              <Text style={[styles.kpiValue, { color: "#10B981" }]}>
+                NPR{" "}
+                {(
+                  codSummary?.totalHandedOver ??
+                  codReconciliation.reduce(
+                    (s, i) => s + (i.totalHandedOver || 0),
+                    0,
+                  )
+                ).toLocaleString()}
+              </Text>
+              <Text style={[styles.kpiLabel, { color: textSecondary }]}>
+                Handed Over
+              </Text>
+            </View>
+
+            <View
+              style={[
+                styles.kpiCard,
+                { backgroundColor: cardBg, borderColor: border },
+              ]}
+            >
+              <Text style={[styles.kpiValue, { color: "#EF4444" }]}>
+                NPR{" "}
+                {(
+                  codSummary?.totalOutstanding ??
+                  codReconciliation.reduce(
+                    (s, i) => s + (i.outstanding || 0),
+                    0,
+                  )
+                ).toLocaleString()}
+              </Text>
+              <Text style={[styles.kpiLabel, { color: textSecondary }]}>
+                Outstanding
+              </Text>
+            </View>
+          </View>
+
           {/* Notice Banner */}
           <View
             style={[
@@ -660,19 +1181,39 @@ export default function AdminDeliveryBoysScreen() {
                 { color: isDark ? "#FCD34D" : "#92400E" },
               ]}
             >
-              COD Formula: Expected COD − Verified Submitted Collections −
-              Authorized Adjustments = Outstanding. StaffAdmin can audit and
-              flag disputes; ledger modifications are strictly audit-logged.
+              COD Formula: Expected COD − Verified Submitted Collections =
+              Outstanding Cash. Mismatches are audit-logged.
             </Text>
           </View>
 
+          {/* COD Search Box */}
+          <View
+            style={[
+              styles.codSearchBar,
+              { backgroundColor: cardBg, borderColor: border },
+            ]}
+          >
+            <Feather name="search" size={scale(15)} color={textSecondary} />
+            <TextInput
+              style={[styles.searchInput, { color: textPrimary }]}
+              placeholder="Filter by rider name, store, or phone..."
+              placeholderTextColor={textSecondary}
+              value={codSearch}
+              onChangeText={setCodSearch}
+              clearButtonMode="while-editing"
+            />
+          </View>
+
           <FlatList
-            data={codReconciliation}
+            data={filteredCodList}
             keyExtractor={(item, idx) =>
               item._id || item.deliveryBoyId || String(idx)
             }
             renderItem={renderCodItem}
-            contentContainerStyle={styles.listContent}
+            contentContainerStyle={[
+              styles.listContent,
+              { paddingHorizontal: isTablet ? scale(20) : scale(16) },
+            ]}
             refreshControl={
               <RefreshControl
                 refreshing={codRefreshing}
@@ -711,7 +1252,7 @@ export default function AdminDeliveryBoysScreen() {
       )}
 
       {/* COD Dispute Modal */}
-      <Modal visible={!!disputeRider} transparent animationType="slide">
+      <Modal visible={!!disputeRider} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View
             style={[
@@ -720,29 +1261,64 @@ export default function AdminDeliveryBoysScreen() {
             ]}
           >
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: textPrimary }]}>
-                Raise COD Discrepancy Dispute
-              </Text>
+              <View>
+                <Text style={[styles.modalTitle, { color: textPrimary }]}>
+                  Report Cash Mismatch
+                </Text>
+                <Text style={[styles.modalSubtitle, { color: textSecondary }]}>
+                  Flag COD collection discrepancy for review
+                </Text>
+              </View>
               <TouchableOpacity onPress={() => setDisputeRider(null)}>
                 <Feather name="x" size={scale(20)} color={textSecondary} />
               </TouchableOpacity>
             </View>
 
             {disputeRider && (
-              <>
-                <Text style={[styles.inputLabel, { color: textPrimary }]}>
-                  Delivery Partner:{" "}
-                  {disputeRider.deliveryBoy?.user?.name ||
-                    disputeRider.deliveryBoy?.name}
-                </Text>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                style={{ maxHeight: scale(430) }}
+              >
+                <View
+                  style={[
+                    styles.disputeDetailsBox,
+                    { backgroundColor: bg, borderColor: border },
+                  ]}
+                >
+                  <Text style={[styles.disputeFieldLabel, { color: textSecondary }]}>
+                    Delivery Partner
+                  </Text>
+                  <Text
+                    style={[styles.disputeFieldValue, { color: textPrimary }]}
+                  >
+                    {disputeRider.deliveryBoyName ||
+                      disputeRider.deliveryBoy?.fullName ||
+                      disputeRider.deliveryBoy?.name ||
+                      "Delivery Partner"}
+                  </Text>
+
+                  <Text
+                    style={[
+                      styles.disputeFieldLabel,
+                      { color: textSecondary, marginTop: scale(6) },
+                    ]}
+                  >
+                    Store
+                  </Text>
+                  <Text
+                    style={[styles.disputeFieldValue, { color: textPrimary }]}
+                  >
+                    {disputeRider.vendorName || "Store"}
+                  </Text>
+                </View>
 
                 <Text
                   style={[
                     styles.inputLabel,
-                    { color: textPrimary, marginTop: scale(10) },
+                    { color: textPrimary, marginTop: scale(12) },
                   ]}
                 >
-                  Disputed Amount (₹):
+                  Disputed Amount (NPR):
                 </Text>
                 <TextInput
                   style={[
@@ -764,7 +1340,7 @@ export default function AdminDeliveryBoysScreen() {
                     { color: textPrimary, marginTop: scale(10) },
                   ]}
                 >
-                  Dispute Reason:
+                  Reason:
                 </Text>
                 <TextInput
                   style={[
@@ -775,7 +1351,7 @@ export default function AdminDeliveryBoysScreen() {
                       color: textPrimary,
                     },
                   ]}
-                  placeholder="e.g., Short collection handed over at hub..."
+                  placeholder="e.g., Short cash handed over at store hub..."
                   placeholderTextColor={textSecondary}
                   value={disputeReason}
                   onChangeText={setDisputeReason}
@@ -798,7 +1374,7 @@ export default function AdminDeliveryBoysScreen() {
                       color: textPrimary,
                     },
                   ]}
-                  placeholder="Order numbers, hub manager remarks, or cash slip reference..."
+                  placeholder="Order numbers, store manager remarks, or cash slip reference..."
                   placeholderTextColor={textSecondary}
                   multiline
                   numberOfLines={3}
@@ -812,7 +1388,10 @@ export default function AdminDeliveryBoysScreen() {
                     onPress={() => setDisputeRider(null)}
                   >
                     <Text
-                      style={[styles.modalCancelText, { color: textSecondary }]}
+                      style={[
+                        styles.modalCancelText,
+                        { color: textSecondary },
+                      ]}
                     >
                       Cancel
                     </Text>
@@ -833,7 +1412,7 @@ export default function AdminDeliveryBoysScreen() {
                     )}
                   </TouchableOpacity>
                 </View>
-              </>
+              </ScrollView>
             )}
           </View>
         </View>
@@ -849,8 +1428,8 @@ const styles = StyleSheet.create({
   segmentBar: {
     flexDirection: "row",
     marginHorizontal: scale(16),
-    marginTop: scale(12),
-    borderRadius: scale(10),
+    marginTop: scale(10),
+    borderRadius: scale(12),
     borderWidth: 1,
     padding: scale(3),
   },
@@ -861,35 +1440,95 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: scale(6),
     paddingVertical: scale(8),
-    borderRadius: scale(8),
+    borderRadius: scale(9),
   },
   segmentBtnActive: {
     backgroundColor: "rgba(16, 185, 129, 0.12)",
   },
   segmentText: {
-    fontSize: moderateScale(12),
+    fontSize: moderateScale(11.5),
     fontWeight: "800",
   },
-  searchBar: {
+
+  // KPI Overview Bar
+  kpiRow: {
+    flexDirection: "row",
+    gap: scale(8),
+    marginHorizontal: scale(16),
+    marginTop: scale(10),
+  },
+  kpiCard: {
+    flex: 1,
+    paddingVertical: scale(8),
+    paddingHorizontal: scale(6),
+    borderRadius: scale(10),
+    borderWidth: 1,
+    alignItems: "center",
+  },
+  kpiValue: {
+    fontSize: moderateScale(13),
+    fontWeight: "900",
+  },
+  kpiLabel: {
+    fontSize: moderateScale(9.5),
+    fontWeight: "600",
+    marginTop: scale(2),
+  },
+
+  // Controls & Search
+  controlsRow: {
     flexDirection: "row",
     alignItems: "center",
     marginHorizontal: scale(16),
     marginTop: scale(10),
-    paddingHorizontal: scale(12),
-    paddingVertical: scale(10),
+    gap: scale(8),
+  },
+  searchBar: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: scale(10),
+    height: scale(38),
+    borderRadius: scale(10),
+    borderWidth: 1,
+    gap: scale(8),
+  },
+  codSearchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: scale(16),
+    marginTop: scale(8),
+    paddingHorizontal: scale(10),
+    height: scale(38),
     borderRadius: scale(10),
     borderWidth: 1,
     gap: scale(8),
   },
   searchInput: {
     flex: 1,
-    fontSize: moderateScale(13),
+    fontSize: moderateScale(12),
+    paddingVertical: 0,
   },
+  viewToggleGroup: {
+    flexDirection: "row",
+    borderWidth: 1,
+    borderRadius: scale(10),
+    padding: scale(2),
+  },
+  viewToggleBtn: {
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(6),
+    borderRadius: scale(8),
+  },
+  viewToggleBtnActive: {
+    backgroundColor: "#10B981",
+  },
+
   chipsRow: {
     flexDirection: "row",
     gap: scale(8),
     paddingHorizontal: scale(16),
-    marginTop: scale(10),
+    marginTop: scale(8),
     marginBottom: scale(4),
   },
   chip: {
@@ -905,7 +1544,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#10B981",
   },
   chipText: {
-    fontSize: moderateScale(12),
+    fontSize: moderateScale(11),
     fontWeight: "700",
     color: "#94A3B8",
   },
@@ -913,11 +1552,13 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
   },
   listContent: {
-    padding: scale(16),
-    gap: scale(12),
+    paddingVertical: scale(10),
+    gap: scale(10),
   },
+
+  // ─── FLEET LIST CARD ───
   riderCard: {
-    borderRadius: scale(12),
+    borderRadius: scale(14),
     borderWidth: 1,
     padding: scale(14),
   },
@@ -932,14 +1573,39 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  avatarWrapSmall: {
+    width: scale(36),
+    height: scale(36),
+    borderRadius: scale(10),
+    alignItems: "center",
+    justifyContent: "center",
+  },
   titleRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     justifyContent: "space-between",
   },
   riderName: {
-    fontSize: moderateScale(14),
+    fontSize: moderateScale(13.5),
     fontWeight: "800",
+  },
+  contactText: {
+    fontSize: moderateScale(11),
+    marginTop: scale(2),
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: scale(3),
+    flexWrap: "wrap",
+    gap: scale(4),
+  },
+  metaDivider: {
+    color: "#94A3B8",
+    fontSize: moderateScale(10),
+  },
+  vendorText: {
+    fontSize: moderateScale(11),
   },
   statusBadge: {
     flexDirection: "row",
@@ -947,7 +1613,17 @@ const styles = StyleSheet.create({
     gap: scale(5),
     paddingHorizontal: scale(8),
     paddingVertical: scale(3),
-    borderRadius: scale(12),
+    borderRadius: scale(8),
+    borderWidth: 1,
+  },
+  statusBadgeCompact: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(4),
+    paddingHorizontal: scale(6),
+    paddingVertical: scale(2),
+    borderRadius: scale(6),
+    borderWidth: 1,
   },
   statusDot: {
     width: scale(6),
@@ -957,24 +1633,39 @@ const styles = StyleSheet.create({
   statusBadgeText: {
     fontSize: moderateScale(10),
     fontWeight: "800",
-    textTransform: "uppercase",
   },
-  contactText: {
-    fontSize: moderateScale(12),
-    marginTop: scale(2),
+  statusBadgeTextCompact: {
+    fontSize: moderateScale(9),
+    fontWeight: "800",
+  },
+  activeOrderBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(6),
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(6),
+    borderRadius: scale(8),
+    borderWidth: 1,
+    marginTop: scale(10),
+  },
+  activeOrderText: {
+    fontSize: moderateScale(11),
+    fontWeight: "800",
   },
   infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: scale(12),
+    marginTop: scale(10),
     padding: scale(10),
-    borderRadius: scale(8),
+    borderRadius: scale(10),
+    borderWidth: 1,
   },
   infoCol: {
     alignItems: "flex-start",
+    flex: 1,
   },
   infoLabel: {
-    fontSize: moderateScale(10),
+    fontSize: moderateScale(9.5),
     fontWeight: "700",
     textTransform: "uppercase",
   },
@@ -997,22 +1688,54 @@ const styles = StyleSheet.create({
     gap: scale(4),
   },
   footerText: {
-    fontSize: moderateScale(11),
+    fontSize: moderateScale(10.5),
   },
-  emptyContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: scale(60),
+
+  // ─── FLEET GRID CARD ───
+  gridColumnWrapper: {
     gap: scale(10),
   },
-  emptyText: {
-    fontSize: moderateScale(13),
+  riderGridCard: {
+    flex: 1,
+    borderRadius: scale(14),
+    borderWidth: 1,
+    padding: scale(12),
+    marginBottom: scale(8),
+    justifyContent: "space-between",
   },
+  gridHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  gridMetricRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginVertical: scale(8),
+  },
+  gridMetricLabel: {
+    fontSize: moderateScale(9),
+    fontWeight: "700",
+  },
+  gridMetricVal: {
+    fontSize: moderateScale(12),
+    fontWeight: "900",
+    marginTop: scale(1),
+  },
+  gridFooterRow: {
+    borderTopWidth: 1,
+    paddingTop: scale(6),
+  },
+  gridVehicleText: {
+    fontSize: moderateScale(10),
+  },
+
+  // ─── COD CARD ───
   codBanner: {
     flexDirection: "row",
     alignItems: "center",
     marginHorizontal: scale(16),
-    marginTop: scale(10),
+    marginTop: scale(8),
     padding: scale(10),
     borderRadius: scale(8),
     borderWidth: 1,
@@ -1024,7 +1747,7 @@ const styles = StyleSheet.create({
     lineHeight: scale(15),
   },
   codCard: {
-    borderRadius: scale(12),
+    borderRadius: scale(14),
     borderWidth: 1,
     padding: scale(14),
   },
@@ -1038,15 +1761,35 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginTop: scale(10),
     padding: scale(10),
-    borderRadius: scale(8),
+    borderRadius: scale(10),
+    borderWidth: 1,
   },
   ledgerCol: {
     alignItems: "flex-start",
+    flex: 1,
   },
   ledgerVal: {
     fontSize: moderateScale(13),
     fontWeight: "900",
     marginTop: scale(2),
+  },
+  subCountText: {
+    fontSize: moderateScale(9.5),
+    marginTop: scale(1),
+  },
+  discrepancyBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(6),
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(6),
+    borderRadius: scale(8),
+    borderWidth: 1,
+    marginTop: scale(8),
+  },
+  discrepancyText: {
+    fontSize: moderateScale(10.5),
+    fontWeight: "700",
   },
   codFooter: {
     flexDirection: "row",
@@ -1055,6 +1798,7 @@ const styles = StyleSheet.create({
     marginTop: scale(10),
     paddingTop: scale(8),
     borderTopWidth: 0.8,
+    gap: scale(8),
   },
   formulaText: {
     fontSize: moderateScale(10),
@@ -1065,8 +1809,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 1,
     borderRadius: scale(6),
-    paddingHorizontal: scale(8),
-    paddingVertical: scale(4),
+    paddingHorizontal: scale(9),
+    paddingVertical: scale(5),
     gap: scale(4),
   },
   disputeBtnText: {
@@ -1074,43 +1818,78 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(10),
     fontWeight: "800",
   },
+
+  // Empty State
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: scale(60),
+    gap: scale(10),
+  },
+  emptyText: {
+    fontSize: moderateScale(12.5),
+  },
+
+  // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
+    backgroundColor: "rgba(0,0,0,0.65)",
     justifyContent: "center",
+    alignItems: "center",
     padding: scale(16),
   },
   modalContent: {
-    borderRadius: scale(14),
+    width: "100%",
+    maxWidth: scale(460),
+    borderRadius: scale(18),
     borderWidth: 1,
-    padding: scale(16),
+    padding: scale(18),
   },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
     marginBottom: scale(12),
   },
   modalTitle: {
     fontSize: moderateScale(15),
     fontWeight: "900",
   },
+  modalSubtitle: {
+    fontSize: moderateScale(11),
+    marginTop: scale(2),
+  },
+  disputeDetailsBox: {
+    borderWidth: 1,
+    borderRadius: scale(10),
+    padding: scale(10),
+    marginBottom: scale(6),
+  },
+  disputeFieldLabel: {
+    fontSize: moderateScale(9.5),
+    fontWeight: "700",
+  },
+  disputeFieldValue: {
+    fontSize: moderateScale(12),
+    fontWeight: "800",
+    marginTop: scale(1),
+  },
   inputLabel: {
     fontSize: moderateScale(11),
-    fontWeight: "700",
+    fontWeight: "800",
     marginBottom: scale(4),
   },
   inputBox: {
     borderWidth: 1,
     borderRadius: scale(8),
-    padding: scale(8),
-    fontSize: moderateScale(12),
+    padding: scale(9),
+    fontSize: moderateScale(11.5),
   },
   modalTextArea: {
     borderWidth: 1,
     borderRadius: scale(8),
     padding: scale(10),
-    fontSize: moderateScale(11),
+    fontSize: moderateScale(11.5),
     textAlignVertical: "top",
     minHeight: scale(60),
   },
