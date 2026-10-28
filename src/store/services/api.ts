@@ -6,14 +6,10 @@ import axios from "axios";
  * - Defaults to LAN IP: http://169.58.31.214:5001/api (works for Physical Devices, Web, and Emulators)
  * - Can be overridden dynamically with process.env.EXPO_PUBLIC_API_URL
  */
-const LIVE_API_URL = "http://169.58.31.214:5001/api";
+const DEFAULT_API_URL = "http://192.168.29.235:5000/api";
 
 const getDefaultApiUrl = () => {
-  const envUrl = process.env.EXPO_PUBLIC_API_URL;
-  if (envUrl && !envUrl.includes("192.168.") && !envUrl.includes("localhost:5000")) {
-    return envUrl;
-  }
-  return LIVE_API_URL;
+  return process.env.EXPO_PUBLIC_API_URL || DEFAULT_API_URL;
 };
 
 export const API_BASE_URL = getDefaultApiUrl();

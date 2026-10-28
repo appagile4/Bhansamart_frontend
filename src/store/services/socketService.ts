@@ -6,12 +6,10 @@ import { API_BASE_URL } from "./api";
  * Resolve Socket.IO base URL from API_BASE_URL
  */
 const getSocketUrl = () => {
-  const envSocket = process.env.EXPO_PUBLIC_SOCKET_URL;
-  if (envSocket && !envSocket.includes("192.168.") && !envSocket.includes("localhost:5000")) {
-    return envSocket;
-  }
-  // Strip trailing /api from API_BASE_URL (e.g., http://169.58.31.214:5001/api -> http://169.58.31.214:5001)
-  return API_BASE_URL.replace(/\/api\/?$/, "");
+  return (
+    process.env.EXPO_PUBLIC_SOCKET_URL ||
+    API_BASE_URL.replace(/\/api\/?$/, "")
+  );
 };
 
 class SocketService {

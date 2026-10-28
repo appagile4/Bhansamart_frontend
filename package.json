@@ -56,7 +56,7 @@
   },
   "scripts": {
     "start": "expo start",
-    "launch": "adb reverse tcp:8081 tcp:8081 && adb reverse tcp:5001 tcp:5001 && adb shell am start -a android.intent.action.VIEW -d exp://localhost:8081 host.exp.exponent",
+    "launch": "adb reverse tcp:8081 tcp:8081 && adb reverse tcp:5000 tcp:5000 && adb shell am start -a android.intent.action.VIEW -d exp://localhost:8081 host.exp.exponent",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo start --android",
     "ios": "expo start --ios",
