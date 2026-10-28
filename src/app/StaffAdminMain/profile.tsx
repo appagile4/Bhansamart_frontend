@@ -1,4 +1,13 @@
-import React, { useEffect, useState } from "react";
+import { getStoreDisplayName } from "@/components/AdminStoreFilterDropdown";
+import StaffAdminHeader from "@/components/staffAdminComponent/StaffAdminHeader";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { fetchStaffAssignedVendorsApi } from "@/store/services/adminService";
+import { logoutUser } from "@/store/slices/authSlice";
+import { moderateScale, scale, useTheme } from "@/theme";
+import storage from "@/utils/storage";
+import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import {
   Alert,
   ScrollView,
@@ -7,15 +16,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { logoutUser } from "@/store/slices/authSlice";
-import storage from "@/utils/storage";
-import { moderateScale, scale, useTheme } from "@/theme";
-import StaffAdminHeader from "@/components/staffAdminComponent/StaffAdminHeader";
-import { fetchStaffAssignedVendorsApi } from "@/store/services/adminService";
-import { getStoreDisplayName } from "@/components/AdminStoreFilterDropdown";
 
 export default function StaffAdminProfileScreen() {
   const router = useRouter();
@@ -41,18 +41,22 @@ export default function StaffAdminProfileScreen() {
   }, []);
 
   const handleLogout = () => {
-    Alert.alert("Sign Out", "Are you sure you want to sign out from Staff Admin Console?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Sign Out",
-        style: "destructive",
-        onPress: async () => {
-          await storage.removeItem("bhansa_admin_token");
-          await dispatch(logoutUser());
-          router.replace("/(auth)/admin-login" as any);
+    Alert.alert(
+      "Sign Out",
+      "Are you sure you want to sign out from Staff Admin Console?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Sign Out",
+          style: "destructive",
+          onPress: async () => {
+            await storage.removeItem("bhansa_admin_token");
+            await dispatch(logoutUser());
+            router.replace("/(auth)/admin-login" as any);
+          },
         },
-      },
-    ]);
+      ],
+    );
   };
 
   const cardBg = isDark ? "#151D24" : "#FFFFFF";
@@ -78,7 +82,9 @@ export default function StaffAdminProfileScreen() {
   };
 
   return (
-    <View style={[styles.root, { backgroundColor: isDark ? "#0A0F12" : "#F8FAFC" }]}>
+    <View
+      style={[styles.root, { backgroundColor: isDark ? "#0A0F12" : "#F8FAFC" }]}
+    >
       <StaffAdminHeader
         title="Admin Profile"
         subtitle="Staff Role & Assignment"
@@ -89,9 +95,18 @@ export default function StaffAdminProfileScreen() {
         contentContainerStyle={styles.scrollContent}
       >
         {/* Profile Card */}
-        <View style={[styles.profileCard, { backgroundColor: cardBg, borderColor: border }]}>
+        <View
+          style={[
+            styles.profileCard,
+            { backgroundColor: cardBg, borderColor: border },
+          ]}
+        >
           <View style={styles.avatarBig}>
-            <MaterialCommunityIcons name="account-tie" size={scale(36)} color="#0284C7" />
+            <MaterialCommunityIcons
+              name="account-tie"
+              size={scale(36)}
+              color="#0284C7"
+            />
           </View>
           <View style={styles.profileInfo}>
             <Text style={[styles.profileName, { color: textPrimary }]}>
@@ -114,23 +129,39 @@ export default function StaffAdminProfileScreen() {
         </View>
 
         {/* Assigned Vendors Scoping Card */}
-        <View style={[styles.sectionCard, { backgroundColor: cardBg, borderColor: border }]}>
+        <View
+          style={[
+            styles.sectionCard,
+            { backgroundColor: cardBg, borderColor: border },
+          ]}
+        >
           <View style={styles.cardHeader}>
-            <MaterialCommunityIcons name="storefront-check" size={scale(20)} color="#0284C7" />
+            <MaterialCommunityIcons
+              name="storefront-check"
+              size={scale(20)}
+              color="#0284C7"
+            />
             <Text style={[styles.cardTitle, { color: textPrimary }]}>
               Assigned Store Scope ({assignedStores.length})
             </Text>
           </View>
           <Text style={[styles.cardDesc, { color: textSecondary }]}>
-            Your operations, dashboards, order actions, and tickets are strictly bounded to the following stores assigned by platform Superadmin:
+            Your operations, dashboards, order actions, and tickets are strictly
+            bounded to the following stores assigned by platform Superadmin:
           </Text>
 
           <View style={styles.storesWrap}>
             {assignedStores.length > 0 ? (
               assignedStores.map((st) => (
                 <View key={st._id || st.id} style={styles.storePill}>
-                  <MaterialCommunityIcons name="storefront" size={scale(14)} color="#0369A1" />
-                  <Text style={styles.storePillText}>{getStoreDisplayName(st)}</Text>
+                  <MaterialCommunityIcons
+                    name="storefront"
+                    size={scale(14)}
+                    color="#0369A1"
+                  />
+                  <Text style={styles.storePillText}>
+                    {getStoreDisplayName(st)}
+                  </Text>
                 </View>
               ))
             ) : (
@@ -142,9 +173,18 @@ export default function StaffAdminProfileScreen() {
         </View>
 
         {/* Granted Permissions Card */}
-        <View style={[styles.sectionCard, { backgroundColor: cardBg, borderColor: border }]}>
+        <View
+          style={[
+            styles.sectionCard,
+            { backgroundColor: cardBg, borderColor: border },
+          ]}
+        >
           <View style={styles.cardHeader}>
-            <MaterialCommunityIcons name="shield-check" size={scale(20)} color="#059669" />
+            <MaterialCommunityIcons
+              name="shield-check"
+              size={scale(20)}
+              color="#059669"
+            />
             <Text style={[styles.cardTitle, { color: textPrimary }]}>
               Operational Permissions
             </Text>
@@ -158,7 +198,12 @@ export default function StaffAdminProfileScreen() {
                   size={scale(16)}
                   color={val ? "#059669" : "#94A3B8"}
                 />
-                <Text style={[styles.permText, { color: val ? textPrimary : textSecondary }]}>
+                <Text
+                  style={[
+                    styles.permText,
+                    { color: val ? textPrimary : textSecondary },
+                  ]}
+                >
                   {key
                     .replace(/^can/, "")
                     .replace(/([A-Z])/g, " $1")
@@ -170,9 +215,14 @@ export default function StaffAdminProfileScreen() {
 
           {/* Security Disclaimer */}
           <View style={styles.securityNoticeBox}>
-            <MaterialCommunityIcons name="lock-outline" size={scale(16)} color="#0284C7" />
+            <MaterialCommunityIcons
+              name="lock-outline"
+              size={scale(16)}
+              color="#0284C7"
+            />
             <Text style={styles.securityNoticeText}>
-              Financial payouts, central bank configs, and platform commission ledgers are restricted strictly to Platform Superadmin.
+              Financial payouts, central bank configs, and platform commission
+              ledgers are restricted strictly to Platform Superadmin.
             </Text>
           </View>
         </View>
@@ -198,7 +248,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: scale(14),
     paddingTop: moderateScale(14),
-    paddingBottom: moderateScale(40),
+    paddingBottom: moderateScale(100),
     gap: moderateScale(14),
   },
   profileCard: {

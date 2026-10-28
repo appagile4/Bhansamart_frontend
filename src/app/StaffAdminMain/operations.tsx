@@ -1,4 +1,7 @@
-import React, { useState } from "react";
+import StaffAdminHeader from "@/components/staffAdminComponent/StaffAdminHeader";
+import { moderateScale, scale, useTheme } from "@/theme";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import {
   ScrollView,
   StyleSheet,
@@ -6,10 +9,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { moderateScale, scale, useTheme } from "@/theme";
-import StaffAdminHeader from "@/components/staffAdminComponent/StaffAdminHeader";
 
 export default function StaffAdminOperationsScreen() {
   const router = useRouter();
@@ -25,7 +24,8 @@ export default function StaffAdminOperationsScreen() {
     {
       id: "refunds",
       title: "Returns & Refund Claims",
-      subtitle: "Vendor-accepted 8-step returns lifecycle, examination & payout notes",
+      subtitle:
+        "Vendor-accepted 8-step returns lifecycle, examination & payout notes",
       icon: "keyboard-return" as const,
       iconColor: "#DC2626",
       iconBg: "rgba(220, 38, 38, 0.1)",
@@ -35,7 +35,8 @@ export default function StaffAdminOperationsScreen() {
     {
       id: "brands",
       title: "Brand Submission Queue",
-      subtitle: "Review store brand name, logo, certification docs & permissions",
+      subtitle:
+        "Review store brand name, logo, certification docs & permissions",
       icon: "certificate-outline" as const,
       iconColor: "#7C3AED",
       iconBg: "rgba(124, 58, 237, 0.1)",
@@ -45,7 +46,8 @@ export default function StaffAdminOperationsScreen() {
     {
       id: "withdrawals",
       title: "Withdrawal Requests",
-      subtitle: "Inspect vendor requested amount, ledger history & escalate to Superadmin",
+      subtitle:
+        "Inspect vendor requested amount, ledger history & escalate to Superadmin",
       icon: "cash-fast" as const,
       iconColor: "#D97706",
       iconBg: "rgba(217, 119, 6, 0.1)",
@@ -55,7 +57,8 @@ export default function StaffAdminOperationsScreen() {
     {
       id: "tickets",
       title: "Vendor Support Tickets",
-      subtitle: "Communicate directly with store owners, view attachments & replies",
+      subtitle:
+        "Communicate directly with store owners, view attachments & replies",
       icon: "ticket-confirmation-outline" as const,
       iconColor: "#2563EB",
       iconBg: "rgba(37, 99, 235, 0.1)",
@@ -65,7 +68,8 @@ export default function StaffAdminOperationsScreen() {
     {
       id: "products",
       title: "Product Moderation",
-      subtitle: "Inspect assigned store products, stock status, pricing & approvals",
+      subtitle:
+        "Inspect assigned store products, stock status, pricing & approvals",
       icon: "cube-scan" as const,
       iconColor: "#059669",
       iconBg: "rgba(5, 150, 105, 0.1)",
@@ -75,7 +79,8 @@ export default function StaffAdminOperationsScreen() {
     {
       id: "orders",
       title: "Orders Tracking & Fulfillment",
-      subtitle: "View scoped orders, customer addresses, rider status & live updates",
+      subtitle:
+        "View scoped orders, customer addresses, rider status & live updates",
       icon: "package-variant-closed" as const,
       iconColor: "#0284C7",
       iconBg: "rgba(2, 132, 199, 0.1)",
@@ -85,7 +90,8 @@ export default function StaffAdminOperationsScreen() {
     {
       id: "broadcasts",
       title: "Vendor Broadcast Notifications",
-      subtitle: "Dispatch announcements, alerts & urgent notices with RBAC targeting",
+      subtitle:
+        "Dispatch announcements, alerts & urgent notices with RBAC targeting",
       icon: "bullhorn-outline" as const,
       iconColor: "#0EA5E9",
       iconBg: "rgba(14, 165, 233, 0.1)",
@@ -95,7 +101,9 @@ export default function StaffAdminOperationsScreen() {
   ];
 
   return (
-    <View style={[styles.root, { backgroundColor: isDark ? "#0A0F12" : "#F8FAFC" }]}>
+    <View
+      style={[styles.root, { backgroundColor: isDark ? "#0A0F12" : "#F8FAFC" }]}
+    >
       <StaffAdminHeader
         title="Operations Hub"
         subtitle="Staff Admin Review & Queues"
@@ -110,7 +118,8 @@ export default function StaffAdminOperationsScreen() {
             Operational Task Workflows
           </Text>
           <Text style={[styles.introDesc, { color: textSecondary }]}>
-            All actions and reviews are logged to the platform audit trail and strictly scoped to your assigned stores.
+            All actions and reviews are logged to the platform audit trail and
+            strictly scoped to your assigned stores.
           </Text>
         </View>
 
@@ -120,10 +129,17 @@ export default function StaffAdminOperationsScreen() {
               key={mod.id}
               activeOpacity={0.7}
               onPress={() => router.push(mod.route as any)}
-              style={[styles.moduleCard, { backgroundColor: cardBg, borderColor: border }]}
+              style={[
+                styles.moduleCard,
+                { backgroundColor: cardBg, borderColor: border },
+              ]}
             >
               <View style={[styles.iconBox, { backgroundColor: mod.iconBg }]}>
-                <MaterialCommunityIcons name={mod.icon} size={scale(22)} color={mod.iconColor} />
+                <MaterialCommunityIcons
+                  name={mod.icon}
+                  size={scale(22)}
+                  color={mod.iconColor}
+                />
               </View>
 
               <View style={styles.infoCol}>
@@ -142,7 +158,11 @@ export default function StaffAdminOperationsScreen() {
                 </Text>
               </View>
 
-              <Feather name="chevron-right" size={scale(18)} color={textSecondary} />
+              <Feather
+                name="chevron-right"
+                size={scale(18)}
+                color={textSecondary}
+              />
             </TouchableOpacity>
           ))}
         </View>
@@ -158,7 +178,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: scale(14),
     paddingTop: moderateScale(14),
-    paddingBottom: moderateScale(30),
+    paddingBottom: moderateScale(100),
     gap: moderateScale(14),
   },
   introBox: {

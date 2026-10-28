@@ -67,7 +67,7 @@
           "icon": "./assets/images/icon.png",
           "color": "#208AEF",
           "sounds": [],
-          "defaultChannel": "default"
+          "defaultChannel": "bhansamart_default_v1"
         }
       ]
     ],

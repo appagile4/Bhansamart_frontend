@@ -1,6 +1,11 @@
-import React, { useEffect, useState } from "react";
+import DashboardStatCard from "@/components/staffAdminComponent/DashboardStatCard";
+import StaffAdminHeader from "@/components/staffAdminComponent/StaffAdminHeader";
+import { fetchDeliveryCodReconciliationAdminApi } from "@/store/services/adminService";
+import { moderateScale, scale, useTheme } from "@/theme";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -8,12 +13,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { moderateScale, scale, useTheme } from "@/theme";
-import StaffAdminHeader from "@/components/staffAdminComponent/StaffAdminHeader";
-import DashboardStatCard from "@/components/staffAdminComponent/DashboardStatCard";
-import { fetchDeliveryCodReconciliationAdminApi } from "@/store/services/adminService";
 
 export default function StaffAdminDeliveriesScreen() {
   const router = useRouter();
@@ -53,12 +52,22 @@ export default function StaffAdminDeliveriesScreen() {
   const textSecondary = isDark ? "#94A3B8" : "#64748B";
 
   // Calculate totals
-  const totalRidersWithCash = codData.filter((r) => Number(r.pendingCash || r.outstandingCash || 0) > 0).length;
-  const totalOutstandingCash = codData.reduce((acc, curr) => acc + Number(curr.pendingCash || curr.outstandingCash || 0), 0);
-  const totalCollectedCash = codData.reduce((acc, curr) => acc + Number(curr.totalCollected || 0), 0);
+  const totalRidersWithCash = codData.filter(
+    (r) => Number(r.pendingCash || r.outstandingCash || 0) > 0,
+  ).length;
+  const totalOutstandingCash = codData.reduce(
+    (acc, curr) => acc + Number(curr.pendingCash || curr.outstandingCash || 0),
+    0,
+  );
+  const totalCollectedCash = codData.reduce(
+    (acc, curr) => acc + Number(curr.totalCollected || 0),
+    0,
+  );
 
   return (
-    <View style={[styles.root, { backgroundColor: isDark ? "#0A0F12" : "#F8FAFC" }]}>
+    <View
+      style={[styles.root, { backgroundColor: isDark ? "#0A0F12" : "#F8FAFC" }]}
+    >
       <StaffAdminHeader
         title="Fleet & COD"
         subtitle="Rider Tracking & Cash Handover"
@@ -68,7 +77,11 @@ export default function StaffAdminDeliveriesScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0284C7" />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#0284C7"
+          />
         }
         contentContainerStyle={styles.scrollContent}
       >
@@ -76,36 +89,66 @@ export default function StaffAdminDeliveriesScreen() {
         <View style={styles.topCardsRow}>
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => router.push("/Screens/staffadminScreens/DeliveryManagementScreen" as any)}
-            style={[styles.hubCard, { backgroundColor: cardBg, borderColor: border }]}
+            onPress={() =>
+              router.push(
+                "/Screens/staffadminScreens/DeliveryManagementScreen" as any,
+              )
+            }
+            style={[
+              styles.hubCard,
+              { backgroundColor: cardBg, borderColor: border },
+            ]}
           >
             <View style={[styles.hubIconBox, { backgroundColor: "#ECFDF5" }]}>
-              <MaterialCommunityIcons name="moped" size={scale(24)} color="#059669" />
+              <MaterialCommunityIcons
+                name="moped"
+                size={scale(24)}
+                color="#059669"
+              />
             </View>
-            <Text style={[styles.hubTitle, { color: textPrimary }]}>Delivery Fleet</Text>
+            <Text style={[styles.hubTitle, { color: textPrimary }]}>
+              Delivery Fleet
+            </Text>
             <Text style={[styles.hubSubtitle, { color: textSecondary }]}>
               View active riders, dispatches & delivery performance
             </Text>
             <View style={styles.hubActionRow}>
-              <Text style={[styles.hubActionText, { color: "#059669" }]}>Open Fleet Console</Text>
+              <Text style={[styles.hubActionText, { color: "#059669" }]}>
+                Open Fleet Console
+              </Text>
               <Feather name="arrow-right" size={scale(14)} color="#059669" />
             </View>
           </TouchableOpacity>
 
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => router.push("/Screens/staffadminScreens/CODReconciliationScreen" as any)}
-            style={[styles.hubCard, { backgroundColor: cardBg, borderColor: border }]}
+            onPress={() =>
+              router.push(
+                "/Screens/staffadminScreens/CODReconciliationScreen" as any,
+              )
+            }
+            style={[
+              styles.hubCard,
+              { backgroundColor: cardBg, borderColor: border },
+            ]}
           >
             <View style={[styles.hubIconBox, { backgroundColor: "#FFFBEB" }]}>
-              <MaterialCommunityIcons name="cash-register" size={scale(24)} color="#D97706" />
+              <MaterialCommunityIcons
+                name="cash-register"
+                size={scale(24)}
+                color="#D97706"
+              />
             </View>
-            <Text style={[styles.hubTitle, { color: textPrimary }]}>COD Reconciliation</Text>
+            <Text style={[styles.hubTitle, { color: textPrimary }]}>
+              COD Reconciliation
+            </Text>
             <Text style={[styles.hubSubtitle, { color: textSecondary }]}>
               Audit collected cash, rider deposits & dispute records
             </Text>
             <View style={styles.hubActionRow}>
-              <Text style={[styles.hubActionText, { color: "#D97706" }]}>Audit Cash Handover</Text>
+              <Text style={[styles.hubActionText, { color: "#D97706" }]}>
+                Audit Cash Handover
+              </Text>
               <Feather name="arrow-right" size={scale(14)} color="#D97706" />
             </View>
           </TouchableOpacity>
@@ -113,17 +156,28 @@ export default function StaffAdminDeliveriesScreen() {
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => router.push("/Screens/adminScreens/map" as any)}
-            style={[styles.hubCard, { backgroundColor: cardBg, borderColor: border }]}
+            style={[
+              styles.hubCard,
+              { backgroundColor: cardBg, borderColor: border },
+            ]}
           >
             <View style={[styles.hubIconBox, { backgroundColor: "#EFF6FF" }]}>
-              <MaterialCommunityIcons name="map-marker-radius-outline" size={scale(24)} color="#2563EB" />
+              <MaterialCommunityIcons
+                name="map-marker-radius-outline"
+                size={scale(24)}
+                color="#2563EB"
+              />
             </View>
-            <Text style={[styles.hubTitle, { color: textPrimary }]}>Live Fleet Radar</Text>
+            <Text style={[styles.hubTitle, { color: textPrimary }]}>
+              Live Fleet Radar
+            </Text>
             <Text style={[styles.hubSubtitle, { color: textSecondary }]}>
               GPS real-time map of store locations and active delivery riders
             </Text>
             <View style={styles.hubActionRow}>
-              <Text style={[styles.hubActionText, { color: "#2563EB" }]}>Open Radar Map</Text>
+              <Text style={[styles.hubActionText, { color: "#2563EB" }]}>
+                Open Radar Map
+              </Text>
               <Feather name="arrow-right" size={scale(14)} color="#2563EB" />
             </View>
           </TouchableOpacity>
@@ -147,10 +201,18 @@ export default function StaffAdminDeliveriesScreen() {
             icon="cash-clock"
             iconColor="#DC2626"
             iconBg="rgba(220, 38, 38, 0.12)"
-            badgeText={totalRidersWithCash > 0 ? `${totalRidersWithCash} Riders` : undefined}
+            badgeText={
+              totalRidersWithCash > 0
+                ? `${totalRidersWithCash} Riders`
+                : undefined
+            }
             badgeColor="#FEF2F2"
             badgeTextColor="#DC2626"
-            onPress={() => router.push("/Screens/staffadminScreens/CODReconciliationScreen" as any)}
+            onPress={() =>
+              router.push(
+                "/Screens/staffadminScreens/CODReconciliationScreen" as any,
+              )
+            }
           />
 
           <DashboardStatCard
@@ -160,7 +222,11 @@ export default function StaffAdminDeliveriesScreen() {
             icon="cash-check"
             iconColor="#059669"
             iconBg="rgba(5, 150, 105, 0.12)"
-            onPress={() => router.push("/Screens/staffadminScreens/CODReconciliationScreen" as any)}
+            onPress={() =>
+              router.push(
+                "/Screens/staffadminScreens/CODReconciliationScreen" as any,
+              )
+            }
           />
         </View>
       </ScrollView>
@@ -175,7 +241,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: scale(14),
     paddingTop: moderateScale(14),
-    paddingBottom: moderateScale(30),
+    paddingBottom: moderateScale(100),
     gap: moderateScale(14),
   },
   topCardsRow: {

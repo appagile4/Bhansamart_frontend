@@ -8,6 +8,26 @@ import { navigateFromNotificationData, NotificationPayloadData } from "@/utils/n
 
 const TOKEN_STORAGE_KEY = "bhansa_registered_push_token";
 
+export const NOTIFICATION_CHANNELS = {
+  ORDERS: "bhansamart_orders_v1",
+  DELIVERY: "bhansamart_delivery_v1",
+  BROADCASTS: "bhansamart_broadcasts_v1",
+  ALERTS: "bhansamart_alerts_v1",
+  DEFAULT: "bhansamart_default_v1",
+} as const;
+
+export type NotificationChannelId =
+  | "bhansamart_orders_v1"
+  | "bhansamart_delivery_v1"
+  | "bhansamart_broadcasts_v1"
+  | "bhansamart_alerts_v1"
+  | "bhansamart_default_v1"
+  | "orders"
+  | "delivery"
+  | "broadcasts"
+  | "alerts"
+  | "default";
+
 /**
  * Lazy / resilient resolver for expo-notifications.
  * In Expo Go, native push notification modules (e.g. ExpoTopicSubscriptionModule) are not included.
@@ -43,13 +63,14 @@ const configureForegroundHandler = () => {
     try {
       Notifications.setNotificationHandler({
         handleNotification: async () => ({
-          shouldShowAlert: true,   // Display OS notification banner/alert
-          shouldPlaySound: true,   // Play audible chime
-          shouldSetBadge: true,   // Increment app badge number
-          shouldShowBanner: true, // Drop-down heads-up banner on top of screen
-          shouldShowList: true,   // Add to notification center / status bar tray
+          shouldShowBanner: true,  // Drop-down heads-up banner on top of screen
+          shouldShowList: true,    // Add to notification center / status bar tray
+          shouldPlaySound: true,   // Play audible chime (REQUIRED by Android for heads-up alert)
+          shouldSetBadge: true,    // Increment app badge number
+          priority: Notifications.AndroidNotificationPriority?.MAX ?? "max",
         }),
       });
+      console.log("[PushService] Foreground notification handler initialized with MAX priority and banner");
     } catch (e: any) {
       console.warn("[PushService] setNotificationHandler skipped:", e?.message);
     }
@@ -60,8 +81,8 @@ configureForegroundHandler();
 
 /**
  * 2. Setup High-Priority Android Notification Channels (Android 8.0+ / Android 13+)
- * Configures MAX importance, vibration, light, and PUBLIC lockscreen visibility
- * so notifications pop down (heads-up) and are readable on lock screens.
+ * Configures MAX importance (7 in Expo enum), vibration, light, and PUBLIC lockscreen visibility
+ * so notifications drop down as Heads-Up pop-up banners and are readable on lock screens.
  */
 export const setupNotificationChannelsAsync = async () => {
   if (Platform.OS !== "android") return;
@@ -69,12 +90,26 @@ export const setupNotificationChannelsAsync = async () => {
   if (!Notifications?.setNotificationChannelAsync) return;
 
   try {
-    const maxImportance = Notifications.AndroidImportance?.MAX ?? 5;
-    const highImportance = Notifications.AndroidImportance?.HIGH ?? 4;
+    // Delete legacy channels so Android OS doesn't retain old low/default importance
+    const legacyChannels = ["orders", "delivery", "broadcasts", "alerts", "default"];
+    if (Notifications.deleteNotificationChannelAsync) {
+      for (const legacyId of legacyChannels) {
+        await Notifications.deleteNotificationChannelAsync(legacyId).catch(() => {});
+      }
+    }
+
+    // In expo-notifications enum:
+    // AndroidImportance: UNKNOWN=0, UNSPECIFIED=1, NONE=2, MIN=3, LOW=4, DEFAULT=5, HIGH=6, MAX=7
+    const maxImportance = Notifications.AndroidImportance?.MAX ?? 7;
     const publicVisibility = Notifications.AndroidNotificationVisibility?.PUBLIC ?? 1;
 
-    // A. Orders Channel (Heads-up, MAX priority, audible & vibrating)
-    await Notifications.setNotificationChannelAsync("orders", {
+    const audioAttributes = {
+      usage: Notifications.AndroidAudioUsage?.NOTIFICATION ?? 5,
+      contentType: Notifications.AndroidAudioContentType?.SONIFICATION ?? 4,
+    };
+
+    // A. Orders Channel (Heads-up pop-up, MAX priority, audible & vibrating)
+    await Notifications.setNotificationChannelAsync(NOTIFICATION_CHANNELS.ORDERS, {
       name: "Orders & Fulfillment",
       description: "Live alerts for new customer orders, status changes, and fulfillment updates",
       importance: maxImportance,
@@ -84,10 +119,11 @@ export const setupNotificationChannelsAsync = async () => {
       enableLights: true,
       showBadge: true,
       lockscreenVisibility: publicVisibility,
+      audioAttributes,
     });
 
-    // B. Delivery Channel (Heads-up, MAX priority for rider dispatches)
-    await Notifications.setNotificationChannelAsync("delivery", {
+    // B. Delivery Channel (Heads-up pop-up, MAX priority for rider dispatches)
+    await Notifications.setNotificationChannelAsync(NOTIFICATION_CHANNELS.DELIVERY, {
       name: "Delivery Tasks & Navigation",
       description: "Real-time task offers, navigation, and customer delivery coordination",
       importance: maxImportance,
@@ -97,10 +133,11 @@ export const setupNotificationChannelsAsync = async () => {
       enableLights: true,
       showBadge: true,
       lockscreenVisibility: publicVisibility,
+      audioAttributes,
     });
 
-    // C. Announcements & Broadcasts (Heads-up, high priority)
-    await Notifications.setNotificationChannelAsync("broadcasts", {
+    // C. Announcements & Broadcasts (Heads-up pop-up, MAX priority)
+    await Notifications.setNotificationChannelAsync(NOTIFICATION_CHANNELS.BROADCASTS, {
       name: "Announcements & Broadcasts",
       description: "Store broadcasts, promotions, offers, and general announcements",
       importance: maxImportance,
@@ -110,10 +147,11 @@ export const setupNotificationChannelsAsync = async () => {
       enableLights: true,
       showBadge: true,
       lockscreenVisibility: publicVisibility,
+      audioAttributes,
     });
 
-    // D. Staff & Security Alerts (Heads-up, MAX priority)
-    await Notifications.setNotificationChannelAsync("alerts", {
+    // D. Staff & Security Alerts (Heads-up pop-up, MAX priority)
+    await Notifications.setNotificationChannelAsync(NOTIFICATION_CHANNELS.ALERTS, {
       name: "Staff & System Alerts",
       description: "High-priority administrative notices and operational alerts",
       importance: maxImportance,
@@ -123,20 +161,36 @@ export const setupNotificationChannelsAsync = async () => {
       enableLights: true,
       showBadge: true,
       lockscreenVisibility: publicVisibility,
+      audioAttributes,
     });
 
-    // E. General Updates (High importance default)
-    await Notifications.setNotificationChannelAsync("default", {
+    // E. General Updates (Heads-up pop-up, MAX priority)
+    await Notifications.setNotificationChannelAsync(NOTIFICATION_CHANNELS.DEFAULT, {
       name: "General Updates",
       description: "Standard account notifications and updates",
-      importance: highImportance,
+      importance: maxImportance,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: "#6366F1",
       enableVibrate: true,
       enableLights: true,
       showBadge: true,
       lockscreenVisibility: publicVisibility,
+      audioAttributes,
     });
+
+    // Also re-create legacy channel IDs pointing to maxImportance for backwards-compatibility
+    for (const legacyId of legacyChannels) {
+      await Notifications.setNotificationChannelAsync(legacyId, {
+        name: `BhansaMart ${legacyId}`,
+        importance: maxImportance,
+        enableVibrate: true,
+        showBadge: true,
+        lockscreenVisibility: publicVisibility,
+        audioAttributes,
+      }).catch(() => {});
+    }
+
+    console.log("[PushService] Notification channels initialized with MAX importance for heads-up alerts");
   } catch (err: any) {
     console.warn("[PushService] Notification channels setup note:", err?.message);
   }
@@ -153,12 +207,12 @@ export const presentLocalHeadsUpNotificationAsync = async ({
   title,
   body,
   data = {},
-  channelId = "orders",
+  channelId = NOTIFICATION_CHANNELS.ORDERS,
 }: {
   title: string;
   body: string;
   data?: NotificationPayloadData;
-  channelId?: "orders" | "delivery" | "broadcasts" | "alerts" | "default";
+  channelId?: string;
 }) => {
   const Notifications = getNotificationsModule();
   if (!Notifications?.scheduleNotificationAsync) return null;
@@ -168,7 +222,8 @@ export const presentLocalHeadsUpNotificationAsync = async ({
         title: title || "BhansaMart",
         body: body || "",
         data: data as Record<string, unknown>,
-        priority: "max",
+        priority: Notifications.AndroidNotificationPriority?.MAX ?? "max",
+        sound: true,
       },
       trigger: {
         channelId,
