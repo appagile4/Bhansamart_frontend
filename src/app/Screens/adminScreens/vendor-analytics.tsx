@@ -14,6 +14,7 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import AdminHeader from "@/components/AdminHeader";
 import AdminStoreFilterDropdown from "@/components/AdminStoreFilterDropdown";
 import { moderateScale, scale, useTheme } from "@/theme";
+import api from "@/store/services/api";
 import {
   fetchStaffAssignedVendorsApi,
   fetchVendorProductsAnalyticsApi,
@@ -28,7 +29,7 @@ export default function VendorAnalyticsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [assignedVendors, setAssignedVendors] = useState<any[]>([]);
   const [selectedVendorId, setSelectedVendorId] = useState<string>("all");
-  const [timeRange, setTimeRange] = useState<"today" | "yesterday" | "7d" | "30d" | "monthly">("7d");
+  const [timeRange, setTimeRange] = useState<"today" | "yesterday" | "7d" | "30d" | "monthly" | "all">("all");
 
   // Summary Metrics
   const [summary, setSummary] = useState<any>(null);
@@ -47,11 +48,24 @@ export default function VendorAnalyticsScreen() {
   const loadVendors = async () => {
     try {
       const res = await fetchStaffAssignedVendorsApi();
-      if (res?.vendors) {
+      if (res?.vendors && res.vendors.length > 0) {
         setAssignedVendors(res.vendors);
+      } else {
+        const fallback = await api.get("/admin/vendors?limit=100");
+        if (fallback.data?.vendors) {
+          setAssignedVendors(fallback.data.vendors);
+        }
       }
     } catch (err) {
       console.error("Failed to load assigned vendors", err);
+      try {
+        const fallback = await api.get("/admin/vendors?limit=100");
+        if (fallback.data?.vendors) {
+          setAssignedVendors(fallback.data.vendors);
+        }
+      } catch (e) {
+        // ignore
+      }
     }
   };
 
@@ -128,18 +142,19 @@ export default function VendorAnalyticsScreen() {
   const textSecondary = isDark ? "#94A3B8" : "#64748B";
 
   const timeRanges = [
-    { label: "Today", value: "today" },
-    { label: "Yesterday", value: "yesterday" },
+    { label: "All Time", value: "all" },
     { label: "7 Days", value: "7d" },
     { label: "30 Days", value: "30d" },
     { label: "Monthly", value: "monthly" },
+    { label: "Today", value: "today" },
+    { label: "Yesterday", value: "yesterday" },
   ];
 
   return (
     <View style={[styles.root, { backgroundColor: bg }]}>
       <AdminHeader
         title="Vendor Analytics"
-        subtitle="Sales & Product Performance"
+        subtitle="Operational Sales & Product Insights"
         showBack
       />
 
@@ -188,14 +203,14 @@ export default function VendorAnalyticsScreen() {
               {/* Gross Sales */}
               <View style={[styles.kpiCard, { backgroundColor: cardBg, borderColor: border }]}>
                 <View style={styles.kpiIconWrap}>
-                  <MaterialCommunityIcons name="currency-inr" size={scale(18)} color="#10B981" />
+                  <MaterialCommunityIcons name="cash-multiple" size={scale(18)} color="#10B981" />
                 </View>
                 <Text style={[styles.kpiLabel, { color: textSecondary }]}>Gross Sales</Text>
                 <Text style={[styles.kpiValue, { color: textPrimary }]}>
-                  ₹{(summary?.grossSales || 0).toLocaleString("en-IN")}
+                  NPR {(summary?.grossSales || 0).toLocaleString()}
                 </Text>
                 <Text style={[styles.kpiSub, { color: textSecondary }]}>
-                  {summary?.orderCount || 0} total orders
+                  {summary?.orderCount || summary?.totalOrders || 0} total orders
                 </Text>
               </View>
 
@@ -206,7 +221,7 @@ export default function VendorAnalyticsScreen() {
                 </View>
                 <Text style={[styles.kpiLabel, { color: textSecondary }]}>Net Realized</Text>
                 <Text style={[styles.kpiValue, { color: textPrimary }]}>
-                  ₹{(summary?.netSales || 0).toLocaleString("en-IN")}
+                  NPR {(summary?.netSales || 0).toLocaleString()}
                 </Text>
                 <Text style={[styles.kpiSub, { color: "#10B981" }]}>
                   {summary?.completedOrders || 0} delivered
@@ -216,14 +231,14 @@ export default function VendorAnalyticsScreen() {
               {/* COD vs Prepaid */}
               <View style={[styles.kpiCard, { backgroundColor: cardBg, borderColor: border }]}>
                 <View style={[styles.kpiIconWrap, { backgroundColor: "rgba(245, 158, 11, 0.12)" }]}>
-                  <MaterialCommunityIcons name="cash-multiple" size={scale(18)} color="#F59E0B" />
+                  <MaterialCommunityIcons name="bank-transfer" size={scale(18)} color="#F59E0B" />
                 </View>
                 <Text style={[styles.kpiLabel, { color: textSecondary }]}>Payment Split</Text>
-                <Text style={[styles.kpiValue, { color: textPrimary, fontSize: moderateScale(14) }]}>
-                  COD: ₹{(summary?.codSales || 0).toLocaleString("en-IN")}
+                <Text style={[styles.kpiValue, { color: textPrimary, fontSize: moderateScale(13) }]} numberOfLines={1}>
+                  COD: NPR {(summary?.codSales || 0).toLocaleString()}
                 </Text>
-                <Text style={[styles.kpiSub, { color: textSecondary }]}>
-                  Online: ₹{(summary?.onlineSales || 0).toLocaleString("en-IN")}
+                <Text style={[styles.kpiSub, { color: textSecondary }]} numberOfLines={1}>
+                  Online: NPR {(summary?.onlineSales || 0).toLocaleString()}
                 </Text>
               </View>
 
@@ -237,7 +252,7 @@ export default function VendorAnalyticsScreen() {
                   {summary?.returnedOrders || 0} returns
                 </Text>
                 <Text style={[styles.kpiSub, { color: textSecondary }]}>
-                  {summary?.cancelledOrders || 0} cancelled
+                  {summary?.cancelledOrders || 0} cancelled ({summary?.returnRefundRate || 0}%)
                 </Text>
               </View>
             </View>
@@ -259,7 +274,7 @@ export default function VendorAnalyticsScreen() {
                         {p.name || "Product"}
                       </Text>
                       <Text style={[styles.topProdSub, { color: textSecondary }]}>
-                        {p.unitsSold || 0} units sold • ₹{(p.revenue || 0).toLocaleString("en-IN")}
+                        {p.unitsSold || 0} units sold &bull; NPR {(p.revenue || 0).toLocaleString()}
                       </Text>
                     </View>
                   </View>
@@ -280,7 +295,7 @@ export default function VendorAnalyticsScreen() {
                     <View style={styles.catStatsRow}>
                       <Text style={[styles.catUnits, { color: textSecondary }]}>{cat.unitsSold || 0} sold</Text>
                       <Text style={[styles.catRevenue, { color: "#10B981" }]}>
-                        ₹{(cat.revenue || 0).toLocaleString("en-IN")}
+                        NPR {(cat.revenue || 0).toLocaleString()}
                       </Text>
                     </View>
                   </View>
@@ -336,12 +351,12 @@ export default function VendorAnalyticsScreen() {
                       key={item._id || item.id || idx}
                       style={[styles.prodItemRow, { borderBottomColor: border }]}
                     >
-                      <View style={{ flex: 1 }}>
+                      <View style={{ flex: 1, marginRight: scale(8) }}>
                         <Text style={[styles.prodItemTitle, { color: textPrimary }]} numberOfLines={2}>
                           {item.title || item.name}
                         </Text>
                         <Text style={[styles.prodItemSub, { color: textSecondary }]}>
-                          SKU: {item.sku || "N/A"} • Stock: {item.stock ?? 0} • Price: ₹{item.price?.toLocaleString("en-IN")}
+                          SKU: {item.sku || "N/A"} &bull; Stock: {item.stock ?? 0} &bull; Price: NPR {item.price?.toLocaleString()}
                         </Text>
                       </View>
 
@@ -353,7 +368,7 @@ export default function VendorAnalyticsScreen() {
                         <View style={[styles.metricBadge, { backgroundColor: "rgba(16, 185, 129, 0.12)" }]}>
                           <Text style={[styles.metricBadgeLabel, { color: "#10B981" }]}>Gross</Text>
                           <Text style={[styles.metricBadgeVal, { color: "#10B981" }]}>
-                            ₹{(item.grossSales || 0).toLocaleString("en-IN")}
+                            NPR {(item.grossSales || 0).toLocaleString()}
                           </Text>
                         </View>
                         <View style={[styles.metricBadge, { backgroundColor: "rgba(239, 68, 68, 0.12)" }]}>

@@ -13,6 +13,7 @@ import {
   Alert,
   FlatList,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -27,6 +28,7 @@ export default function AdminVendorsScreen() {
   const dispatch = useAppDispatch();
 
   const PAGE_SIZE = 8;
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [search, setSearch] = useState("");
   const [filterVerification, setFilterVerification] = useState("");
   const [page, setPage] = useState(1);
@@ -188,43 +190,95 @@ export default function AdminVendorsScreen() {
           )}
         </View>
 
-        {/* Verification Filters */}
-        <View style={styles.chipRow}>
-          {[
-            { id: "", label: "All Stores" },
-            { id: "approved", label: "Approved" },
-            { id: "pending", label: "Pending KYC" },
-            { id: "rejected", label: "Rejected" },
-          ].map((c) => (
-            <TouchableOpacity
-              key={c.id}
-              style={[
-                styles.chip,
-                filterVerification === c.id && styles.chipActive,
-                isDark &&
-                  filterVerification !== c.id && { backgroundColor: "#1E252E" },
-              ]}
-              onPress={() => setFilterVerification(c.id)}
-            >
-              <Text
+        {/* Verification Filters & View Mode Switcher */}
+        <View style={styles.controlsRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipRow}
+          >
+            {[
+              { id: "", label: "All Stores" },
+              { id: "approved", label: "Approved" },
+              { id: "pending", label: "Pending KYC" },
+              { id: "rejected", label: "Rejected" },
+            ].map((c) => (
+              <TouchableOpacity
+                key={c.id}
                 style={[
-                  styles.chipText,
-                  filterVerification === c.id && styles.chipTextActive,
-                  isDark && filterVerification !== c.id && { color: "#94A3B8" },
+                  styles.chip,
+                  filterVerification === c.id && styles.chipActive,
+                  isDark &&
+                    filterVerification !== c.id && { backgroundColor: "#1E252E" },
                 ]}
+                onPress={() => setFilterVerification(c.id)}
               >
-                {c.label}
-              </Text>
+                <Text
+                  style={[
+                    styles.chipText,
+                    filterVerification === c.id && styles.chipTextActive,
+                    isDark && filterVerification !== c.id && { color: "#94A3B8" },
+                  ]}
+                >
+                  {c.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          {/* View Mode Toggle: Grid vs List */}
+          <View
+            style={[
+              styles.viewToggle,
+              {
+                backgroundColor: isDark ? "#1E252E" : "#F1F5F9",
+                borderColor: border,
+              },
+            ]}
+          >
+            <TouchableOpacity
+              style={[
+                styles.viewToggleBtn,
+                viewMode === "list" && styles.viewToggleBtnActive,
+              ]}
+              onPress={() => setViewMode("list")}
+              activeOpacity={0.7}
+            >
+              <Feather
+                name="list"
+                size={scale(15)}
+                color={viewMode === "list" ? "#FFFFFF" : textSecondary}
+              />
             </TouchableOpacity>
-          ))}
+            <TouchableOpacity
+              style={[
+                styles.viewToggleBtn,
+                viewMode === "grid" && styles.viewToggleBtnActive,
+              ]}
+              onPress={() => setViewMode("grid")}
+              activeOpacity={0.7}
+            >
+              <Feather
+                name="grid"
+                size={scale(15)}
+                color={viewMode === "grid" ? "#FFFFFF" : textSecondary}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
-      {/* Vendors List */}
+      {/* Vendors List / Grid */}
       <FlatList
+        key={viewMode}
         data={vendors}
+        numColumns={viewMode === "grid" ? 2 : 1}
+        columnWrapperStyle={viewMode === "grid" ? styles.gridRow : undefined}
         keyExtractor={(item) => item._id}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[
+          styles.listContent,
+          viewMode === "grid" && styles.gridListContent,
+        ]}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -308,6 +362,165 @@ export default function AdminVendorsScreen() {
               : (item.walletBalance != null ? item.walletBalance : 0);
           const ordersCount = item.totalOrders || 0;
 
+          // ─── GRID VIEW ITEM ───
+          if (viewMode === "grid") {
+            return (
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => handleOpenDetails(item)}
+                style={[
+                  styles.vendorGridCard,
+                  { backgroundColor: cardBg, borderColor: border },
+                ]}
+              >
+                {/* Top: Avatar & Verification status */}
+                <View style={styles.gridCardHeader}>
+                  <View
+                    style={[
+                      styles.storeAvatar,
+                      {
+                        backgroundColor: isApproved
+                          ? isDark
+                            ? "#064E3B"
+                            : "#D1FAE5"
+                          : isPending
+                            ? isDark
+                              ? "#78350F"
+                              : "#FEF3C7"
+                            : isDark
+                              ? "#7F1D1D"
+                              : "#FEE2E2",
+                      },
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name="storefront"
+                      size={scale(18)}
+                      color={
+                        isApproved
+                          ? "#10B981"
+                          : isPending
+                            ? "#F59E0B"
+                            : "#EF4444"
+                      }
+                    />
+                  </View>
+
+                  <View
+                    style={[
+                      styles.gridStatusPill,
+                      {
+                        backgroundColor: isApproved
+                          ? isDark
+                            ? "rgba(16, 185, 129, 0.2)"
+                            : "#D1FAE5"
+                          : isPending
+                            ? isDark
+                              ? "rgba(245, 158, 11, 0.2)"
+                              : "#FEF3C7"
+                            : isDark
+                              ? "rgba(239, 68, 68, 0.2)"
+                              : "#FEE2E2",
+                      },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.statusDotSmall,
+                        {
+                          backgroundColor: isApproved
+                            ? "#10B981"
+                            : isPending
+                              ? "#F59E0B"
+                              : "#EF4444",
+                        },
+                      ]}
+                    />
+                    <Text
+                      style={[
+                        styles.gridStatusText,
+                        {
+                          color: isApproved
+                            ? "#10B981"
+                            : isPending
+                              ? "#F59E0B"
+                              : "#EF4444",
+                        },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {isApproved ? "Approved" : isPending ? "Pending" : "Rejected"}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Store Name & Owner */}
+                <Text
+                  style={[styles.gridStoreName, { color: textPrimary }]}
+                  numberOfLines={1}
+                >
+                  {storeName}
+                </Text>
+                <Text
+                  style={[styles.gridSellerSub, { color: textSecondary }]}
+                  numberOfLines={1}
+                >
+                  {sellerName}
+                </Text>
+
+                <View style={styles.gridLocationRow}>
+                  <Feather name="map-pin" size={scale(10)} color="#94A3B8" />
+                  <Text
+                    style={[styles.gridLocationText, { color: textSecondary }]}
+                    numberOfLines={1}
+                  >
+                    {city}
+                  </Text>
+                </View>
+
+                <View
+                  style={[styles.gridDivider, { backgroundColor: border }]}
+                />
+
+                {/* Financial & Volume Stats */}
+                <View style={styles.gridStatsRow}>
+                  <View style={{ flex: 1, marginRight: scale(4) }}>
+                    <Text style={styles.gridStatLabel}>WALLET</Text>
+                    <Text
+                      style={[styles.gridStatVal, { color: "#10B981" }]}
+                      numberOfLines={1}
+                    >
+                      NPR {walletBalance.toLocaleString()}
+                    </Text>
+                  </View>
+                  <View style={{ alignItems: "flex-end" }}>
+                    <Text style={styles.gridStatLabel}>ORDERS</Text>
+                    <Text
+                      style={[styles.gridStatVal, { color: textPrimary }]}
+                    >
+                      {ordersCount}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Bottom View Link */}
+                <View
+                  style={[styles.gridBottomRow, { borderTopColor: border }]}
+                >
+                  <Text style={[styles.gridProfileText, { color: "#0284C7" }]}>
+                    View Store
+                  </Text>
+                  <Feather
+                    name="arrow-right"
+                    size={scale(12)}
+                    color="#0284C7"
+                  />
+                </View>
+              </TouchableOpacity>
+            );
+          }
+
+          // ─── LIST VIEW ITEM ───
           return (
             <View
               style={[
@@ -482,9 +695,125 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: moderateScale(13),
   },
+  controlsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: scale(8),
+  },
   chipRow: {
     flexDirection: "row",
+    alignItems: "center",
     gap: scale(6),
+  },
+  viewToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: scale(8),
+    borderWidth: 1,
+    padding: scale(2),
+  },
+  viewToggleBtn: {
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(5),
+    borderRadius: scale(6),
+  },
+  viewToggleBtnActive: {
+    backgroundColor: "#0284C7",
+  },
+  gridRow: {
+    justifyContent: "space-between",
+    gap: scale(10),
+  },
+  gridListContent: {
+    padding: scale(12),
+    paddingBottom: scale(90),
+  },
+  vendorGridCard: {
+    flex: 1,
+    maxWidth: "48.5%",
+    borderRadius: scale(12),
+    borderWidth: 1,
+    padding: scale(12),
+    marginBottom: scale(10),
+  },
+  gridCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: scale(8),
+  },
+  storeAvatar: {
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(8),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  gridStatusPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(4),
+    paddingHorizontal: scale(6),
+    paddingVertical: scale(3),
+    borderRadius: scale(10),
+  },
+  statusDotSmall: {
+    width: scale(5),
+    height: scale(5),
+    borderRadius: scale(2.5),
+  },
+  gridStatusText: {
+    fontSize: moderateScale(9),
+    fontWeight: "800",
+  },
+  gridStoreName: {
+    fontSize: moderateScale(13),
+    fontWeight: "800",
+  },
+  gridSellerSub: {
+    fontSize: moderateScale(11),
+    marginTop: scale(2),
+  },
+  gridLocationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(3),
+    marginTop: scale(4),
+  },
+  gridLocationText: {
+    fontSize: moderateScale(10),
+  },
+  gridDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginVertical: scale(8),
+  },
+  gridStatsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: scale(8),
+  },
+  gridStatLabel: {
+    fontSize: moderateScale(8),
+    color: "#94A3B8",
+    fontWeight: "700",
+  },
+  gridStatVal: {
+    fontSize: moderateScale(11),
+    fontWeight: "800",
+    marginTop: scale(1),
+  },
+  gridBottomRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingTop: scale(8),
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  gridProfileText: {
+    fontSize: moderateScale(11),
+    fontWeight: "700",
   },
   chip: {
     paddingHorizontal: scale(10),
