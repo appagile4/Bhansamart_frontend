@@ -117,6 +117,28 @@ export default function DeliveryDashboardScreen() {
 
   // Delivery Cancellation / Return to Vendor Modal State
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
+  const [returnPickups, setReturnPickups] = useState<any[]>([]);
+  const [selectedReturn, setSelectedReturn] = useState<any | null>(null);
+  const [inspectionModalVisible, setInspectionModalVisible] = useState(false);
+  const [returnOtpInput, setReturnOtpInput] = useState("");
+  const [returnCondition, setReturnCondition] = useState("INTACT");
+  const [returnMissingAccessories, setReturnMissingAccessories] = useState("");
+  const [returnVisibleDamage, setReturnVisibleDamage] = useState("");
+  const [returnQtyCollected, setReturnQtyCollected] = useState("1");
+  const [returnNotes, setReturnNotes] = useState("");
+  const [returnResult, setReturnResult] = useState<"PASSED" | "FAILED">("PASSED");
+  const [submittingInspection, setSubmittingInspection] = useState(false);
+
+  const loadReturnPickups = async () => {
+    try {
+      const res = await deliveryService.getReturnPickups();
+      if (res?.data) {
+        setReturnPickups(res.data);
+      }
+    } catch {
+      // ignore
+    }
+  };
   const [cancelReason, setCancelReason] = useState("CUSTOMER_UNAVAILABLE");
   const [cancelNotes, setCancelNotes] = useState("");
 
@@ -278,6 +300,7 @@ export default function DeliveryDashboardScreen() {
   useEffect(() => {
     dispatch(fetchDeliveryProfile());
     dispatch(fetchActiveAssignment());
+    loadReturnPickups();
   }, [dispatch]);
 
   // Handle offer countdown timer
@@ -519,6 +542,43 @@ export default function DeliveryDashboardScreen() {
       );
     } catch (err) {
       dispatch(clearIncomingOffer());
+    }
+  };
+
+  const handleSubmitReturnInspection = async () => {
+    if (!selectedReturn) return;
+    if (!returnOtpInput.trim()) {
+      Alert.alert("OTP Required", "Please enter the customer's 4-digit Return Verification OTP.");
+      return;
+    }
+    setSubmittingInspection(true);
+    try {
+      await deliveryService.submitReturnInspection(selectedReturn._id, {
+        otp: returnOtpInput.trim(),
+        condition: returnCondition,
+        missingAccessories: returnMissingAccessories.trim(),
+        visibleDamage: returnVisibleDamage.trim(),
+        quantityCollected: Number(returnQtyCollected) || 1,
+        notes: returnNotes.trim(),
+        result: returnResult,
+      });
+      Alert.alert(
+        "Report Submitted",
+        "Return inspection recorded! Package returned to store. NPR 50 return pickup earning credited to your wallet."
+      );
+      setInspectionModalVisible(false);
+      setSelectedReturn(null);
+      setReturnOtpInput("");
+      setReturnNotes("");
+      loadReturnPickups();
+      dispatch(fetchDeliveryProfile());
+    } catch (err: any) {
+      Alert.alert(
+        "Submission Failed",
+        err?.response?.data?.message || err.message || "Failed to submit return inspection."
+      );
+    } finally {
+      setSubmittingInspection(false);
     }
   };
 

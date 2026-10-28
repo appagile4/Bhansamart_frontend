@@ -379,6 +379,7 @@ export const reviewBrandAdminApi = async (
 export const fetchRefundsQueueAdminApi = async (params?: {
   status?: string;
   vendorId?: string;
+  refundType?: "all" | "vendor" | "my";
   page?: number;
   limit?: number;
 }) => {
@@ -423,6 +424,25 @@ export const recordRefundInspectionActionApi = async (
   }
 ) => {
   const response = await api.patch(`/admin/staff-operations/refunds/${id}/inspection`, payload);
+  return response.data;
+};
+
+
+export const adminAssignReturnPickupApi = async (id: string, payload: { deliveryBoyId: string; notes?: string }) => {
+  const response = await api.patch(`/refunds/${id}/assign-pickup`, payload);
+  return response.data;
+};
+
+export const superAdminProcessOnlineRefundApi = async (
+  id: string,
+  payload: {
+    payoutReference?: string;
+    payoutProofImage?: string;
+    status?: "COMPLETED" | "PROCESSING";
+    notes?: string;
+  }
+) => {
+  const response = await api.patch(`/refunds/${id}/superadmin-online-payout`, payload);
   return response.data;
 };
 

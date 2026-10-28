@@ -10,11 +10,14 @@ import { moderateScale, scale } from "@/theme";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { vendorAcknowledgeClaimApi, vendorDirectRefundPayoutApi } from "@/store/services/orderService";
 import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Modal,
+  TextInput,
   Linking,
   Platform,
   RefreshControl,
@@ -117,6 +120,12 @@ export default function VendorOrderDetailsScreen() {
   );
 
   const [refreshing, setRefreshing] = useState(false);
+  const [acknowledgingClaim, setAcknowledgingClaim] = useState(false);
+  const [codRefundModalVisible, setCodRefundModalVisible] = useState(false);
+  const [codRefundMethod, setCodRefundMethod] = useState<"BANK_TRANSFER" | "UPI" | "CASH">("BANK_TRANSFER");
+  const [codTxRef, setCodTxRef] = useState("");
+  const [codNotes, setCodNotes] = useState("");
+  const [submittingCodRefund, setSubmittingCodRefund] = useState(false);
 
   // 1. Resolve Order from Redux or fetch from API
   const order: OrderRecord | null = useMemo(() => {
@@ -176,6 +185,43 @@ export default function VendorOrderDetailsScreen() {
   };
 
   // ── Handle Vendor Status Updates ────────────────────────────────────
+  const handleAcknowledgeClaim = async (refundId: string) => {
+    setAcknowledgingClaim(true);
+    try {
+      await vendorAcknowledgeClaimApi(refundId, { notes: "Store acknowledged claim and initiated resolution." });
+      Alert.alert("Claim Acknowledged", "You have acknowledged this return claim. Please proceed with planned customer refund or replacement.");
+      if (orderId) dispatch(fetchCustomerOrderById(orderId));
+    } catch (err: any) {
+      Alert.alert("Error", err?.response?.data?.message || err.message || "Failed to acknowledge claim");
+    } finally {
+      setAcknowledgingClaim(false);
+    }
+  };
+
+  const handleCompleteCodRefund = async (refundId: string) => {
+    if (!codTxRef.trim()) {
+      Alert.alert("Transaction Reference Required", "Please enter the UTR or Bank/UPI payment reference number.");
+      return;
+    }
+    setSubmittingCodRefund(true);
+    try {
+      await vendorDirectRefundPayoutApi(refundId, {
+        transactionReference: codTxRef.trim(),
+        paymentMethod: codRefundMethod,
+        notes: codNotes.trim(),
+      });
+      Alert.alert("Refund Completed", "Direct customer refund has been recorded and marked as completed.");
+      setCodRefundModalVisible(false);
+      setCodTxRef("");
+      setCodNotes("");
+      if (orderId) dispatch(fetchCustomerOrderById(orderId));
+    } catch (err: any) {
+      Alert.alert("Failed to Submit Refund", err?.response?.data?.message || err.message || "Failed to complete refund.");
+    } finally {
+      setSubmittingCodRefund(false);
+    }
+  };
+
   const handleUpdateStatus = async (
     newStatus: string,
     rejectionReason?: string,
@@ -409,6 +455,165 @@ export default function VendorOrderDetailsScreen() {
             </View>
           </View>
         </View>
+
+        {/* ── CUSTOMER RETURN / REFUND / EXCHANGE CLAIM CARD ── */}
+        {order.refundDetails && (
+          <View style={[styles.card, { borderColor: "#0284C7", borderWidth: 1.5, backgroundColor: "#F0F9FF" }]}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: scale(8) }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: scale(6) }}>
+                <MaterialCommunityIcons name="keyboard-return" size={scale(20)} color="#0284C7" />
+                <Text style={[styles.cardHeading, { color: "#0369A1", marginBottom: 0 }]}>
+                  Customer {order.refundDetails.claimType || "Return"} Claim
+                </Text>
+              </View>
+              <View style={{ paddingHorizontal: scale(8), paddingVertical: scale(3), borderRadius: scale(4), backgroundColor: "#E0F2FE" }}>
+                <Text style={{ fontSize: moderateScale(11), fontWeight: "800", color: "#0284C7" }}>
+                  {order.refundDetails.status || "REQUESTED"}
+                </Text>
+              </View>
+            </View>
+
+            <View style={{ gap: scale(6), marginBottom: scale(10) }}>
+              <Text style={{ fontSize: moderateScale(13), fontWeight: "700", color: "#0F172A" }}>
+                Claim Reason: {order.refundDetails.reason || "Customer requested return"}
+              </Text>
+              {order.refundDetails.description ? (
+                <Text style={{ fontSize: moderateScale(12), color: "#475569" }}>
+                  Note: {order.refundDetails.description}
+                </Text>
+              ) : null}
+              <Text style={{ fontSize: moderateScale(13), fontWeight: "800", color: "#0284C7" }}>
+                Eligible Refund Amount: NPR {order.refundDetails.amount || order.totalAmount}
+              </Text>
+            </View>
+
+            {/* Return Pickup Status & Inspection Report */}
+            {order.refundDetails.pickup && order.refundDetails.pickup.status !== "NOT_REQUIRED" && (
+              <View style={{ padding: scale(10), borderRadius: scale(8), backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#BAE6FD", marginBottom: scale(10) }}>
+                <Text style={{ fontSize: moderateScale(12), fontWeight: "800", color: "#0369A1", marginBottom: scale(4) }}>
+                  Reverse Pickup & Inspection
+                </Text>
+                <Text style={{ fontSize: moderateScale(12), color: "#334155" }}>
+                  Pickup Status: <Text style={{ fontWeight: "700" }}>{order.refundDetails.pickup.status}</Text>
+                </Text>
+                {order.refundDetails.inspection?.condition ? (
+                  <View style={{ marginTop: scale(4) }}>
+                    <Text style={{ fontSize: moderateScale(12), color: "#334155" }}>
+                      Product Condition: <Text style={{ fontWeight: "700", color: "#0284C7" }}>{order.refundDetails.inspection.condition}</Text>
+                    </Text>
+                    {order.refundDetails.inspection.notes ? (
+                      <Text style={{ fontSize: moderateScale(11), color: "#64748B" }}>
+                        Inspector Notes: {order.refundDetails.inspection.notes}
+                      </Text>
+                    ) : null}
+                  </View>
+                ) : null}
+
+                {/* Return Pickup Deduction in Vendor Wallet */}
+                {order.refundDetails.pickup.isPickupChargeDebited && (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: scale(4), marginTop: scale(6) }}>
+                    <Ionicons name="receipt-outline" size={scale(14)} color="#15803D" />
+                    <Text style={{ fontSize: moderateScale(11), color: "#15803D", fontWeight: "700" }}>
+                      NPR {order.refundDetails.pickup.pickupCharge || 50} Return Pickup Fee debited from Wallet (Ref: {order.refundDetails.pickup.pickupChargeTxRef})
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+
+            {/* Refund Responsibility Section */}
+            {order.paymentMethod?.toLowerCase().includes("cash") ? (
+              // COD ORDER: Responsible Vendor Pays Customer Directly
+              <View style={{ padding: scale(10), borderRadius: scale(8), backgroundColor: "#FFFBEB", borderWidth: 1, borderColor: "#FDE68A" }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: scale(6), marginBottom: scale(4) }}>
+                  <Ionicons name="information-circle" size={scale(16)} color="#B45309" />
+                  <Text style={{ fontSize: moderateScale(12), fontWeight: "800", color: "#B45309" }}>
+                    COD Order: Store Direct Refund Required
+                  </Text>
+                </View>
+                <Text style={{ fontSize: moderateScale(11), color: "#78350F", marginBottom: scale(8) }}>
+                  You received physical cash for this order. Please refund the customer directly from your business account.
+                </Text>
+
+                {/* Customer Payout Destination */}
+                {order.refundDetails.customerPayoutDetails && (
+                  <View style={{ backgroundColor: "#FFFFFF", padding: scale(8), borderRadius: scale(6), marginBottom: scale(10) }}>
+                    <Text style={{ fontSize: moderateScale(11), fontWeight: "700", color: "#334155" }}>
+                      Customer Destination:
+                    </Text>
+                    {order.refundDetails.customerPayoutDetails.upiId ? (
+                      <Text style={{ fontSize: moderateScale(12), color: "#0284C7", fontWeight: "700" }}>
+                        UPI / eSewa: {order.refundDetails.customerPayoutDetails.upiId}
+                      </Text>
+                    ) : null}
+                    {order.refundDetails.customerPayoutDetails.accountNumber ? (
+                      <Text style={{ fontSize: moderateScale(11), color: "#475569" }}>
+                        Bank: {order.refundDetails.customerPayoutDetails.bankName} | A/C: {order.refundDetails.customerPayoutDetails.accountNumber} | Name: {order.refundDetails.customerPayoutDetails.accountHolderName}
+                      </Text>
+                    ) : null}
+                  </View>
+                )}
+
+                {order.refundDetails.status !== "COMPLETED" ? (
+                  <View style={{ flexDirection: "row", gap: scale(8) }}>
+                    {order.refundDetails.status === "REQUESTED" || order.refundDetails.status === "VENDOR_REVIEW" ? (
+                      <TouchableOpacity
+                        style={{ flex: 1, paddingVertical: scale(8), borderRadius: scale(6), backgroundColor: "#0284C7", alignItems: "center" }}
+                        disabled={acknowledgingClaim}
+                        onPress={() => handleAcknowledgeClaim(order.refundDetails._id)}
+                      >
+                        {acknowledgingClaim ? (
+                          <ActivityIndicator size="small" color="#FFFFFF" />
+                        ) : (
+                          <Text style={{ fontSize: moderateScale(12), fontWeight: "800", color: "#FFFFFF" }}>
+                            Acknowledge Claim
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    ) : null}
+
+                    <TouchableOpacity
+                      style={{ flex: 1, paddingVertical: scale(8), borderRadius: scale(6), backgroundColor: "#15803D", alignItems: "center" }}
+                      onPress={() => setCodRefundModalVisible(true)}
+                    >
+                      <Text style={{ fontSize: moderateScale(12), fontWeight: "800", color: "#FFFFFF" }}>
+                        Record Direct Payout
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: scale(6) }}>
+                    <Ionicons name="checkmark-circle" size={scale(18)} color="#15803D" />
+                    <Text style={{ fontSize: moderateScale(12), fontWeight: "800", color: "#15803D" }}>
+                      Refund Completed (Ref: {order.refundDetails.vendorPaymentDetails?.transactionReference || "Direct Store Payment"})
+                    </Text>
+                  </View>
+                )}
+              </View>
+            ) : (
+              // ONLINE PAYMENT ORDER: Managed by Super Admin
+              <View style={{ padding: scale(10), borderRadius: scale(8), backgroundColor: "#F1F5F9", borderWidth: 1, borderColor: "#CBD5E1" }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: scale(6), marginBottom: scale(4) }}>
+                  <MaterialCommunityIcons name="shield-check" size={scale(16)} color="#0284C7" />
+                  <Text style={{ fontSize: moderateScale(12), fontWeight: "800", color: "#0F172A" }}>
+                    Online Payment: Managed by Super Admin
+                  </Text>
+                </View>
+                <Text style={{ fontSize: moderateScale(11), color: "#475569", marginBottom: scale(6) }}>
+                  This refund is executed directly by BhansaMart Super Admin. Vendors cannot issue online refunds.
+                </Text>
+                <Text style={{ fontSize: moderateScale(11), color: "#0284C7", fontWeight: "700" }}>
+                  Super Admin Payout Status: {order.refundDetails.status}
+                </Text>
+                {order.refundDetails.customerPayoutDetails?.payoutReference ? (
+                  <Text style={{ fontSize: moderateScale(11), color: "#334155" }}>
+                    Reference: {order.refundDetails.customerPayoutDetails.payoutReference}
+                  </Text>
+                ) : null}
+              </View>
+            )}
+          </View>
+        )}
 
         {/* ASSIGNED DELIVERY PARTNER CARD */}
         <View style={styles.card}>
@@ -770,11 +975,125 @@ export default function VendorOrderDetailsScreen() {
           </View>
         )}
       </View>
+
+      {/* ── VENDOR COD DIRECT PAYOUT MODAL ── */}
+      {order.refundDetails && (
+        <Modal
+          visible={codRefundModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setCodRefundModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalCard, { padding: scale(16) }]}>
+              <Text style={{ fontSize: moderateScale(15), fontWeight: "800", color: "#0F172A", marginBottom: scale(4) }}>
+                Record COD Direct Customer Refund
+              </Text>
+              <Text style={{ fontSize: moderateScale(12), color: "#64748B", marginBottom: scale(12) }}>
+                Enter the payment reference / UTR for refunding NPR {order.refundDetails.amount || order.totalAmount} to customer.
+              </Text>
+
+              {/* Payment Method Selector */}
+              <View style={{ flexDirection: "row", gap: scale(6), marginBottom: scale(10) }}>
+                {(["UPI", "BANK_TRANSFER", "CASH"] as const).map((m) => (
+                  <TouchableOpacity
+                    key={m}
+                    style={{
+                      flex: 1,
+                      paddingVertical: scale(6),
+                      borderRadius: scale(6),
+                      borderWidth: 1,
+                      borderColor: codRefundMethod === m ? "#15803D" : "#CBD5E1",
+                      backgroundColor: codRefundMethod === m ? "#15803D" : "transparent",
+                      alignItems: "center",
+                    }}
+                    onPress={() => setCodRefundMethod(m)}
+                  >
+                    <Text style={{ fontSize: moderateScale(11), fontWeight: "800", color: codRefundMethod === m ? "#FFFFFF" : "#475569" }}>
+                      {m}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TextInput
+                style={{
+                  borderWidth: 1,
+                  borderColor: "#CBD5E1",
+                  borderRadius: scale(8),
+                  padding: scale(10),
+                  fontSize: moderateScale(13),
+                  color: "#0F172A",
+                  marginBottom: scale(8),
+                }}
+                placeholder="Payment Reference / UTR Number *"
+                placeholderTextColor="#94A3B8"
+                value={codTxRef}
+                onChangeText={setCodTxRef}
+              />
+
+              <TextInput
+                style={{
+                  borderWidth: 1,
+                  borderColor: "#CBD5E1",
+                  borderRadius: scale(8),
+                  padding: scale(10),
+                  fontSize: moderateScale(13),
+                  color: "#0F172A",
+                  marginBottom: scale(14),
+                }}
+                placeholder="Notes / Comments (Optional)"
+                placeholderTextColor="#94A3B8"
+                value={codNotes}
+                onChangeText={setCodNotes}
+              />
+
+              <View style={{ flexDirection: "row", gap: scale(8) }}>
+                <TouchableOpacity
+                  style={{ flex: 1, paddingVertical: scale(10), borderRadius: scale(8), backgroundColor: "#E2E8F0", alignItems: "center" }}
+                  onPress={() => setCodRefundModalVisible(false)}
+                >
+                  <Text style={{ fontSize: moderateScale(13), fontWeight: "700", color: "#475569" }}>
+                    Cancel
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={{ flex: 1, paddingVertical: scale(10), borderRadius: scale(8), backgroundColor: "#15803D", alignItems: "center" }}
+                  disabled={submittingCodRefund}
+                  onPress={() => handleCompleteCodRefund(order.refundDetails._id)}
+                >
+                  {submittingCodRefund ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={{ fontSize: moderateScale(13), fontWeight: "800", color: "#FFFFFF" }}>
+                      Confirm & Mark Paid
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: scale(16),
+  },
+  modalCard: {
+    width: "100%",
+    backgroundColor: "#FFFFFF",
+    borderRadius: scale(12),
+    padding: scale(16),
+  },
   root: {
     flex: 1,
     backgroundColor: "#F8FAFC",

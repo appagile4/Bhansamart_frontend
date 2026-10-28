@@ -233,6 +233,30 @@ export const deliveryService = {
     const response = await api.get("/delivery/earnings/cod-custody");
     return response.data;
   },
+
+  // Return Pickups
+  getReturnPickups: async () => {
+    const response = await api.get("/delivery/assignments/return-pickups");
+    return response.data;
+  },
+
+  submitReturnInspection: async (
+    refundId: string,
+    payload: {
+      otp?: string;
+      condition: string;
+      missingAccessories?: string;
+      visibleDamage?: string;
+      quantityCollected?: number;
+      location?: string;
+      proofImages?: string[];
+      notes?: string;
+      result: "PASSED" | "FAILED";
+    }
+  ) => {
+    const response = await api.patch(`/refunds/${refundId}/delivery-inspection`, payload);
+    return response.data;
+  },
 };
 
 export default deliveryService;

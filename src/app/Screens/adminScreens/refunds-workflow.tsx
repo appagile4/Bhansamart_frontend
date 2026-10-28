@@ -1,3 +1,4 @@
+import * as Clipboard from "expo-clipboard";
 import AdminHeader from "@/components/AdminHeader";
 import AdminStoreFilterDropdown from "@/components/AdminStoreFilterDropdown";
 import { useAppSelector } from "@/store/hooks";
@@ -7,6 +8,8 @@ import {
   fetchStaffAssignedVendorsApi,
   finalizeRefundPayoutActionApi,
   recordRefundInspectionActionApi,
+  adminAssignReturnPickupApi,
+  superAdminProcessOnlineRefundApi,
   staffExamineRefundActionApi,
   updateRefundPickupActionApi,
 } from "@/store/services/adminService";
@@ -43,7 +46,21 @@ export default function AdminRefundsWorkflowScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [assignedVendors, setAssignedVendors] = useState<any[]>([]);
+  const copyToClipboard = async (text: string, label: string) => {
+    if (!text) return;
+    try {
+      await Clipboard.setStringAsync(text);
+      Alert.alert("Copied to Clipboard", `${label}: ${text}`);
+    } catch (e) {
+      console.log("Clipboard error", e);
+    }
+  };
   const [selectedVendorId, setSelectedVendorId] = useState<string>("all");
+
+  // ─── Primary 2 Tabs: "Vendor Refund Requests" vs "My Refund Requests" ───
+  const [refundTypeTab, setRefundTypeTab] = useState<"vendor" | "my">("vendor");
+
+  // Secondary Stage Pills (All, Review, Checking, Pickup, Quality, Ready, Refunded, Rejected)
   const [activeTab, setActiveTab] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "grid">(isTablet ? "grid" : "list");
@@ -55,6 +72,8 @@ export default function AdminRefundsWorkflowScreen() {
     approved: 0,
     completed: 0,
     rejected: 0,
+    vendorCount: 0,
+    myCount: 0,
   });
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -125,7 +144,11 @@ export default function AdminRefundsWorkflowScreen() {
     async (targetPage = 1) => {
       try {
         setLoading(true);
-        const params: any = { page: targetPage, limit: 12 };
+        const params: any = {
+          page: targetPage,
+          limit: 12,
+          refundType: refundTypeTab,
+        };
         if (selectedVendorId !== "all") {
           params.vendorId = selectedVendorId;
         }
@@ -148,7 +171,7 @@ export default function AdminRefundsWorkflowScreen() {
         setLoading(false);
       }
     },
-    [selectedVendorId, activeTab],
+    [selectedVendorId, activeTab, refundTypeTab],
   );
 
   useEffect(() => {
@@ -250,14 +273,27 @@ export default function AdminRefundsWorkflowScreen() {
     if (!selectedClaim) return;
     try {
       setSubmitting(true);
-      await updateRefundPickupActionApi(selectedClaim._id || selectedClaim.id, {
-        deliveryBoyId: pickupDeliveryBoyId || undefined,
-        pickupStatus,
-        pickupNotes: pickupNotes.trim(),
-        trackingNumber: pickupTracking.trim() || undefined,
-      });
-
-      Alert.alert("Success", "Return pickup updated successfully.");
+      if (pickupDeliveryBoyId) {
+        const res = await adminAssignReturnPickupApi(selectedClaim._id || selectedClaim.id, {
+          deliveryBoyId: pickupDeliveryBoyId,
+          notes: pickupNotes.trim(),
+        });
+        if (res?.pickupOtp) {
+          Alert.alert(
+            "Pickup Assigned with OTP",
+            `Return pickup assigned to partner! Customer Verification OTP: ${res.pickupOtp}`
+          );
+        } else {
+          Alert.alert("Success", "Return pickup updated successfully.");
+        }
+      } else {
+        await updateRefundPickupActionApi(selectedClaim._id || selectedClaim.id, {
+          pickupStatus,
+          pickupNotes: pickupNotes.trim(),
+          trackingNumber: pickupTracking.trim() || undefined,
+        });
+        Alert.alert("Success", "Return pickup updated successfully.");
+      }
       setActiveModal(null);
       loadClaims(page);
     } catch (err: any) {
@@ -306,18 +342,34 @@ export default function AdminRefundsWorkflowScreen() {
     if (!selectedClaim) return;
     try {
       setSubmitting(true);
-      await finalizeRefundPayoutActionApi(
-        selectedClaim._id || selectedClaim.id,
-        {
-          action: finalizeAction,
-          notes: finalizeNotes.trim(),
-        },
-      );
+      const isOnline =
+        !selectedClaim.isVendorFunded &&
+        selectedClaim.originalPaymentMethod !== "Cash on delivery" &&
+        selectedClaim.originalPaymentMethod !== "COD";
 
-      Alert.alert(
-        "Success",
-        `Refund ${finalizeAction === "approve" ? "sent to customer successfully" : "rejected"}.`,
-      );
+      if (isOnline && finalizeAction === "approve") {
+        await superAdminProcessOnlineRefundApi(
+          selectedClaim._id || selectedClaim.id,
+          {
+            payoutReference: finalizeNotes.trim() || `ONL-PAY-${Date.now()}`,
+            status: "COMPLETED",
+            notes: finalizeNotes.trim() || "Online refund processed by Super Admin.",
+          }
+        );
+        Alert.alert("Success", "Online refund disbursed to customer. Platform commission preserved.");
+      } else {
+        await finalizeRefundPayoutActionApi(
+          selectedClaim._id || selectedClaim.id,
+          {
+            action: finalizeAction,
+            notes: finalizeNotes.trim(),
+          },
+        );
+        Alert.alert(
+          "Success",
+          `Refund ${finalizeAction === "approve" ? "sent to customer successfully" : "rejected"}.`,
+        );
+      }
       setActiveModal(null);
       loadClaims(page);
     } catch (err: any) {
@@ -456,6 +508,232 @@ export default function AdminRefundsWorkflowScreen() {
     });
   }, [claims, searchQuery]);
 
+
+  // ─── CUSTOMER BANK & PAYOUT DETAILS COMPONENT ───
+  const renderCustomerBankDetails = (item: any, isModal = false) => {
+    if (!item) return null;
+    const payout = item.customerPayoutDetails || {};
+    const hasBankDetails = Boolean(payout.accountNumber || payout.bankName || payout.upiId);
+    const paymentMethod = item.originalPaymentMethod || item.order?.paymentMethod || "COD";
+    const isCOD =
+      item.isVendorFunded === true ||
+      paymentMethod.toLowerCase().includes("cod") ||
+      paymentMethod.toLowerCase().includes("cash");
+    const amountToPay = item.amount || item.order?.totalAmount || 0;
+    const holderName = payout.accountHolderName || item.customer?.name || item.order?.shippingAddress?.fullName || "";
+    const customerPhone = item.customer?.phone || item.order?.shippingAddress?.phone || "";
+
+    return (
+      <View
+        style={[
+          styles.bankDetailsCard,
+          {
+            backgroundColor: isDark ? "#121A21" : "#F8FAFC",
+            borderColor: isDark ? "#2A3A47" : "#E2E8F0",
+            marginVertical: isModal ? scale(8) : scale(10),
+          },
+        ]}
+      >
+        {/* Card Header */}
+        <View style={styles.bankHeaderRow}>
+          <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+            <View style={[styles.bankIconCircle, { backgroundColor: isCOD ? "rgba(245, 158, 11, 0.15)" : "rgba(99, 102, 241, 0.15)" }]}>
+              <Ionicons
+                name={isCOD ? "cash" : "card"}
+                size={scale(14)}
+                color={isCOD ? "#F59E0B" : "#6366F1"}
+              />
+            </View>
+            <View style={{ marginLeft: scale(8), flex: 1 }}>
+              <Text style={[styles.bankTitleText, { color: textPrimary }]}>
+                {isCOD ? "Vendor COD Payout Info" : "Customer Bank Details (To Pay Back)"}
+              </Text>
+              <Text style={[styles.bankSubtitleText, { color: textSecondary }]}>
+                {isCOD ? "Vendor disburses directly" : "Super Admin platform refund destination"}
+              </Text>
+            </View>
+          </View>
+          <View
+            style={[
+              styles.payoutMethodPill,
+              {
+                backgroundColor: isCOD
+                  ? isDark ? "rgba(245, 158, 11, 0.2)" : "#FEF3C7"
+                  : isDark ? "rgba(99, 102, 241, 0.2)" : "#EEF2FF",
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.payoutMethodPillText,
+                { color: isCOD ? "#D97706" : "#6366F1" },
+              ]}
+            >
+              {payout.method ? payout.method.replace(/_/g, " ") : isCOD ? "COD CASH" : "ONLINE GATEWAY"}
+            </Text>
+          </View>
+        </View>
+
+        {/* Amount To Pay Highlight */}
+        <View style={[styles.payAmountBox, { backgroundColor: isDark ? "#17232D" : "#ECFDF5", borderColor: isDark ? "#065F46" : "#A7F3D0" }]}>
+          <Text style={[styles.payAmountLabel, { color: textSecondary }]}>
+            Amount to Disburse:
+          </Text>
+          <Text style={[styles.payAmountValue, { color: "#10B981" }]}>
+            NPR {amountToPay.toLocaleString()}
+          </Text>
+        </View>
+
+        {/* Banking Fields */}
+        <View style={styles.bankFieldsList}>
+          {/* Account Holder Name */}
+          {Boolean(holderName) && (
+            <View style={styles.bankFieldRow}>
+              <Text style={[styles.bankFieldLabel, { color: textSecondary }]}>
+                Account Holder:
+              </Text>
+              <Text style={[styles.bankFieldValue, { color: textPrimary }]}>
+                {holderName}
+              </Text>
+            </View>
+          )}
+
+          {/* Customer Phone */}
+          {Boolean(customerPhone) && (
+            <View style={styles.bankFieldRow}>
+              <Text style={[styles.bankFieldLabel, { color: textSecondary }]}>
+                Customer Phone:
+              </Text>
+              <TouchableOpacity
+                onPress={() => copyToClipboard(customerPhone, "Customer Phone")}
+                style={{ flexDirection: "row", alignItems: "center" }}
+              >
+                <Text style={[styles.bankFieldValue, { color: textPrimary, marginRight: scale(4) }]}>
+                  {customerPhone}
+                </Text>
+                <Feather name="copy" size={scale(11)} color={textSecondary} />
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Bank Name */}
+          {Boolean(payout.bankName) && (
+            <View style={styles.bankFieldRow}>
+              <Text style={[styles.bankFieldLabel, { color: textSecondary }]}>
+                Bank Name:
+              </Text>
+              <Text style={[styles.bankFieldValue, { color: textPrimary, fontWeight: "700" }]}>
+                {payout.bankName}
+              </Text>
+            </View>
+          )}
+
+          {/* Account Number with Quick Copy */}
+          {Boolean(payout.accountNumber) && (
+            <View style={[styles.bankFieldRowCopy, { backgroundColor: isDark ? "#1B2834" : "#F1F5F9" }]}>
+              <View style={{ flex: 1, marginRight: scale(6) }}>
+                <Text style={[styles.bankFieldLabel, { color: textSecondary }]}>
+                  Account Number:
+                </Text>
+                <Text
+                  style={[styles.bankMonoValue, { color: textPrimary }]}
+                  selectable
+                >
+                  {payout.accountNumber}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.copyActionBtn}
+                onPress={() => copyToClipboard(payout.accountNumber, "Account Number")}
+                activeOpacity={0.7}
+              >
+                <Feather name="copy" size={scale(12)} color="#6366F1" />
+                <Text style={styles.copyActionBtnText}>Copy</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* IFSC / Branch Code with Quick Copy */}
+          {Boolean(payout.ifscCode) && (
+            <View style={[styles.bankFieldRowCopy, { backgroundColor: isDark ? "#1B2834" : "#F1F5F9" }]}>
+              <View style={{ flex: 1, marginRight: scale(6) }}>
+                <Text style={[styles.bankFieldLabel, { color: textSecondary }]}>
+                  IFSC / Branch Code:
+                </Text>
+                <Text
+                  style={[styles.bankMonoValue, { color: textPrimary }]}
+                  selectable
+                >
+                  {payout.ifscCode}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.copyActionBtn}
+                onPress={() => copyToClipboard(payout.ifscCode, "IFSC Code")}
+                activeOpacity={0.7}
+              >
+                <Feather name="copy" size={scale(12)} color="#6366F1" />
+                <Text style={styles.copyActionBtnText}>Copy</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* UPI ID with Quick Copy */}
+          {Boolean(payout.upiId) && (
+            <View style={[styles.bankFieldRowCopy, { backgroundColor: isDark ? "#1B2834" : "#F1F5F9" }]}>
+              <View style={{ flex: 1, marginRight: scale(6) }}>
+                <Text style={[styles.bankFieldLabel, { color: textSecondary }]}>
+                  UPI / Wallet ID:
+                </Text>
+                <Text
+                  style={[styles.bankMonoValue, { color: textPrimary }]}
+                  selectable
+                >
+                  {payout.upiId}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.copyActionBtn}
+                onPress={() => copyToClipboard(payout.upiId, "UPI ID")}
+                activeOpacity={0.7}
+              >
+                <Feather name="copy" size={scale(12)} color="#6366F1" />
+                <Text style={styles.copyActionBtnText}>Copy</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Fallback info when no explicit bank was provided */}
+          {!hasBankDetails && !isCOD && (
+            <View style={styles.noBankNotice}>
+              <Ionicons name="information-circle-outline" size={scale(14)} color="#6366F1" />
+              <Text style={[styles.noBankNoticeText, { color: textSecondary }]}>
+                No secondary bank entered. Payout defaults to original payment gateway reversal ({paymentMethod}).
+              </Text>
+            </View>
+          )}
+
+          {/* Payout Reference when already paid */}
+          {Boolean(payout.payoutReference) && (
+            <View style={[styles.paidRefBanner, { backgroundColor: isDark ? "rgba(16, 185, 129, 0.15)" : "#ECFDF5", borderColor: "#10B981" }]}>
+              <Ionicons name="checkmark-done-circle" size={scale(16)} color="#10B981" />
+              <View style={{ marginLeft: scale(6), flex: 1 }}>
+                <Text style={[styles.paidRefTitle, { color: textPrimary }]}>
+                  Disbursed Ref / UTR: <Text style={{ fontWeight: "800", color: "#10B981" }}>{payout.payoutReference}</Text>
+                </Text>
+                {payout.payoutCompletedAt && (
+                  <Text style={[styles.paidRefDate, { color: textSecondary }]}>
+                    Paid on {new Date(payout.payoutCompletedAt).toLocaleString()}
+                  </Text>
+                )}
+              </View>
+            </View>
+          )}
+        </View>
+      </View>
+    );
+  };
+
   return (
     <View style={[styles.root, { backgroundColor: bg }]}>
       <AdminHeader
@@ -483,6 +761,226 @@ export default function AdminRefundsWorkflowScreen() {
         ]}
         ListHeaderComponent={
           <View style={styles.headerContainer}>
+            {/* ─── PRIMARY TWO TABS: VENDOR REFUND REQUESTS vs MY REFUND REQUESTS ─── */}
+            <View style={[styles.mainTabsContainer, { backgroundColor: cardBg, borderColor: border }]}>
+              {/* Tab 1: Vendor Refund Requests */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={[
+                  styles.mainTabBtn,
+                  refundTypeTab === "vendor" && [
+                    styles.mainTabBtnActive,
+                    {
+                      backgroundColor: isDark ? "rgba(16, 185, 129, 0.2)" : "#ECFDF5",
+                      borderColor: "#10B981",
+                    },
+                  ],
+                ]}
+                onPress={() => {
+                  setRefundTypeTab("vendor");
+                  setPage(1);
+                }}
+              >
+                <View style={styles.mainTabLeft}>
+                  <View
+                    style={[
+                      styles.mainTabIconWrap,
+                      {
+                        backgroundColor:
+                          refundTypeTab === "vendor"
+                            ? "#10B981"
+                            : isDark
+                            ? "#24323B"
+                            : "#E2E8F0",
+                      },
+                    ]}
+                  >
+                    <Ionicons
+                      name="storefront"
+                      size={scale(15)}
+                      color={refundTypeTab === "vendor" ? "#FFFFFF" : textSecondary}
+                    />
+                  </View>
+                  <View style={styles.mainTabTitleGroup}>
+                    <Text
+                      style={[
+                        styles.mainTabTitle,
+                        {
+                          color:
+                            refundTypeTab === "vendor"
+                              ? isDark
+                                ? "#34D399"
+                                : "#059669"
+                              : textPrimary,
+                          fontWeight: refundTypeTab === "vendor" ? "900" : "700",
+                        },
+                      ]}
+                    >
+                      Vendor Refund Requests
+                    </Text>
+                    <Text style={[styles.mainTabSub, { color: textSecondary }]}>
+                      COD • Store Direct Payouts
+                    </Text>
+                  </View>
+                </View>
+
+                {summary.vendorCount != null && (
+                  <View
+                    style={[
+                      styles.mainTabBadge,
+                      {
+                        backgroundColor:
+                          refundTypeTab === "vendor"
+                            ? "#10B981"
+                            : isDark
+                            ? "#24323B"
+                            : "#E2E8F0",
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.mainTabBadgeText,
+                        {
+                          color:
+                            refundTypeTab === "vendor" ? "#FFFFFF" : textSecondary,
+                        },
+                      ]}
+                    >
+                      {summary.vendorCount}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              {/* Tab 2: My Refund Requests */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={[
+                  styles.mainTabBtn,
+                  refundTypeTab === "my" && [
+                    styles.mainTabBtnActive,
+                    {
+                      backgroundColor: isDark ? "rgba(99, 102, 241, 0.2)" : "#EEF2FF",
+                      borderColor: "#6366F1",
+                    },
+                  ],
+                ]}
+                onPress={() => {
+                  setRefundTypeTab("my");
+                  setPage(1);
+                }}
+              >
+                <View style={styles.mainTabLeft}>
+                  <View
+                    style={[
+                      styles.mainTabIconWrap,
+                      {
+                        backgroundColor:
+                          refundTypeTab === "my"
+                            ? "#6366F1"
+                            : isDark
+                            ? "#24323B"
+                            : "#E2E8F0",
+                      },
+                    ]}
+                  >
+                    <Ionicons
+                      name="card"
+                      size={scale(15)}
+                      color={refundTypeTab === "my" ? "#FFFFFF" : textSecondary}
+                    />
+                  </View>
+                  <View style={styles.mainTabTitleGroup}>
+                    <Text
+                      style={[
+                        styles.mainTabTitle,
+                        {
+                          color:
+                            refundTypeTab === "my"
+                              ? isDark
+                                ? "#818CF8"
+                                : "#4F46E5"
+                              : textPrimary,
+                          fontWeight: refundTypeTab === "my" ? "900" : "700",
+                        },
+                      ]}
+                    >
+                      My Refund Requests
+                    </Text>
+                    <Text style={[styles.mainTabSub, { color: textSecondary }]}>
+                      Online • Super Admin Payouts
+                    </Text>
+                  </View>
+                </View>
+
+                {summary.myCount != null && (
+                  <View
+                    style={[
+                      styles.mainTabBadge,
+                      {
+                        backgroundColor:
+                          refundTypeTab === "my"
+                            ? "#6366F1"
+                            : isDark
+                            ? "#24323B"
+                            : "#E2E8F0",
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.mainTabBadgeText,
+                        {
+                          color:
+                            refundTypeTab === "my" ? "#FFFFFF" : textSecondary,
+                        },
+                      ]}
+                    >
+                      {summary.myCount}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* Contextual Responsibility Notice Banner */}
+            <View
+              style={[
+                styles.tabContextBanner,
+                {
+                  backgroundColor:
+                    refundTypeTab === "vendor"
+                      ? isDark
+                        ? "rgba(16, 185, 129, 0.12)"
+                        : "#F0FDF4"
+                      : isDark
+                      ? "rgba(99, 102, 241, 0.12)"
+                      : "#EEF2FF",
+                  borderColor:
+                    refundTypeTab === "vendor"
+                      ? isDark
+                        ? "#065F46"
+                        : "#BBF7D0"
+                      : isDark
+                      ? "#3730A3"
+                      : "#C7D2FE",
+                },
+              ]}
+            >
+              <Ionicons
+                name={refundTypeTab === "vendor" ? "business-outline" : "shield-checkmark-outline"}
+                size={scale(16)}
+                color={refundTypeTab === "vendor" ? "#10B981" : "#6366F1"}
+                style={{ marginTop: scale(1) }}
+              />
+              <Text style={[styles.tabContextText, { color: textPrimary }]}>
+                {refundTypeTab === "vendor"
+                  ? "COD Orders: Stores disburse direct customer refunds from business accounts. Super Admin audits and monitors store settlements."
+                  : "Online Orders (Prepaid • No COD): Super Admin disburses customer refund back to their bank / UPI. 1.5% platform commission is strictly preserved."}
+              </Text>
+            </View>
+
             {/* Quick KPI Overview Bar */}
             <View style={styles.kpiRow}>
               <View style={[styles.kpiCard, { backgroundColor: cardBg, borderColor: border }]}>
@@ -642,11 +1140,13 @@ export default function AdminRefundsWorkflowScreen() {
             {/* Results Count */}
             <View style={styles.countRow}>
               <Text style={[styles.countText, { color: textSecondary }]}>
-                Showing {filteredClaims.length} of {totalCount} return requests
+                Showing {filteredClaims.length} of {totalCount}{" "}
+                {refundTypeTab === "vendor" ? "vendor direct refund" : "my online refund"} requests
               </Text>
             </View>
           </View>
         }
+
         renderItem={({ item }) => {
           const badge = getStatusBadge(item.status);
 
@@ -676,6 +1176,7 @@ export default function AdminRefundsWorkflowScreen() {
           const paymentMethod =
             item.originalPaymentMethod || item.order?.paymentMethod || "COD";
           const isCOD =
+            item.isVendorFunded === true ||
             paymentMethod.toLowerCase().includes("cod") ||
             paymentMethod.toLowerCase().includes("cash");
 
@@ -814,6 +1315,36 @@ export default function AdminRefundsWorkflowScreen() {
                 >
                   {reasonText}
                 </Text>
+
+                {/* Customer Bank Snippet (Grid) */}
+                {item.customerPayoutDetails?.accountNumber ? (
+                  <View style={[styles.gridBankRow, { backgroundColor: isDark ? "#17232D" : "#F1F5F9", borderColor: border }]}>
+                    <Ionicons name="card-outline" size={scale(11)} color="#6366F1" />
+                    <Text style={[styles.gridBankText, { color: textPrimary }]} numberOfLines={1}>
+                      {item.customerPayoutDetails.bankName ? `${item.customerPayoutDetails.bankName}: ` : ""}
+                      {item.customerPayoutDetails.accountNumber}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => copyToClipboard(item.customerPayoutDetails.accountNumber, "Account Number")}
+                      style={styles.gridCopyBtn}
+                    >
+                      <Feather name="copy" size={scale(10)} color="#6366F1" />
+                    </TouchableOpacity>
+                  </View>
+                ) : item.customerPayoutDetails?.upiId ? (
+                  <View style={[styles.gridBankRow, { backgroundColor: isDark ? "#17232D" : "#F1F5F9", borderColor: border }]}>
+                    <Ionicons name="phone-portrait-outline" size={scale(11)} color="#6366F1" />
+                    <Text style={[styles.gridBankText, { color: textPrimary }]} numberOfLines={1}>
+                      UPI: {item.customerPayoutDetails.upiId}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => copyToClipboard(item.customerPayoutDetails.upiId, "UPI ID")}
+                      style={styles.gridCopyBtn}
+                    >
+                      <Feather name="copy" size={scale(10)} color="#6366F1" />
+                    </TouchableOpacity>
+                  </View>
+                ) : null}
 
                 {/* Compact Actions */}
                 <View style={[styles.gridActionsRow, { borderTopColor: border }]}>
@@ -961,7 +1492,9 @@ export default function AdminRefundsWorkflowScreen() {
               <View style={styles.claimBody}>
                 <View style={styles.bodyHighlightRow}>
                   <View style={styles.amountPill}>
-                    <Text style={styles.amountLabel}>REFUND AMOUNT</Text>
+                    <Text style={styles.amountLabel}>
+                      {isCOD ? "VENDOR REFUND AMOUNT" : "ONLINE REFUND AMOUNT"}
+                    </Text>
                     <Text style={styles.amountValue}>
                       NPR {amount.toLocaleString()}
                     </Text>
@@ -1036,6 +1569,9 @@ export default function AdminRefundsWorkflowScreen() {
                     </Text>
                   </View>
                 </View>
+
+                {/* Customer Bank / Payout Details Card */}
+                {renderCustomerBankDetails(item)}
 
                 {/* Proof Photos Carousel */}
                 {photos.length > 0 && (
@@ -1424,7 +1960,7 @@ export default function AdminRefundsWorkflowScreen() {
                         <Text
                           style={[styles.actionBtnText, { color: "#FFFFFF" }]}
                         >
-                          Pay Refund
+                          {isCOD ? "Audit Store Pay" : "Pay Online Refund"}
                         </Text>
                       </TouchableOpacity>
                     )}
@@ -1465,7 +2001,9 @@ export default function AdminRefundsWorkflowScreen() {
               <Text style={[styles.emptySubtitle, { color: textSecondary }]}>
                 {searchQuery
                   ? "Try adjusting your search query or store filter."
-                  : "All return and refund requests in this queue are clear."}
+                  : refundTypeTab === "vendor"
+                  ? "No vendor COD refund requests found in this queue."
+                  : "No online payment refund requests awaiting Super Admin action."}
               </Text>
             </View>
           )
@@ -2193,7 +2731,7 @@ export default function AdminRefundsWorkflowScreen() {
             <View style={styles.modalHeader}>
               <View>
                 <Text style={[styles.modalTitle, { color: textPrimary }]}>
-                  Send Customer Refund
+                  {refundTypeTab === "my" ? "Execute Online Payment Refund" : "Audit & Finalize Refund"}
                 </Text>
                 <Text style={[styles.modalSubtitle, { color: textSecondary }]}>
                   Super Admin Disbursal Action
@@ -2236,9 +2774,12 @@ export default function AdminRefundsWorkflowScreen() {
                       0
                     ).toLocaleString()}
                   </Text>{" "}
-                  back to the customer's wallet or payment method.
+                  back to the customer's account ({selectedClaim?.originalPaymentMethod || "Online Gateway"}). Platform commission (1.5%) is strictly preserved.
                 </Text>
               </View>
+
+              {/* Customer Bank Details To Pay Back */}
+              {renderCustomerBankDetails(selectedClaim, true)}
 
               <Text style={[styles.inputLabel, { color: textPrimary }]}>
                 Refund Decision:
@@ -2328,7 +2869,7 @@ export default function AdminRefundsWorkflowScreen() {
                   { color: textPrimary, marginTop: scale(12) },
                 ]}
               >
-                Payment Notes:
+                Payment UTR / Gateway Reference:
               </Text>
               <TextInput
                 style={[
@@ -2339,7 +2880,7 @@ export default function AdminRefundsWorkflowScreen() {
                     color: textPrimary,
                   },
                 ]}
-                placeholder="Bank transaction reference or reason for rejection..."
+                placeholder="e.g. ESEWA-TXN-987654 or Bank UTR Reference..."
                 placeholderTextColor={textSecondary}
                 multiline
                 numberOfLines={3}
@@ -2468,6 +3009,18 @@ export default function AdminRefundsWorkflowScreen() {
                     { color: textSecondary, marginTop: scale(8) },
                   ]}
                 >
+                  Payout Responsibility
+                </Text>
+                <Text style={[styles.auditFieldValue, { color: selectedClaim?.isVendorFunded ? "#F59E0B" : "#6366F1" }]}>
+                  {selectedClaim?.isVendorFunded ? "Vendor Direct Settlement (COD)" : "Super Admin Online Gateway Payout"}
+                </Text>
+
+                <Text
+                  style={[
+                    styles.auditFieldTitle,
+                    { color: textSecondary, marginTop: scale(8) },
+                  ]}
+                >
                   Return Reason
                 </Text>
                 <Text style={[styles.auditFieldValue, { color: textPrimary }]}>
@@ -2537,6 +3090,150 @@ export default function AdminRefundsWorkflowScreen() {
 }
 
 const styles = StyleSheet.create({
+  // ─── CUSTOMER BANK DETAILS STYLES ───
+  bankDetailsCard: {
+    borderRadius: scale(10),
+    borderWidth: 1,
+    padding: scale(12),
+  },
+  bankHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: scale(8),
+  },
+  bankIconCircle: {
+    width: scale(28),
+    height: scale(28),
+    borderRadius: scale(14),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bankTitleText: {
+    fontSize: moderateScale(13),
+    fontWeight: "800",
+  },
+  bankSubtitleText: {
+    fontSize: moderateScale(10),
+  },
+  payoutMethodPill: {
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(3),
+    borderRadius: scale(6),
+  },
+  payoutMethodPillText: {
+    fontSize: moderateScale(10),
+    fontWeight: "800",
+    textTransform: "uppercase",
+  },
+  payAmountBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(7),
+    borderRadius: scale(8),
+    borderWidth: 1,
+    marginBottom: scale(8),
+  },
+  payAmountLabel: {
+    fontSize: moderateScale(11),
+    fontWeight: "700",
+  },
+  payAmountValue: {
+    fontSize: moderateScale(14),
+    fontWeight: "900",
+  },
+  bankFieldsList: {
+    gap: scale(6),
+  },
+  bankFieldRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: scale(2),
+  },
+  bankFieldLabel: {
+    fontSize: moderateScale(11),
+    fontWeight: "600",
+  },
+  bankFieldValue: {
+    fontSize: moderateScale(11),
+    fontWeight: "600",
+  },
+  bankFieldRowCopy: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(6),
+    borderRadius: scale(6),
+  },
+  bankMonoValue: {
+    fontSize: moderateScale(12),
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    fontWeight: "700",
+    marginTop: scale(2),
+  },
+  copyActionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(99, 102, 241, 0.15)",
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(4),
+    borderRadius: scale(6),
+    gap: scale(4),
+  },
+  copyActionBtnText: {
+    color: "#6366F1",
+    fontSize: moderateScale(10),
+    fontWeight: "800",
+  },
+  noBankNotice: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: scale(6),
+    gap: scale(6),
+  },
+  noBankNoticeText: {
+    fontSize: moderateScale(11),
+    flex: 1,
+  },
+  paidRefBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: scale(8),
+    borderRadius: scale(6),
+    borderWidth: 1,
+    marginTop: scale(4),
+  },
+  paidRefTitle: {
+    fontSize: moderateScale(11),
+    fontWeight: "600",
+  },
+  paidRefDate: {
+    fontSize: moderateScale(10),
+    marginTop: scale(1),
+  },
+  gridBankRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: scale(6),
+    paddingVertical: scale(4),
+    borderRadius: scale(6),
+    borderWidth: 1,
+    marginTop: scale(6),
+    gap: scale(4),
+  },
+  gridBankText: {
+    fontSize: moderateScale(10),
+    fontWeight: "700",
+    flex: 1,
+  },
+  gridCopyBtn: {
+    padding: scale(2),
+  },
+
   root: {
     flex: 1,
   },
@@ -2547,11 +3244,92 @@ const styles = StyleSheet.create({
     marginBottom: scale(10),
   },
 
+  // ─── Primary 2 Tabs Segmented Bar ───
+  mainTabsContainer: {
+    flexDirection: "row",
+    borderRadius: scale(14),
+    borderWidth: 1,
+    padding: scale(4),
+    gap: scale(6),
+    marginTop: scale(10),
+    marginBottom: scale(8),
+  },
+  mainTabBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: scale(10),
+    paddingHorizontal: scale(10),
+    borderRadius: scale(11),
+    borderWidth: 1.5,
+    borderColor: "transparent",
+  },
+  mainTabBtnActive: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  mainTabLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(8),
+    flex: 1,
+  },
+  mainTabIconWrap: {
+    width: scale(30),
+    height: scale(30),
+    borderRadius: scale(8),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  mainTabTitleGroup: {
+    flex: 1,
+  },
+  mainTabTitle: {
+    fontSize: moderateScale(12),
+    letterSpacing: -0.2,
+  },
+  mainTabSub: {
+    fontSize: moderateScale(9),
+    marginTop: scale(1),
+  },
+  mainTabBadge: {
+    paddingHorizontal: scale(7),
+    paddingVertical: scale(2),
+    borderRadius: scale(12),
+    minWidth: scale(22),
+    alignItems: "center",
+  },
+  mainTabBadgeText: {
+    fontSize: moderateScale(10),
+    fontWeight: "900",
+  },
+
+  // Contextual Banner
+  tabContextBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: scale(10),
+    borderWidth: 1,
+    paddingHorizontal: scale(12),
+    paddingVertical: scale(8),
+    gap: scale(8),
+    marginBottom: scale(8),
+  },
+  tabContextText: {
+    flex: 1,
+    fontSize: moderateScale(10.5),
+    lineHeight: scale(15),
+  },
+
   // KPI Overview Bar
   kpiRow: {
     flexDirection: "row",
     gap: scale(8),
-    marginVertical: scale(10),
+    marginBottom: scale(8),
   },
   kpiCard: {
     flex: 1,
@@ -2573,7 +3351,7 @@ const styles = StyleSheet.create({
 
   // Stage Filter Tabs
   pillScroll: {
-    marginVertical: scale(8),
+    marginVertical: scale(6),
   },
   tabScrollContent: {
     flexDirection: "row",

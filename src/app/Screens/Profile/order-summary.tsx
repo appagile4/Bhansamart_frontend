@@ -282,8 +282,15 @@ export default function OrderSummaryScreen() {
 
   const [refundModalVisible, setRefundModalVisible] = useState(false);
   const [claimType, setClaimType] = useState<
-    "RETURN" | "DEFECTIVE" | "REPLACEMENT" | "WRONG_ITEM"
+    "RETURN" | "REFUND" | "REPLACEMENT" | "EXCHANGE" | "DEFECTIVE" | "WRONG_ITEM"
   >("RETURN");
+  const [selectedItems, setSelectedItems] = useState<{ [productId: string]: number }>({});
+  const [payoutMethod, setPayoutMethod] = useState<"UPI" | "BANK_TRANSFER">("UPI");
+  const [accountHolderName, setAccountHolderName] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [ifscCode, setIfscCode] = useState("");
+  const [bankName, setBankName] = useState("");
+  const [consentGiven, setConsentGiven] = useState(true);
   const [refundReason, setRefundReason] = useState("");
   const [refundDescription, setRefundDescription] = useState("");
   const [payoutUpi, setPayoutUpi] = useState("");
@@ -312,25 +319,25 @@ export default function OrderSummaryScreen() {
   }, [order?.items]);
 
   const availableClaimOptions = useMemo(() => {
-    const list: {
-      id: "RETURN" | "DEFECTIVE" | "REPLACEMENT" | "WRONG_ITEM";
-      label: string;
-    }[] = [];
-    if (hasReturnableItems || hasRefundableItems) {
-      list.push({ id: "RETURN", label: "Return & Refund" });
-    }
-    if (hasReplaceableItems) {
-      list.push({ id: "REPLACEMENT", label: "Replacement" });
-    }
-    if (hasReturnableItems || hasReplaceableItems) {
-      list.push({ id: "DEFECTIVE", label: "Defective" });
-      list.push({ id: "WRONG_ITEM", label: "Wrong Item" });
-    }
-    if (list.length === 0) {
-      list.push({ id: "RETURN", label: "Return & Refund" });
-    }
-    return list;
-  }, [hasReturnableItems, hasReplaceableItems, hasRefundableItems]);
+    return [
+      { id: "RETURN" as const, label: "Return & Refund" },
+      { id: "REFUND" as const, label: "Refund Only" },
+      { id: "REPLACEMENT" as const, label: "Replacement" },
+      { id: "EXCHANGE" as const, label: "Exchange Item" },
+      { id: "DEFECTIVE" as const, label: "Damaged / Defect" },
+      { id: "WRONG_ITEM" as const, label: "Wrong Item" },
+    ];
+  }, []);
+
+  // Calculate total amount for selected items
+  const calculatedClaimAmount = useMemo(() => {
+    if (!order?.items || order.items.length === 0) return 0;
+    return order.items.reduce((sum: number, it: any) => {
+      const pId = String(it.productId || it.product?._id || it.product || it._id);
+      const qty = selectedItems[pId] || 0;
+      return sum + (Number(it.price || 0) * qty);
+    }, 0);
+  }, [order?.items, selectedItems]);
 
   const handleCopyOrderId = () => {
     setCopied(true);
@@ -376,6 +383,26 @@ export default function OrderSummaryScreen() {
       Alert.alert("Missing Reason", "Please provide a reason for your claim.");
       return;
     }
+    if (!consentGiven) {
+      Alert.alert("Consent Required", "Please confirm customer consent to proceed with return inspection.");
+      return;
+    }
+
+    const claimItemsPayload = (order.items || [])
+      .filter((it: any) => {
+        const pId = String(it.productId || it.product?._id || it.product || it._id);
+        return (selectedItems[pId] || 0) > 0;
+      })
+      .map((it: any) => {
+        const pId = String(it.productId || it.product?._id || it.product || it._id);
+        return {
+          productId: pId,
+          quantity: selectedItems[pId] || 1,
+        };
+      });
+
+    const isDirectOnlineRefund = order.paymentMethod !== "Cash on delivery" && order.paymentMethod !== "COD";
+
     setSubmittingRefund(true);
     try {
       await requestRefundApi({
@@ -383,14 +410,19 @@ export default function OrderSummaryScreen() {
         claimType,
         reason: refundReason.trim(),
         description: refundDescription.trim(),
+        items: claimItemsPayload.length > 0 ? claimItemsPayload : undefined,
         customerPayoutDetails: {
-          method: payoutUpi ? "UPI" : "ORIGINAL_PAYMENT",
+          method: payoutMethod,
           upiId: payoutUpi.trim(),
+          accountHolderName: accountHolderName.trim(),
+          accountNumber: accountNumber.trim(),
+          bankName: bankName.trim(),
+          ifscCode: ifscCode.trim(),
         },
       });
       Alert.alert(
         "Request Submitted",
-        `${claimType === "REPLACEMENT" ? "Replacement" : "Refund/Return"} request submitted successfully. Our team will verify and resolve it shortly.`,
+        `${claimType === "REPLACEMENT" ? "Replacement" : claimType === "EXCHANGE" ? "Exchange" : "Return & Refund"} request submitted successfully. Our team will verify and resolve it shortly.`,
       );
       setRefundModalVisible(false);
       setRefundReason("");
@@ -1644,7 +1676,13 @@ export default function OrderSummaryScreen() {
                     { borderColor: isDark ? "#38BDF8" : "#0284C7" },
                   ]}
                   onPress={() => {
-                    setClaimType(availableClaimOptions[0]?.id || "RETURN");
+                    const initSel: { [id: string]: number } = {};
+                    (order?.items || []).forEach((it: any) => {
+                      const pId = String(it.productId || it.product?._id || it.product || it._id);
+                      initSel[pId] = it.quantity || 1;
+                    });
+                    setSelectedItems(initSel);
+                    setClaimType("RETURN");
                     setRefundModalVisible(true);
                   }}
                   activeOpacity={0.8}
@@ -1766,92 +1804,164 @@ export default function OrderSummaryScreen() {
         <Modal
           visible={refundModalVisible}
           transparent
-          animationType="fade"
+          animationType="slide"
           onRequestClose={() => setRefundModalVisible(false)}
         >
           <View style={styles.modalOverlay}>
             <View
               style={[
                 styles.modalCard,
+                { maxHeight: "90%", padding: scale(16) },
                 isDark && {
                   backgroundColor: "#151D24",
                   borderColor: "#303B45",
                 },
               ]}
             >
-              <Text style={[styles.modalTitle, isDark && { color: "#F8FAFC" }]}>
-                Return, Refund or Replace
-              </Text>
-
-              {/* Claim Type Selector */}
-              <View
-                style={{
-                  flexDirection: "row",
-                  gap: scale(6),
-                  marginVertical: scale(10),
-                  flexWrap: "wrap",
-                }}
-              >
-                {availableClaimOptions.map((ct) => (
-                  <TouchableOpacity
-                    key={ct.id}
-                    style={[
-                      styles.claimTypeChip,
-                      claimType === ct.id && styles.claimTypeChipActive,
-                      isDark &&
-                        claimType !== ct.id && {
-                          backgroundColor: "#1B252E",
-                          borderColor: "#303B45",
-                        },
-                    ]}
-                    onPress={() => setClaimType(ct.id)}
-                  >
-                    <Text
-                      style={[
-                        styles.claimTypeChipText,
-                        claimType === ct.id && styles.claimTypeChipTextActive,
-                        isDark && claimType !== ct.id && { color: "#94A3B8" },
-                      ]}
-                    >
-                      {ct.label}
-                    </Text>
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                  <Text style={[styles.modalTitle, isDark && { color: "#F8FAFC" }]}>
+                    Return, Refund & Exchange
+                  </Text>
+                  <TouchableOpacity onPress={() => setRefundModalVisible(false)}>
+                    <Feather name="x" size={scale(20)} color={isDark ? "#94A3B8" : "#64748B"} />
                   </TouchableOpacity>
-                ))}
-              </View>
+                </View>
 
-              <TextInput
-                style={[
-                  styles.modalInput,
-                  isDark && {
-                    backgroundColor: "#1B252E",
-                    borderColor: "#303B45",
-                    color: "#F8FAFC",
-                  },
-                ]}
-                placeholder="Reason (e.g. Expired, Damaged, Quality)"
-                placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
-                value={refundReason}
-                onChangeText={setRefundReason}
-              />
+                {/* Claim Type Selector */}
+                <Text style={{ fontSize: moderateScale(11), fontWeight: "700", color: isDark ? "#94A3B8" : "#64748B", marginTop: scale(10), textTransform: "uppercase" }}>
+                  Request Type
+                </Text>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    gap: scale(6),
+                    marginVertical: scale(8),
+                    flexWrap: "wrap",
+                  }}
+                >
+                  {availableClaimOptions.map((ct) => (
+                    <TouchableOpacity
+                      key={ct.id}
+                      style={[
+                        styles.claimTypeChip,
+                        claimType === ct.id && styles.claimTypeChipActive,
+                        isDark &&
+                          claimType !== ct.id && {
+                            backgroundColor: "#1B252E",
+                            borderColor: "#303B45",
+                          },
+                      ]}
+                      onPress={() => setClaimType(ct.id)}
+                    >
+                      <Text
+                        style={[
+                          styles.claimTypeChipText,
+                          claimType === ct.id && styles.claimTypeChipTextActive,
+                          isDark && claimType !== ct.id && { color: "#94A3B8" },
+                        ]}
+                      >
+                        {ct.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
 
-              <TextInput
-                style={[
-                  styles.modalInput,
-                  { height: scale(60) },
-                  isDark && {
-                    backgroundColor: "#1B252E",
-                    borderColor: "#303B45",
-                    color: "#F8FAFC",
-                  },
-                ]}
-                placeholder="Description / details (optional)"
-                placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
-                multiline
-                value={refundDescription}
-                onChangeText={setRefundDescription}
-              />
+                {/* Product Selection & Quantity Selector */}
+                <Text style={{ fontSize: moderateScale(11), fontWeight: "700", color: isDark ? "#94A3B8" : "#64748B", marginTop: scale(8), textTransform: "uppercase" }}>
+                  Select Eligible Items to Return
+                </Text>
+                <View style={{ marginVertical: scale(6), gap: scale(8) }}>
+                  {(order?.items || []).map((it: any, idx: number) => {
+                    const pId = String(it.productId || it.product?._id || it.product || it._id);
+                    const qty = selectedItems[pId] || 0;
+                    const maxQty = it.quantity || 1;
+                    const isSelected = qty > 0;
 
-              {claimType !== "REPLACEMENT" && (
+                    return (
+                      <View
+                        key={idx}
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          padding: scale(10),
+                          borderRadius: scale(8),
+                          borderWidth: 1,
+                          borderColor: isSelected ? "#0284C7" : isDark ? "#263238" : "#E2E8F0",
+                          backgroundColor: isSelected ? (isDark ? "rgba(2, 132, 199, 0.12)" : "#F0F9FF") : (isDark ? "#1A232C" : "#FFFFFF"),
+                        }}
+                      >
+                        <TouchableOpacity
+                          style={{ marginRight: scale(8) }}
+                          onPress={() => {
+                            setSelectedItems((prev) => ({
+                              ...prev,
+                              [pId]: isSelected ? 0 : maxQty,
+                            }));
+                          }}
+                        >
+                          <Ionicons
+                            name={isSelected ? "checkbox" : "square-outline"}
+                            size={scale(20)}
+                            color={isSelected ? "#0284C7" : isDark ? "#64748B" : "#94A3B8"}
+                          />
+                        </TouchableOpacity>
+
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: moderateScale(13), fontWeight: "700", color: isDark ? "#F8FAFC" : "#0F172A" }} numberOfLines={1}>
+                            {it.name}
+                          </Text>
+                          <Text style={{ fontSize: moderateScale(11), color: isDark ? "#38BDF8" : "#0284C7", fontWeight: "600" }}>
+                            NPR {it.price} each (Ordered: {maxQty})
+                          </Text>
+                        </View>
+
+                        {/* Quantity Counter */}
+                        {isSelected && (
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: scale(6), backgroundColor: isDark ? "#0D1318" : "#F1F5F9", borderRadius: scale(6), paddingHorizontal: scale(4), paddingVertical: scale(2) }}>
+                            <TouchableOpacity
+                              onPress={() => {
+                                setSelectedItems((prev) => ({
+                                  ...prev,
+                                  [pId]: Math.max(1, qty - 1),
+                                }));
+                              }}
+                            >
+                              <Feather name="minus" size={scale(14)} color={isDark ? "#F8FAFC" : "#0F172A"} />
+                            </TouchableOpacity>
+                            <Text style={{ fontSize: moderateScale(12), fontWeight: "800", color: isDark ? "#F8FAFC" : "#0F172A", minWidth: scale(16), textAlign: "center" }}>
+                              {qty}
+                            </Text>
+                            <TouchableOpacity
+                              onPress={() => {
+                                setSelectedItems((prev) => ({
+                                  ...prev,
+                                  [pId]: Math.min(maxQty, qty + 1),
+                                }));
+                              }}
+                            >
+                              <Feather name="plus" size={scale(14)} color={isDark ? "#F8FAFC" : "#0F172A"} />
+                            </TouchableOpacity>
+                          </View>
+                        )}
+                      </View>
+                    );
+                  })}
+                </View>
+
+                {/* Refund Total Banner */}
+                {claimType !== "REPLACEMENT" && (
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: scale(10), borderRadius: scale(8), backgroundColor: isDark ? "#0E2A38" : "#E0F2FE", marginVertical: scale(8) }}>
+                    <Text style={{ fontSize: moderateScale(12), fontWeight: "700", color: isDark ? "#38BDF8" : "#0369A1" }}>
+                      Eligible Refund Total:
+                    </Text>
+                    <Text style={{ fontSize: moderateScale(14), fontWeight: "900", color: isDark ? "#38BDF8" : "#0284C7" }}>
+                      NPR {calculatedClaimAmount > 0 ? calculatedClaimAmount : order?.totalAmount || 0}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Reason & Description */}
                 <TextInput
                   style={[
                     styles.modalInput,
@@ -1861,44 +1971,174 @@ export default function OrderSummaryScreen() {
                       color: "#F8FAFC",
                     },
                   ]}
-                  placeholder="Payout UPI ID (e.g. yourname@esewa)"
+                  placeholder="Reason (e.g. Defective, Expired, Wrong Size)"
                   placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
-                  value={payoutUpi}
-                  onChangeText={setPayoutUpi}
+                  value={refundReason}
+                  onChangeText={setRefundReason}
                 />
-              )}
 
-              <View style={styles.modalBtnRow}>
-                <TouchableOpacity
+                <TextInput
                   style={[
-                    styles.modalBtn,
-                    { backgroundColor: isDark ? "#303B45" : "#E2E8F0" },
+                    styles.modalInput,
+                    { height: scale(55) },
+                    isDark && {
+                      backgroundColor: "#1B252E",
+                      borderColor: "#303B45",
+                      color: "#F8FAFC",
+                    },
                   ]}
-                  onPress={() => setRefundModalVisible(false)}
+                  placeholder="Additional details / issue description (optional)"
+                  placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
+                  multiline
+                  value={refundDescription}
+                  onChangeText={setRefundDescription}
+                />
+
+                {/* Refund Payout Destination (UPI or Bank) */}
+                {claimType !== "REPLACEMENT" && (
+                  <View style={{ marginTop: scale(10), padding: scale(12), borderRadius: scale(8), borderWidth: 1, borderColor: isDark ? "#263238" : "#E2E8F0", backgroundColor: isDark ? "#172028" : "#F8FAFC" }}>
+                    <Text style={{ fontSize: moderateScale(12), fontWeight: "800", color: isDark ? "#F8FAFC" : "#0F172A", marginBottom: scale(8) }}>
+                      Refund Payout Method
+                    </Text>
+
+                    <View style={{ flexDirection: "row", gap: scale(8), marginBottom: scale(10) }}>
+                      <TouchableOpacity
+                        style={{
+                          flex: 1,
+                          paddingVertical: scale(8),
+                          borderRadius: scale(6),
+                          borderWidth: 1,
+                          borderColor: payoutMethod === "UPI" ? "#0284C7" : isDark ? "#303B45" : "#CBD5E1",
+                          backgroundColor: payoutMethod === "UPI" ? "#0284C7" : "transparent",
+                          alignItems: "center",
+                        }}
+                        onPress={() => setPayoutMethod("UPI")}
+                      >
+                        <Text style={{ fontSize: moderateScale(12), fontWeight: "700", color: payoutMethod === "UPI" ? "#FFFFFF" : isDark ? "#94A3B8" : "#475569" }}>
+                          UPI / eSewa / Khalti
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={{
+                          flex: 1,
+                          paddingVertical: scale(8),
+                          borderRadius: scale(6),
+                          borderWidth: 1,
+                          borderColor: payoutMethod === "BANK_TRANSFER" ? "#0284C7" : isDark ? "#303B45" : "#CBD5E1",
+                          backgroundColor: payoutMethod === "BANK_TRANSFER" ? "#0284C7" : "transparent",
+                          alignItems: "center",
+                        }}
+                        onPress={() => setPayoutMethod("BANK_TRANSFER")}
+                      >
+                        <Text style={{ fontSize: moderateScale(12), fontWeight: "700", color: payoutMethod === "BANK_TRANSFER" ? "#FFFFFF" : isDark ? "#94A3B8" : "#475569" }}>
+                          Bank Account
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    {payoutMethod === "UPI" ? (
+                      <TextInput
+                        style={[
+                          styles.modalInput,
+                          isDark && {
+                            backgroundColor: "#1B252E",
+                            borderColor: "#303B45",
+                            color: "#F8FAFC",
+                          },
+                        ]}
+                        placeholder="UPI ID (e.g. 9801234567@esewa)"
+                        placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
+                        value={payoutUpi}
+                        onChangeText={setPayoutUpi}
+                      />
+                    ) : (
+                      <View style={{ gap: scale(6) }}>
+                        <TextInput
+                          style={[styles.modalInput, isDark && { backgroundColor: "#1B252E", borderColor: "#303B45", color: "#F8FAFC" }]}
+                          placeholder="Account Holder Name"
+                          placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
+                          value={accountHolderName}
+                          onChangeText={setAccountHolderName}
+                        />
+                        <TextInput
+                          style={[styles.modalInput, isDark && { backgroundColor: "#1B252E", borderColor: "#303B45", color: "#F8FAFC" }]}
+                          placeholder="Bank Name (e.g. Nabil Bank, Global IME)"
+                          placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
+                          value={bankName}
+                          onChangeText={setBankName}
+                        />
+                        <TextInput
+                          style={[styles.modalInput, isDark && { backgroundColor: "#1B252E", borderColor: "#303B45", color: "#F8FAFC" }]}
+                          placeholder="Account Number"
+                          placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
+                          keyboardType="numeric"
+                          value={accountNumber}
+                          onChangeText={setAccountNumber}
+                        />
+                        <TextInput
+                          style={[styles.modalInput, isDark && { backgroundColor: "#1B252E", borderColor: "#303B45", color: "#F8FAFC" }]}
+                          placeholder="IFSC / Branch Code"
+                          placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
+                          value={ifscCode}
+                          onChangeText={setIfscCode}
+                        />
+                      </View>
+                    )}
+
+                    <Text style={{ fontSize: moderateScale(10), color: isDark ? "#64748B" : "#94A3B8", marginTop: scale(4) }}>
+                      * Bank and payout details are securely encrypted and masked in administrative views. Never share UPI PIN or OTP.
+                    </Text>
+                  </View>
+                )}
+
+                {/* Consent Checkbox */}
+                <TouchableOpacity
+                  style={{ flexDirection: "row", alignItems: "center", gap: scale(8), marginVertical: scale(12) }}
+                  onPress={() => setConsentGiven(!consentGiven)}
                 >
-                  <Text
-                    style={[
-                      styles.modalBtnText,
-                      { color: isDark ? "#F8FAFC" : "#475569" },
-                    ]}
-                  >
-                    Close
+                  <Ionicons
+                    name={consentGiven ? "checkbox" : "square-outline"}
+                    size={scale(20)}
+                    color={consentGiven ? "#0284C7" : isDark ? "#64748B" : "#94A3B8"}
+                  />
+                  <Text style={{ fontSize: moderateScale(11), color: isDark ? "#94A3B8" : "#475569", flex: 1 }}>
+                    I confirm that the returned item(s) are in original condition with tags and packaging intact.
                   </Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.modalBtn, { backgroundColor: "#0284C7" }]}
-                  onPress={handleSubmitRefundClaim}
-                  disabled={submittingRefund}
-                >
-                  {submittingRefund ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Text style={[styles.modalBtnText, { color: "#FFFFFF" }]}>
-                      Submit Claim
+
+                <View style={[styles.modalBtnRow, { marginTop: scale(10) }]}>
+                  <TouchableOpacity
+                    style={[
+                      styles.modalBtn,
+                      { backgroundColor: isDark ? "#303B45" : "#E2E8F0" },
+                    ]}
+                    onPress={() => setRefundModalVisible(false)}
+                  >
+                    <Text
+                      style={[
+                        styles.modalBtnText,
+                        { color: isDark ? "#F8FAFC" : "#475569" },
+                      ]}
+                    >
+                      Close
                     </Text>
-                  )}
-                </TouchableOpacity>
-              </View>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modalBtn, { backgroundColor: "#0284C7" }]}
+                    onPress={handleSubmitRefundClaim}
+                    disabled={submittingRefund}
+                  >
+                    {submittingRefund ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Text style={[styles.modalBtnText, { color: "#FFFFFF" }]}>
+                        Submit Request
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
             </View>
           </View>
         </Modal>

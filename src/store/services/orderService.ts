@@ -100,7 +100,7 @@ export const cancelOrderApi = async (
 
 export interface RequestRefundPayload {
   orderId: string;
-  claimType: "CANCELLATION" | "RETURN" | "DEFECTIVE" | "REPLACEMENT" | "WRONG_ITEM";
+  claimType: "CANCELLATION" | "RETURN" | "REFUND" | "REPLACEMENT" | "EXCHANGE" | "DEFECTIVE" | "WRONG_ITEM";
   reason: string;
   description?: string;
   items?: {
@@ -114,6 +114,12 @@ export interface RequestRefundPayload {
     accountNumber?: string;
     bankName?: string;
     accountHolderName?: string;
+    ifscCode?: string;
+  };
+  exchangeDetails?: {
+    exchangeProductId?: string;
+    exchangeProductName?: string;
+    priceDifference?: number;
   };
 }
 
@@ -169,5 +175,63 @@ export const rejectRefundApi = async (
   const response = await api.post(`/refunds/${refundId}/reject`, {
     rejectionReason,
   });
+  return response.data;
+};
+
+
+export const vendorAcknowledgeClaimApi = async (id: string, payload?: { notes?: string }) => {
+  const response = await api.patch(`/refunds/${id}/vendor-acknowledge`, payload || {});
+  return response.data;
+};
+
+export const vendorDirectRefundPayoutApi = async (
+  id: string,
+  payload: {
+    transactionReference: string;
+    paymentMethod?: string;
+    proofImage?: string;
+    notes?: string;
+  }
+) => {
+  const response = await api.patch(`/refunds/${id}/vendor-direct-payout`, payload);
+  return response.data;
+};
+
+export const superAdminProcessOnlineRefundApi = async (
+  id: string,
+  payload: {
+    payoutReference?: string;
+    payoutProofImage?: string;
+    status?: "COMPLETED" | "PROCESSING";
+    notes?: string;
+  }
+) => {
+  const response = await api.patch(`/refunds/${id}/superadmin-online-payout`, payload);
+  return response.data;
+};
+
+export const adminAssignReturnPickupApi = async (
+  id: string,
+  payload: { deliveryBoyId: string; notes?: string }
+) => {
+  const response = await api.patch(`/refunds/${id}/assign-pickup`, payload);
+  return response.data;
+};
+
+export const deliveryBoySubmitReturnInspectionApi = async (
+  id: string,
+  payload: {
+    otp?: string;
+    condition: string;
+    missingAccessories?: string;
+    visibleDamage?: string;
+    quantityCollected?: number;
+    location?: string;
+    proofImages?: string[];
+    notes?: string;
+    result: "PASSED" | "FAILED";
+  }
+) => {
+  const response = await api.patch(`/refunds/${id}/delivery-inspection`, payload);
   return response.data;
 };
