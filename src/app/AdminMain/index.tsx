@@ -57,7 +57,8 @@ export default function AdminDashboardOverviewScreen() {
   const { stats, charts, loading } = useAppSelector((state) => state.admin);
   const { user } = useAppSelector((state) => state.auth);
 
-  const isSuperAdmin = user?.role === "superadmin" || stats?.isSuperAdmin === true;
+  const isSuperAdmin =
+    user?.role === "superadmin" || stats?.isSuperAdmin === true;
 
   const loadData = () => {
     dispatch(fetchAdminDashboardStats({ timeframe: selectedTimeframe }));
@@ -83,7 +84,9 @@ export default function AdminDashboardOverviewScreen() {
       const dayLabel =
         i === 0 ? "Today" : d.toLocaleDateString("en-US", { weekday: "short" });
       const dayNum = d.getDate();
-      const found = trends.find((t: any) => t._id === dateStr || t._id === localDateStr);
+      const found = trends.find(
+        (t: any) => t._id === dateStr || t._id === localDateStr,
+      );
 
       list.push({
         date: dateStr,
@@ -132,11 +135,19 @@ export default function AdminDashboardOverviewScreen() {
 
     const codItems = raw.filter((p: any) => isCodId(p._id));
     const digitalItems = raw.filter(
-      (p: any) => !isCodId(p._id) && (p._id || "").toLowerCase() !== "replacement (no charge)",
+      (p: any) =>
+        !isCodId(p._id) &&
+        (p._id || "").toLowerCase() !== "replacement (no charge)",
     );
 
-    const codAmount = codItems.reduce((acc: number, c: any) => acc + (c.amount || 0), 0);
-    const codCount = codItems.reduce((acc: number, c: any) => acc + (c.count || 0), 0);
+    const codAmount = codItems.reduce(
+      (acc: number, c: any) => acc + (c.amount || 0),
+      0,
+    );
+    const codCount = codItems.reduce(
+      (acc: number, c: any) => acc + (c.count || 0),
+      0,
+    );
     const digitalAmount = digitalItems.reduce(
       (acc: number, c: any) => acc + (c.amount || 0),
       0,
@@ -162,7 +173,7 @@ export default function AdminDashboardOverviewScreen() {
       },
       {
         id: "digital",
-        label: "Digital & Online (Khalti / Card / eSewa)",
+        label: "Online Payment",
         icon: "credit-card-check-outline",
         color: "#0284C7",
         gradient: ["#0284C7", "#0369A1"] as [string, string],
@@ -208,8 +219,8 @@ export default function AdminDashboardOverviewScreen() {
   return (
     <View style={[styles.root, { backgroundColor: bg }]}>
       <AdminHeader
-        title="BhansaMart Console"
-        subtitle="Executive KPI & Operations Overview"
+        title="Admin Dashboard"
+        subtitle="Business & Store Overview"
       />
       <ScrollView
         style={[styles.container, { backgroundColor: bg }]}
@@ -235,10 +246,10 @@ export default function AdminDashboardOverviewScreen() {
           <View style={styles.headerInfoRow}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.welcomeTitle, { color: textPrimary }]}>
-                Executive Performance Console
+                Dashboard Overview
               </Text>
               <Text style={[styles.welcomeSub, { color: textSecondary }]}>
-                Real-time metrics synchronized with BhansaMart central cluster
+                Live updates of your sales, orders, and stores
               </Text>
             </View>
             <View style={styles.livePulseContainer}>
@@ -324,7 +335,7 @@ export default function AdminDashboardOverviewScreen() {
                       { color: isDark ? "#F8FAFC" : "#065F46" },
                     ]}
                   >
-                    Platform Commission Engine
+                    Platform Commission (1.5%)
                   </Text>
                   <Text
                     style={[
@@ -332,7 +343,7 @@ export default function AdminDashboardOverviewScreen() {
                       { color: isDark ? "#A7F3D0" : "#047857" },
                     ]}
                   >
-                    Central Fixed 1.5% Net Auto-Settled Ledger
+                    Automatically earned from delivered orders
                   </Text>
                 </View>
               </View>
@@ -356,7 +367,7 @@ export default function AdminDashboardOverviewScreen() {
                     { color: isDark ? "#A7F3D0" : "#047857" },
                   ]}
                 >
-                  Net 1.5% Earned
+                  Commission Earned
                 </Text>
                 <Text
                   style={[
@@ -416,7 +427,7 @@ export default function AdminDashboardOverviewScreen() {
                     { color: isDark ? "#94A3B8" : "#475569" },
                   ]}
                 >
-                  Vendor Net Pool
+                  Vendor Earnings
                 </Text>
                 <Text
                   style={[
@@ -446,7 +457,7 @@ export default function AdminDashboardOverviewScreen() {
                     { color: isDark ? "#FCD34D" : "#B45309" },
                   ]}
                 >
-                  Pending Payouts
+                  Pending Withdrawals
                 </Text>
                 <Text
                   style={[
@@ -467,7 +478,9 @@ export default function AdminDashboardOverviewScreen() {
           {/* Orders Card */}
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => router.push("/Screens/staffadminScreens/OrdersScreen" as any)}
+            onPress={() =>
+              router.push("/Screens/staffadminScreens/OrdersScreen" as any)
+            }
             style={[
               styles.kpiCard,
               {
@@ -514,7 +527,7 @@ export default function AdminDashboardOverviewScreen() {
                   style={[styles.dotIndicator, { backgroundColor: "#F59E0B" }]}
                 />
                 <Text style={styles.kpiChipTextWarning}>
-                  {kpi?.orders?.pending || 0} Active
+                  {kpi?.orders?.pending || 0} In Progress
                 </Text>
               </View>
             </View>
@@ -535,7 +548,7 @@ export default function AdminDashboardOverviewScreen() {
           >
             <View style={styles.kpiTopRow}>
               <Text style={[styles.kpiLabel, { color: textSecondary }]}>
-                Gross Sales
+                Total Sales
               </Text>
               <View
                 style={[
@@ -556,7 +569,7 @@ export default function AdminDashboardOverviewScreen() {
               style={[styles.kpiSub, { color: textSecondary }]}
               numberOfLines={1}
             >
-              Settled customer receipts
+              Delivered orders total
             </Text>
           </TouchableOpacity>
 
@@ -601,7 +614,7 @@ export default function AdminDashboardOverviewScreen() {
                 {kpi?.vendors?.active || 0} Active Stores
               </Text>
               <Text style={styles.kpiChipTextWarning}>
-                {kpi?.vendors?.pendingVerification || 0} Pending KYC
+                {kpi?.vendors?.pendingVerification || 0} Pending Approval
               </Text>
             </View>
           </TouchableOpacity>
@@ -621,7 +634,7 @@ export default function AdminDashboardOverviewScreen() {
           >
             <View style={styles.kpiTopRow}>
               <Text style={[styles.kpiLabel, { color: textSecondary }]}>
-                Delivery Fleet
+                Delivery Riders
               </Text>
               <View
                 style={[
@@ -643,7 +656,7 @@ export default function AdminDashboardOverviewScreen() {
               {kpi?.deliveryBoys?.total || 0}
             </Text>
             <Text style={styles.kpiChipTextSuccess} numberOfLines={1}>
-              🟢 {kpi?.deliveryBoys?.online || 0} Active on Radar
+              🟢 {kpi?.deliveryBoys?.online || 0} Online Now
             </Text>
           </TouchableOpacity>
 
@@ -685,7 +698,7 @@ export default function AdminDashboardOverviewScreen() {
               style={[styles.kpiSub, { color: textSecondary }]}
               numberOfLines={1}
             >
-              {kpi?.customers?.active || 0} Active users
+              {kpi?.customers?.active || 0} Active customers
             </Text>
           </TouchableOpacity>
 
@@ -729,7 +742,7 @@ export default function AdminDashboardOverviewScreen() {
               style={[styles.kpiSub, { color: textSecondary }]}
               numberOfLines={1}
             >
-              Disputes requiring resolution
+              Needs help or reply
             </Text>
           </TouchableOpacity>
         </View>
@@ -762,11 +775,11 @@ export default function AdminDashboardOverviewScreen() {
                 />
               </View>
               <Text style={[styles.sectionTitle, { color: textPrimary }]}>
-                Operational Quick Launch
+                Quick Actions
               </Text>
             </View>
             <Text style={[styles.sectionSubtitle, { color: textSecondary }]}>
-              Single-Tap Navigation
+              Shortcuts
             </Text>
           </View>
 
@@ -796,7 +809,7 @@ export default function AdminDashboardOverviewScreen() {
                 style={[styles.shortcutLabel, { color: textPrimary }]}
                 numberOfLines={2}
               >
-                Review Vendors
+                Vendors
               </Text>
             </TouchableOpacity>
 
@@ -858,7 +871,7 @@ export default function AdminDashboardOverviewScreen() {
                 style={[styles.shortcutLabel, { color: textPrimary }]}
                 numberOfLines={2}
               >
-                Master Catalog
+                Products
               </Text>
             </TouchableOpacity>
 
@@ -887,7 +900,7 @@ export default function AdminDashboardOverviewScreen() {
                 style={[styles.shortcutLabel, { color: textPrimary }]}
                 numberOfLines={2}
               >
-                Fleet Radar
+                Riders Map
               </Text>
             </TouchableOpacity>
 
@@ -914,7 +927,7 @@ export default function AdminDashboardOverviewScreen() {
                 style={[styles.shortcutLabel, { color: textPrimary }]}
                 numberOfLines={2}
               >
-                Broadcast
+                Send Alerts
               </Text>
             </TouchableOpacity>
           </View>
@@ -943,13 +956,13 @@ export default function AdminDashboardOverviewScreen() {
                   color="#0284C7"
                 />
                 <Text style={[styles.chartCardTitle, { color: textPrimary }]}>
-                  Platform Trends & Volumes
+                  Sales & Orders Chart
                 </Text>
               </View>
               <Text
                 style={[styles.chartCardSubtitle, { color: textSecondary }]}
               >
-                7-day operational tracking across all vendors
+                Last 7 days performance
               </Text>
             </View>
 
@@ -974,7 +987,7 @@ export default function AdminDashboardOverviewScreen() {
                     chartMetric === "sales" && styles.metricBtnTextActive,
                   ]}
                 >
-                  Revenue
+                  Sales
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -1009,7 +1022,7 @@ export default function AdminDashboardOverviewScreen() {
           >
             <View style={styles.periodStatItem}>
               <Text style={[styles.periodStatLabel, { color: textSecondary }]}>
-                {chartMetric === "sales" ? "Period Volume" : "Period Orders"}
+                {chartMetric === "sales" ? "7 Days Sales" : "7 Days Orders"}
               </Text>
               <Text style={[styles.periodStatValue, { color: textPrimary }]}>
                 {chartMetric === "sales"
@@ -1041,7 +1054,7 @@ export default function AdminDashboardOverviewScreen() {
                 <Text
                   style={[styles.periodStatLabel, { color: textSecondary }]}
                 >
-                  Peak ({peakDay?.day || "N/A"})
+                  Best Day ({peakDay?.day || "N/A"})
                 </Text>
               </View>
               <Text style={[styles.periodStatValue, { color: "#10B981" }]}>
@@ -1197,11 +1210,11 @@ export default function AdminDashboardOverviewScreen() {
                 />
               </View>
               <Text style={[styles.sectionTitle, { color: textPrimary }]}>
-                Payment Settlement Mix
+                Payment Methods
               </Text>
             </View>
             <Text style={[styles.sectionSubtitle, { color: textSecondary }]}>
-              Channel Proportions
+              How Customers Paid
             </Text>
           </View>
 
@@ -1252,7 +1265,7 @@ export default function AdminDashboardOverviewScreen() {
                           { color: textSecondary },
                         ]}
                       >
-                        {item.count} orders processed
+                        {item.count} orders
                       </Text>
                     </View>
                   </View>
@@ -1276,7 +1289,7 @@ export default function AdminDashboardOverviewScreen() {
                       <Text
                         style={[styles.paymentItemPct, { color: item.color }]}
                       >
-                        {item.pct}% share
+                        {item.pct}% of total
                       </Text>
                     </View>
                   </View>
@@ -1338,7 +1351,7 @@ export default function AdminDashboardOverviewScreen() {
                 />
               </View>
               <Text style={[styles.sectionTitle, { color: textPrimary }]}>
-                Order Fulfillment Health
+                Order Delivery Status
               </Text>
             </View>
             <View style={styles.successRateBadge}>
@@ -1348,7 +1361,7 @@ export default function AdminDashboardOverviewScreen() {
                 color="#10B981"
               />
               <Text style={styles.successRateText}>
-                {fulfillmentMetrics.completedPct}% Success
+                {fulfillmentMetrics.completedPct}% Delivered
               </Text>
             </View>
           </View>
@@ -1395,7 +1408,7 @@ export default function AdminDashboardOverviewScreen() {
                 style={[styles.legendDot, { backgroundColor: "#F59E0B" }]}
               />
               <Text style={[styles.legendText, { color: textSecondary }]}>
-                In Pipeline ({fulfillmentMetrics.pending})
+                Pending / On The Way ({fulfillmentMetrics.pending})
               </Text>
             </View>
           </View>

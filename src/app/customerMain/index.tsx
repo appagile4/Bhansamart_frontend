@@ -16,7 +16,6 @@ import {
   KidsWinterEssentials,
   NearbyStoresModal,
   NewArrivals,
-  ProductCard,
   SchoolOfficeStationery,
   SelectLocationModal,
   SnacksDrinks,
@@ -52,6 +51,7 @@ import {
   Dimensions,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -63,8 +63,7 @@ import {
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const PAGE_SIZE = 12;
-const INITIAL_VISIBLE_SECTIONS = 3;
-const SECTIONS_BATCH_SIZE = 2;
+// Section pagination constants removed for seamless 60fps native scrolling
 
 const normalizeDealProduct = (p: any): DealProduct => {
   const curPrice = Number(p.price) || 0;
@@ -116,6 +115,8 @@ export default function HomeScreen() {
 
   const dispatch = useAppDispatch();
   const { addToCart } = useCart();
+  const addToCartRef = useRef(addToCart);
+  addToCartRef.current = addToCart;
 
   // Fine-grained selectors to prevent re-renders on unrelated slice updates
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
@@ -156,18 +157,10 @@ export default function HomeScreen() {
     useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Progressive section-by-section component pagination
-  const [visibleSectionsCount, setVisibleSectionsCount] = useState(
-    INITIAL_VISIBLE_SECTIONS,
-  );
-  const isSectionLoadingRef = useRef(false);
-  const totalSectionsRef = useRef(0);
-
-  // Reset visible component sections when active category changes
-  useEffect(() => {
-    setVisibleSectionsCount(INITIAL_VISIBLE_SECTIONS);
-    isSectionLoadingRef.current = false;
-  }, [selectedCategory]);
+  // Pre-normalize stream products with stable references to eliminate unnecessary card re-renders
+  const normalizedProducts = useMemo(() => {
+    return publicProducts.map(normalizeDealProduct);
+  }, [publicProducts]);
 
   // Concurrency guard to strictly prevent duplicate API requests
   const isFetchingMoreRef = useRef(false);
@@ -281,43 +274,28 @@ export default function HomeScreen() {
     dispatch,
   ]);
 
-  // ── 3. Scroll Listener: Progressively Reveal Components Then Stream Products ─
+  // ── 3. Lightweight Scroll Listener for Infinite Product Streaming ─
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       const { layoutMeasurement, contentOffset, contentSize } =
         event.nativeEvent;
-      // Trigger threshold: 220px before bottom for seamless progressive loading
-      const threshold = 220;
+      // Trigger threshold: 320px before bottom to stream more products seamlessly
+      const threshold = 320;
       const isCloseToBottom =
         layoutMeasurement.height + contentOffset.y >=
         contentSize.height - threshold;
 
       if (isCloseToBottom) {
-        const total = totalSectionsRef.current;
-        if (visibleSectionsCount < total) {
-          if (!isSectionLoadingRef.current) {
-            isSectionLoadingRef.current = true;
-            setTimeout(() => {
-              setVisibleSectionsCount((prev) =>
-                Math.min(total, prev + SECTIONS_BATCH_SIZE),
-              );
-              isSectionLoadingRef.current = false;
-            }, 100);
-          }
-        } else {
-          handleLoadMore();
-        }
+        handleLoadMore();
       }
     },
-    [visibleSectionsCount, handleLoadMore],
+    [handleLoadMore],
   );
 
   // ── 4. Pull to Refresh ───────────────────────────────────────────────
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     isFetchingMoreRef.current = false;
-    isSectionLoadingRef.current = false;
-    setVisibleSectionsCount(INITIAL_VISIBLE_SECTIONS);
     await dispatch(
       fetchPublicProducts({
         category: selectedCategory === "all" ? undefined : selectedCategory,
@@ -478,48 +456,44 @@ export default function HomeScreen() {
     });
   }, []);
 
-  const handleAddToCart = useCallback(
-    (prod: any) => {
-      const targetId = String(
-        prod.id || prod._id || prod.productId || prod.key || ""
-      ).trim() || `item-${Date.now()}`;
+  const handleAddToCart = useCallback((prod: any) => {
+    const targetId =
+      String(prod.id || prod._id || prod.productId || prod.key || "").trim() ||
+      `item-${Date.now()}`;
 
-      let imgUrl = "";
-      if (typeof prod.imageUrl === "string" && prod.imageUrl) {
-        imgUrl = prod.imageUrl;
-      } else if (typeof prod.image === "string" && prod.image) {
-        imgUrl = prod.image;
-      } else if (
-        prod.image &&
-        typeof prod.image === "object" &&
-        "uri" in prod.image
-      ) {
-        imgUrl = prod.image.uri;
-      } else if (Array.isArray(prod.images) && prod.images.length > 0) {
-        imgUrl =
-          typeof prod.images[0] === "string"
-            ? prod.images[0]
-            : prod.images[0]?.url || "";
-      }
+    let imgUrl = "";
+    if (typeof prod.imageUrl === "string" && prod.imageUrl) {
+      imgUrl = prod.imageUrl;
+    } else if (typeof prod.image === "string" && prod.image) {
+      imgUrl = prod.image;
+    } else if (
+      prod.image &&
+      typeof prod.image === "object" &&
+      "uri" in prod.image
+    ) {
+      imgUrl = prod.image.uri;
+    } else if (Array.isArray(prod.images) && prod.images.length > 0) {
+      imgUrl =
+        typeof prod.images[0] === "string"
+          ? prod.images[0]
+          : prod.images[0]?.url || "";
+    }
 
-      addToCart({
-        id: targetId,
-        name: prod.name || prod.title || "Product",
-        price:
-          typeof prod.price === "number"
-            ? prod.price
-            : Number(prod.price) || 100,
-        originalPrice: prod.originalPrice
-          ? Number(prod.originalPrice)
-          : undefined,
-        imageUrl: imgUrl,
-        weight: prod.weight || prod.weightTag || prod.unit || prod.volume || "1 unit",
-        category: prod.category || "Grocery",
-        subCategory: prod.subCategory || prod.subcategory || "",
-      });
-    },
-    [addToCart],
-  );
+    addToCartRef.current({
+      id: targetId,
+      name: prod.name || prod.title || "Product",
+      price:
+        typeof prod.price === "number" ? prod.price : Number(prod.price) || 100,
+      originalPrice: prod.originalPrice
+        ? Number(prod.originalPrice)
+        : undefined,
+      imageUrl: imgUrl,
+      weight:
+        prod.weight || prod.weightTag || prod.unit || prod.volume || "1 unit",
+      category: prod.category || "Grocery",
+      subCategory: prod.subCategory || prod.subcategory || "",
+    });
+  }, []);
 
   const handleNavigateCategoryExpand = useCallback(
     (params: { category: string; subCategory?: string; title?: string }) => {
@@ -1158,28 +1132,23 @@ export default function HomeScreen() {
     handlePromoPress,
   ]);
 
-  // Keep totalSectionsRef synchronized with current category sections count
-  useEffect(() => {
-    totalSectionsRef.current = categorySections.length;
-  }, [categorySections.length]);
-
-  const visibleSections = useMemo(
-    () => categorySections.slice(0, visibleSectionsCount),
-    [categorySections, visibleSectionsCount],
-  );
-
-  const hasMoreSections = visibleSectionsCount < categorySections.length;
+  // Category sections rendered with native layout clipping for buttery 60fps performance
 
   return (
     <View style={containerStyle}>
       <FloatingCartBar />
 
-      {/* Scrollable Home Screen Body with Infinite Scrolling */}
+      {/* Scrollable Home Screen Body with Optimized 60fps Native Physics */}
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         onScroll={handleScroll}
-        scrollEventThrottle={32}
+        scrollEventThrottle={64}
+        removeClippedSubviews={Platform.OS === "android"}
+        overScrollMode="never"
+        decelerationRate="normal"
+        nestedScrollEnabled={true}
+        keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -1296,70 +1265,46 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* ── Progressively Rendered Category Components ── */}
-        {!isOutsideDeliveryZone && (
-          <>
-            {visibleSections.map((sectionNode) => sectionNode)}
-
-            {/* Section Pagination Loader (shows when user reaches bottom of current sections) */}
-            {hasMoreSections && (
-              <View style={styles.loadingMoreContainer}>
-                <ActivityIndicator
-                  size="small"
-                  color={isDark ? "#39D353" : "#008080"}
-                />
-                <Text
-                  style={[
-                    styles.loadingMoreText,
-                    isDark && { color: "#39D353" },
-                  ]}
-                >
-                  Loading more recommendations...
-                </Text>
-              </View>
-            )}
-          </>
-        )}
+        {/* ── Category Components ── */}
+        {!isOutsideDeliveryZone && categorySections}
 
         {/* ── Paginated Infinite Stream of Nearby Products ──────────── */}
-        {!isOutsideDeliveryZone &&
-          !hasMoreSections &&
-          publicProducts.length > 0 && (
-            <View style={styles.streamSection}>
-              <View style={styles.streamHeader}>
-                <View>
-                  <Text
-                    style={[styles.streamTitle, isDark && { color: "#F8FAFC" }]}
-                  >
-                    {selectedCategory === "all"
-                      ? "All Products Near You"
-                      : "More in this Category"}
-                  </Text>
-                  <Text
-                    style={[styles.streamSub, isDark && { color: "#A8B2BE" }]}
-                  >
-                    Showing {publicProducts.length} of {publicTotal} products
-                    from nearby stores
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.streamGrid}>
-                {publicProducts.map((prod, idx) => (
-                  <CompactProductCard
-                    key={prod._id || prod.id || idx}
-                    product={normalizeDealProduct(prod)}
-                    cardWidth={gridCardWidth}
-                    onPress={handleProductPress}
-                    onAddPress={handleAddToCart}
-                  />
-                ))}
+        {!isOutsideDeliveryZone && normalizedProducts.length > 0 && (
+          <View style={styles.streamSection}>
+            <View style={styles.streamHeader}>
+              <View>
+                <Text
+                  style={[styles.streamTitle, isDark && { color: "#F8FAFC" }]}
+                >
+                  {selectedCategory === "all"
+                    ? "All Products Near You"
+                    : "More in this Category"}
+                </Text>
+                <Text
+                  style={[styles.streamSub, isDark && { color: "#A8B2BE" }]}
+                >
+                  Showing {normalizedProducts.length} of {publicTotal} products
+                  from nearby stores
+                </Text>
               </View>
             </View>
-          )}
+
+            <View style={styles.streamGrid}>
+              {normalizedProducts.map((prod) => (
+                <CompactProductCard
+                  key={prod.id}
+                  product={prod}
+                  cardWidth={gridCardWidth}
+                  onPress={handleProductPress}
+                  onAddPress={handleAddToCart}
+                />
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* Infinite Scroll Activity Indicator */}
-        {!hasMoreSections && publicLoadingMore && (
+        {publicLoadingMore && (
           <View style={styles.loadingMoreContainer}>
             <ActivityIndicator
               size="small"
@@ -1374,9 +1319,8 @@ export default function HomeScreen() {
         )}
 
         {/* End of List Confirmation Badge */}
-        {!hasMoreSections &&
-          !publicHasMore &&
-          publicProducts.length > 0 &&
+        {!publicHasMore &&
+          normalizedProducts.length > 0 &&
           !isOutsideDeliveryZone && (
             <View style={styles.endOfListContainer}>
               <View

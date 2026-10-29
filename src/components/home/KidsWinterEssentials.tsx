@@ -1,6 +1,6 @@
 import { moderateScale, scale, useTheme } from "@/theme";
 import { Image } from "expo-image";
-import React from "react";
+import React, { memo } from "react";
 import {
   Dimensions,
   StyleSheet,
@@ -49,7 +49,7 @@ interface KidsWinterEssentialsProps {
   onItemPress?: (item: WinterEssentialItem) => void;
 }
 
-export default function KidsWinterEssentials({
+function KidsWinterEssentials({
   title = "Winter Essentials",
   items = WINTER_ITEMS,
   onItemPress,
@@ -112,6 +112,8 @@ export default function KidsWinterEssentials({
     </View>
   );
 }
+
+export default memo(KidsWinterEssentials);
 
 const styles = StyleSheet.create({
   container: {

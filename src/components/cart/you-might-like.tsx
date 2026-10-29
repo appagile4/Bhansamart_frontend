@@ -296,7 +296,7 @@ export default function YouMightLikeSection({
               ]}
             >
               <Image
-                source={imgSrc}
+                source={imgSrc as any}
                 style={styles.avatarImg}
                 contentFit="contain"
               />

@@ -2,7 +2,7 @@ import { useAppSelector } from "@/store/hooks";
 import { moderateScale, scale, useTheme } from "@/theme";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import React, { useMemo } from "react";
+import React, { memo, useMemo } from "react";
 import {
   ImageSourcePropType,
   StyleSheet,
@@ -56,7 +56,7 @@ const DEFAULT_SALE_ITEMS: FlashSaleItem[] = [
   },
 ];
 
-export default function FastSales({
+function FastSales({
   saleTitle = "Winter Sale",
   onItemPress,
   onCategoryPress,
@@ -168,7 +168,7 @@ export default function FastSales({
             {/* Basket Image */}
             <View style={styles.imageWrapper}>
               <Image
-                source={item.image}
+                source={item.image as any}
                 style={styles.basketImage}
                 contentFit="contain"
               />
@@ -191,6 +191,8 @@ export default function FastSales({
     </View>
   );
 }
+
+export default memo(FastSales);
 
 const styles = StyleSheet.create({
   container: {

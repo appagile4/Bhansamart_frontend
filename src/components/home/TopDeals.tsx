@@ -206,7 +206,7 @@ const DEFAULT_FALLBACK_DEALS: DealProduct[] = [
   },
 ];
 
-export default function TopDeals({
+function TopDeals({
   title = "Top Deals & Trending Picks",
   category = "all",
   isDoubleRow = true,
@@ -444,6 +444,8 @@ export default function TopDeals({
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
+          nestedScrollEnabled={true}
+          overScrollMode="never"
         >
           {skeletonColumns.map((col, cIdx) => (
             <View key={`skel-col-${cIdx}`} style={styles.columnContainer}>
@@ -501,6 +503,8 @@ export default function TopDeals({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         decelerationRate="fast"
+        nestedScrollEnabled={true}
+        overScrollMode="never"
       >
         {columns.map((column, colIdx) => (
           <View key={`col-${colIdx}`} style={styles.columnContainer}>
@@ -567,6 +571,8 @@ export default function TopDeals({
     </View>
   );
 }
+
+export default memo(TopDeals);
 
 const styles = StyleSheet.create({
   container: {

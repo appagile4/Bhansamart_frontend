@@ -419,7 +419,9 @@ export default function CategoryExpandScreen() {
   const router = useRouter();
   const theme = useTheme();
   const dispatch = useAppDispatch();
-  const { addToCart, updateQuantity, getItemQuantity } = useCart();
+  const { addToCart, updateQuantity, getItemQuantity, cartItems } = useCart();
+  const getItemQuantityRef = useRef(getItemQuantity);
+  getItemQuantityRef.current = getItemQuantity;
 
   const pulseAnim = useRef(new Animated.Value(0.35)).current;
 
@@ -1122,7 +1124,7 @@ export default function CategoryExpandScreen() {
   const renderItem = useCallback(
     ({ item }: { item: ProductItem }) => {
       const prodId = item._id || item.id || "";
-      const qty = getItemQuantity(prodId);
+      const qty = getItemQuantityRef.current(prodId);
       return (
         <CategoryExpandProductCard
           product={item}
@@ -1133,7 +1135,7 @@ export default function CategoryExpandScreen() {
         />
       );
     },
-    [getItemQuantity, handleProductPress, handleAddToCart, handleUpdateQuantity]
+    [handleProductPress, handleAddToCart, handleUpdateQuantity]
   );
 
   const renderFooter = useCallback(() => {
@@ -1409,6 +1411,7 @@ export default function CategoryExpandScreen() {
             data={displayedProducts}
             keyExtractor={keyExtractor}
             renderItem={renderItem}
+            extraData={cartItems}
             numColumns={2}
             columnWrapperStyle={styles.columnWrapper}
             initialNumToRender={8}

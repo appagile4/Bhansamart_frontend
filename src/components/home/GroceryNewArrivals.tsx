@@ -3,7 +3,7 @@ import { moderateScale, scale, useTheme } from "@/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { useEffect, useMemo, useRef } from "react";
+import { memo, useEffect, useMemo, useRef } from "react";
 import {
   Animated,
   Dimensions,
@@ -470,7 +470,7 @@ interface GroceryNewArrivalsProps {
   onSeeAllPress?: () => void;
 }
 
-export default function GroceryNewArrivals({
+function GroceryNewArrivals({
   title = "New Arrivals Await",
   category: propCategory,
   items,
@@ -749,6 +749,8 @@ export default function GroceryNewArrivals({
     </View>
   );
 }
+
+export default memo(GroceryNewArrivals);
 
 const styles = StyleSheet.create({
   container: {

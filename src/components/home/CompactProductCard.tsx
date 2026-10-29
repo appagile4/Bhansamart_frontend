@@ -114,10 +114,11 @@ export const CompactProductCard = memo(function CompactProductCard({
         ]}
       >
         <Image
-          source={product.image}
+          source={product.image as any}
           style={styles.image}
           contentFit="contain"
-          transition={200}
+          cachePolicy="memory-disk"
+          priority="normal"
         />
 
         {/* Wishlist Button at Top-Right Corner */}

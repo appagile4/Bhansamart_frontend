@@ -105,7 +105,7 @@ const BASE_PROMO_CARDS: PromoCardItem[] = [
 ];
 
 // Replicate array to create a seamless infinite circular scroll (loop: 1 2 3 4 5 1 2 3 4 5 ...)
-const LOOP_MULTIPLIER = 20;
+const LOOP_MULTIPLIER = 5;
 const INFINITE_PROMO_CARDS: (PromoCardItem & { uniqueKey: string })[] = [];
 for (let loop = 0; loop < LOOP_MULTIPLIER; loop++) {
   BASE_PROMO_CARDS.forEach((item, idx) => {
@@ -119,16 +119,160 @@ for (let loop = 0; loop < LOOP_MULTIPLIER; loop++) {
 const TOTAL_BASE_ITEMS = BASE_PROMO_CARDS.length;
 const INITIAL_INDEX = Math.floor(LOOP_MULTIPLIER / 2) * TOTAL_BASE_ITEMS;
 
+interface PromoCardProps {
+  item: PromoCardItem & { uniqueKey: string };
+  index: number;
+  scrollX: Animated.Value;
+  onPress?: (promo: PromoCardItem) => void;
+}
+
+const PromoCard = React.memo(function PromoCard({
+  item,
+  index,
+  scrollX,
+  onPress,
+}: PromoCardProps) {
+  const isLightCard = item.gradientColors[0].toLowerCase().startsWith("#f");
+  const textColor = isLightCard ? "#18181B" : "#FFFFFF";
+  const subtextColor = isLightCard ? "#52525B" : "rgba(255, 255, 255, 0.85)";
+  const tagBg = isLightCard ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.18)";
+
+  const inputRange = React.useMemo(
+    () => [
+      (index - 1) * SNAP_INTERVAL,
+      index * SNAP_INTERVAL,
+      (index + 1) * SNAP_INTERVAL,
+    ],
+    [index]
+  );
+
+  const scaleAnim = React.useMemo(
+    () =>
+      scrollX.interpolate({
+        inputRange,
+        outputRange: [0.93, 1, 0.93],
+        extrapolate: "clamp",
+      }),
+    [scrollX, inputRange]
+  );
+
+  const opacityAnim = React.useMemo(
+    () =>
+      scrollX.interpolate({
+        inputRange,
+        outputRange: [0.75, 1, 0.75],
+        extrapolate: "clamp",
+      }),
+    [scrollX, inputRange]
+  );
+
+  const handlePress = React.useCallback(() => {
+    onPress?.(item);
+  }, [onPress, item]);
+
+  return (
+    <Animated.View
+      style={[
+        styles.cardWrapper,
+        {
+          width: CARD_WIDTH,
+          height: CARD_HEIGHT,
+          transform: [{ scale: scaleAnim }],
+          opacity: opacityAnim,
+        },
+      ]}
+    >
+      <Pressable
+        style={styles.pressableContainer}
+        onPress={handlePress}
+        android_ripple={{
+          color: "rgba(255,255,255,0.12)",
+          borderless: false,
+        }}
+      >
+        {/* Layer 1: High Fidelity Gradient SVG Canvas */}
+        <Svg
+          width="100%"
+          height="100%"
+          viewBox="0 0 320 185"
+          preserveAspectRatio="none"
+          style={StyleSheet.absoluteFill}
+        >
+          <Defs>
+            <LinearGradient
+              id={`grad-${item.uniqueKey}`}
+              x1="0%"
+              y1="0%"
+              x2="100%"
+              y2="100%"
+            >
+              <Stop offset="0%" stopColor={item.gradientColors[0]} />
+              <Stop offset="100%" stopColor={item.gradientColors[1]} />
+            </LinearGradient>
+          </Defs>
+          <Path d={MODERN_CARD_PATH} fill={`url(#grad-${item.uniqueKey})`} />
+        </Svg>
+
+        {/* Layer 2: Text & Interactive CTA Area */}
+        <View style={styles.contentColumn}>
+          {item.tag ? (
+            <View style={[styles.tagBadge, { backgroundColor: tagBg }]}>
+              <Text style={[styles.tagText, { color: textColor }]}>
+                {item.tag}
+              </Text>
+            </View>
+          ) : null}
+
+          <Text
+            style={[styles.title, { color: textColor }]}
+            numberOfLines={2}
+          >
+            {item.title}
+          </Text>
+
+          <Text
+            style={[styles.subtitle, { color: subtextColor }]}
+            numberOfLines={2}
+          >
+            {item.subtitle}
+          </Text>
+
+          <View
+            style={[styles.actionBtn, { backgroundColor: item.buttonColor }]}
+          >
+            <Text
+              style={[styles.actionBtnText, { color: item.buttonTextColor }]}
+            >
+              {item.buttonText}
+            </Text>
+          </View>
+        </View>
+
+        {/* Layer 3: Overhanging Floating Image Element */}
+        <View style={styles.imageRightWrapper}>
+          <Image
+            source={{ uri: item.imageUrl }}
+            style={styles.floatingImage}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={200}
+          />
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+});
+
 interface CurvedPromoScrollerProps {
   onPromoPress?: (promo: PromoCardItem) => void;
 }
 
-export default function CurvedPromoScroller({
+function CurvedPromoScroller({
   onPromoPress,
 }: CurvedPromoScrollerProps) {
   const theme = useTheme?.() ?? {};
   const scrollX = useRef(new Animated.Value(0)).current;
-  const flatListRef = useRef<Animated.FlatList<any>>(null);
+  const flatListRef = useRef<any>(null);
 
   const currentIndexRef = useRef(INITIAL_INDEX);
   const isInteractingRef = useRef(false);
@@ -150,6 +294,15 @@ export default function CurvedPromoScroller({
       if (isInteractingRef.current) return;
 
       currentIndexRef.current += 1;
+      if (currentIndexRef.current >= TOTAL_BASE_ITEMS * (LOOP_MULTIPLIER - 1)) {
+        const targetIndex = (currentIndexRef.current % TOTAL_BASE_ITEMS) + INITIAL_INDEX;
+        currentIndexRef.current = targetIndex;
+        flatListRef.current?.scrollToOffset({
+          offset: (targetIndex - 1) * SNAP_INTERVAL,
+          animated: false,
+        });
+      }
+
       flatListRef.current?.scrollToOffset({
         offset: currentIndexRef.current * SNAP_INTERVAL,
         animated: true,
@@ -159,154 +312,68 @@ export default function CurvedPromoScroller({
     return () => clearInterval(interval);
   }, []);
 
-  const handleScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const offsetX = e.nativeEvent.contentOffset.x;
-    const index = Math.round(offsetX / SNAP_INTERVAL);
-    currentIndexRef.current = index;
+  const handleScrollEnd = React.useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const offsetX = e.nativeEvent.contentOffset.x;
+      const index = Math.round(offsetX / SNAP_INTERVAL);
+      currentIndexRef.current = index;
 
-    // Reposition to center if near start or end to maintain truly infinite loop
-    if (
-      index < TOTAL_BASE_ITEMS * 2 ||
-      index > TOTAL_BASE_ITEMS * (LOOP_MULTIPLIER - 2)
-    ) {
-      const normalizedIndex = (index % TOTAL_BASE_ITEMS) + INITIAL_INDEX;
-      currentIndexRef.current = normalizedIndex;
-      flatListRef.current?.scrollToOffset({
-        offset: normalizedIndex * SNAP_INTERVAL,
-        animated: false,
-      });
-    }
-  };
+      // Reposition to center if near start or end to maintain truly infinite loop
+      if (
+        index < TOTAL_BASE_ITEMS ||
+        index >= TOTAL_BASE_ITEMS * (LOOP_MULTIPLIER - 1)
+      ) {
+        const normalizedIndex = (index % TOTAL_BASE_ITEMS) + INITIAL_INDEX;
+        currentIndexRef.current = normalizedIndex;
+        flatListRef.current?.scrollToOffset({
+          offset: normalizedIndex * SNAP_INTERVAL,
+          animated: false,
+        });
+      }
+    },
+    []
+  );
 
-  const renderItem = ({
-    item,
-    index,
-  }: {
-    item: PromoCardItem & { uniqueKey: string };
-    index: number;
-  }) => {
-    const inputRange = [
-      (index - 1) * SNAP_INTERVAL,
-      index * SNAP_INTERVAL,
-      (index + 1) * SNAP_INTERVAL,
-    ];
+  const renderItem = React.useCallback(
+    ({
+      item,
+      index,
+    }: {
+      item: PromoCardItem & { uniqueKey: string };
+      index: number;
+    }) => {
+      return (
+        <PromoCard
+          item={item}
+          index={index}
+          scrollX={scrollX}
+          onPress={onPromoPress}
+        />
+      );
+    },
+    [scrollX, onPromoPress]
+  );
 
-    const scaleAnim = scrollX.interpolate({
-      inputRange,
-      outputRange: [0.93, 1, 0.93],
-      extrapolate: "clamp",
-    });
+  const getItemLayout = React.useCallback(
+    (_: any, index: number) => ({
+      length: SNAP_INTERVAL,
+      offset: SNAP_INTERVAL * index,
+      index,
+    }),
+    []
+  );
 
-    const opacityAnim = scrollX.interpolate({
-      inputRange,
-      outputRange: [0.75, 1, 0.75],
-      extrapolate: "clamp",
-    });
-
-    const isLightCard = item.gradientColors[0].toLowerCase().startsWith("#f");
-    const textColor = isLightCard ? "#18181B" : "#FFFFFF";
-    const subtextColor = isLightCard ? "#52525B" : "rgba(255, 255, 255, 0.85)";
-    const tagBg = isLightCard ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.18)";
-
-    return (
-      <Animated.View
-        style={[
-          styles.cardWrapper,
-          {
-            width: CARD_WIDTH,
-            height: CARD_HEIGHT,
-            transform: [{ scale: scaleAnim }],
-            opacity: opacityAnim,
-          },
-        ]}
-      >
-        <Pressable
-          style={styles.pressableContainer}
-          onPress={() => onPromoPress?.(item)}
-          android_ripple={{
-            color: "rgba(255,255,255,0.12)",
-            borderless: false,
-          }}
-        >
-          {/* Layer 1: High Fidelity Gradient SVG Canvas */}
-          <Svg
-            width="100%"
-            height="100%"
-            viewBox="0 0 320 185"
-            preserveAspectRatio="none"
-            style={StyleSheet.absoluteFill}
-          >
-            <Defs>
-              <LinearGradient
-                id={`grad-${item.uniqueKey}`}
-                x1="0%"
-                y1="0%"
-                x2="100%"
-                y2="100%"
-              >
-                <Stop offset="0%" stopColor={item.gradientColors[0]} />
-                <Stop offset="100%" stopColor={item.gradientColors[1]} />
-              </LinearGradient>
-            </Defs>
-            <Path d={MODERN_CARD_PATH} fill={`url(#grad-${item.uniqueKey})`} />
-          </Svg>
-
-          {/* Layer 2: Text & Interactive CTA Area */}
-          <View style={styles.contentColumn}>
-            {item.tag ? (
-              <View style={[styles.tagBadge, { backgroundColor: tagBg }]}>
-                <Text style={[styles.tagText, { color: textColor }]}>
-                  {item.tag}
-                </Text>
-              </View>
-            ) : null}
-
-            <Text
-              style={[styles.title, { color: textColor }]}
-              numberOfLines={2}
-            >
-              {item.title}
-            </Text>
-
-            <Text
-              style={[styles.subtitle, { color: subtextColor }]}
-              numberOfLines={2}
-            >
-              {item.subtitle}
-            </Text>
-
-            <View
-              style={[styles.actionBtn, { backgroundColor: item.buttonColor }]}
-            >
-              <Text
-                style={[styles.actionBtnText, { color: item.buttonTextColor }]}
-              >
-                {item.buttonText}
-              </Text>
-            </View>
-          </View>
-
-          {/* Layer 3: Overhanging Floating Image Element */}
-          <View style={styles.imageRightWrapper}>
-            <Image
-              source={{ uri: item.imageUrl }}
-              style={styles.floatingImage}
-              contentFit="cover"
-              cachePolicy="memory-disk"
-              transition={200}
-            />
-          </View>
-        </Pressable>
-      </Animated.View>
-    );
-  };
+  const keyExtractor = React.useCallback(
+    (item: PromoCardItem & { uniqueKey: string }) => item.uniqueKey,
+    []
+  );
 
   return (
     <View style={styles.container}>
       <Animated.FlatList
         ref={flatListRef}
         data={INFINITE_PROMO_CARDS}
-        keyExtractor={(item) => item.uniqueKey}
+        keyExtractor={keyExtractor}
         renderItem={renderItem}
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -314,6 +381,14 @@ export default function CurvedPromoScroller({
         snapToInterval={SNAP_INTERVAL}
         decelerationRate="fast"
         bounces={false}
+        initialNumToRender={2}
+        maxToRenderPerBatch={2}
+        windowSize={3}
+        updateCellsBatchingPeriod={50}
+        removeClippedSubviews={Platform.OS === "android"}
+        getItemLayout={getItemLayout}
+        nestedScrollEnabled={true}
+        overScrollMode="never"
         onScrollBeginDrag={() => {
           isInteractingRef.current = true;
         }}
@@ -326,20 +401,17 @@ export default function CurvedPromoScroller({
           handleScrollEnd(e);
           isInteractingRef.current = false;
         }}
-        getItemLayout={(_, index) => ({
-          length: SNAP_INTERVAL,
-          offset: SNAP_INTERVAL * index,
-          index,
-        })}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-          { useNativeDriver: true },
+          { useNativeDriver: true }
         )}
         scrollEventThrottle={16}
       />
     </View>
   );
 }
+
+export default React.memo(CurvedPromoScroller);
 
 const styles = StyleSheet.create({
   container: {

@@ -2,7 +2,7 @@ import CategoryCard, {
   CategoryGridItem,
 } from "@/components/home/category-card";
 import { moderateScale, scale, useTheme } from "@/theme";
-import React from "react";
+import React, { memo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 interface GroceryKitchenProps {
@@ -60,7 +60,7 @@ const GROCERY_ITEMS: CategoryGridItem[] = [
   },
 ];
 
-export default function GroceryKitchen({ onItemPress }: GroceryKitchenProps) {
+function GroceryKitchen({ onItemPress }: GroceryKitchenProps) {
   const theme = useTheme();
 
   return (
@@ -81,6 +81,8 @@ export default function GroceryKitchen({ onItemPress }: GroceryKitchenProps) {
     </View>
   );
 }
+
+export default memo(GroceryKitchen);
 
 const styles = StyleSheet.create({
   container: {

@@ -3,7 +3,7 @@ import { moderateScale, scale, useTheme } from "@/theme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { useEffect, useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 import {
   Animated,
   Dimensions,
@@ -99,7 +99,7 @@ interface SnacksDrinksProps {
   onItemPress?: (item: SnackCategoryItem) => void;
 }
 
-export default function SnacksDrinks({
+function SnacksDrinks({
   title = "Snacks, Drinks & Munchies",
   onItemPress,
 }: SnacksDrinksProps) {
@@ -296,6 +296,8 @@ export default function SnacksDrinks({
     </View>
   );
 }
+
+export default memo(SnacksDrinks);
 
 const styles = StyleSheet.create({
   container: {

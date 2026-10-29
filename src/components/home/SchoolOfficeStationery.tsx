@@ -3,7 +3,7 @@ import { moderateScale, scale, useTheme } from "@/theme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { useEffect, useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 import {
   Animated,
   Dimensions,
@@ -99,7 +99,7 @@ interface SchoolOfficeStationeryProps {
   onItemPress?: (item: StationeryCategoryItem) => void;
 }
 
-export default function SchoolOfficeStationery({
+function SchoolOfficeStationery({
   title = "School & Office Stationery",
   onItemPress,
 }: SchoolOfficeStationeryProps) {
@@ -276,6 +276,8 @@ export default function SchoolOfficeStationery({
     </View>
   );
 }
+
+export default memo(SchoolOfficeStationery);
 
 const styles = StyleSheet.create({
   container: {

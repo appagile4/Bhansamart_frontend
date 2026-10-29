@@ -1,7 +1,7 @@
 import { useAppSelector } from "@/store/hooks";
 import { moderateScale, scale } from "@/theme";
 import { Image } from "expo-image";
-import React, { useEffect, useRef } from "react";
+import React, { memo, useEffect, useRef } from "react";
 import {
   Animated,
   ScrollView,
@@ -318,7 +318,7 @@ interface FeaturedBrandsProps {
   onItemPress?: (item: FeaturedBrandItem) => void;
 }
 
-export default function FeaturedBrands({
+function FeaturedBrands({
   category = "grocery",
   items,
   onItemPress,
@@ -358,6 +358,8 @@ export default function FeaturedBrands({
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
+          nestedScrollEnabled={true}
+          overScrollMode="never"
           contentContainerStyle={styles.scrollContent}
         >
           {[1, 2, 3, 4].map((i) => (
@@ -383,6 +385,8 @@ export default function FeaturedBrands({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        nestedScrollEnabled={true}
+        overScrollMode="never"
         contentContainerStyle={styles.scrollContent}
         decelerationRate="fast"
       >
@@ -418,6 +422,8 @@ export default function FeaturedBrands({
     </View>
   );
 }
+
+export default memo(FeaturedBrands);
 
 const styles = StyleSheet.create({
   container: {

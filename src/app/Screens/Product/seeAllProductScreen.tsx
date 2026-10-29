@@ -300,7 +300,9 @@ export default function SeeAllProductScreen() {
   const router = useRouter();
   const theme = useTheme();
   const dispatch = useAppDispatch();
-  const { addToCart, updateQuantity, getItemQuantity } = useCart();
+  const { addToCart, updateQuantity, getItemQuantity, cartItems } = useCart();
+  const getItemQuantityRef = useRef(getItemQuantity);
+  getItemQuantityRef.current = getItemQuantity;
 
   const params = useLocalSearchParams<{
     title?: string;
@@ -662,7 +664,7 @@ export default function SeeAllProductScreen() {
       };
     }) => {
       const prodId = item._id || item.id || "";
-      const qty = getItemQuantity(prodId);
+      const qty = getItemQuantityRef.current(prodId);
       return (
         <SeeAllProductCard
           product={item}
@@ -673,7 +675,7 @@ export default function SeeAllProductScreen() {
         />
       );
     },
-    [getItemQuantity, handleProductPress, handleAddToCart, handleUpdateQuantity]
+    [handleProductPress, handleAddToCart, handleUpdateQuantity]
   );
 
   const renderFooter = useCallback(() => {
@@ -882,6 +884,7 @@ export default function SeeAllProductScreen() {
         data={filteredProducts}
         keyExtractor={keyExtractor}
         renderItem={renderItem}
+        extraData={cartItems}
         numColumns={2}
         columnWrapperStyle={styles.columnWrapper}
         initialNumToRender={8}

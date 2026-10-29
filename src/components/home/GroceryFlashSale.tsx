@@ -4,7 +4,7 @@ import { moderateScale, scale, useTheme } from "@/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { useEffect, useMemo, useRef } from "react";
+import { memo, useEffect, useMemo, useRef } from "react";
 import {
   Animated,
   ScrollView,
@@ -694,7 +694,7 @@ interface GroceryFlashSaleProps {
   onSeeAllPress?: () => void;
 }
 
-export default function GroceryFlashSale({
+function GroceryFlashSale({
   category = "all",
   title,
   subtitle,
@@ -1240,6 +1240,8 @@ export default function GroceryFlashSale({
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
+            nestedScrollEnabled={true}
+            overScrollMode="never"
             contentContainerStyle={styles.scrollContent}
           >
             {[1, 2, 3].map((item) => (
@@ -1255,6 +1257,8 @@ export default function GroceryFlashSale({
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
+            nestedScrollEnabled={true}
+            overScrollMode="never"
             contentContainerStyle={[
               styles.scrollContent,
               { marginTop: scale(14) },
@@ -1316,6 +1320,8 @@ export default function GroceryFlashSale({
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
+          nestedScrollEnabled={true}
+          overScrollMode="never"
           contentContainerStyle={styles.scrollContent}
         >
           {displayRow1.map(renderProductCard)}
@@ -1325,6 +1331,8 @@ export default function GroceryFlashSale({
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
+          nestedScrollEnabled={true}
+          overScrollMode="never"
           contentContainerStyle={[
             styles.scrollContent,
             { marginTop: scale(14) },
@@ -1385,6 +1393,8 @@ export default function GroceryFlashSale({
     </View>
   );
 }
+
+export default memo(GroceryFlashSale);
 
 const styles = StyleSheet.create({
   wrapper: {

@@ -9,6 +9,7 @@ import React, { useEffect, useMemo, useRef } from "react";
 import {
   Animated,
   FlatList,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -182,7 +183,7 @@ function DealCardSkeleton({ animOpacity }: { animOpacity: Animated.Value }) {
   );
 }
 
-export default function DealsOfTheDays({
+function DealsOfTheDays({
   title = "DEALS OF THE DAY",
   products,
   onProductPress,
@@ -412,6 +413,8 @@ export default function DealsOfTheDays({
           initialNumToRender={3}
           maxToRenderPerBatch={3}
           windowSize={3}
+          nestedScrollEnabled={true}
+          overScrollMode="never"
           contentContainerStyle={styles.listContent}
           ItemSeparatorComponent={() => <View style={{ width: scale(12) }} />}
         />
@@ -461,6 +464,10 @@ export default function DealsOfTheDays({
         initialNumToRender={4}
         maxToRenderPerBatch={4}
         windowSize={3}
+        updateCellsBatchingPeriod={50}
+        removeClippedSubviews={Platform.OS === "android"}
+        nestedScrollEnabled={true}
+        overScrollMode="never"
         contentContainerStyle={styles.listContent}
         ItemSeparatorComponent={() => <View style={{ width: scale(12) }} />}
       />
@@ -513,6 +520,8 @@ export default function DealsOfTheDays({
     </View>
   );
 }
+
+export default React.memo(DealsOfTheDays);
 
 const styles = StyleSheet.create({
   container: {

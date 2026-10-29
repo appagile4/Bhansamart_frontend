@@ -89,10 +89,12 @@ const CategoryButton = memo(function CategoryButton({
       activeOpacity={0.72}
       onPress={handlePress}
       onLayout={(e) => {
-        layoutRef.current = {
-          x: e.nativeEvent.layout.x,
-          width: e.nativeEvent.layout.width,
-        };
+        if (layoutRef.current.width === 0) {
+          layoutRef.current = {
+            x: e.nativeEvent.layout.x,
+            width: e.nativeEvent.layout.width,
+          };
+        }
       }}
       style={styles.categoryItem}
     >
@@ -141,7 +143,7 @@ const CategoryButton = memo(function CategoryButton({
   );
 });
 
-export default function CategoryScroller({
+function CategoryScroller({
   categories = CATEGORIES,
   selectedCategory: propSelectedCategory,
   onSelectCategory,
@@ -151,7 +153,7 @@ export default function CategoryScroller({
     (state) => state.product.selectedCategory
   );
   const activeCategory = propSelectedCategory ?? reduxCategory ?? "all";
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<any>(null);
   const { width: screenWidth } = useWindowDimensions();
 
   const handleSelect = useCallback(
@@ -178,6 +180,8 @@ export default function CategoryScroller({
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        nestedScrollEnabled={true}
+        overScrollMode="never"
       >
         {categories.map((item) => (
           <CategoryButton
@@ -191,6 +195,8 @@ export default function CategoryScroller({
     </View>
   );
 }
+
+export default memo(CategoryScroller);
 
 const styles = StyleSheet.create({
   container: {

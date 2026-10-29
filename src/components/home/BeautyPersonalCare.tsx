@@ -4,7 +4,7 @@ import CategoryCard, {
 import { useAppSelector } from "@/store/hooks";
 import { moderateScale, scale, useTheme } from "@/theme";
 import { useRouter } from "expo-router";
-import React, { useEffect, useRef } from "react";
+import React, { memo, useEffect, useRef } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
 
 interface BeautyPersonalCareProps {
@@ -54,7 +54,7 @@ const BEAUTY_ITEMS: CategoryGridItem[] = [
   },
 ];
 
-export default function BeautyPersonalCare({
+function BeautyPersonalCare({
   onItemPress,
 }: BeautyPersonalCareProps) {
   const theme = useTheme();
@@ -172,6 +172,8 @@ export default function BeautyPersonalCare({
     </View>
   );
 }
+
+export default memo(BeautyPersonalCare);
 
 const styles = StyleSheet.create({
   container: {

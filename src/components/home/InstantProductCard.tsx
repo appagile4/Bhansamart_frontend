@@ -127,7 +127,7 @@ export default function InstantProductCard({
       {/* Top Image Container with Soft Cyan/Mint Background & ADD Button */}
       <View style={styles.imageBox}>
         <Image
-          source={product.image}
+          source={product.image as any}
           style={styles.productImage}
           contentFit="contain"
         />

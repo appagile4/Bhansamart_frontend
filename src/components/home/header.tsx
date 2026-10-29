@@ -4,9 +4,9 @@ import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import React, { memo, useCallback, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import CategoryScroller from "./category-scroller";
 import SearchBar from "./search-bar";
 
@@ -23,7 +23,7 @@ interface HeaderProps {
   onVoicePress?: () => void;
 }
 
-export default function Header({
+function Header({
   storeName = "Delivery Address",
   location = "",
   selectedCategory = "all",
@@ -36,40 +36,42 @@ export default function Header({
   onVoicePress,
 }: HeaderProps) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const theme = useTheme();
   const isDark = theme.mode === "dark";
   const { unreadCount } = useUnreadNotifications("customer");
-  const [activeCategory, setActiveCategory] = useState(selectedCategory);
   const [searchValue, setSearchValue] = useState("");
 
-  const handleNotificationPress = () => {
+  const handleNotificationPress = useCallback(() => {
     if (onNotificationPress) {
       onNotificationPress();
     } else {
       router.push("/Screens/Profile/notifications" as any);
     }
-  };
+  }, [onNotificationPress, router]);
 
-  const handleCategorySelect = (id: string) => {
-    setActiveCategory(id);
-    onSelectCategory?.(id);
-  };
+  const handleCategorySelect = useCallback(
+    (id: string) => {
+      onSelectCategory?.(id);
+    },
+    [onSelectCategory]
+  );
 
-  const handleSearchPress = () => {
+  const handleSearchPress = useCallback(() => {
     if (onSearchPress) {
       onSearchPress();
     } else {
       router.push("/search" as any);
     }
-  };
+  }, [onSearchPress, router]);
 
-  const handleVoicePress = () => {
+  const handleVoicePress = useCallback(() => {
     if (onVoicePress) {
       onVoicePress();
     } else {
       router.push("/search" as any);
     }
-  };
+  }, [onVoicePress, router]);
 
   return (
     <LinearGradient
@@ -81,8 +83,9 @@ export default function Header({
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
       style={styles.gradientContainer}
+      renderToHardwareTextureAndroid={true}
     >
-      <SafeAreaView edges={["top"]} style={styles.safeArea}>
+      <View style={[styles.safeArea, { paddingTop: insets.top }]}>
         {/* Top Header Row (Store Info, Location, Store & Profile Icons) */}
         <View style={styles.topRow}>
           {/* Left Store & Location Info */}
@@ -197,7 +200,7 @@ export default function Header({
 
         {/* Category Horizontal Scroller Component */}
         <CategoryScroller
-          selectedCategory={activeCategory}
+          selectedCategory={selectedCategory}
           onSelectCategory={handleCategorySelect}
         />
 
@@ -229,10 +232,12 @@ export default function Header({
             contentFit="contain"
           />
         </View>
-      </SafeAreaView>
+      </View>
     </LinearGradient>
   );
 }
+
+export default memo(Header);
 
 const styles = StyleSheet.create({
   gradientContainer: {
@@ -240,10 +245,10 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: scale(20),
     borderBottomRightRadius: scale(20),
     shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
   },
   safeArea: {
     paddingBottom: moderateScale(10),

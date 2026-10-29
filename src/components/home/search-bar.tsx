@@ -1,7 +1,7 @@
 import { moderateScale, scale, useTheme } from "@/theme";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { memo, useCallback } from "react";
 import { StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 
 interface SearchBarProps {
@@ -14,7 +14,7 @@ interface SearchBarProps {
   readOnly?: boolean;
 }
 
-export default function SearchBar({
+function SearchBar({
   value,
   onChangeText,
   placeholder = 'Search "Product"',
@@ -27,7 +27,7 @@ export default function SearchBar({
   const theme = useTheme();
   const isDark = theme.mode === "dark";
 
-  const handlePress = () => {
+  const handlePress = useCallback(() => {
     if (onPress) {
       onPress();
     } else if (onSearchPress) {
@@ -35,15 +35,15 @@ export default function SearchBar({
     } else {
       router.push("/search" as any);
     }
-  };
+  }, [onPress, onSearchPress, router]);
 
-  const handleVoice = () => {
+  const handleVoice = useCallback(() => {
     if (onVoicePress) {
       onVoicePress();
     } else {
       router.push("/search" as any);
     }
-  };
+  }, [onVoicePress, router]);
 
   const searchContainerStyle = [
     styles.container,
@@ -150,6 +150,8 @@ export default function SearchBar({
     </View>
   );
 }
+
+export default memo(SearchBar);
 
 const styles = StyleSheet.create({
   container: {

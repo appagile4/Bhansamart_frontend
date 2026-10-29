@@ -426,7 +426,7 @@ function ProductCardComponent({
         ]}
       >
         <Image
-          source={product.image}
+          source={product.image as any}
           style={styles.productImage}
           contentFit="cover"
           transition={150}

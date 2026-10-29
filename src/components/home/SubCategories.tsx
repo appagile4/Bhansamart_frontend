@@ -1,7 +1,7 @@
 import { useAppSelector } from "@/store/hooks";
 import { moderateScale, scale, useTheme } from "@/theme";
 import { Image } from "expo-image";
-import React, { useEffect, useRef } from "react";
+import React, { memo, useEffect, useRef } from "react";
 import {
   Animated,
   Dimensions,
@@ -1023,7 +1023,7 @@ interface GrocerySubCategoriesProps {
   onItemPress?: (section: CatalogSectionData, item: SubCategoryItem) => void;
 }
 
-export default function GrocerySubCategories({
+function GrocerySubCategories({
   category = "grocery",
   sections,
   onItemPress,
@@ -1163,6 +1163,8 @@ export default function GrocerySubCategories({
     </View>
   );
 }
+
+export default memo(GrocerySubCategories);
 
 const styles = StyleSheet.create({
   container: {
