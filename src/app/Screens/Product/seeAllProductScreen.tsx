@@ -2,7 +2,7 @@ import { FloatingCartBar } from "@/components/cart";
 import { FilterModal, FilterState } from "@/components/category";
 import { useProductCartQuantity, useCartActions } from "@/context/cart-context";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { fetchPublicProducts, ProductItem } from "@/store/slices/productSlice";
+import { fetchPublicProducts, selectPublicProducts, ProductItem } from "@/store/slices/productSlice";
 import { moderateScale, scale, useTheme } from "@/theme";
 import {
   Feather,
@@ -327,9 +327,7 @@ export default function SeeAllProductScreen() {
     inStockOnly: false,
   });
 
-  const publicProducts = useAppSelector(
-    (state) => state.product?.publicProducts || []
-  );
+  const publicProducts = useAppSelector(selectPublicProducts);
   const publicLoading = useAppSelector(
     (state) => state.product?.publicLoading
   );

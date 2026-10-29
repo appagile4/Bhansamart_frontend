@@ -8,7 +8,7 @@ import {
 } from "@/constants/categories";
 import { useProductCartQuantity, useCartActions } from "@/context/cart-context";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { fetchCategoryProducts, ProductItem } from "@/store/slices/productSlice";
+import { fetchCategoryProducts, selectCategoryProducts, ProductItem } from "@/store/slices/productSlice";
 import { moderateScale, scale, useTheme } from "@/theme";
 import {
   Feather,
@@ -960,9 +960,7 @@ export default function CategoryExpandScreen() {
   }, [parentCategory]);
 
   // Redux Category Products State (Fine-grained selectors prevent unrelated home catalog re-renders)
-  const categoryProducts = useAppSelector(
-    (state) => state.product?.categoryProducts || []
-  );
+  const categoryProducts = useAppSelector(selectCategoryProducts);
   const categoryLoading = useAppSelector(
     (state) => state.product?.categoryLoading
   );

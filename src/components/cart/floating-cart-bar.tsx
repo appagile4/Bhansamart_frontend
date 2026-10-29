@@ -1,6 +1,7 @@
 import React from "react";
 import { useCartTotals } from "@/context/cart-context";
 import { useAppSelector } from "@/store/hooks";
+import { selectCartPreviewItems } from "@/store/slices/cartSlice";
 import { moderateScale, scale } from "@/theme";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -28,7 +29,7 @@ const FloatingCartBar = React.memo(function FloatingCartBar({
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { totalCount, totalPrice, totalOriginalPrice, totalSavings } = useCartTotals();
-  const previewThumbnails = useAppSelector((state) => state.cart.items.slice(0, 3));
+  const previewThumbnails = useAppSelector(selectCartPreviewItems);
 
   if (totalCount === 0) {
     return null;

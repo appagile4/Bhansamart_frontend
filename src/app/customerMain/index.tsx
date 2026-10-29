@@ -32,6 +32,7 @@ import {
 } from "@/store/slices/addressSlice";
 import {
   fetchPublicProducts,
+  selectPublicProducts,
   setSelectedCategory,
 } from "@/store/slices/productSlice";
 import { moderateScale, scale, useTheme } from "@/theme";
@@ -137,9 +138,7 @@ export default function HomeScreen() {
   );
 
   // Redux Pagination & Product Catalog Selectors
-  const publicProducts = useAppSelector(
-    (state) => state.product?.publicProducts || [],
-  );
+  const publicProducts = useAppSelector(selectPublicProducts);
   const publicTotal = useAppSelector(
     (state) => state.product?.publicTotal || 0,
   );

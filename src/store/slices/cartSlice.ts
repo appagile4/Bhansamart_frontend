@@ -1,5 +1,5 @@
 import storage from "@/utils/storage";
-import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { createAsyncThunk, createSlice, createSelector, PayloadAction } from "@reduxjs/toolkit";
 import {
   addToCartApi,
   clearCartApi,
@@ -574,13 +574,31 @@ export const selectProductQuantity =
 
 /**
  * Granular selector for cart totals.
+ * Memoized with createSelector so it returns the exact same object reference
+ * unless one of the numerical totals actually changes.
  */
-export const selectCartTotals = (state: { cart: CartState }) => ({
-  totalCount: state.cart.totalCount,
-  totalPrice: state.cart.totalPrice,
-  totalOriginalPrice: state.cart.totalOriginalPrice,
-  totalSavings: state.cart.totalSavings,
-});
+export const selectCartTotals = createSelector(
+  [
+    (state: { cart: CartState }) => state.cart.totalCount,
+    (state: { cart: CartState }) => state.cart.totalPrice,
+    (state: { cart: CartState }) => state.cart.totalOriginalPrice,
+    (state: { cart: CartState }) => state.cart.totalSavings,
+  ],
+  (totalCount, totalPrice, totalOriginalPrice, totalSavings) => ({
+    totalCount,
+    totalPrice,
+    totalOriginalPrice,
+    totalSavings,
+  })
+);
+
+/**
+ * Memoized selector for the first 3 cart preview items (used in FloatingCartBar).
+ */
+export const selectCartPreviewItems = createSelector(
+  [(state: { cart: CartState }) => state.cart.items],
+  (items) => items.slice(0, 3)
+);
 
 /**
  * Primitive selector for total item count (used in tab bar badges).

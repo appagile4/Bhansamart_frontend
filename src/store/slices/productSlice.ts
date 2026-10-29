@@ -570,4 +570,11 @@ export const {
   setSelectedCategory,
 } = productSlice.actions;
 
+const EMPTY_PRODUCTS_LIST: ProductItem[] = [];
+export const selectPublicProducts = (state: { product?: ProductState }): ProductItem[] =>
+  state.product?.publicProducts ?? EMPTY_PRODUCTS_LIST;
+
+export const selectCategoryProducts = (state: { product?: ProductState }): ProductItem[] =>
+  state.product?.categoryProducts ?? EMPTY_PRODUCTS_LIST;
+
 export default productSlice.reducer;
