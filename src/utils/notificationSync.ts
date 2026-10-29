@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import api from "@/store/services/api";
 import socketService from "@/store/services/socketService";
 
-export type NotificationRole = "admin" | "staff" | "vendor" | "customer";
+export type NotificationRole = "admin" | "staff" | "vendor" | "customer" | "delivery";
 
 // Centralized in-memory unread counts across all active headers/components
 const unreadState: Record<NotificationRole, number> = {
@@ -10,6 +10,7 @@ const unreadState: Record<NotificationRole, number> = {
   staff: 0,
   vendor: 0,
   customer: 0,
+  delivery: 0,
 };
 
 type Listener = (count: number) => void;
@@ -18,6 +19,7 @@ const listeners: Record<NotificationRole, Set<Listener>> = {
   staff: new Set(),
   vendor: new Set(),
   customer: new Set(),
+  delivery: new Set(),
 };
 
 const notifyRole = (role: NotificationRole) => {
@@ -77,8 +79,17 @@ export const fetchUnreadCount = async (role: NotificationRole): Promise<number> 
       const count = res.data?.unreadCount || 0;
       setUnread("vendor", count);
       return count;
+    } else if (role === "delivery") {
+      const res = await api.get("/notifications/unread-count", {
+        params: { role: "delivery" },
+      });
+      const count = res.data?.unreadCount || 0;
+      setUnread("delivery", count);
+      return count;
     } else {
-      const res = await api.get("/notifications/unread-count");
+      const res = await api.get("/notifications/unread-count", {
+        params: { role: "customer" },
+      });
       const count = res.data?.unreadCount || 0;
       setUnread("customer", count);
       return count;
@@ -130,6 +141,10 @@ export const useUnreadNotifications = (role: NotificationRole) => {
       } else if (role === "customer") {
         socketUnsub = socketService.onCustomerNotification(() => {
           incrementUnread("customer");
+        });
+      } else if (role === "delivery") {
+        socketUnsub = socketService.onDeliveryNotification(() => {
+          incrementUnread("delivery");
         });
       }
     });

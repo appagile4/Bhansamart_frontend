@@ -1,10 +1,10 @@
-import { useCart } from "@/context/cart-context";
+import { useProductCartQuantity, useCartActions } from "@/context/cart-context";
 import { useAppSelector } from "@/store/hooks";
 import { moderateScale, scale, useTheme } from "@/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { memo, useEffect, useMemo, useRef } from "react";
+import React, { memo, useEffect, useMemo, useRef } from "react";
 import {
   Animated,
   ScrollView,
@@ -694,6 +694,183 @@ interface GroceryFlashSaleProps {
   onSeeAllPress?: () => void;
 }
 
+
+const FlashSaleCard = React.memo(function FlashSaleCard({
+  item,
+  isDark,
+  onPress,
+  onAddPress,
+}: {
+  item: FlashSaleProduct;
+  isDark: boolean;
+  onPress: (item: FlashSaleProduct) => void;
+  onAddPress: (item: FlashSaleProduct) => void;
+}) {
+  const itemQty = useProductCartQuantity(item.id);
+  const inCart = itemQty > 0;
+
+  return (
+    <TouchableOpacity
+      key={item.id}
+      activeOpacity={0.9}
+      onPress={() => onPress(item)}
+      style={styles.card}
+    >
+      {/* Product Image Container with Custom SVG Path Background */}
+      <View style={styles.imageBox}>
+        <Svg
+          width="100%"
+          height="100%"
+          viewBox="0 0 186 180"
+          preserveAspectRatio="none"
+          style={StyleSheet.absoluteFill}
+        >
+          <Path d={FLASH_CARD_SVG_PATH} fill={isDark ? "#1B252E" : "#FFFFFF"} />
+        </Svg>
+
+        <View style={styles.imageInnerWrapper}>
+          <Image
+            source={item.image}
+            style={styles.productImage}
+            contentFit="contain"
+            transition={150}
+          />
+        </View>
+
+        <TouchableOpacity
+          activeOpacity={0.82}
+          onPress={() => onAddPress(item)}
+          style={styles.svgAddButtonWrapper}
+        >
+          <Svg
+            width="100%"
+            height="100%"
+            viewBox="78 138 98 36"
+            preserveAspectRatio="none"
+            style={StyleSheet.absoluteFill}
+          >
+            <Path
+              d={FLASH_ADD_BUTTON_SVG_PATH}
+              fill={
+                inCart
+                  ? isDark
+                    ? "#16A34A"
+                    : "#3F784C"
+                  : isDark
+                    ? "#151D24"
+                    : "#FFFFFF"
+              }
+              stroke={isDark ? "#39D353" : "#43784A"}
+              strokeWidth={1.5}
+            />
+          </Svg>
+          <Text
+            style={[
+              styles.addButtonText,
+              inCart && { color: "#FFFFFF" },
+              isDark && { color: inCart ? "#FFFFFF" : "#39D353" },
+            ]}
+          >
+            {inCart ? `${itemQty} IN CART` : "ADD"}
+          </Text>
+          {item.optionsText ? (
+            <Text
+              style={[
+                styles.optionsText,
+                inCart && { color: "rgba(255,255,255,0.85)" },
+                isDark && {
+                  color: inCart
+                    ? "rgba(255,255,255,0.85)"
+                    : "#A8B2BE",
+                },
+              ]}
+            >
+              {item.optionsText}
+            </Text>
+          ) : null}
+        </TouchableOpacity>
+      </View>
+
+      {item.stockLeftText ? (
+        <View style={styles.stockContainer}>
+          <Text style={[styles.stockText, isDark && { color: "#F8FAFC" }]}>
+            {item.stockLeftText}
+          </Text>
+          <View
+            style={[
+              styles.stockProgressBarBg,
+              isDark && { backgroundColor: "#303B45" },
+            ]}
+          >
+            <View
+              style={[
+                styles.stockProgressBarFill,
+                { width: `${(item.stockProgress || 0.4) * 100}%` },
+              ]}
+            />
+          </View>
+        </View>
+      ) : null}
+
+      <View style={styles.detailsContainer}>
+        <View style={styles.tagsRow}>
+          <View
+            style={[
+              styles.tagPill,
+              isDark && {
+                backgroundColor: "#1B252E",
+                borderWidth: 1,
+                borderColor: "#303B45",
+              },
+            ]}
+          >
+            <Text style={[styles.tagText, isDark && { color: "#A8B2BE" }]}>
+              {item.weightTag}
+            </Text>
+          </View>
+        </View>
+
+        <Text
+          style={[styles.productTitle, isDark && { color: "#F8FAFC" }]}
+          numberOfLines={2}
+        >
+          {item.name}
+        </Text>
+
+        <View style={styles.ratingRow}>
+          <View style={styles.starsContainer}>
+            {[1, 2, 3, 4].map((star) => (
+              <Ionicons
+                key={star}
+                name="star"
+                size={moderateScale(12.5)}
+                color="#F59E0B"
+              />
+            ))}
+            <Ionicons
+              name="star-half"
+              size={moderateScale(12.5)}
+              color="#F59E0B"
+            />
+          </View>
+          <Text style={[styles.ratingCount, isDark && { color: "#A8B2BE" }]}>
+            ({item.ratingCount})
+          </Text>
+        </View>
+
+        <View style={styles.priceRow}>
+          <Text style={[styles.currentPrice, isDark && { color: "#F8FAFC" }]}>
+            Rs. {item.price}
+          </Text>
+          <Text style={[styles.originalPrice, isDark && { color: "#64748B" }]}>
+            Rs. {item.originalPrice}
+          </Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+});
+
 function GroceryFlashSale({
   category = "all",
   title,
@@ -707,7 +884,7 @@ function GroceryFlashSale({
   const router = useRouter();
   const theme = useTheme();
   const isDark = theme.mode === "dark";
-  const { addToCart, getItemQuantity } = useCart();
+  const { addToCart } = useCartActions();
   const { publicProducts, publicLoading } = useAppSelector(
     (state) => state.product,
   );
@@ -1017,181 +1194,13 @@ function GroceryFlashSale({
   };
 
   const renderProductCard = (item: FlashSaleProduct) => (
-    <TouchableOpacity
+    <FlashSaleCard
       key={item.id}
-      activeOpacity={0.9}
-      onPress={() => handleProductPress(item)}
-      style={styles.card}
-    >
-      {/* Product Image Container with Custom SVG Path Background */}
-      <View style={styles.imageBox}>
-        {/* Main Card Background SVG */}
-        <Svg
-          width="100%"
-          height="100%"
-          viewBox="0 0 186 180"
-          preserveAspectRatio="none"
-          style={StyleSheet.absoluteFill}
-        >
-          <Path d={FLASH_CARD_SVG_PATH} fill={isDark ? "#1B252E" : "#FFFFFF"} />
-        </Svg>
-
-        {/* Product Image inside the SVG Canvas */}
-        <View style={styles.imageInnerWrapper}>
-          <Image
-            source={item.image}
-            style={styles.productImage}
-            contentFit="contain"
-            transition={150}
-          />
-        </View>
-
-        {/* Custom SVG Path ADD Button in the Matching Cutout */}
-        <TouchableOpacity
-          activeOpacity={0.82}
-          onPress={() => handleAddPress(item)}
-          style={styles.svgAddButtonWrapper}
-        >
-          {(() => {
-            const itemQty = getItemQuantity(item.id);
-            const inCart = itemQty > 0;
-            return (
-              <>
-                <Svg
-                  width="100%"
-                  height="100%"
-                  viewBox="78 138 98 36"
-                  preserveAspectRatio="none"
-                  style={StyleSheet.absoluteFill}
-                >
-                  <Path
-                    d={FLASH_ADD_BUTTON_SVG_PATH}
-                    fill={
-                      inCart
-                        ? isDark
-                          ? "#16A34A"
-                          : "#3F784C"
-                        : isDark
-                          ? "#151D24"
-                          : "#FFFFFF"
-                    }
-                    stroke={isDark ? "#39D353" : "#43784A"}
-                    strokeWidth={1.5}
-                  />
-                </Svg>
-                <Text
-                  style={[
-                    styles.addButtonText,
-                    inCart && { color: "#FFFFFF" },
-                    isDark && { color: inCart ? "#FFFFFF" : "#39D353" },
-                  ]}
-                >
-                  {inCart ? `${itemQty} IN CART` : "ADD"}
-                </Text>
-                {item.optionsText ? (
-                  <Text
-                    style={[
-                      styles.optionsText,
-                      inCart && { color: "rgba(255,255,255,0.85)" },
-                      isDark && {
-                        color: inCart
-                          ? "rgba(255,255,255,0.85)"
-                          : "#A8B2BE",
-                      },
-                    ]}
-                  >
-                    {item.optionsText}
-                  </Text>
-                ) : null}
-              </>
-            );
-          })()}
-        </TouchableOpacity>
-      </View>
-
-      {/* Stock Warning Progress Indicator */}
-      {item.stockLeftText ? (
-        <View style={styles.stockContainer}>
-          <Text style={[styles.stockText, isDark && { color: "#F8FAFC" }]}>
-            {item.stockLeftText}
-          </Text>
-          <View
-            style={[
-              styles.stockProgressBarBg,
-              isDark && { backgroundColor: "#303B45" },
-            ]}
-          >
-            <View
-              style={[
-                styles.stockProgressBarFill,
-                { width: `${(item.stockProgress || 0.4) * 100}%` },
-              ]}
-            />
-          </View>
-        </View>
-      ) : null}
-
-      {/* Product Details */}
-      <View style={styles.detailsContainer}>
-        {/* Tags Row */}
-        <View style={styles.tagsRow}>
-          <View
-            style={[
-              styles.tagPill,
-              isDark && {
-                backgroundColor: "#1B252E",
-                borderWidth: 1,
-                borderColor: "#303B45",
-              },
-            ]}
-          >
-            <Text style={[styles.tagText, isDark && { color: "#A8B2BE" }]}>
-              {item.weightTag}
-            </Text>
-          </View>
-        </View>
-
-        {/* Title */}
-        <Text
-          style={[styles.productTitle, isDark && { color: "#F8FAFC" }]}
-          numberOfLines={2}
-        >
-          {item.name}
-        </Text>
-
-        {/* Ratings */}
-        <View style={styles.ratingRow}>
-          <View style={styles.starsContainer}>
-            {[1, 2, 3, 4].map((star) => (
-              <Ionicons
-                key={star}
-                name="star"
-                size={moderateScale(12.5)}
-                color="#F59E0B"
-              />
-            ))}
-            <Ionicons
-              name="star-half"
-              size={moderateScale(12.5)}
-              color="#F59E0B"
-            />
-          </View>
-          <Text style={[styles.ratingCount, isDark && { color: "#A8B2BE" }]}>
-            ({item.ratingCount})
-          </Text>
-        </View>
-
-        {/* Price Row */}
-        <View style={styles.priceRow}>
-          <Text style={[styles.currentPrice, isDark && { color: "#F8FAFC" }]}>
-            Rs. {item.price}
-          </Text>
-          <Text style={[styles.originalPrice, isDark && { color: "#64748B" }]}>
-            Rs. {item.originalPrice}
-          </Text>
-        </View>
-      </View>
-    </TouchableOpacity>
+      item={item}
+      isDark={isDark}
+      onPress={handleProductPress}
+      onAddPress={handleAddPress}
+    />
   );
 
   // ── 1. Skeleton Loading View ─────────────────────────────────

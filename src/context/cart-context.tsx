@@ -1,28 +1,40 @@
-import React, { createContext, useContext, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useCallback, useRef, useMemo } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   addToCart as addToCartThunk,
-  addToCartLocal,
   CartItem,
   clearCart as clearCartThunk,
-  clearCartLocal,
   fetchCart,
   loadCartFromStorage,
   removeFromCart as removeFromCartThunk,
-  removeFromCartLocal,
   updateCartQuantity as updateCartQuantityThunk,
-  updateQuantityLocal,
+  selectProductQuantity,
+  selectCartTotals,
+  selectCartTotalCount,
 } from "@/store/slices/cartSlice";
 
 export type { CartItem };
 
-interface CartContextType {
-  cartItems: CartItem[];
-  addToCart: (product: Omit<CartItem, "quantity"> & { quantity?: number }) => void;
+export interface CartActions {
+  addToCart: (
+    product: Omit<CartItem, "quantity"> & {
+      quantity?: number;
+      stock?: number;
+      maxQuantity?: number;
+    }
+  ) => void;
   removeFromCart: (productId: string) => void;
-  updateQuantity: (productId: string, delta: number) => void;
-  getItemQuantity: (productId: string) => number;
+  updateQuantity: (
+    productId: string,
+    delta: number,
+    exactQuantity?: number
+  ) => void;
   clearCart: () => void;
+}
+
+interface CartContextType extends CartActions {
+  cartItems: CartItem[];
+  getItemQuantity: (productId: string) => number;
   totalCount: number;
   totalPrice: number;
   totalOriginalPrice: number;
@@ -49,8 +61,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     dispatch(fetchCart());
   }, [dispatch, initialized]);
 
+  // Keep a synchronous ref of items for instant, non-subscribing lookups
+  const itemsRef = useRef(cartItems);
+  itemsRef.current = cartItems;
+
   const addToCart = useCallback(
-    (product: Omit<CartItem, "quantity"> & { quantity?: number }) => {
+    (
+      product: Omit<CartItem, "quantity"> & {
+        quantity?: number;
+        stock?: number;
+        maxQuantity?: number;
+      }
+    ) => {
       dispatch(addToCartThunk(product));
     },
     [dispatch]
@@ -58,46 +80,51 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const removeFromCart = useCallback(
     (productId: string) => {
-      const pId = String(productId).trim();
+      const pId = String(productId || "").trim();
+      if (!pId) return;
       dispatch(removeFromCartThunk(pId));
     },
     [dispatch]
   );
 
   const updateQuantity = useCallback(
-    (productId: string, delta: number) => {
-      const pId = String(productId).trim();
-      dispatch(updateCartQuantityThunk({ productId: pId, delta }));
+    (productId: string, delta: number, exactQuantity?: number) => {
+      const pId = String(productId || "").trim();
+      if (!pId) return;
+      dispatch(
+        updateCartQuantityThunk({
+          productId: pId,
+          delta,
+          quantity: exactQuantity,
+        })
+      );
     },
     [dispatch]
-  );
-
-  // Synchronous, reactive product quantity lookup map
-  const cartMap = React.useMemo(() => {
-    const map: Record<string, number> = {};
-    for (const item of cartItems) {
-      if (item.id) map[String(item.id).trim()] = item.quantity;
-      if ((item as any).productId) map[String((item as any).productId).trim()] = item.quantity;
-      if ((item as any)._id) map[String((item as any)._id).trim()] = item.quantity;
-      if (item.name) map[String(item.name).trim()] = item.quantity;
-    }
-    return map;
-  }, [cartItems]);
-
-  const getItemQuantity = useCallback(
-    (productId: string): number => {
-      const targetId = String(productId || "").trim();
-      return targetId ? cartMap[targetId] || 0 : 0;
-    },
-    [cartMap]
   );
 
   const clearCart = useCallback(() => {
     dispatch(clearCartThunk());
   }, [dispatch]);
 
-  // Stabilize CartContext value to prevent unnecessary re-renders across all consumers
-  const contextValue = React.useMemo(
+  // Synchronous, stable lookup without triggering consumer invalidation
+  const getItemQuantity = useCallback((productId: string): number => {
+    const targetId = String(productId || "").trim();
+    if (!targetId) return 0;
+    const currentItems = itemsRef.current;
+    for (let i = 0; i < currentItems.length; i++) {
+      const it = currentItems[i];
+      if (
+        String(it.id).trim() === targetId ||
+        String((it as any).productId || "").trim() === targetId ||
+        String((it as any)._id || "").trim() === targetId
+      ) {
+        return it.quantity || 0;
+      }
+    }
+    return 0;
+  }, []);
+
+  const contextValue = useMemo<CartContextType>(
     () => ({
       cartItems,
       addToCart,
@@ -125,16 +152,98 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <CartContext.Provider value={contextValue}>
-      {children}
-    </CartContext.Provider>
+    <CartContext.Provider value={contextValue}>{children}</CartContext.Provider>
   );
 }
 
-export function useCart() {
+/**
+ * Standard hook for full cart access (used in cart screen, checkout).
+ */
+export function useCart(): CartContextType {
   const context = useContext(CartContext);
   if (!context) {
     throw new Error("useCart must be used within a CartProvider");
   }
   return context;
+}
+
+/**
+ * High-performance granular selector hook for a single product's quantity.
+ * Compares primitive numbers so updating Product A NEVER re-renders Product B!
+ */
+export function useProductCartQuantity(productId: string | undefined): number {
+  return useAppSelector(selectProductQuantity(productId));
+}
+
+/**
+ * High-performance hook for stable cart actions.
+ * Never causes component re-renders when cart state updates!
+ */
+export function useCartActions(): CartActions {
+  const dispatch = useAppDispatch();
+
+  const addToCart = useCallback(
+    (
+      product: Omit<CartItem, "quantity"> & {
+        quantity?: number;
+        stock?: number;
+        maxQuantity?: number;
+      }
+    ) => {
+      dispatch(addToCartThunk(product));
+    },
+    [dispatch]
+  );
+
+  const removeFromCart = useCallback(
+    (productId: string) => {
+      const pId = String(productId || "").trim();
+      if (!pId) return;
+      dispatch(removeFromCartThunk(pId));
+    },
+    [dispatch]
+  );
+
+  const updateQuantity = useCallback(
+    (productId: string, delta: number, exactQuantity?: number) => {
+      const pId = String(productId || "").trim();
+      if (!pId) return;
+      dispatch(
+        updateCartQuantityThunk({
+          productId: pId,
+          delta,
+          quantity: exactQuantity,
+        })
+      );
+    },
+    [dispatch]
+  );
+
+  const clearCart = useCallback(() => {
+    dispatch(clearCartThunk());
+  }, [dispatch]);
+
+  return useMemo(
+    () => ({
+      addToCart,
+      removeFromCart,
+      updateQuantity,
+      clearCart,
+    }),
+    [addToCart, removeFromCart, updateQuantity, clearCart]
+  );
+}
+
+/**
+ * Granular hook for cart totals only.
+ */
+export function useCartTotals() {
+  return useAppSelector(selectCartTotals);
+}
+
+/**
+ * Granular hook for total cart count (e.g. badge counters).
+ */
+export function useCartTotalCount(): number {
+  return useAppSelector(selectCartTotalCount);
 }

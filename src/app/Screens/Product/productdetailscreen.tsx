@@ -1,6 +1,6 @@
 import { FloatingCartBar } from "@/components/cart";
 import { SellerDetailsModal, SellerInfo } from "@/components/product";
-import { useCart } from "@/context/cart-context";
+import { useProductCartQuantity, useCartActions } from "@/context/cart-context";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   fetchProductById,
@@ -37,6 +37,172 @@ import {
 
 const { width } = Dimensions.get("window");
 
+
+interface SimilarProductCardProps {
+  item: any;
+  isDark: boolean;
+  onPress: (item: any) => void;
+  onAddToCart: (item: any) => void;
+  onUpdateQuantity: (id: string, delta: number) => void;
+}
+
+const SimilarProductCard = React.memo(function SimilarProductCard({
+  item,
+  isDark,
+  onPress,
+  onAddToCart,
+  onUpdateQuantity,
+}: SimilarProductCardProps) {
+  const sId = item._id || item.id || "";
+  const sQty = useProductCartQuantity(sId);
+  const sImg =
+    item.images && item.images.length > 0
+      ? item.images[0].url
+      : "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=300&q=80";
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.88}
+      onPress={() => onPress(item)}
+      style={styles.productCard}
+    >
+      <View
+        style={[
+          styles.gridImageBox,
+          isDark && { backgroundColor: "#182430" },
+        ]}
+      >
+        <Image
+          source={{ uri: sImg }}
+          style={styles.gridProductImg}
+          contentFit="contain"
+        />
+        {sQty === 0 ? (
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => onAddToCart(item)}
+            style={[
+              styles.gridAddBtn,
+              isDark && {
+                backgroundColor: "#15222D",
+                borderColor: "#38BDF8",
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.gridAddText,
+                isDark && { color: "#38BDF8" },
+              ]}
+            >
+              ADD
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <View
+            style={[
+              styles.gridCounterBox,
+              isDark && {
+                backgroundColor: "#15222D",
+                borderColor: "#38BDF8",
+              },
+            ]}
+          >
+            <TouchableOpacity
+              onPress={() => onUpdateQuantity(sId, -1)}
+              style={styles.gridCounterBtn}
+            >
+              <Feather
+                name="minus"
+                size={scale(9)}
+                color={isDark ? "#38BDF8" : "#016073"}
+              />
+            </TouchableOpacity>
+            <Text
+              style={[
+                styles.gridCounterQty,
+                isDark && { color: "#38BDF8" },
+              ]}
+            >
+              {sQty}
+            </Text>
+            <TouchableOpacity
+              onPress={() => onUpdateQuantity(sId, 1)}
+              style={styles.gridCounterBtn}
+            >
+              <Feather
+                name="plus"
+                size={scale(9)}
+                color={isDark ? "#38BDF8" : "#016073"}
+              />
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+
+      <Text
+        style={[
+          styles.gridUnitText,
+          isDark && { color: "#94A3B8" },
+        ]}
+      >
+        {item.unit || "1 pc"}
+      </Text>
+
+      <Text
+        style={[
+          styles.gridTitle,
+          isDark && { color: "#F8FAFC" },
+        ]}
+        numberOfLines={2}
+      >
+        {item.name}
+      </Text>
+
+      <View style={styles.gridStarRow}>
+        <Ionicons name="star" size={scale(9)} color="#F59E0B" />
+        <Text
+          style={[
+            styles.gridRatingText,
+            isDark && { color: "#CBD5E1" },
+          ]}
+        >
+          {(item.ratingsAverage || 4.5).toFixed(1)}
+        </Text>
+        <Text
+          style={[
+            styles.gridReviewsCount,
+            isDark && { color: "#64748B" },
+          ]}
+        >
+          ({item.ratingsCount || 10})
+        </Text>
+      </View>
+
+      <View style={styles.gridPriceRow}>
+        <Text
+          style={[
+            styles.gridPrice,
+            isDark && { color: "#F8FAFC" },
+          ]}
+        >
+          Rs. {item.price}
+        </Text>
+        {item.originalPrice && item.originalPrice > item.price && (
+          <Text
+            style={[
+              styles.gridOrigPrice,
+              isDark && { color: "#64748B" },
+            ]}
+          >
+            Rs. {item.originalPrice}
+          </Text>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+});
+
 export default function ProductDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -56,7 +222,7 @@ export default function ProductDetailScreen() {
 
   const theme = useTheme();
   const dispatch = useAppDispatch();
-  const { addToCart, updateQuantity, getItemQuantity } = useCart();
+  const { addToCart, updateQuantity } = useCartActions();
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
@@ -138,7 +304,7 @@ export default function ProductDetailScreen() {
       : 0;
 
   // 6. Cart Quantity
-  const qtyInCart = getItemQuantity(productId);
+  const qtyInCart = useProductCartQuantity(productId);
 
   // 7. Seller Info for Modal
   const sellerInfo: SellerInfo = useMemo(() => {
@@ -906,167 +1072,26 @@ export default function ProductDetailScreen() {
               Similar Products in {productCategory}
             </Text>
             <View style={styles.productsGrid}>
-              {similarProducts.map((item) => {
-                const sId = item._id || item.id || "";
-                const sQty = getItemQuantity(sId);
-                const sImg =
-                  item.images && item.images.length > 0
-                    ? item.images[0].url
-                    : "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=300&q=80";
-
-                return (
-                  <TouchableOpacity
-                    key={sId}
-                    activeOpacity={0.88}
-                    onPress={() => handleProductCardPress(item)}
-                    style={styles.productCard}
-                  >
-                    <View
-                      style={[
-                        styles.gridImageBox,
-                        isDark && { backgroundColor: "#182430" },
-                      ]}
-                    >
-                      <Image
-                        source={{ uri: sImg }}
-                        style={styles.gridProductImg}
-                        contentFit="contain"
-                      />
-                      {sQty === 0 ? (
-                        <TouchableOpacity
-                          activeOpacity={0.8}
-                          onPress={() =>
-                            addToCart({
-                              id: sId,
-                              name: item.name,
-                              price: item.price,
-                              originalPrice: item.originalPrice || item.price,
-                              imageUrl: sImg,
-                              weight: item.unit || "1 pc",
-                            })
-                          }
-                          style={[
-                            styles.gridAddBtn,
-                            isDark && {
-                              backgroundColor: "#15222D",
-                              borderColor: "#38BDF8",
-                            },
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.gridAddText,
-                              isDark && { color: "#38BDF8" },
-                            ]}
-                          >
-                            ADD
-                          </Text>
-                        </TouchableOpacity>
-                      ) : (
-                        <View
-                          style={[
-                            styles.gridCounterBox,
-                            isDark && {
-                              backgroundColor: "#15222D",
-                              borderColor: "#38BDF8",
-                            },
-                          ]}
-                        >
-                          <TouchableOpacity
-                            onPress={() => updateQuantity(sId, -1)}
-                            style={styles.gridCounterBtn}
-                          >
-                            <Feather
-                              name="minus"
-                              size={scale(9)}
-                              color={isDark ? "#38BDF8" : "#016073"}
-                            />
-                          </TouchableOpacity>
-                          <Text
-                            style={[
-                              styles.gridCounterQty,
-                              isDark && { color: "#38BDF8" },
-                            ]}
-                          >
-                            {sQty}
-                          </Text>
-                          <TouchableOpacity
-                            onPress={() => updateQuantity(sId, 1)}
-                            style={styles.gridCounterBtn}
-                          >
-                            <Feather
-                              name="plus"
-                              size={scale(9)}
-                              color={isDark ? "#38BDF8" : "#016073"}
-                            />
-                          </TouchableOpacity>
-                        </View>
-                      )}
-                    </View>
-
-                    <Text
-                      style={[
-                        styles.gridUnitText,
-                        isDark && { color: "#94A3B8" },
-                      ]}
-                    >
-                      {item.unit || "1 pc"}
-                    </Text>
-
-                    <Text
-                      style={[
-                        styles.gridTitle,
-                        isDark && { color: "#F8FAFC" },
-                      ]}
-                      numberOfLines={2}
-                    >
-                      {item.name}
-                    </Text>
-
-                    <View style={styles.gridStarRow}>
-                      <Ionicons name="star" size={scale(9)} color="#F59E0B" />
-                      <Text
-                        style={[
-                          styles.gridRatingText,
-                          isDark && { color: "#CBD5E1" },
-                        ]}
-                      >
-                        {(item.ratingsAverage || 4.5).toFixed(1)}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.gridReviewsCount,
-                          isDark && { color: "#64748B" },
-                        ]}
-                      >
-                        ({item.ratingsCount || 10})
-                      </Text>
-                    </View>
-
-                    <View style={styles.gridPriceRow}>
-                      <Text
-                        style={[
-                          styles.gridPrice,
-                          isDark && { color: "#F8FAFC" },
-                        ]}
-                      >
-                        Rs. {item.price}
-                      </Text>
-                      {item.originalPrice && item.originalPrice > item.price && (
-                        <Text
-                          style={[
-                            styles.gridOrigPrice,
-                            isDark && { color: "#64748B" },
-                          ]}
-                        >
-                          Rs. {item.originalPrice}
-                        </Text>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+              {similarProducts.map((item) => (
+                <SimilarProductCard
+                  key={item._id || item.id || ""}
+                  item={item}
+                  isDark={isDark}
+                  onPress={handleProductCardPress}
+                  onAddToCart={(it) => {
+                    const sImg = it.images && it.images.length > 0 ? it.images[0].url : "";
+                    addToCart({
+                      id: it._id || it.id || "",
+                      name: it.name,
+                      price: it.price,
+                      originalPrice: it.originalPrice || it.price,
+                      imageUrl: sImg,
+                      weight: it.unit || "1 pc",
+                    });
+                  }}
+                  onUpdateQuantity={(id, delta) => updateQuantity(id, delta)}
+                />
+              ))}</View>
           </View>
         )}
       </ScrollView>

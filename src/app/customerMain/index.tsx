@@ -23,7 +23,7 @@ import {
   SweetTooth,
   TopDeals,
 } from "@/components/home";
-import { useCart } from "@/context/cart-context";
+import { useCartActions } from "@/context/cart-context";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import socketService from "@/store/services/socketService";
 import {
@@ -114,7 +114,7 @@ export default function HomeScreen() {
   }, [windowWidth, numColumns]);
 
   const dispatch = useAppDispatch();
-  const { addToCart } = useCart();
+  const { addToCart } = useCartActions();
   const addToCartRef = useRef(addToCart);
   addToCartRef.current = addToCart;
 

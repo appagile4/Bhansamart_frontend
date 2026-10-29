@@ -1,4 +1,5 @@
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import deliveryService from "@/store/services/deliveryService";
 import socketService from "@/store/services/socketService";
 import {
   acceptOfferedOrder,
@@ -14,14 +15,14 @@ import {
   verifyOrderPickupOtp,
 } from "@/store/slices/deliverySlice";
 import { moderateScale, scale } from "@/theme";
+import { useUnreadNotifications } from "@/utils/notificationSync";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useRef, useState } from "react";
-import * as Location from "expo-location";
-import deliveryService from "@/store/services/deliveryService";
 import {
   ActivityIndicator,
   Alert,
@@ -45,7 +46,10 @@ import MapView, {
   PROVIDER_DEFAULT,
   PROVIDER_GOOGLE,
 } from "react-native-maps";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 const CANCELLATION_REASONS = [
   {
@@ -99,6 +103,8 @@ export default function DeliveryDashboardScreen() {
     actionLoading,
   } = useAppSelector((state) => state.delivery);
 
+  const { unreadCount: notifUnreadCount } = useUnreadNotifications("delivery");
+
   // OTP inputs
   const [pickupOtpInput, setPickupOtpInput] = useState("");
   const [deliveryOtpInput, setDeliveryOtpInput] = useState("");
@@ -108,8 +114,8 @@ export default function DeliveryDashboardScreen() {
     "CASH" | "DIRECT_QR"
   >("CASH");
 
-  // Countdown timer for incoming offer
-  const [timeLeft, setTimeLeft] = useState(45);
+  // Countdown timer for incoming offer (60 seconds)
+  const [timeLeft, setTimeLeft] = useState(60);
   const timerRef = useRef<any>(null);
 
   // Google Map ref & coordinates for offer modal
@@ -126,7 +132,9 @@ export default function DeliveryDashboardScreen() {
   const [returnVisibleDamage, setReturnVisibleDamage] = useState("");
   const [returnQtyCollected, setReturnQtyCollected] = useState("1");
   const [returnNotes, setReturnNotes] = useState("");
-  const [returnResult, setReturnResult] = useState<"PASSED" | "FAILED">("PASSED");
+  const [returnResult, setReturnResult] = useState<"PASSED" | "FAILED">(
+    "PASSED",
+  );
   const [submittingInspection, setSubmittingInspection] = useState(false);
 
   const loadReturnPickups = async () => {
@@ -167,7 +175,10 @@ export default function DeliveryDashboardScreen() {
   // Delivery partner's current coordinate (prefers live high-accuracy GPS)
   const partnerCoord = useMemo(() => {
     if (liveCoordinates) {
-      return { latitude: liveCoordinates.latitude, longitude: liveCoordinates.longitude };
+      return {
+        latitude: liveCoordinates.latitude,
+        longitude: liveCoordinates.longitude,
+      };
     }
     let lat = 27.705;
     let lng = 85.315;
@@ -306,7 +317,7 @@ export default function DeliveryDashboardScreen() {
   // Handle offer countdown timer
   useEffect(() => {
     if (offeredAssignment) {
-      setTimeLeft(offeredAssignment.timeoutSeconds || 45);
+      setTimeLeft(offeredAssignment.timeoutSeconds || 60);
       if (timerRef.current) clearInterval(timerRef.current);
 
       timerRef.current = setInterval(() => {
@@ -332,12 +343,19 @@ export default function DeliveryDashboardScreen() {
     let fallbackInterval: any = null;
     let isTrackingActive = true;
 
-    const sendLocationUpdate = (latitude: number, longitude: number, heading = 0, speed = 0) => {
+    const sendLocationUpdate = (
+      latitude: number,
+      longitude: number,
+      heading = 0,
+      speed = 0,
+    ) => {
       setLiveCoordinates({ latitude, longitude });
       // 1. Emit via real-time WebSocket for instant proximity matching
       socketService.emitDeliveryLocation(latitude, longitude, heading, speed);
       // 2. Persist in MongoDB database via location controller
-      deliveryService.updateLocation({ latitude, longitude, heading, speed }).catch(() => {});
+      deliveryService
+        .updateLocation({ latitude, longitude, heading, speed })
+        .catch(() => {});
     };
 
     const startLiveTracking = async () => {
@@ -347,13 +365,17 @@ export default function DeliveryDashboardScreen() {
 
       try {
         // Request foreground high-accuracy GPS permission
-        const { status: fgStatus } = await Location.requestForegroundPermissionsAsync();
+        const { status: fgStatus } =
+          await Location.requestForegroundPermissionsAsync();
         if (fgStatus === "granted") {
           // Attempt background permission for continuous tracking when app is minimized
           try {
             await Location.requestBackgroundPermissionsAsync();
           } catch (bgErr) {
-            console.log("Background location permission skipped/optional:", bgErr);
+            console.log(
+              "Background location permission skipped/optional:",
+              bgErr,
+            );
           }
 
           // Fetch initial instant fix
@@ -366,7 +388,7 @@ export default function DeliveryDashboardScreen() {
                 initialFix.coords.latitude,
                 initialFix.coords.longitude,
                 initialFix.coords.heading || 0,
-                initialFix.coords.speed || 0
+                initialFix.coords.speed || 0,
               );
             }
           } catch (initErr) {
@@ -386,10 +408,10 @@ export default function DeliveryDashboardScreen() {
                   loc.coords.latitude,
                   loc.coords.longitude,
                   loc.coords.heading || 0,
-                  loc.coords.speed || 0
+                  loc.coords.speed || 0,
                 );
               }
-            }
+            },
           );
         }
       } catch (err) {
@@ -398,7 +420,11 @@ export default function DeliveryDashboardScreen() {
 
       // Continuous heartbeat beacon (ensures location stays fresh in database even if static or running in background)
       fallbackInterval = setInterval(async () => {
-        if (!isTrackingActive || (availability !== "ONLINE" && availability !== "BUSY")) return;
+        if (
+          !isTrackingActive ||
+          (availability !== "ONLINE" && availability !== "BUSY")
+        )
+          return;
 
         try {
           const loc = await Location.getCurrentPositionAsync({
@@ -409,15 +435,21 @@ export default function DeliveryDashboardScreen() {
               loc.coords.latitude,
               loc.coords.longitude,
               loc.coords.heading || 0,
-              loc.coords.speed || 0
+              loc.coords.speed || 0,
             );
             return;
           }
         } catch (_) {}
 
         // Fallback to active coordinates heartbeat
-        const baseLat = liveCoordinates?.latitude || partner?.currentLocation?.coordinates?.[1] || 27.7172;
-        const baseLng = liveCoordinates?.longitude || partner?.currentLocation?.coordinates?.[0] || 85.3240;
+        const baseLat =
+          liveCoordinates?.latitude ||
+          partner?.currentLocation?.coordinates?.[1] ||
+          27.7172;
+        const baseLng =
+          liveCoordinates?.longitude ||
+          partner?.currentLocation?.coordinates?.[0] ||
+          85.324;
         sendLocationUpdate(baseLat, baseLng, 0, 0);
       }, 10000);
     };
@@ -425,24 +457,29 @@ export default function DeliveryDashboardScreen() {
     startLiveTracking();
 
     // AppState change listener: updates continue when app transitions between active and background
-    const appStateSub = AppState.addEventListener("change", (nextAppState: AppStateStatus) => {
-      if (nextAppState === "active" || nextAppState === "background") {
-        if (availability === "ONLINE" || availability === "BUSY") {
-          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
-            .then((loc) => {
-              if (loc?.coords) {
-                sendLocationUpdate(
-                  loc.coords.latitude,
-                  loc.coords.longitude,
-                  loc.coords.heading || 0,
-                  loc.coords.speed || 0
-                );
-              }
+    const appStateSub = AppState.addEventListener(
+      "change",
+      (nextAppState: AppStateStatus) => {
+        if (nextAppState === "active" || nextAppState === "background") {
+          if (availability === "ONLINE" || availability === "BUSY") {
+            Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.Balanced,
             })
-            .catch(() => {});
+              .then((loc) => {
+                if (loc?.coords) {
+                  sendLocationUpdate(
+                    loc.coords.latitude,
+                    loc.coords.longitude,
+                    loc.coords.heading || 0,
+                    loc.coords.speed || 0,
+                  );
+                }
+              })
+              .catch(() => {});
+          }
         }
-      }
-    });
+      },
+    );
 
     return () => {
       isTrackingActive = false;
@@ -459,7 +496,8 @@ export default function DeliveryDashboardScreen() {
     if (nextStatus === "ONLINE") {
       const isApproved = partner?.approvalStatus === "APPROVED";
       const depositPaid =
-        partner?.securityDeposit?.status === "PAID" || securityDeposit?.status === "PAID";
+        partner?.securityDeposit?.status === "PAID" ||
+        securityDeposit?.status === "PAID";
       const docsOk = documentsVerified || partner?.areAllDocumentsVerified;
 
       if (!isApproved) {
@@ -548,7 +586,10 @@ export default function DeliveryDashboardScreen() {
   const handleSubmitReturnInspection = async () => {
     if (!selectedReturn) return;
     if (!returnOtpInput.trim()) {
-      Alert.alert("OTP Required", "Please enter the customer's 4-digit Return Verification OTP.");
+      Alert.alert(
+        "OTP Required",
+        "Please enter the customer's 4-digit Return Verification OTP.",
+      );
       return;
     }
     setSubmittingInspection(true);
@@ -564,7 +605,7 @@ export default function DeliveryDashboardScreen() {
       });
       Alert.alert(
         "Report Submitted",
-        "Return inspection recorded! Package returned to store. NPR 50 return pickup earning credited to your wallet."
+        "Return inspection recorded! Package returned to store. NPR 50 return pickup earning credited to your wallet.",
       );
       setInspectionModalVisible(false);
       setSelectedReturn(null);
@@ -575,7 +616,9 @@ export default function DeliveryDashboardScreen() {
     } catch (err: any) {
       Alert.alert(
         "Submission Failed",
-        err?.response?.data?.message || err.message || "Failed to submit return inspection."
+        err?.response?.data?.message ||
+          err.message ||
+          "Failed to submit return inspection.",
       );
     } finally {
       setSubmittingInspection(false);
@@ -811,7 +854,10 @@ export default function DeliveryDashboardScreen() {
         colors={["#0F766E", "#0D9488", "#115E59"]}
         style={[
           styles.headerGradient,
-          { paddingTop: Math.max(insets.top, moderateScale(14)) + moderateScale(8) },
+          {
+            paddingTop:
+              Math.max(insets.top, moderateScale(14)) + moderateScale(8),
+          },
         ]}
       >
         <View style={styles.headerTopRow}>
@@ -823,7 +869,9 @@ export default function DeliveryDashboardScreen() {
             >
               {partner?.profilePhoto?.url || partner?.user?.avatar ? (
                 <Image
-                  source={{ uri: partner.profilePhoto?.url || partner.user?.avatar }}
+                  source={{
+                    uri: partner.profilePhoto?.url || partner.user?.avatar,
+                  }}
                   style={styles.headerAvatarImg}
                   contentFit="cover"
                 />
@@ -859,30 +907,47 @@ export default function DeliveryDashboardScreen() {
             </View>
           </View>
 
-          {/* Online / Offline Switch */}
-          <TouchableOpacity
-            style={styles.toggleWrapper}
-            onPress={handleToggleAvailability}
-            disabled={actionLoading || availability === "BUSY"}
-            activeOpacity={0.85}
-          >
-            <Text
-              style={[
-                styles.toggleStatusLabel,
-                availability === "ONLINE" && styles.onlineLabel,
-                availability === "BUSY" && styles.busyLabel,
-              ]}
+          {/* Right Actions: Notification Bell + Online/Offline Switch */}
+          <View style={styles.headerRightActions}>
+            <TouchableOpacity
+              style={styles.headerBellBtn}
+              onPress={() => router.push("/DeliveryMain/notifications" as any)}
+              activeOpacity={0.75}
             >
-              {availability}
-            </Text>
-            <Switch
-              value={availability === "ONLINE" || availability === "BUSY"}
-              onValueChange={handleToggleAvailability}
+              <Feather name="bell" size={scale(19)} color="#FFFFFF" />
+              {notifUnreadCount > 0 && (
+                <View style={styles.headerBellBadge}>
+                  <Text style={styles.headerBellBadgeText}>
+                    {notifUnreadCount > 99 ? "99+" : notifUnreadCount}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.toggleWrapper}
+              onPress={handleToggleAvailability}
               disabled={actionLoading || availability === "BUSY"}
-              trackColor={{ false: "#64748B", true: "#10B981" }}
-              thumbColor="#FFFFFF"
-            />
-          </TouchableOpacity>
+              activeOpacity={0.85}
+            >
+              <Text
+                style={[
+                  styles.toggleStatusLabel,
+                  availability === "ONLINE" && styles.onlineLabel,
+                  availability === "BUSY" && styles.busyLabel,
+                ]}
+              >
+                {availability}
+              </Text>
+              <Switch
+                value={availability === "ONLINE" || availability === "BUSY"}
+                onValueChange={handleToggleAvailability}
+                disabled={actionLoading || availability === "BUSY"}
+                trackColor={{ false: "#64748B", true: "#10B981" }}
+                thumbColor="#FFFFFF"
+              />
+            </TouchableOpacity>
+          </View>
         </View>
       </LinearGradient>
 
@@ -895,572 +960,605 @@ export default function DeliveryDashboardScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-        {/* Onboarding Alert Banner if not fully approved or deposit unpaid */}
-        {partner?.approvalStatus !== "APPROVED" && (
-          <TouchableOpacity
-            style={styles.alertBanner}
-            onPress={() => router.push("/DeliveryMain/profile" as any)}
-            activeOpacity={0.85}
-          >
-            <Feather name="alert-circle" size={scale(20)} color="#D97706" />
-            <View style={{ flex: 1, marginLeft: scale(10) }}>
-              <Text style={styles.alertBannerTitle}>
-                Account Pending Approval
-              </Text>
-              <Text style={styles.alertBannerSub}>
-                Upload all 4 documents and complete the ₹1,000 security deposit
-                to activate your account.
-              </Text>
-            </View>
-            <Feather name="chevron-right" size={scale(18)} color="#92400E" />
-          </TouchableOpacity>
-        )}
-
-        {/* COD Cash in Hand Alert Banner */}
-        {Number(partner?.codCashInCustody || 0) > 0 && (
-          <TouchableOpacity
-            style={styles.codAlertBanner}
-            onPress={() => router.push("/DeliveryMain/wallet" as any)}
-            activeOpacity={0.85}
-          >
-            <View style={styles.codAlertIconBox}>
-              <MaterialCommunityIcons
-                name="hand-coin"
-                size={scale(20)}
-                color="#D97706"
-              />
-            </View>
-            <View style={{ flex: 1, marginLeft: scale(10) }}>
-              <Text style={styles.codAlertTitle}>
-                ₹{Number(partner?.codCashInCustody || 0).toFixed(2)} COD Cash in
-                Hand
-              </Text>
-              <Text style={styles.codAlertSub}>
-                Cash collected from customers. Tap to view vendor store
-                breakdown & submit cash.
-              </Text>
-            </View>
-            <Feather name="chevron-right" size={scale(18)} color="#92400E" />
-          </TouchableOpacity>
-        )}
-
-        {/* ── ACTIVE ORDER CARD ────────────────────────────────────────── */}
-        {activeOrder ? (
-          <View style={styles.activeOrderCard}>
-            <View style={styles.orderHeaderRow}>
-              <View>
-                <Text style={styles.activeOrderBadge}>
-                  ACTIVE DELIVERY IN PROGRESS
+          {/* Onboarding Alert Banner if not fully approved or deposit unpaid */}
+          {partner?.approvalStatus !== "APPROVED" && (
+            <TouchableOpacity
+              style={styles.alertBanner}
+              onPress={() => router.push("/DeliveryMain/profile" as any)}
+              activeOpacity={0.85}
+            >
+              <Feather name="alert-circle" size={scale(20)} color="#D97706" />
+              <View style={{ flex: 1, marginLeft: scale(10) }}>
+                <Text style={styles.alertBannerTitle}>
+                  Account Pending Approval
                 </Text>
-                <Text style={styles.orderNumberText}>
-                  Order #{activeOrder.orderNumber}
+                <Text style={styles.alertBannerSub}>
+                  Upload all 4 documents and complete the ₹1,000 security
+                  deposit to activate your account.
                 </Text>
               </View>
-              <View style={styles.earningsPill}>
-                <Text style={styles.earningsPillText}>
-                  Earn ₹{activeOrder.estimatedEarnings || 60}
-                </Text>
-              </View>
-            </View>
+              <Feather name="chevron-right" size={scale(18)} color="#92400E" />
+            </TouchableOpacity>
+          )}
 
-            {/* Stepper */}
-            <View style={styles.orderProgressRow}>
-              <View style={[styles.progressDot, styles.progressDotActive]}>
-                <Feather name="check" size={scale(12)} color="#FFFFFF" />
-              </View>
-              <View
-                style={[
-                  styles.progressBar,
-                  activeOrder.pickedUpAt && styles.progressBarActive,
-                ]}
-              />
-              <View
-                style={[
-                  styles.progressDot,
-                  activeOrder.pickedUpAt && styles.progressDotActive,
-                ]}
-              >
-                <Feather
-                  name={activeOrder.pickedUpAt ? "check" : "package"}
-                  size={scale(12)}
-                  color={activeOrder.pickedUpAt ? "#FFFFFF" : "#64748B"}
+          {/* COD Cash in Hand Alert Banner */}
+          {Number(partner?.codCashInCustody || 0) > 0 && (
+            <TouchableOpacity
+              style={styles.codAlertBanner}
+              onPress={() => router.push("/DeliveryMain/wallet" as any)}
+              activeOpacity={0.85}
+            >
+              <View style={styles.codAlertIconBox}>
+                <MaterialCommunityIcons
+                  name="hand-coin"
+                  size={scale(20)}
+                  color="#D97706"
                 />
               </View>
-              <View
-                style={[
-                  styles.progressBar,
-                  activeOrder.deliveredAt && styles.progressBarActive,
-                ]}
-              />
-              <View style={styles.progressDot}>
-                <Feather name="home" size={scale(12)} color="#64748B" />
-              </View>
-            </View>
-
-            <View style={styles.divider} />
-
-            {/* Section 1: Store Pickup */}
-            <View style={styles.locationSection}>
-              <View style={styles.locationIconBoxStore}>
-                <Feather name="shopping-bag" size={scale(18)} color="#0F766E" />
-              </View>
               <View style={{ flex: 1, marginLeft: scale(10) }}>
-                <Text style={styles.locationTypeLabel}>PICKUP FROM STORE</Text>
-                <Text style={styles.locationTitle}>
-                  {activeOrder.vendor?.name || "Grocery Store"}
+                <Text style={styles.codAlertTitle}>
+                  ₹{Number(partner?.codCashInCustody || 0).toFixed(2)} COD Cash
+                  in Hand
                 </Text>
-                <Text style={styles.locationAddress} numberOfLines={2}>
-                  {activeOrder.vendor?.address || "Store Address"}
-                </Text>
-              </View>
-              <View style={styles.locationActions}>
-                <TouchableOpacity
-                  style={styles.actionCircleBtn}
-                  onPress={() => dialPhone(activeOrder.vendor?.phone)}
-                >
-                  <Feather name="phone" size={scale(16)} color="#0F766E" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.actionCircleBtn}
-                  onPress={handleOpenStoreNavigation}
-                >
-                  <Feather name="navigation" size={scale(16)} color="#0F766E" />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Stage Actions: Pickup OTP flow */}
-            {!activeOrder.pickedUpAt ? (
-              <View style={styles.stageActionBox}>
-                {!activeOrder.arrivedAtStoreAt ? (
-                  <TouchableOpacity
-                    style={styles.stagePrimaryBtn}
-                    onPress={handleArriveAtStore}
-                    activeOpacity={0.85}
-                  >
-                    <Feather name="map-pin" size={scale(16)} color="#FFFFFF" />
-                    <Text style={styles.stagePrimaryBtnText}>
-                      I Have Arrived at Store
-                    </Text>
-                  </TouchableOpacity>
-                ) : (
-                  <View style={styles.otpVerifyContainer}>
-                    <Text style={styles.otpPromptTitle}>
-                      Enter 4-Digit Pickup OTP from Vendor:
-                    </Text>
-                    <View style={styles.otpInputRow}>
-                      <TextInput
-                        style={styles.otpInput}
-                        placeholder="e.g. 1234"
-                        placeholderTextColor="#94A3B8"
-                        keyboardType="number-pad"
-                        maxLength={6}
-                        value={pickupOtpInput}
-                        onChangeText={setPickupOtpInput}
-                      />
-                      <TouchableOpacity
-                        style={[
-                          styles.otpSubmitBtn,
-                          !pickupOtpInput && { opacity: 0.6 },
-                        ]}
-                        onPress={handleVerifyPickupOtp}
-                        disabled={!pickupOtpInput || actionLoading}
-                      >
-                        {actionLoading ? (
-                          <ActivityIndicator color="#FFFFFF" size="small" />
-                        ) : (
-                          <Text style={styles.otpSubmitBtnText}>
-                            Verify & Take
-                          </Text>
-                        )}
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
-              </View>
-            ) : null}
-
-            <View style={styles.divider} />
-
-            {/* Section 2: Customer Delivery */}
-            <View style={styles.locationSection}>
-              <View style={styles.locationIconBoxCustomer}>
-                <Feather name="user" size={scale(18)} color="#2563EB" />
-              </View>
-              <View style={{ flex: 1, marginLeft: scale(10) }}>
-                <Text style={styles.locationTypeLabel}>
-                  DELIVER TO CUSTOMER
-                </Text>
-                <Text style={styles.locationTitle}>
-                  {activeOrder.customerName || "Customer"}
-                </Text>
-                <Text style={styles.locationAddress} numberOfLines={2}>
-                  {activeOrder.deliveryAddress?.addressLine ||
-                    "Delivery Address"}
-                </Text>
-                <Text style={styles.paymentMethodBadge}>
-                  {activeOrder.paymentMethod === "Cash on delivery"
-                    ? `💵 Collect Cash: ₹${activeOrder.totalAmount}`
-                    : "✅ Paid Online"}
+                <Text style={styles.codAlertSub}>
+                  Cash collected from customers. Tap to view vendor store
+                  breakdown & submit cash.
                 </Text>
               </View>
-              <View style={styles.locationActions}>
-                <TouchableOpacity
-                  style={styles.actionCircleBtn}
-                  onPress={() => dialPhone(activeOrder.customerPhone)}
-                >
-                  <Feather name="phone" size={scale(16)} color="#2563EB" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.actionCircleBtn}
-                  onPress={handleOpenCustomerNavigation}
-                >
-                  <Feather name="navigation" size={scale(16)} color="#2563EB" />
-                </TouchableOpacity>
-              </View>
-            </View>
+              <Feather name="chevron-right" size={scale(18)} color="#92400E" />
+            </TouchableOpacity>
+          )}
 
-            {/* Stage Actions: Customer Delivery OTP flow */}
-            {activeOrder.pickedUpAt ? (
-              <View style={styles.stageActionBox}>
-                {!activeOrder.arrivedAtCustomerAt ? (
-                  <TouchableOpacity
-                    style={[
-                      styles.stagePrimaryBtn,
-                      { backgroundColor: "#2563EB" },
-                    ]}
-                    onPress={handleArriveAtCustomer}
-                    activeOpacity={0.85}
-                  >
-                    <Feather name="map-pin" size={scale(16)} color="#FFFFFF" />
-                    <Text style={styles.stagePrimaryBtnText}>
-                      I Have Reached Customer Door
-                    </Text>
-                  </TouchableOpacity>
-                ) : (
-                  <View style={styles.otpVerifyContainer}>
-                    {/* COD Payment Method Selector & Store QR Display */}
-                    {activeOrder.paymentMethod === "Cash on delivery" ? (
-                      <View style={styles.paymentMethodSelectionBox}>
-                        <Text style={styles.paymentSelectionTitle}>
-                          Payment Collection Option:
-                        </Text>
-                        <View style={styles.paymentToggleRow}>
-                          {/* Option 1: Cash */}
-                          <TouchableOpacity
-                            activeOpacity={0.8}
-                            onPress={() => setSelectedPaymentMode("CASH")}
-                            style={[
-                              styles.paymentOptionBtn,
-                              selectedPaymentMode === "CASH" &&
-                                styles.paymentOptionBtnActiveCash,
-                            ]}
-                          >
-                            <MaterialCommunityIcons
-                              name="cash-multiple"
-                              size={scale(18)}
-                              color={
-                                selectedPaymentMode === "CASH"
-                                  ? "#15803D"
-                                  : "#64748B"
-                              }
-                            />
-                            <View style={{ marginLeft: scale(6), flex: 1 }}>
-                              <Text
-                                style={[
-                                  styles.paymentOptionBtnText,
-                                  selectedPaymentMode === "CASH" &&
-                                    styles.paymentOptionBtnTextActiveCash,
-                                ]}
-                              >
-                                1. Cash Payment
-                              </Text>
-                              <Text style={styles.paymentOptionSubText}>
-                                Collect ₹{activeOrder.totalAmount}
-                              </Text>
-                            </View>
-                            {selectedPaymentMode === "CASH" && (
-                              <Ionicons
-                                name="checkmark-circle"
-                                size={scale(16)}
-                                color="#15803D"
-                              />
-                            )}
-                          </TouchableOpacity>
-
-                          {/* Option 2: Online Payment / Vendor Store QR */}
-                          <TouchableOpacity
-                            activeOpacity={0.8}
-                            onPress={() => setSelectedPaymentMode("DIRECT_QR")}
-                            style={[
-                              styles.paymentOptionBtn,
-                              selectedPaymentMode === "DIRECT_QR" &&
-                                styles.paymentOptionBtnActiveQr,
-                            ]}
-                          >
-                            <MaterialCommunityIcons
-                              name="qrcode-scan"
-                              size={scale(18)}
-                              color={
-                                selectedPaymentMode === "DIRECT_QR"
-                                  ? "#0F766E"
-                                  : "#64748B"
-                              }
-                            />
-                            <View style={{ marginLeft: scale(6), flex: 1 }}>
-                              <Text
-                                style={[
-                                  styles.paymentOptionBtnText,
-                                  selectedPaymentMode === "DIRECT_QR" &&
-                                    styles.paymentOptionBtnTextActiveQr,
-                                ]}
-                              >
-                                2. Online (Store QR)
-                              </Text>
-                              <Text style={styles.paymentOptionSubText}>
-                                Direct to Vendor
-                              </Text>
-                            </View>
-                            {selectedPaymentMode === "DIRECT_QR" && (
-                              <Ionicons
-                                name="checkmark-circle"
-                                size={scale(16)}
-                                color="#0F766E"
-                              />
-                            )}
-                          </TouchableOpacity>
-                        </View>
-
-                        {/* Detail Card based on selected option */}
-                        {selectedPaymentMode === "CASH" ? (
-                          <View style={styles.cashNoticeBox}>
-                            <View
-                              style={{
-                                flexDirection: "row",
-                                alignItems: "center",
-                                gap: scale(6),
-                              }}
-                            >
-                              <Feather
-                                name="dollar-sign"
-                                size={scale(15)}
-                                color="#15803D"
-                              />
-                              <Text style={styles.cashNoticeTitle}>
-                                Physical Cash Collection: ₹
-                                {activeOrder.totalAmount}
-                              </Text>
-                            </View>
-                            <Text style={styles.cashNoticeText}>
-                              Collect physical cash from the customer. You must
-                              submit this collected cash at the vendor store
-                              counter.
-                            </Text>
-                          </View>
-                        ) : (
-                          <View style={styles.qrDisplayCard}>
-                            <View style={styles.qrHeaderRow}>
-                              <MaterialCommunityIcons
-                                name="storefront-outline"
-                                size={scale(16)}
-                                color="#0F766E"
-                              />
-                              <Text
-                                style={styles.qrStoreTitle}
-                                numberOfLines={1}
-                              >
-                                {activeOrder.vendor?.name || "Store"} Payment QR
-                              </Text>
-                            </View>
-                            <Text style={styles.qrExplainer}>
-                              Customer scans this QR code to pay directly to the
-                              vendor's bank/UPI account. This will not be added
-                              to rider cash custody or vendor app wallet.
-                            </Text>
-
-                            {/* QR Code Preview Box */}
-                            <View style={styles.qrImageContainer}>
-                              {activeOrder.vendor?.paymentSettings
-                                ?.qrCodeUrl ? (
-                                <Image
-                                  source={{
-                                    uri: activeOrder.vendor.paymentSettings
-                                      .qrCodeUrl,
-                                  }}
-                                  style={styles.qrCodeImage}
-                                  contentFit="contain"
-                                />
-                              ) : activeOrder.vendor?.paymentSettings?.upiId ? (
-                                <Image
-                                  source={{
-                                    uri: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
-                                      `upi://pay?pa=${activeOrder.vendor.paymentSettings.upiId}&pn=${encodeURIComponent(
-                                        activeOrder.vendor?.paymentSettings
-                                          ?.accountName ||
-                                          activeOrder.vendor?.name ||
-                                          "Store",
-                                      )}&am=${activeOrder.totalAmount}&cu=INR`,
-                                    )}`,
-                                  }}
-                                  style={styles.qrCodeImage}
-                                  contentFit="contain"
-                                />
-                              ) : (
-                                <View style={styles.qrPlaceholderBox}>
-                                  <MaterialCommunityIcons
-                                    name="qrcode"
-                                    size={scale(50)}
-                                    color="#94A3B8"
-                                  />
-                                  <Text style={styles.qrPlaceholderText}>
-                                    No QR/UPI uploaded by store. Please collect
-                                    cash.
-                                  </Text>
-                                </View>
-                              )}
-                            </View>
-
-                            {/* Store UPI & Account Details */}
-                            {activeOrder.vendor?.paymentSettings?.upiId ? (
-                              <View style={styles.upiDetailsPill}>
-                                <Text style={styles.upiPillLabel}>
-                                  Store UPI:
-                                </Text>
-                                <Text
-                                  style={styles.upiPillValue}
-                                  numberOfLines={1}
-                                >
-                                  {activeOrder.vendor.paymentSettings.upiId}
-                                </Text>
-                              </View>
-                            ) : null}
-
-                            <View style={styles.qrAmountRow}>
-                              <Text style={styles.qrAmountLabel}>
-                                Total Bill Amount:
-                              </Text>
-                              <Text style={styles.qrAmountValue}>
-                                ₹{activeOrder.totalAmount}
-                              </Text>
-                            </View>
-
-                            <Text style={styles.qrVerifyNotice}>
-                              ⚠️ Verify the payment success message on
-                              customer's screen before entering the Delivery
-                              OTP.
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                    ) : (
-                      <View style={styles.prepaidNoticeBox}>
-                        <View
-                          style={{
-                            flexDirection: "row",
-                            alignItems: "center",
-                            gap: scale(6),
-                          }}
-                        >
-                          <Ionicons
-                            name="checkmark-done-circle"
-                            size={scale(16)}
-                            color="#15803D"
-                          />
-                          <Text style={styles.prepaidNoticeTitle}>
-                            Prepaid Online Order
-                          </Text>
-                        </View>
-                        <Text style={styles.prepaidNoticeText}>
-                          This order was already paid online by the customer. No
-                          cash collection required.
-                        </Text>
-                      </View>
-                    )}
-
-                    <Text style={styles.otpPromptTitle}>
-                      Enter 4-Digit Delivery OTP from Customer:
-                    </Text>
-                    <View style={styles.otpInputRow}>
-                      <TextInput
-                        style={styles.otpInput}
-                        placeholder="e.g. 5678"
-                        placeholderTextColor="#94A3B8"
-                        keyboardType="number-pad"
-                        maxLength={6}
-                        value={deliveryOtpInput}
-                        onChangeText={setDeliveryOtpInput}
-                      />
-                      <TouchableOpacity
-                        style={[
-                          styles.otpSubmitBtn,
-                          { backgroundColor: "#10B981" },
-                          !deliveryOtpInput && { opacity: 0.6 },
-                        ]}
-                        onPress={handleVerifyDeliveryOtp}
-                        disabled={!deliveryOtpInput || actionLoading}
-                      >
-                        {actionLoading ? (
-                          <ActivityIndicator color="#FFFFFF" size="small" />
-                        ) : (
-                          <Text style={styles.otpSubmitBtnText}>Complete</Text>
-                        )}
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
-              </View>
-            ) : null}
-
-            {/* Delivery Cancellation / Return Package to Store Action */}
-            <TouchableOpacity
-              style={styles.cancelDeliveryActionBtn}
-              onPress={() => setCancelModalVisible(true)}
-              activeOpacity={0.8}
-            >
-              <Feather name="alert-triangle" size={scale(14)} color="#DC2626" />
-              <Text style={styles.cancelDeliveryActionText}>
-                Cancel Delivery / Return to Store
-              </Text>
-              {(activeOrder.deliveryCancellationCount || 0) > 0 && (
-                <View style={styles.attemptsWarningBadge}>
-                  <Text style={styles.attemptsWarningText}>
-                    Attempt {activeOrder.deliveryCancellationCount}/3
+          {/* ── ACTIVE ORDER CARD ────────────────────────────────────────── */}
+          {activeOrder ? (
+            <View style={styles.activeOrderCard}>
+              <View style={styles.orderHeaderRow}>
+                <View>
+                  <Text style={styles.activeOrderBadge}>
+                    ACTIVE DELIVERY IN PROGRESS
+                  </Text>
+                  <Text style={styles.orderNumberText}>
+                    Order #{activeOrder.orderNumber}
                   </Text>
                 </View>
-              )}
-            </TouchableOpacity>
-          </View>
-        ) : (
-          /* Idle / Radar Card when no active orders */
-          <View style={styles.idleCard}>
-            <View
-              style={[
-                styles.radarCircle,
-                availability === "ONLINE" && styles.radarCircleActive,
-              ]}
-            >
-              <MaterialCommunityIcons
-                name="crosshairs-gps"
-                size={scale(48)}
-                color={availability === "ONLINE" ? "#0F766E" : "#94A3B8"}
-              />
-            </View>
-            <Text style={styles.idleTitle}>
-              {availability === "ONLINE"
-                ? "You Are Online & Searching"
-                : "You Are Currently Offline"}
-            </Text>
-            <Text style={styles.idleSubtitle}>
-              {availability === "ONLINE"
-                ? "Incoming orders from nearby stores in Kathmandu will appear here in real-time."
-                : "Turn your availability switch ON at the top right to start receiving order dispatches."}
-            </Text>
-          </View>
-        )}
-      </ScrollView>
-    </KeyboardAvoidingView>
+                <View style={styles.earningsPill}>
+                  <Text style={styles.earningsPillText}>
+                    Earn ₹{activeOrder.estimatedEarnings || 60}
+                  </Text>
+                </View>
+              </View>
 
-      {/* ── REAL-TIME ORDER OFFER MODAL (45-second timer) ──────────── */}
+              {/* Stepper */}
+              <View style={styles.orderProgressRow}>
+                <View style={[styles.progressDot, styles.progressDotActive]}>
+                  <Feather name="check" size={scale(12)} color="#FFFFFF" />
+                </View>
+                <View
+                  style={[
+                    styles.progressBar,
+                    activeOrder.pickedUpAt && styles.progressBarActive,
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.progressDot,
+                    activeOrder.pickedUpAt && styles.progressDotActive,
+                  ]}
+                >
+                  <Feather
+                    name={activeOrder.pickedUpAt ? "check" : "package"}
+                    size={scale(12)}
+                    color={activeOrder.pickedUpAt ? "#FFFFFF" : "#64748B"}
+                  />
+                </View>
+                <View
+                  style={[
+                    styles.progressBar,
+                    activeOrder.deliveredAt && styles.progressBarActive,
+                  ]}
+                />
+                <View style={styles.progressDot}>
+                  <Feather name="home" size={scale(12)} color="#64748B" />
+                </View>
+              </View>
+
+              <View style={styles.divider} />
+
+              {/* Section 1: Store Pickup */}
+              <View style={styles.locationSection}>
+                <View style={styles.locationIconBoxStore}>
+                  <Feather
+                    name="shopping-bag"
+                    size={scale(18)}
+                    color="#0F766E"
+                  />
+                </View>
+                <View style={{ flex: 1, marginLeft: scale(10) }}>
+                  <Text style={styles.locationTypeLabel}>
+                    PICKUP FROM STORE
+                  </Text>
+                  <Text style={styles.locationTitle}>
+                    {activeOrder.vendor?.name || "Grocery Store"}
+                  </Text>
+                  <Text style={styles.locationAddress} numberOfLines={2}>
+                    {activeOrder.vendor?.address || "Store Address"}
+                  </Text>
+                </View>
+                <View style={styles.locationActions}>
+                  <TouchableOpacity
+                    style={styles.actionCircleBtn}
+                    onPress={() => dialPhone(activeOrder.vendor?.phone)}
+                  >
+                    <Feather name="phone" size={scale(16)} color="#0F766E" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.actionCircleBtn}
+                    onPress={handleOpenStoreNavigation}
+                  >
+                    <Feather
+                      name="navigation"
+                      size={scale(16)}
+                      color="#0F766E"
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Stage Actions: Pickup OTP flow */}
+              {!activeOrder.pickedUpAt ? (
+                <View style={styles.stageActionBox}>
+                  {!activeOrder.arrivedAtStoreAt ? (
+                    <TouchableOpacity
+                      style={styles.stagePrimaryBtn}
+                      onPress={handleArriveAtStore}
+                      activeOpacity={0.85}
+                    >
+                      <Feather
+                        name="map-pin"
+                        size={scale(16)}
+                        color="#FFFFFF"
+                      />
+                      <Text style={styles.stagePrimaryBtnText}>
+                        I Have Arrived at Store
+                      </Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={styles.otpVerifyContainer}>
+                      <Text style={styles.otpPromptTitle}>
+                        Enter 4-Digit Pickup OTP from Vendor:
+                      </Text>
+                      <View style={styles.otpInputRow}>
+                        <TextInput
+                          style={styles.otpInput}
+                          placeholder="e.g. 1234"
+                          placeholderTextColor="#94A3B8"
+                          keyboardType="number-pad"
+                          maxLength={6}
+                          value={pickupOtpInput}
+                          onChangeText={setPickupOtpInput}
+                        />
+                        <TouchableOpacity
+                          style={[
+                            styles.otpSubmitBtn,
+                            !pickupOtpInput && { opacity: 0.6 },
+                          ]}
+                          onPress={handleVerifyPickupOtp}
+                          disabled={!pickupOtpInput || actionLoading}
+                        >
+                          {actionLoading ? (
+                            <ActivityIndicator color="#FFFFFF" size="small" />
+                          ) : (
+                            <Text style={styles.otpSubmitBtnText}>
+                              Verify & Take
+                            </Text>
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+                </View>
+              ) : null}
+
+              <View style={styles.divider} />
+
+              {/* Section 2: Customer Delivery */}
+              <View style={styles.locationSection}>
+                <View style={styles.locationIconBoxCustomer}>
+                  <Feather name="user" size={scale(18)} color="#2563EB" />
+                </View>
+                <View style={{ flex: 1, marginLeft: scale(10) }}>
+                  <Text style={styles.locationTypeLabel}>
+                    DELIVER TO CUSTOMER
+                  </Text>
+                  <Text style={styles.locationTitle}>
+                    {activeOrder.customerName || "Customer"}
+                  </Text>
+                  <Text style={styles.locationAddress} numberOfLines={2}>
+                    {activeOrder.deliveryAddress?.addressLine ||
+                      "Delivery Address"}
+                  </Text>
+                  <Text style={styles.paymentMethodBadge}>
+                    {activeOrder.paymentMethod === "Cash on delivery"
+                      ? `💵 Collect Cash: ₹${activeOrder.totalAmount}`
+                      : "✅ Paid Online"}
+                  </Text>
+                </View>
+                <View style={styles.locationActions}>
+                  <TouchableOpacity
+                    style={styles.actionCircleBtn}
+                    onPress={() => dialPhone(activeOrder.customerPhone)}
+                  >
+                    <Feather name="phone" size={scale(16)} color="#2563EB" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.actionCircleBtn}
+                    onPress={handleOpenCustomerNavigation}
+                  >
+                    <Feather
+                      name="navigation"
+                      size={scale(16)}
+                      color="#2563EB"
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Stage Actions: Customer Delivery OTP flow */}
+              {activeOrder.pickedUpAt ? (
+                <View style={styles.stageActionBox}>
+                  {!activeOrder.arrivedAtCustomerAt ? (
+                    <TouchableOpacity
+                      style={[
+                        styles.stagePrimaryBtn,
+                        { backgroundColor: "#2563EB" },
+                      ]}
+                      onPress={handleArriveAtCustomer}
+                      activeOpacity={0.85}
+                    >
+                      <Feather
+                        name="map-pin"
+                        size={scale(16)}
+                        color="#FFFFFF"
+                      />
+                      <Text style={styles.stagePrimaryBtnText}>
+                        I Have Reached Customer Door
+                      </Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={styles.otpVerifyContainer}>
+                      {/* COD Payment Method Selector & Store QR Display */}
+                      {activeOrder.paymentMethod === "Cash on delivery" ? (
+                        <View style={styles.paymentMethodSelectionBox}>
+                          <Text style={styles.paymentSelectionTitle}>
+                            Payment Collection Option:
+                          </Text>
+                          <View style={styles.paymentToggleRow}>
+                            {/* Option 1: Cash */}
+                            <TouchableOpacity
+                              activeOpacity={0.8}
+                              onPress={() => setSelectedPaymentMode("CASH")}
+                              style={[
+                                styles.paymentOptionBtn,
+                                selectedPaymentMode === "CASH" &&
+                                  styles.paymentOptionBtnActiveCash,
+                              ]}
+                            >
+                              <MaterialCommunityIcons
+                                name="cash-multiple"
+                                size={scale(18)}
+                                color={
+                                  selectedPaymentMode === "CASH"
+                                    ? "#15803D"
+                                    : "#64748B"
+                                }
+                              />
+                              <View style={{ marginLeft: scale(6), flex: 1 }}>
+                                <Text
+                                  style={[
+                                    styles.paymentOptionBtnText,
+                                    selectedPaymentMode === "CASH" &&
+                                      styles.paymentOptionBtnTextActiveCash,
+                                  ]}
+                                >
+                                  1. Cash Payment
+                                </Text>
+                                <Text style={styles.paymentOptionSubText}>
+                                  Collect ₹{activeOrder.totalAmount}
+                                </Text>
+                              </View>
+                              {selectedPaymentMode === "CASH" && (
+                                <Ionicons
+                                  name="checkmark-circle"
+                                  size={scale(16)}
+                                  color="#15803D"
+                                />
+                              )}
+                            </TouchableOpacity>
+
+                            {/* Option 2: Online Payment / Vendor Store QR */}
+                            <TouchableOpacity
+                              activeOpacity={0.8}
+                              onPress={() =>
+                                setSelectedPaymentMode("DIRECT_QR")
+                              }
+                              style={[
+                                styles.paymentOptionBtn,
+                                selectedPaymentMode === "DIRECT_QR" &&
+                                  styles.paymentOptionBtnActiveQr,
+                              ]}
+                            >
+                              <MaterialCommunityIcons
+                                name="qrcode-scan"
+                                size={scale(18)}
+                                color={
+                                  selectedPaymentMode === "DIRECT_QR"
+                                    ? "#0F766E"
+                                    : "#64748B"
+                                }
+                              />
+                              <View style={{ marginLeft: scale(6), flex: 1 }}>
+                                <Text
+                                  style={[
+                                    styles.paymentOptionBtnText,
+                                    selectedPaymentMode === "DIRECT_QR" &&
+                                      styles.paymentOptionBtnTextActiveQr,
+                                  ]}
+                                >
+                                  2. Online (Store QR)
+                                </Text>
+                                <Text style={styles.paymentOptionSubText}>
+                                  Direct to Vendor
+                                </Text>
+                              </View>
+                              {selectedPaymentMode === "DIRECT_QR" && (
+                                <Ionicons
+                                  name="checkmark-circle"
+                                  size={scale(16)}
+                                  color="#0F766E"
+                                />
+                              )}
+                            </TouchableOpacity>
+                          </View>
+
+                          {/* Detail Card based on selected option */}
+                          {selectedPaymentMode === "CASH" ? (
+                            <View style={styles.cashNoticeBox}>
+                              <View
+                                style={{
+                                  flexDirection: "row",
+                                  alignItems: "center",
+                                  gap: scale(6),
+                                }}
+                              >
+                                <Feather
+                                  name="dollar-sign"
+                                  size={scale(15)}
+                                  color="#15803D"
+                                />
+                                <Text style={styles.cashNoticeTitle}>
+                                  Physical Cash Collection: ₹
+                                  {activeOrder.totalAmount}
+                                </Text>
+                              </View>
+                              <Text style={styles.cashNoticeText}>
+                                Collect physical cash from the customer. You
+                                must submit this collected cash at the vendor
+                                store counter.
+                              </Text>
+                            </View>
+                          ) : (
+                            <View style={styles.qrDisplayCard}>
+                              <View style={styles.qrHeaderRow}>
+                                <MaterialCommunityIcons
+                                  name="storefront-outline"
+                                  size={scale(16)}
+                                  color="#0F766E"
+                                />
+                                <Text
+                                  style={styles.qrStoreTitle}
+                                  numberOfLines={1}
+                                >
+                                  {activeOrder.vendor?.name || "Store"} Payment
+                                  QR
+                                </Text>
+                              </View>
+                              <Text style={styles.qrExplainer}>
+                                Customer scans this QR code to pay directly to
+                                the vendor's bank/UPI account. This will not be
+                                added to rider cash custody or vendor app
+                                wallet.
+                              </Text>
+
+                              {/* QR Code Preview Box */}
+                              <View style={styles.qrImageContainer}>
+                                {activeOrder.vendor?.paymentSettings
+                                  ?.qrCodeUrl ? (
+                                  <Image
+                                    source={{
+                                      uri: activeOrder.vendor.paymentSettings
+                                        .qrCodeUrl,
+                                    }}
+                                    style={styles.qrCodeImage}
+                                    contentFit="contain"
+                                  />
+                                ) : activeOrder.vendor?.paymentSettings
+                                    ?.upiId ? (
+                                  <Image
+                                    source={{
+                                      uri: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
+                                        `upi://pay?pa=${activeOrder.vendor.paymentSettings.upiId}&pn=${encodeURIComponent(
+                                          activeOrder.vendor?.paymentSettings
+                                            ?.accountName ||
+                                            activeOrder.vendor?.name ||
+                                            "Store",
+                                        )}&am=${activeOrder.totalAmount}&cu=INR`,
+                                      )}`,
+                                    }}
+                                    style={styles.qrCodeImage}
+                                    contentFit="contain"
+                                  />
+                                ) : (
+                                  <View style={styles.qrPlaceholderBox}>
+                                    <MaterialCommunityIcons
+                                      name="qrcode"
+                                      size={scale(50)}
+                                      color="#94A3B8"
+                                    />
+                                    <Text style={styles.qrPlaceholderText}>
+                                      No QR/UPI uploaded by store. Please
+                                      collect cash.
+                                    </Text>
+                                  </View>
+                                )}
+                              </View>
+
+                              {/* Store UPI & Account Details */}
+                              {activeOrder.vendor?.paymentSettings?.upiId ? (
+                                <View style={styles.upiDetailsPill}>
+                                  <Text style={styles.upiPillLabel}>
+                                    Store UPI:
+                                  </Text>
+                                  <Text
+                                    style={styles.upiPillValue}
+                                    numberOfLines={1}
+                                  >
+                                    {activeOrder.vendor.paymentSettings.upiId}
+                                  </Text>
+                                </View>
+                              ) : null}
+
+                              <View style={styles.qrAmountRow}>
+                                <Text style={styles.qrAmountLabel}>
+                                  Total Bill Amount:
+                                </Text>
+                                <Text style={styles.qrAmountValue}>
+                                  ₹{activeOrder.totalAmount}
+                                </Text>
+                              </View>
+
+                              <Text style={styles.qrVerifyNotice}>
+                                ⚠️ Verify the payment success message on
+                                customer's screen before entering the Delivery
+                                OTP.
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      ) : (
+                        <View style={styles.prepaidNoticeBox}>
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: scale(6),
+                            }}
+                          >
+                            <Ionicons
+                              name="checkmark-done-circle"
+                              size={scale(16)}
+                              color="#15803D"
+                            />
+                            <Text style={styles.prepaidNoticeTitle}>
+                              Prepaid Online Order
+                            </Text>
+                          </View>
+                          <Text style={styles.prepaidNoticeText}>
+                            This order was already paid online by the customer.
+                            No cash collection required.
+                          </Text>
+                        </View>
+                      )}
+
+                      <Text style={styles.otpPromptTitle}>
+                        Enter 4-Digit Delivery OTP from Customer:
+                      </Text>
+                      <View style={styles.otpInputRow}>
+                        <TextInput
+                          style={styles.otpInput}
+                          placeholder="e.g. 5678"
+                          placeholderTextColor="#94A3B8"
+                          keyboardType="number-pad"
+                          maxLength={6}
+                          value={deliveryOtpInput}
+                          onChangeText={setDeliveryOtpInput}
+                        />
+                        <TouchableOpacity
+                          style={[
+                            styles.otpSubmitBtn,
+                            { backgroundColor: "#10B981" },
+                            !deliveryOtpInput && { opacity: 0.6 },
+                          ]}
+                          onPress={handleVerifyDeliveryOtp}
+                          disabled={!deliveryOtpInput || actionLoading}
+                        >
+                          {actionLoading ? (
+                            <ActivityIndicator color="#FFFFFF" size="small" />
+                          ) : (
+                            <Text style={styles.otpSubmitBtnText}>
+                              Complete
+                            </Text>
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+                </View>
+              ) : null}
+
+              {/* Delivery Cancellation / Return Package to Store Action */}
+              <TouchableOpacity
+                style={styles.cancelDeliveryActionBtn}
+                onPress={() => setCancelModalVisible(true)}
+                activeOpacity={0.8}
+              >
+                <Feather
+                  name="alert-triangle"
+                  size={scale(14)}
+                  color="#DC2626"
+                />
+                <Text style={styles.cancelDeliveryActionText}>
+                  Cancel Delivery / Return to Store
+                </Text>
+                {(activeOrder.deliveryCancellationCount || 0) > 0 && (
+                  <View style={styles.attemptsWarningBadge}>
+                    <Text style={styles.attemptsWarningText}>
+                      Attempt {activeOrder.deliveryCancellationCount}/3
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+          ) : (
+            /* Idle / Radar Card when no active orders */
+            <View style={styles.idleCard}>
+              <View
+                style={[
+                  styles.radarCircle,
+                  availability === "ONLINE" && styles.radarCircleActive,
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name="crosshairs-gps"
+                  size={scale(48)}
+                  color={availability === "ONLINE" ? "#0F766E" : "#94A3B8"}
+                />
+              </View>
+              <Text style={styles.idleTitle}>
+                {availability === "ONLINE"
+                  ? "You Are Online & Searching"
+                  : "You Are Currently Offline"}
+              </Text>
+              <Text style={styles.idleSubtitle}>
+                {availability === "ONLINE"
+                  ? "Incoming orders from nearby stores appear here in real-time."
+                  : "Turn your availability switch ON at the top right to start receiving order dispatches."}
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      {/* ── REAL-TIME ORDER OFFER MODAL (60-second timer) ──────────── */}
       <Modal
         visible={!!offeredAssignment}
         transparent
@@ -2005,6 +2103,39 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(11),
     fontWeight: "700",
     color: "#FFFFFF",
+  },
+  headerRightActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(10),
+  },
+  headerBellBtn: {
+    width: scale(38),
+    height: scale(38),
+    borderRadius: scale(19),
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
+  headerBellBadge: {
+    position: "absolute",
+    top: -scale(3),
+    right: -scale(3),
+    backgroundColor: "#EF4444",
+    minWidth: scale(18),
+    height: scale(18),
+    borderRadius: scale(9),
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: scale(3),
+    borderWidth: 1.5,
+    borderColor: "#0F766E",
+  },
+  headerBellBadgeText: {
+    color: "#FFFFFF",
+    fontSize: moderateScale(9),
+    fontWeight: "900",
   },
   toggleWrapper: {
     alignItems: "center",

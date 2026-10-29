@@ -6,7 +6,7 @@ import {
   CATEGORY_NAMES,
   getSubCategoriesForCategory,
 } from "@/constants/categories";
-import { useCart } from "@/context/cart-context";
+import { useProductCartQuantity, useCartActions } from "@/context/cart-context";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchCategoryProducts, ProductItem } from "@/store/slices/productSlice";
 import { moderateScale, scale, useTheme } from "@/theme";
@@ -39,7 +39,7 @@ const { width } = Dimensions.get("window");
 
 interface CategoryExpandProductCardProps {
   product: ProductItem;
-  quantity: number;
+  quantity?: number;
   onPress: (product: ProductItem) => void;
   onAddToCart: (product: ProductItem, imgUrl: string) => void;
   onUpdateQuantity: (id: string, delta: number) => void;
@@ -47,12 +47,14 @@ interface CategoryExpandProductCardProps {
 
 const CategoryExpandProductCard = memo(function CategoryExpandProductCard({
   product,
-  quantity,
+  quantity: propQuantity,
   onPress,
   onAddToCart,
   onUpdateQuantity,
 }: CategoryExpandProductCardProps) {
   const prodId = product._id || product.id || "";
+  const storeQuantity = useProductCartQuantity(prodId);
+  const quantity = propQuantity !== undefined ? propQuantity : storeQuantity;
   const imgUrl =
     product.images && product.images.length > 0
       ? product.images[0].url
@@ -419,9 +421,7 @@ export default function CategoryExpandScreen() {
   const router = useRouter();
   const theme = useTheme();
   const dispatch = useAppDispatch();
-  const { addToCart, updateQuantity, getItemQuantity, cartItems } = useCart();
-  const getItemQuantityRef = useRef(getItemQuantity);
-  getItemQuantityRef.current = getItemQuantity;
+  const { addToCart, updateQuantity } = useCartActions();
 
   const pulseAnim = useRef(new Animated.Value(0.35)).current;
 
@@ -1124,11 +1124,9 @@ export default function CategoryExpandScreen() {
   const renderItem = useCallback(
     ({ item }: { item: ProductItem }) => {
       const prodId = item._id || item.id || "";
-      const qty = getItemQuantityRef.current(prodId);
       return (
         <CategoryExpandProductCard
           product={item}
-          quantity={qty}
           onPress={handleProductPress}
           onAddToCart={handleAddToCart}
           onUpdateQuantity={handleUpdateQuantity}
@@ -1411,7 +1409,7 @@ export default function CategoryExpandScreen() {
             data={displayedProducts}
             keyExtractor={keyExtractor}
             renderItem={renderItem}
-            extraData={cartItems}
+            
             numColumns={2}
             columnWrapperStyle={styles.columnWrapper}
             initialNumToRender={8}

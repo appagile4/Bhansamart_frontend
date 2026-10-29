@@ -63,6 +63,7 @@ export interface CustomerNotificationItem {
   title: string;
   message: string;
   type: string;
+  category?: string;
   data?: any;
   isRead: boolean;
   createdAt: string;
@@ -127,7 +128,7 @@ export const referralService = {
       totalPages: number;
       currentPage: number;
       unreadCount: number;
-    }>("/notifications", { params: { page, limit, isRead } });
+    }>("/notifications/my", { params: { page, limit, isRead, role: "customer" } });
     return response.data;
   },
 
@@ -143,7 +144,7 @@ export const referralService = {
     const response = await api.patch<{
       success: boolean;
       data: { modifiedCount: number };
-    }>("/notifications/read-all");
+    }>("/notifications/read-all", {}, { params: { role: "customer" } });
     return response.data;
   },
 };

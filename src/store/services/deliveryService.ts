@@ -257,6 +257,54 @@ export const deliveryService = {
     const response = await api.patch(`/refunds/${refundId}/delivery-inspection`, payload);
     return response.data;
   },
+
+  // Delivery Partner In-App Notifications
+  getNotifications: async (
+    page = 1,
+    limit = 20,
+    category?: string,
+    isRead?: boolean
+  ) => {
+    const response = await api.get<{
+      success: boolean;
+      data: any[];
+      total: number;
+      totalPages: number;
+      currentPage: number;
+      unreadCount: number;
+    }>("/notifications/my", {
+      params: { page, limit, category, isRead, role: "delivery" },
+    });
+    return response.data;
+  },
+
+  markNotificationRead: async (id: string) => {
+    const response = await api.patch<{
+      success: boolean;
+      data: any;
+    }>(`/notifications/${id}/read`);
+    return response.data.data;
+  },
+
+  markAllNotificationsRead: async (category?: string) => {
+    const response = await api.patch<{
+      success: boolean;
+      message: string;
+    }>("/notifications/read-all", {}, {
+      params: { role: "delivery", category },
+    });
+    return response.data;
+  },
+
+  getUnreadCount: async () => {
+    const response = await api.get<{
+      success: boolean;
+      unreadCount: number;
+    }>("/notifications/unread-count", {
+      params: { role: "delivery" },
+    });
+    return response.data?.unreadCount || 0;
+  },
 };
 
 export default deliveryService;

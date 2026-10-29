@@ -15,7 +15,7 @@ import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   Alert,
   ScrollView,
@@ -190,19 +190,19 @@ export default function CartScreen() {
   }, [savedOnItems, deliverySaving, couponDiscount, cartItems.length]);
 
   // Cart Handlers
-  const handleIncrement = (id: string) => {
+  const handleIncrement = useCallback((id: string) => {
     updateQuantity(id, 1);
-  };
+  }, [updateQuantity]);
 
-  const handleDecrement = (id: string) => {
+  const handleDecrement = useCallback((id: string) => {
     updateQuantity(id, -1);
-  };
+  }, [updateQuantity]);
 
-  const handleRemove = (id: string) => {
+  const handleRemove = useCallback((id: string) => {
     removeFromCart(id);
-  };
+  }, [removeFromCart]);
 
-  const handleSaveForLater = (item: any) => {
+  const handleSaveForLater = useCallback((item: any) => {
     removeFromCart(item.id);
     setSavedItems((prev) => [
       ...prev,
@@ -217,7 +217,7 @@ export default function CartScreen() {
           "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=200&q=80",
       },
     ]);
-  };
+  }, [removeFromCart]);
 
   const handleAddToCartFromSaved = (item: SavedCartItem) => {
     setSavedItems((prev) => prev.filter((s) => s.id !== item.id));
@@ -771,7 +771,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: scale(14),
-    paddingBottom: moderateScale(130),
+    paddingBottom: moderateScale(190),
   },
   addressBar: {
     flexDirection: "row",

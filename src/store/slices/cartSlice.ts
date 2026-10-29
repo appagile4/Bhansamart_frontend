@@ -5,7 +5,6 @@ import {
   clearCartApi,
   fetchCartApi,
   removeFromCartApi,
-  syncCartApi,
   updateCartItemQuantityApi,
 } from "../services/cartService";
 
@@ -22,6 +21,8 @@ export interface CartItem {
   category?: string;
   subCategory?: string;
   isVeg?: boolean;
+  stock?: number;
+  maxQuantity?: number;
 }
 
 export interface CartState {
@@ -36,15 +37,18 @@ export interface CartState {
 }
 
 export const calculateCartTotals = (items: CartItem[]) => {
-  const totalCount = items.reduce((sum, item) => sum + item.quantity, 0);
-  const totalPrice = items.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
-  const totalOriginalPrice = items.reduce(
-    (sum, item) => sum + (item.originalPrice || item.price) * item.quantity,
-    0
-  );
+  let totalCount = 0;
+  let totalPrice = 0;
+  let totalOriginalPrice = 0;
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const qty = item.quantity || 0;
+    totalCount += qty;
+    totalPrice += (item.price || 0) * qty;
+    totalOriginalPrice += (item.originalPrice || item.price || 0) * qty;
+  }
+
   const totalSavings = Math.max(0, totalOriginalPrice - totalPrice);
 
   return {
@@ -70,7 +74,21 @@ export const normalizeProductToCartItem = (
   const pCategory = prod.category || "Grocery";
   const pSubCategory = prod.subCategory || prod.subcategory || "";
   const pIsVeg = prod.isVeg !== undefined ? Boolean(prod.isVeg) : true;
-  const pQty = Math.max(1, Number(prod.quantity || quantity) || 1);
+  const pStock =
+    typeof prod.stock === "number"
+      ? prod.stock
+      : typeof prod.countInStock === "number"
+      ? prod.countInStock
+      : undefined;
+  const pMaxQty =
+    typeof prod.maxQuantity === "number"
+      ? prod.maxQuantity
+      : pStock !== undefined
+      ? pStock
+      : 99;
+
+  const rawQty = Number(prod.quantity || quantity) || 1;
+  const pQty = Math.min(pMaxQty, Math.max(1, rawQty));
 
   let imgUrl = "";
   if (typeof prod.imageUrl === "string" && prod.imageUrl) {
@@ -98,7 +116,23 @@ export const normalizeProductToCartItem = (
     category: pCategory,
     subCategory: pSubCategory,
     isVeg: pIsVeg,
+    stock: pStock,
+    maxQuantity: pMaxQty,
   };
+};
+
+// ── In-Memory Queue & Debounce Timers ──────────────────────────────────────────
+const pendingSyncTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
+let storageDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+const scheduleStoragePersist = (items: CartItem[]) => {
+  if (storageDebounceTimer) {
+    clearTimeout(storageDebounceTimer);
+  }
+  storageDebounceTimer = setTimeout(() => {
+    storageDebounceTimer = null;
+    storage.setItem(CART_STORAGE_KEY, JSON.stringify(items)).catch(() => {});
+  }, 400);
 };
 
 const initialItems: CartItem[] = [];
@@ -141,17 +175,20 @@ export const loadCartFromStorage = createAsyncThunk(
  */
 export const fetchCart = createAsyncThunk(
   "cart/fetch",
-  async (_, { getState, rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
       const response = await fetchCartApi();
       if (response && response.data && Array.isArray(response.data.items)) {
         const normalized = response.data.items.map((it) =>
-          normalizeProductToCartItem({
-            ...it,
-            id: it.productId || it._id,
-          }, it.quantity)
+          normalizeProductToCartItem(
+            {
+              ...it,
+              id: it.productId || it._id,
+            },
+            it.quantity
+          )
         );
-        await storage.setItem(CART_STORAGE_KEY, JSON.stringify(normalized));
+        scheduleStoragePersist(normalized);
         return normalized;
       }
       return [];
@@ -167,19 +204,33 @@ export const fetchCart = createAsyncThunk(
 );
 
 /**
- * 3. Add to cart (Optimistic + Backend sync)
+ * 3. Add to cart (Synchronous 0ms UI update + Debounced Backend sync)
  */
 export const addToCart = createAsyncThunk(
   "cart/add",
   async (
-    product: Omit<CartItem, "quantity"> & { quantity?: number },
-    { getState }
+    product: Omit<CartItem, "quantity"> & {
+      quantity?: number;
+      stock?: number;
+      maxQuantity?: number;
+    },
+    { dispatch, getState }
   ) => {
+    // 1. Immediately apply optimistic add to local Redux state
+    dispatch(addToCartLocal(product));
+
     const item = normalizeProductToCartItem(product, product.quantity || 1);
+    const pId = String(item.id).trim();
+
+    // 2. Debounce backend sync per product ID to prevent out-of-order calls
+    if (pendingSyncTimers.has(pId)) {
+      clearTimeout(pendingSyncTimers.get(pId)!);
+      pendingSyncTimers.delete(pId);
+    }
 
     try {
       const response = await addToCartApi({
-        productId: item.id,
+        productId: pId,
         name: item.name,
         price: item.price,
         originalPrice: item.originalPrice,
@@ -192,96 +243,127 @@ export const addToCart = createAsyncThunk(
       });
 
       if (response && response.data && Array.isArray(response.data.items)) {
-        const normalized = response.data.items.map((it) =>
-          normalizeProductToCartItem({ ...it, id: it.productId || it._id }, it.quantity)
-        );
-        await storage.setItem(CART_STORAGE_KEY, JSON.stringify(normalized));
-        return normalized;
+        dispatch(reconcileCartBackend(response.data.items));
       }
     } catch {
-      // Backend failed or guest: persist local state
+      // Backend failed or guest: offline fallback preserves local state
     }
 
     const state = getState() as { cart: CartState };
-    await storage.setItem(
-      CART_STORAGE_KEY,
-      JSON.stringify(state.cart.items)
-    );
+    scheduleStoragePersist(state.cart.items);
     return state.cart.items;
   }
 );
 
 /**
- * 4. Update cart item quantity (+1 / -1)
+ * 4. Update cart item quantity (0ms Immediate UI update + 300ms Debounced Server Sync)
  */
 export const updateCartQuantity = createAsyncThunk(
   "cart/updateQuantity",
   async (
-    payload: { productId: string; delta: number },
-    { getState }
+    payload: {
+      productId: string;
+      delta?: number;
+      quantity?: number;
+      maxQuantity?: number;
+    },
+    { dispatch, getState }
   ) => {
-    const { productId, delta } = payload;
+    const { productId, delta = 0, quantity, maxQuantity } = payload;
+    const pId = String(productId).trim();
 
-    try {
-      const response = await updateCartItemQuantityApi(productId, delta);
-      if (response && response.data && Array.isArray(response.data.items)) {
-        const normalized = response.data.items.map((it) =>
-          normalizeProductToCartItem({ ...it, id: it.productId || it._id }, it.quantity)
-        );
-        await storage.setItem(CART_STORAGE_KEY, JSON.stringify(normalized));
-        return normalized;
-      }
-    } catch {
-      // Offline fallback
+    // 1. Immediately apply optimistic update in Redux store (0ms latency)
+    dispatch(
+      updateQuantityLocal({ productId: pId, delta, quantity, maxQuantity })
+    );
+
+    // 2. Debounce server synchronization by 300ms
+    if (pendingSyncTimers.has(pId)) {
+      clearTimeout(pendingSyncTimers.get(pId)!);
+      pendingSyncTimers.delete(pId);
     }
 
-    const state = getState() as { cart: CartState };
-    await storage.setItem(
-      CART_STORAGE_KEY,
-      JSON.stringify(state.cart.items)
-    );
-    return state.cart.items;
+    return new Promise<CartItem[]>((resolve) => {
+      const timer = setTimeout(async () => {
+        pendingSyncTimers.delete(pId);
+        const state = getState() as { cart: CartState };
+        const currentItem = state.cart.items.find(
+          (it) => String(it.id).trim() === pId
+        );
+        const targetQty = currentItem ? currentItem.quantity : 0;
+
+        try {
+          if (targetQty <= 0) {
+            await removeFromCartApi(pId);
+          } else {
+            // Send authoritative exact final quantity to server
+            await updateCartItemQuantityApi(pId, undefined, targetQty);
+          }
+        } catch {
+          // Offline fallback: keep optimistic local state
+        }
+
+        scheduleStoragePersist(state.cart.items);
+        resolve(state.cart.items);
+      }, 300);
+
+      pendingSyncTimers.set(pId, timer);
+    });
   }
 );
 
 /**
- * 5. Remove product from cart
+ * 5. Remove product from cart (0ms Immediate UI update + Backend Sync)
  */
 export const removeFromCart = createAsyncThunk(
   "cart/remove",
-  async (productId: string, { getState }) => {
+  async (productId: string, { dispatch, getState }) => {
+    const pId = String(productId).trim();
+
+    // Cancel any pending sync timers for this product
+    if (pendingSyncTimers.has(pId)) {
+      clearTimeout(pendingSyncTimers.get(pId)!);
+      pendingSyncTimers.delete(pId);
+    }
+
+    // 1. Immediately remove from local Redux state
+    dispatch(removeFromCartLocal(pId));
+
     try {
-      const response = await removeFromCartApi(productId);
-      if (response && response.data && Array.isArray(response.data.items)) {
-        const normalized = response.data.items.map((it) =>
-          normalizeProductToCartItem({ ...it, id: it.productId || it._id }, it.quantity)
-        );
-        await storage.setItem(CART_STORAGE_KEY, JSON.stringify(normalized));
-        return normalized;
-      }
+      await removeFromCartApi(pId);
     } catch {
       // Offline fallback
     }
 
     const state = getState() as { cart: CartState };
-    await storage.setItem(
-      CART_STORAGE_KEY,
-      JSON.stringify(state.cart.items)
-    );
+    scheduleStoragePersist(state.cart.items);
     return state.cart.items;
   }
 );
 
 /**
- * 6. Clear entire cart
+ * 6. Clear entire cart (0ms Immediate UI update + Backend Sync)
  */
 export const clearCart = createAsyncThunk(
   "cart/clear",
-  async () => {
-    await storage.removeItem(CART_STORAGE_KEY);
+  async (_, { dispatch }) => {
+    // Clear all pending timers
+    pendingSyncTimers.forEach((timer) => clearTimeout(timer));
+    pendingSyncTimers.clear();
+
+    if (storageDebounceTimer) {
+      clearTimeout(storageDebounceTimer);
+      storageDebounceTimer = null;
+    }
+
+    // 1. Immediately clear local Redux state
+    dispatch(clearCartLocal());
+
     try {
       await clearCartApi();
     } catch {}
+
+    await storage.removeItem(CART_STORAGE_KEY).catch(() => {});
     return [];
   }
 );
@@ -293,21 +375,34 @@ const cartSlice = createSlice({
     // Synchronous optimistic add
     addToCartLocal(
       state,
-      action: PayloadAction<Omit<CartItem, "quantity"> & { quantity?: number }>
+      action: PayloadAction<
+        Omit<CartItem, "quantity"> & {
+          quantity?: number;
+          stock?: number;
+          maxQuantity?: number;
+        }
+      >
     ) {
       const item = normalizeProductToCartItem(
         action.payload,
         action.payload.quantity || 1
       );
       const existing = state.items.find(
-        (it) => String(it.id) === String(item.id)
+        (it) => String(it.id).trim() === String(item.id).trim()
+      );
+
+      const maxLimit = Math.min(
+        item.maxQuantity || 99,
+        item.stock !== undefined ? item.stock : 99
       );
 
       if (existing) {
-        existing.quantity += item.quantity;
+        existing.quantity = Math.min(maxLimit, existing.quantity + item.quantity);
         existing.price = item.price;
         if (item.imageUrl) existing.imageUrl = item.imageUrl;
+        if (item.stock !== undefined) existing.stock = item.stock;
       } else {
+        item.quantity = Math.min(maxLimit, item.quantity);
         state.items.unshift(item);
       }
 
@@ -321,19 +416,37 @@ const cartSlice = createSlice({
     // Synchronous optimistic update (+1 / -1 or exact quantity)
     updateQuantityLocal(
       state,
-      action: PayloadAction<{ productId: string; delta: number }>
+      action: PayloadAction<{
+        productId: string;
+        delta?: number;
+        quantity?: number;
+        maxQuantity?: number;
+      }>
     ) {
-      const { productId, delta } = action.payload;
+      const { productId, delta = 0, quantity, maxQuantity } = action.payload;
+      const targetId = String(productId).trim();
       const index = state.items.findIndex(
-        (it) => String(it.id) === String(productId)
+        (it) => String(it.id).trim() === targetId
       );
 
       if (index > -1) {
-        const newQty = state.items[index].quantity + delta;
+        const item = state.items[index];
+        const maxLimit = Math.min(
+          maxQuantity || item.maxQuantity || 99,
+          item.stock !== undefined ? item.stock : 99
+        );
+
+        let newQty = item.quantity;
+        if (quantity !== undefined) {
+          newQty = Number(quantity);
+        } else {
+          newQty += Number(delta);
+        }
+
         if (newQty <= 0) {
           state.items.splice(index, 1);
         } else {
-          state.items[index].quantity = newQty;
+          item.quantity = Math.min(maxLimit, newQty);
         }
       }
 
@@ -346,9 +459,9 @@ const cartSlice = createSlice({
 
     // Synchronous optimistic remove
     removeFromCartLocal(state, action: PayloadAction<string>) {
-      const productId = action.payload;
+      const targetId = String(action.payload).trim();
       state.items = state.items.filter(
-        (it) => String(it.id) !== String(productId)
+        (it) => String(it.id).trim() !== targetId
       );
 
       const totals = calculateCartTotals(state.items);
@@ -365,6 +478,29 @@ const cartSlice = createSlice({
       state.totalPrice = 0;
       state.totalOriginalPrice = 0;
       state.totalSavings = 0;
+    },
+
+    // Reconcile server response without overriding active local user edits
+    reconcileCartBackend(state, action: PayloadAction<any[]>) {
+      if (!Array.isArray(action.payload)) return;
+      const serverItems = action.payload;
+
+      for (const sItem of serverItems) {
+        const pId = String(sItem.productId || sItem._id || "").trim();
+        if (!pId) continue;
+        const localItem = state.items.find(
+          (it) => String(it.id).trim() === pId
+        );
+
+        // If no pending sync timer for this item, sync metadata
+        if (localItem && !pendingSyncTimers.has(pId)) {
+          if (sItem.price !== undefined) localItem.price = Number(sItem.price);
+          if (sItem.originalPrice !== undefined)
+            localItem.originalPrice = Number(sItem.originalPrice);
+          if (sItem.imageUrl && !localItem.imageUrl)
+            localItem.imageUrl = sItem.imageUrl;
+        }
+      }
     },
   },
   extraReducers: (builder) => {
@@ -397,100 +533,6 @@ const cartSlice = createSlice({
       .addCase(fetchCart.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
-      })
-      // Add to cart
-      .addCase(addToCart.pending, (state, action) => {
-        const item = normalizeProductToCartItem(
-          action.meta.arg,
-          action.meta.arg.quantity || 1
-        );
-        const existing = state.items.find(
-          (it) => String(it.id) === String(item.id)
-        );
-
-        if (existing) {
-          existing.quantity += item.quantity;
-        } else {
-          state.items.unshift(item);
-        }
-
-        const totals = calculateCartTotals(state.items);
-        state.totalCount = totals.totalCount;
-        state.totalPrice = totals.totalPrice;
-        state.totalOriginalPrice = totals.totalOriginalPrice;
-        state.totalSavings = totals.totalSavings;
-      })
-      .addCase(addToCart.fulfilled, (state, action) => {
-        if (action.payload) {
-          state.items = action.payload;
-          const totals = calculateCartTotals(state.items);
-          state.totalCount = totals.totalCount;
-          state.totalPrice = totals.totalPrice;
-          state.totalOriginalPrice = totals.totalOriginalPrice;
-          state.totalSavings = totals.totalSavings;
-        }
-      })
-      // Update quantity
-      .addCase(updateCartQuantity.pending, (state, action) => {
-        const { productId, delta } = action.meta.arg;
-        const index = state.items.findIndex(
-          (it) => String(it.id) === String(productId)
-        );
-
-        if (index > -1) {
-          const newQty = state.items[index].quantity + delta;
-          if (newQty <= 0) {
-            state.items.splice(index, 1);
-          } else {
-            state.items[index].quantity = newQty;
-          }
-        }
-
-        const totals = calculateCartTotals(state.items);
-        state.totalCount = totals.totalCount;
-        state.totalPrice = totals.totalPrice;
-        state.totalOriginalPrice = totals.totalOriginalPrice;
-        state.totalSavings = totals.totalSavings;
-      })
-      .addCase(updateCartQuantity.fulfilled, (state, action) => {
-        if (action.payload) {
-          state.items = action.payload;
-          const totals = calculateCartTotals(state.items);
-          state.totalCount = totals.totalCount;
-          state.totalPrice = totals.totalPrice;
-          state.totalOriginalPrice = totals.totalOriginalPrice;
-          state.totalSavings = totals.totalSavings;
-        }
-      })
-      // Remove
-      .addCase(removeFromCart.pending, (state, action) => {
-        const productId = action.meta.arg;
-        state.items = state.items.filter(
-          (it) => String(it.id) !== String(productId)
-        );
-        const totals = calculateCartTotals(state.items);
-        state.totalCount = totals.totalCount;
-        state.totalPrice = totals.totalPrice;
-        state.totalOriginalPrice = totals.totalOriginalPrice;
-        state.totalSavings = totals.totalSavings;
-      })
-      .addCase(removeFromCart.fulfilled, (state, action) => {
-        if (action.payload) {
-          state.items = action.payload;
-          const totals = calculateCartTotals(state.items);
-          state.totalCount = totals.totalCount;
-          state.totalPrice = totals.totalPrice;
-          state.totalOriginalPrice = totals.totalOriginalPrice;
-          state.totalSavings = totals.totalSavings;
-        }
-      })
-      // Clear
-      .addCase(clearCart.fulfilled, (state) => {
-        state.items = [];
-        state.totalCount = 0;
-        state.totalPrice = 0;
-        state.totalOriginalPrice = 0;
-        state.totalSavings = 0;
       });
   },
 });
@@ -500,6 +542,50 @@ export const {
   updateQuantityLocal,
   removeFromCartLocal,
   clearCartLocal,
+  reconcileCartBackend,
 } = cartSlice.actions;
+
+// ── Granular Memoized Redux Selectors ──────────────────────────────────────────
+
+/**
+ * Granular selector for a single product's quantity.
+ * Compares primitive numbers (prevQty === nextQty) so only the affected product re-renders!
+ */
+export const selectProductQuantity =
+  (productId: string | undefined) =>
+  (state: { cart: CartState }): number => {
+    if (!productId) return 0;
+    const targetId = String(productId).trim();
+    if (!targetId) return 0;
+
+    const items = state.cart.items;
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      if (
+        String(it.id).trim() === targetId ||
+        String((it as any).productId || "").trim() === targetId ||
+        String((it as any)._id || "").trim() === targetId
+      ) {
+        return it.quantity || 0;
+      }
+    }
+    return 0;
+  };
+
+/**
+ * Granular selector for cart totals.
+ */
+export const selectCartTotals = (state: { cart: CartState }) => ({
+  totalCount: state.cart.totalCount,
+  totalPrice: state.cart.totalPrice,
+  totalOriginalPrice: state.cart.totalOriginalPrice,
+  totalSavings: state.cart.totalSavings,
+});
+
+/**
+ * Primitive selector for total item count (used in tab bar badges).
+ */
+export const selectCartTotalCount = (state: { cart: CartState }): number =>
+  state.cart.totalCount;
 
 export default cartSlice.reducer;

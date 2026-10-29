@@ -1,4 +1,4 @@
-import { useCart } from "@/context/cart-context";
+import { useProductCartQuantity, useCartActions } from "@/context/cart-context";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { toggleWishlist } from "@/store/slices/wishlistSlice";
 import { moderateScale, scale, useTheme, verticalScale } from "@/theme";
@@ -24,9 +24,9 @@ export const CompactProductCard = memo(function CompactProductCard({
   const theme = useTheme();
   const isDark = theme.mode === "dark";
   const dispatch = useAppDispatch();
-  const { addToCart, updateQuantity, getItemQuantity } = useCart();
+  const { addToCart, updateQuantity } = useCartActions();
   const targetId = String(product.id || (product as any)._id || "").trim();
-  const qty = getItemQuantity(targetId);
+  const qty = useProductCartQuantity(targetId);
 
   const isWishlisted = useAppSelector((state) =>
     state.wishlist.items.some(
@@ -88,6 +88,22 @@ export const CompactProductCard = memo(function CompactProductCard({
       }
     },
     [addToCart, onAddPress, product, targetId]
+  );
+
+  const handleMinus = useCallback(
+    (e: any) => {
+      e?.stopPropagation?.();
+      updateQuantity(targetId, -1);
+    },
+    [updateQuantity, targetId]
+  );
+
+  const handlePlus = useCallback(
+    (e: any) => {
+      e?.stopPropagation?.();
+      updateQuantity(targetId, 1);
+    },
+    [updateQuantity, targetId]
   );
 
   const hasDiscount =
@@ -205,10 +221,7 @@ export const CompactProductCard = memo(function CompactProductCard({
             >
               <TouchableOpacity
                 activeOpacity={0.7}
-                onPress={(e) => {
-                  e?.stopPropagation?.();
-                  updateQuantity(targetId, -1);
-                }}
+                onPress={handleMinus}
                 style={styles.stepperBtn}
                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
               >
@@ -219,10 +232,7 @@ export const CompactProductCard = memo(function CompactProductCard({
 
               <TouchableOpacity
                 activeOpacity={0.7}
-                onPress={(e) => {
-                  e?.stopPropagation?.();
-                  updateQuantity(targetId, 1);
-                }}
+                onPress={handlePlus}
                 style={styles.stepperBtn}
                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
               >

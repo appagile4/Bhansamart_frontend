@@ -1,5 +1,5 @@
 import { FloatingCartBar } from "@/components/cart";
-import { useCart } from "@/context/cart-context";
+import { useProductCartQuantity, useCartActions, useCart } from "@/context/cart-context";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   clearWishlist,
@@ -35,7 +35,7 @@ const CARD_WIDTH = (width - scale(44)) / 2;
 
 interface WishlistItemCardProps {
   item: WishlistItem;
-  quantity: number;
+  quantity?: number;
   primaryColor: string;
   isDark: boolean;
   onPress: (item: WishlistItem, imgUrl: string) => void;
@@ -47,7 +47,7 @@ interface WishlistItemCardProps {
 const WishlistItemCard = memo(
   function WishlistItemCard({
     item,
-    quantity,
+    quantity: propQuantity,
     primaryColor,
     isDark,
     onPress,
@@ -55,6 +55,8 @@ const WishlistItemCard = memo(
     onAddToCart,
     onUpdateQuantity,
   }: WishlistItemCardProps) {
+    const storeQuantity = useProductCartQuantity(item.productId);
+    const quantity = propQuantity !== undefined ? propQuantity : storeQuantity;
     const discountPercent =
       item.discountPct !== undefined && item.discountPct > 0
         ? item.discountPct
@@ -472,11 +474,9 @@ export default function WishlistScreen() {
 
   const renderWishlistItem = useCallback(
     ({ item }: { item: WishlistItem }) => {
-      const qty = getItemQuantity(item.productId);
       return (
         <WishlistItemCard
           item={item}
-          quantity={qty}
           primaryColor={primaryColor}
           isDark={isDark}
           onPress={handlePressWishlistProduct}

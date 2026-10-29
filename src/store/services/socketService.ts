@@ -1,15 +1,20 @@
 import storage from "@/utils/storage";
 import { io, Socket } from "socket.io-client";
-import { API_BASE_URL } from "./api";
+import { API_BASE_URL, getBaseServerUrl } from "./api";
 
 /**
- * Resolve Socket.IO base URL from API_BASE_URL
+ * Resolve Socket.IO base URL from .env or automatically derived from API_BASE_URL
  */
-const getSocketUrl = () => {
-  return (
+const getSocketUrl = (): string => {
+  const envSocket =
     process.env.EXPO_PUBLIC_SOCKET_URL ||
-    API_BASE_URL.replace(/\/api\/?$/, "")
-  );
+    process.env.EXPO_PUBLIC_WS_URL;
+
+  if (envSocket && envSocket.trim()) {
+    return envSocket.trim().replace(/\/+$/, "");
+  }
+
+  return getBaseServerUrl(API_BASE_URL);
 };
 
 class SocketService {
@@ -352,7 +357,7 @@ class SocketService {
   }
 
   /**
-   * Listen for incoming delivery order offer requests (45s window)
+   * Listen for incoming delivery order offer requests (60s window)
    */
   public onDeliveryOrderRequest(handler: (offer: any) => void): () => void {
     const wrappedHandler = (offer: any) => {
@@ -366,6 +371,46 @@ class SocketService {
     this.socket?.on("delivery:order:request", wrappedHandler);
     return () => {
       this.socket?.off("delivery:order:request", wrappedHandler);
+    };
+  }
+
+  /**
+   * Listen for real-time Delivery Partner Notifications
+   */
+  public onDeliveryNotification(handler: (notif: any) => void): () => void {
+    const wrappedHandler = (notif: any) => {
+      console.log(
+        `[SocketService] Received delivery notification:`,
+        notif?.title,
+      );
+      handler(notif);
+    };
+
+    this.socket?.on("delivery:notification", wrappedHandler);
+    this.socket?.on("delivery:portal:announcement", wrappedHandler);
+    return () => {
+      this.socket?.off("delivery:notification", wrappedHandler);
+      this.socket?.off("delivery:portal:announcement", wrappedHandler);
+    };
+  }
+
+  /**
+   * Listen for expired or cancelled delivery offer requests (when 60s countdown expires on server or order cancelled)
+   */
+  public onDeliveryOrderExpired(handler: (data: any) => void): () => void {
+    const wrappedHandler = (data: any) => {
+      console.log(
+        `[SocketService] Delivery order request expired or cancelled:`,
+        data?.orderNumber || data?.orderId,
+      );
+      handler(data);
+    };
+
+    this.socket?.on("delivery:order:expired", wrappedHandler);
+    this.socket?.on("delivery:order:cancelled", wrappedHandler);
+    return () => {
+      this.socket?.off("delivery:order:expired", wrappedHandler);
+      this.socket?.off("delivery:order:cancelled", wrappedHandler);
     };
   }
 

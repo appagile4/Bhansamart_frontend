@@ -5,12 +5,13 @@ import {
   markAllCustomerNotificationsRead,
 } from "@/store/slices/referralSlice";
 import { CustomerNotificationItem } from "@/store/services/referralService";
+import socketService from "@/store/services/socketService";
 import { decrementUnread, setUnread } from "@/utils/notificationSync";
 import { moderateScale, scale, useTheme } from "@/theme";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { memo, useCallback, useEffect, useState } from "react";
+import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -21,6 +22,158 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+// ── Notification Visual Configuration ──────────────────────────────────
+interface VisualConfig {
+  iconType: "feather" | "ionicons";
+  iconName: string;
+  iconColorLight: string;
+  iconColorDark: string;
+  bgLight: string;
+  bgDark: string;
+  badgeLabel: string;
+  badgeBgLight: string;
+  badgeBgDark: string;
+  badgeColorLight: string;
+  badgeColorDark: string;
+}
+
+const NOTIFICATION_CONFIGS: Record<string, VisualConfig> = {
+  order: {
+    iconType: "feather",
+    iconName: "package",
+    iconColorLight: "#B45309",
+    iconColorDark: "#FBBF24",
+    bgLight: "#FEF3C7",
+    bgDark: "rgba(245, 158, 11, 0.18)",
+    badgeLabel: "Order",
+    badgeBgLight: "#FEF3C7",
+    badgeBgDark: "rgba(245, 158, 11, 0.2)",
+    badgeColorLight: "#B45309",
+    badgeColorDark: "#FBBF24",
+  },
+  refund: {
+    iconType: "feather",
+    iconName: "refresh-cw",
+    iconColorLight: "#059669",
+    iconColorDark: "#34D399",
+    bgLight: "#D1FAE5",
+    bgDark: "rgba(16, 185, 129, 0.18)",
+    badgeLabel: "Refund",
+    badgeBgLight: "#D1FAE5",
+    badgeBgDark: "rgba(16, 185, 129, 0.2)",
+    badgeColorLight: "#059669",
+    badgeColorDark: "#34D399",
+  },
+  referral_reward: {
+    iconType: "feather",
+    iconName: "gift",
+    iconColorLight: "#016073",
+    iconColorDark: "#38BDF8",
+    bgLight: "#E6F4F6",
+    bgDark: "rgba(2, 132, 199, 0.18)",
+    badgeLabel: "Referral",
+    badgeBgLight: "#E6F4F6",
+    badgeBgDark: "rgba(2, 132, 199, 0.2)",
+    badgeColorLight: "#016073",
+    badgeColorDark: "#38BDF8",
+  },
+  referral_success: {
+    iconType: "feather",
+    iconName: "users",
+    iconColorLight: "#016073",
+    iconColorDark: "#38BDF8",
+    bgLight: "#E6F4F6",
+    bgDark: "rgba(2, 132, 199, 0.18)",
+    badgeLabel: "Referral",
+    badgeBgLight: "#E6F4F6",
+    badgeBgDark: "rgba(2, 132, 199, 0.2)",
+    badgeColorLight: "#016073",
+    badgeColorDark: "#38BDF8",
+  },
+  welcome_reward: {
+    iconType: "ionicons",
+    iconName: "sparkles",
+    iconColorLight: "#15803D",
+    iconColorDark: "#4ADE80",
+    bgLight: "#DCFCE7",
+    bgDark: "rgba(34, 197, 94, 0.18)",
+    badgeLabel: "Welcome",
+    badgeBgLight: "#DCFCE7",
+    badgeBgDark: "rgba(34, 197, 94, 0.2)",
+    badgeColorLight: "#15803D",
+    badgeColorDark: "#4ADE80",
+  },
+  reward: {
+    iconType: "ionicons",
+    iconName: "sparkles",
+    iconColorLight: "#15803D",
+    iconColorDark: "#4ADE80",
+    bgLight: "#DCFCE7",
+    bgDark: "rgba(34, 197, 94, 0.18)",
+    badgeLabel: "Reward",
+    badgeBgLight: "#DCFCE7",
+    badgeBgDark: "rgba(34, 197, 94, 0.2)",
+    badgeColorLight: "#15803D",
+    badgeColorDark: "#4ADE80",
+  },
+  offer: {
+    iconType: "ionicons",
+    iconName: "pricetag-outline",
+    iconColorLight: "#E11D48",
+    iconColorDark: "#FB7185",
+    bgLight: "#FFE4E6",
+    bgDark: "rgba(244, 63, 94, 0.18)",
+    badgeLabel: "Offer",
+    badgeBgLight: "#FFE4E6",
+    badgeBgDark: "rgba(244, 63, 94, 0.2)",
+    badgeColorLight: "#E11D48",
+    badgeColorDark: "#FB7185",
+  },
+  announcement: {
+    iconType: "feather",
+    iconName: "volume-2",
+    iconColorLight: "#7C3AED",
+    iconColorDark: "#A78BFA",
+    bgLight: "#EDE9FE",
+    bgDark: "rgba(139, 92, 246, 0.18)",
+    badgeLabel: "Notice",
+    badgeBgLight: "#EDE9FE",
+    badgeBgDark: "rgba(139, 92, 246, 0.2)",
+    badgeColorLight: "#7C3AED",
+    badgeColorDark: "#A78BFA",
+  },
+  broadcast: {
+    iconType: "feather",
+    iconName: "send",
+    iconColorLight: "#2563EB",
+    iconColorDark: "#60A5FA",
+    bgLight: "#DBEAFE",
+    bgDark: "rgba(37, 99, 235, 0.18)",
+    badgeLabel: "Broadcast",
+    badgeBgLight: "#DBEAFE",
+    badgeBgDark: "rgba(37, 99, 235, 0.2)",
+    badgeColorLight: "#2563EB",
+    badgeColorDark: "#60A5FA",
+  },
+  system: {
+    iconType: "feather",
+    iconName: "bell",
+    iconColorLight: "#64748B",
+    iconColorDark: "#94A3B8",
+    bgLight: "#F1F5F9",
+    bgDark: "#1E2E38",
+    badgeLabel: "System",
+    badgeBgLight: "#F1F5F9",
+    badgeBgDark: "#1E2E38",
+    badgeColorLight: "#64748B",
+    badgeColorDark: "#94A3B8",
+  },
+};
+
+const DEFAULT_CONFIG: VisualConfig = NOTIFICATION_CONFIGS.system;
+
+type FilterType = "ALL" | "ORDER" | "REWARD" | "OFFER";
 
 // ── Notification Item Row ──────────────────────────────────────────────
 const NotificationRow = memo(
@@ -33,10 +186,7 @@ const NotificationRow = memo(
     isDark: boolean;
     onPress: (item: CustomerNotificationItem) => void;
   }) {
-    const isReferralReward =
-      item.type === "referral_reward" || item.type === "referral_success";
-    const isWelcomeReward = item.type === "welcome_reward";
-    const isOrder = item.type === "order";
+    const visual = NOTIFICATION_CONFIGS[item.type] || DEFAULT_CONFIG;
 
     const dateFormatted = item.createdAt
       ? new Date(item.createdAt).toLocaleDateString([], {
@@ -71,62 +221,61 @@ const NotificationRow = memo(
           style={[
             styles.notifIconWrap,
             {
-              backgroundColor: isReferralReward
-                ? isDark
-                  ? "rgba(2, 132, 199, 0.18)"
-                  : "#E6F4F6"
-                : isWelcomeReward
-                ? isDark
-                  ? "rgba(34, 197, 94, 0.18)"
-                  : "#DCFCE7"
-                : isOrder
-                ? isDark
-                  ? "rgba(245, 158, 11, 0.18)"
-                  : "#FEF3C7"
-                : isDark
-                ? "#1E2E38"
-                : "#F1F5F9",
+              backgroundColor: isDark ? visual.bgDark : visual.bgLight,
             },
           ]}
         >
-          {isReferralReward ? (
-            <Feather
-              name="gift"
-              size={scale(18)}
-              color={isDark ? "#38BDF8" : "#016073"}
-            />
-          ) : isWelcomeReward ? (
+          {visual.iconType === "ionicons" ? (
             <Ionicons
-              name="sparkles"
+              name={visual.iconName as any}
               size={scale(18)}
-              color={isDark ? "#4ADE80" : "#15803D"}
-            />
-          ) : isOrder ? (
-            <Feather
-              name="package"
-              size={scale(18)}
-              color={isDark ? "#FBBF24" : "#B45309"}
+              color={isDark ? visual.iconColorDark : visual.iconColorLight}
             />
           ) : (
             <Feather
-              name="bell"
+              name={visual.iconName as any}
               size={scale(18)}
-              color={isDark ? "#94A3B8" : "#64748B"}
+              color={isDark ? visual.iconColorDark : visual.iconColorLight}
             />
           )}
         </View>
 
         <View style={styles.notifContent}>
           <View style={styles.notifTopRow}>
-            <Text
-              style={[
-                styles.notifTitle,
-                isDark && { color: "#F8FAFC" },
-              ]}
-              numberOfLines={1}
-            >
-              {item.title}
-            </Text>
+            <View style={styles.titleWithBadge}>
+              <Text
+                style={[
+                  styles.notifTitle,
+                  isDark && { color: "#F8FAFC" },
+                ]}
+                numberOfLines={1}
+              >
+                {item.title}
+              </Text>
+              <View
+                style={[
+                  styles.categoryBadge,
+                  {
+                    backgroundColor: isDark
+                      ? visual.badgeBgDark
+                      : visual.badgeBgLight,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.categoryBadgeText,
+                    {
+                      color: isDark
+                        ? visual.badgeColorDark
+                        : visual.badgeColorLight,
+                    },
+                  ]}
+                >
+                  {visual.badgeLabel}
+                </Text>
+              </View>
+            </View>
             {!item.isRead && (
               <View
                 style={[
@@ -178,20 +327,92 @@ export default function CustomerNotificationsScreen() {
   } = useAppSelector((state) => state.referral);
 
   const [refreshing, setRefreshing] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<FilterType>("ALL");
 
   const loadData = useCallback(() => {
-    dispatch(fetchCustomerNotifications({ page: 1, limit: 30 }));
+    dispatch(fetchCustomerNotifications({ page: 1, limit: 50 }));
   }, [dispatch]);
 
+  // Initial load
   useEffect(() => {
     loadData();
   }, [loadData]);
 
+  // Real-time socket sync: refresh in-app customer notification list automatically
+  useEffect(() => {
+    let unsubscribe: (() => void) | null = null;
+    socketService.connect("customer").then(() => {
+      unsubscribe = socketService.onCustomerNotification((notif) => {
+        if (notif && !notif.type?.startsWith("staff_")) {
+          loadData();
+        }
+      });
+    });
+
+    return () => {
+      unsubscribe?.();
+    };
+  }, [loadData]);
+
   const onRefresh = async () => {
     setRefreshing(true);
-    await dispatch(fetchCustomerNotifications({ page: 1, limit: 30 }));
+    await dispatch(fetchCustomerNotifications({ page: 1, limit: 50 }));
     setRefreshing(false);
   };
+
+  // Strictly filter to customer-related notifications only
+  const customerNotifications = useMemo(() => {
+    return (notifications || []).filter((item) => {
+      if (!item) return false;
+      const type = item.type || "";
+      // Exclude any staff, vendor, or delivery partner operational notifications
+      if (
+        type.startsWith("staff_") ||
+        type.startsWith("vendor_") ||
+        type.startsWith("delivery_")
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [notifications]);
+
+  // Client-side category filtering
+  const filteredNotifications = useMemo(() => {
+    return customerNotifications.filter((item) => {
+      if (activeFilter === "ALL") return true;
+      if (activeFilter === "ORDER") {
+        return (
+          item.type === "order" ||
+          item.type === "refund" ||
+          item.category === "orders" ||
+          item.category === "refunds"
+        );
+      }
+      if (activeFilter === "REWARD") {
+        return (
+          item.type === "referral_reward" ||
+          item.type === "referral_success" ||
+          item.type === "welcome_reward" ||
+          item.type === "reward"
+        );
+      }
+      if (activeFilter === "OFFER") {
+        return (
+          item.type === "offer" ||
+          item.type === "announcement" ||
+          item.type === "broadcast" ||
+          item.type === "system"
+        );
+      }
+      return true;
+    });
+  }, [customerNotifications, activeFilter]);
+
+  // Customer-accurate unread count
+  const customerUnreadCount = useMemo(() => {
+    return customerNotifications.filter((n) => !n.isRead).length;
+  }, [customerNotifications]);
 
   const handleNotificationPress = async (item: CustomerNotificationItem) => {
     if (!item.isRead) {
@@ -199,21 +420,24 @@ export default function CustomerNotificationsScreen() {
       decrementUnread("customer");
     }
 
-    // Contextual routing based on notification type
+    // Contextual routing based on customer notification type
+    const type = item.type;
     if (
-      item.type === "referral_reward" ||
-      item.type === "referral_success" ||
-      item.type === "welcome_reward" ||
-      item.type === "reward"
+      type === "referral_reward" ||
+      type === "referral_success" ||
+      type === "welcome_reward" ||
+      type === "reward"
     ) {
       router.push("/Screens/Profile/loyalty" as any);
-    } else if (item.type === "order") {
+    } else if (type === "order" || type === "refund") {
       router.push("/Screens/Profile/your-orders" as any);
+    } else if (type === "offer" || type === "announcement" || type === "broadcast") {
+      router.push("/customerMain/index" as any);
     }
   };
 
   const handleMarkAllRead = () => {
-    if (unreadNotificationsCount === 0) return;
+    if (customerUnreadCount === 0) return;
     dispatch(markAllCustomerNotificationsRead());
     setUnread("customer", 0);
   };
@@ -228,7 +452,7 @@ export default function CustomerNotificationsScreen() {
     >
       <StatusBar style={isDark ? "light" : "dark"} />
 
-      {/* Top Nav */}
+      {/* Top Navigation */}
       <View
         style={[
           styles.topNav,
@@ -267,13 +491,13 @@ export default function CustomerNotificationsScreen() {
               isDark && { color: "#94A3B8" },
             ]}
           >
-            {unreadNotificationsCount > 0
-              ? `${unreadNotificationsCount} unread update${unreadNotificationsCount === 1 ? "" : "s"}`
+            {customerUnreadCount > 0
+              ? `${customerUnreadCount} unread update${customerUnreadCount === 1 ? "" : "s"}`
               : "All caught up"}
           </Text>
         </View>
 
-        {unreadNotificationsCount > 0 && (
+        {customerUnreadCount > 0 && (
           <TouchableOpacity
             style={[
               styles.markAllBtn,
@@ -294,7 +518,58 @@ export default function CustomerNotificationsScreen() {
         )}
       </View>
 
-      {notificationsLoading && notifications.length === 0 ? (
+      {/* Category Filter Chips */}
+      <View
+        style={[
+          styles.filterRow,
+          isDark && {
+            backgroundColor: "#080D0F",
+            borderBottomColor: "#1E252E",
+          },
+        ]}
+      >
+        {(
+          [
+            { key: "ALL", label: "All" },
+            { key: "ORDER", label: "Orders" },
+            { key: "REWARD", label: "Rewards" },
+            { key: "OFFER", label: "Offers" },
+          ] as const
+        ).map((filter) => {
+          const isActive = activeFilter === filter.key;
+          return (
+            <TouchableOpacity
+              key={filter.key}
+              style={[
+                styles.filterChip,
+                isDark && { backgroundColor: "#151D24" },
+                isActive &&
+                  (isDark
+                    ? { backgroundColor: "#38BDF8" }
+                    : styles.filterChipActive),
+              ]}
+              onPress={() => setActiveFilter(filter.key)}
+              activeOpacity={0.75}
+            >
+              <Text
+                style={[
+                  styles.filterChipText,
+                  isDark && { color: "#94A3B8" },
+                  isActive &&
+                    (isDark
+                      ? { color: "#080D0F", fontWeight: "800" }
+                      : styles.filterChipTextActive),
+                ]}
+              >
+                {filter.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* Main Notification List */}
+      {notificationsLoading && customerNotifications.length === 0 ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator
             size="large"
@@ -311,7 +586,7 @@ export default function CustomerNotificationsScreen() {
         </View>
       ) : (
         <FlatList
-          data={notifications}
+          data={filteredNotifications}
           keyExtractor={(item) => item._id}
           renderItem={({ item }) => (
             <NotificationRow
@@ -340,7 +615,7 @@ export default function CustomerNotificationsScreen() {
               >
                 <Ionicons
                   name="notifications-outline"
-                  size={scale(40)}
+                  size={scale(38)}
                   color={isDark ? "#38BDF8" : "#016073"}
                 />
               </View>
@@ -350,7 +625,9 @@ export default function CustomerNotificationsScreen() {
                   isDark && { color: "#F8FAFC" },
                 ]}
               >
-                No Notifications Yet
+                {activeFilter === "ALL"
+                  ? "No Notifications Yet"
+                  : `No ${activeFilter === "ORDER" ? "Orders" : activeFilter === "REWARD" ? "Rewards" : "Offers"} Notifications`}
               </Text>
               <Text
                 style={[
@@ -358,7 +635,9 @@ export default function CustomerNotificationsScreen() {
                   isDark && { color: "#94A3B8" },
                 ]}
               >
-                You will receive updates here about order status, referral rewards, and special promotions.
+                {activeFilter === "ALL"
+                  ? "You will receive updates here about order status, referral rewards, and special promotions."
+                  : "Check back later for updates in this category."}
               </Text>
             </View>
           }
@@ -416,6 +695,34 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#016073",
   },
+  filterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: scale(16),
+    paddingVertical: moderateScale(10),
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+    gap: scale(8),
+  },
+  filterChip: {
+    paddingHorizontal: scale(14),
+    paddingVertical: moderateScale(6),
+    borderRadius: scale(20),
+    backgroundColor: "#F1F5F9",
+  },
+  filterChipActive: {
+    backgroundColor: "#016073",
+  },
+  filterChipText: {
+    fontSize: moderateScale(12),
+    fontWeight: "600",
+    color: "#64748B",
+  },
+  filterChipTextActive: {
+    color: "#FFFFFF",
+    fontWeight: "800",
+  },
   loadingContainer: {
     flex: 1,
     alignItems: "center",
@@ -462,11 +769,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
+  titleWithBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    gap: scale(6),
+  },
   notifTitle: {
     fontSize: moderateScale(13.5),
     fontWeight: "800",
     color: "#0F172A",
-    flex: 1,
+    flexShrink: 1,
+  },
+  categoryBadge: {
+    paddingHorizontal: scale(6),
+    paddingVertical: moderateScale(2),
+    borderRadius: scale(6),
+  },
+  categoryBadgeText: {
+    fontSize: moderateScale(9.5),
+    fontWeight: "700",
   },
   unreadDot: {
     width: scale(8),

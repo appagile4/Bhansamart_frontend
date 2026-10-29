@@ -2,6 +2,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   initializeDeliveryAuth,
   setIncomingOffer,
+  clearIncomingOffer,
 } from "@/store/slices/deliverySlice";
 import socketService from "@/store/services/socketService";
 import { useRouter } from "expo-router";
@@ -31,7 +32,7 @@ export default function DeliveryTabLayout() {
     }
   }, [isInitialized, isAuthenticated, router]);
 
-  // Connect Delivery Socket & Listen for Incoming Orders (45s window)
+  // Connect Delivery Socket & Listen for Incoming Orders (60s window)
   useEffect(() => {
     if (isAuthenticated) {
       socketService.connect("delivery").then(() => {
@@ -42,8 +43,13 @@ export default function DeliveryTabLayout() {
         dispatch(setIncomingOffer(offer));
       });
 
+      const unsubExpired = socketService.onDeliveryOrderExpired(() => {
+        dispatch(clearIncomingOffer());
+      });
+
       return () => {
         unsubscribe();
+        unsubExpired();
       };
     }
   }, [isAuthenticated, dispatch]);
@@ -64,7 +70,13 @@ export default function DeliveryTabLayout() {
           <NativeTabs.Trigger.Label>Earnings</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
 
-        {/* 3. PROFILE & KYC DOCUMENTS */}
+        {/* 3. DEDICATED NOTIFICATIONS */}
+        <NativeTabs.Trigger name="notifications">
+          <NativeTabs.Trigger.Icon sf="bell" md="notifications" />
+          <NativeTabs.Trigger.Label>Alerts</NativeTabs.Trigger.Label>
+        </NativeTabs.Trigger>
+
+        {/* 4. PROFILE & KYC DOCUMENTS */}
         <NativeTabs.Trigger name="profile">
           <NativeTabs.Trigger.Icon sf="person.crop.circle" md="person" />
           <NativeTabs.Trigger.Label>Profile & KYC</NativeTabs.Trigger.Label>
@@ -90,6 +102,7 @@ export default function DeliveryTabLayout() {
     >
       <Tabs.Screen name="index" />
       <Tabs.Screen name="wallet" />
+      <Tabs.Screen name="notifications" />
       <Tabs.Screen name="profile" />
     </Tabs>
   );

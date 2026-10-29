@@ -1,6 +1,6 @@
 import { FloatingCartBar } from "@/components/cart";
 import ProductCard, { DealProduct } from "@/components/home/productcard";
-import { useCart } from "@/context/cart-context";
+import { useCartActions } from "@/context/cart-context";
 import { getAllProductsApi } from "@/store/services/productService";
 import { ProductItem } from "@/store/slices/productSlice";
 import { moderateScale, scale, useTheme } from "@/theme";
@@ -88,7 +88,7 @@ export default function SearchScreen() {
   const router = useRouter();
   const theme = useTheme();
   const isDark = theme.mode === "dark";
-  const { addToCart } = useCart();
+  const { addToCart } = useCartActions();
 
   const customerLat = useAppSelector((state) => state.address?.latitude);
   const customerLng = useAppSelector((state) => state.address?.longitude);

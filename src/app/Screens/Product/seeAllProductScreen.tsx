@@ -1,6 +1,6 @@
 import { FloatingCartBar } from "@/components/cart";
 import { FilterModal, FilterState } from "@/components/category";
-import { useCart } from "@/context/cart-context";
+import { useProductCartQuantity, useCartActions } from "@/context/cart-context";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchPublicProducts, ProductItem } from "@/store/slices/productSlice";
 import { moderateScale, scale, useTheme } from "@/theme";
@@ -35,7 +35,7 @@ const { width } = Dimensions.get("window");
 
 interface SeeAllProductCardProps {
   product: ProductItem & { calculatedOrigPrice?: number; calculatedDiscountPct?: number };
-  quantity: number;
+  quantity?: number;
   onPress: (product: ProductItem) => void;
   onAddToCart: (product: ProductItem, imgUrl: string) => void;
   onUpdateQuantity: (id: string, delta: number) => void;
@@ -43,12 +43,14 @@ interface SeeAllProductCardProps {
 
 const SeeAllProductCard = memo(function SeeAllProductCard({
   product,
-  quantity,
+  quantity: propQuantity,
   onPress,
   onAddToCart,
   onUpdateQuantity,
 }: SeeAllProductCardProps) {
   const prodId = product._id || product.id || "";
+  const storeQuantity = useProductCartQuantity(prodId);
+  const quantity = propQuantity !== undefined ? propQuantity : storeQuantity;
   const imgUrl =
     product.images && product.images.length > 0
       ? product.images[0].url
@@ -300,9 +302,7 @@ export default function SeeAllProductScreen() {
   const router = useRouter();
   const theme = useTheme();
   const dispatch = useAppDispatch();
-  const { addToCart, updateQuantity, getItemQuantity, cartItems } = useCart();
-  const getItemQuantityRef = useRef(getItemQuantity);
-  getItemQuantityRef.current = getItemQuantity;
+  const { addToCart, updateQuantity } = useCartActions();
 
   const params = useLocalSearchParams<{
     title?: string;
@@ -663,12 +663,9 @@ export default function SeeAllProductScreen() {
         calculatedDiscountPct?: number;
       };
     }) => {
-      const prodId = item._id || item.id || "";
-      const qty = getItemQuantityRef.current(prodId);
       return (
         <SeeAllProductCard
           product={item}
-          quantity={qty}
           onPress={handleProductPress}
           onAddToCart={handleAddToCart}
           onUpdateQuantity={handleUpdateQuantity}
@@ -884,7 +881,7 @@ export default function SeeAllProductScreen() {
         data={filteredProducts}
         keyExtractor={keyExtractor}
         renderItem={renderItem}
-        extraData={cartItems}
+        
         numColumns={2}
         columnWrapperStyle={styles.columnWrapper}
         initialNumToRender={8}

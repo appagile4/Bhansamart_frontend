@@ -4,11 +4,30 @@ import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { memo, useCallback, useState } from "react";
+import React, { memo, useCallback, useMemo, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import CategoryScroller from "./category-scroller";
 import SearchBar from "./search-bar";
+
+// ── Static Constant Gradients & Points (Avoid recreating arrays/objects per frame) ──
+const DARK_GRADIENT_COLORS: readonly [string, string, ...string[]] = [
+  "#003C3A",
+  "#061A19",
+  "#080D0F",
+];
+const LIGHT_GRADIENT_COLORS: readonly [string, string, ...string[]] = [
+  "#003844",
+  "#004d5d",
+  "#016073",
+];
+const GRADIENT_START = { x: 0, y: 0 } as const;
+const GRADIENT_END = { x: 0, y: 1 } as const;
+
+// ── Static Image Assets ─────────────────────────────────────────────────────────────
+const BANNER_LEFT_IMG = require("@/assets/images/Home/fresh-cauliflower.png");
+const BANNER_CENTER_LOGO = require("@/assets/images/Home/bhansa-mart-banner-logo.png");
+const BANNER_RIGHT_IMG = require("@/assets/images/Home/swiss-cheese-wedge.png");
 
 interface HeaderProps {
   storeName?: string;
@@ -22,6 +41,94 @@ interface HeaderProps {
   onSearchPress?: () => void;
   onVoicePress?: () => void;
 }
+
+// ── Memoized Notification Bell Button ───────────────────────────────────────────────
+// Isolates real-time unreadCount changes so the entire Header doesn't re-render
+const NotificationBellButton = memo(function NotificationBellButton({
+  isDark,
+  onPress,
+}: {
+  isDark: boolean;
+  onPress: () => void;
+}) {
+  const { unreadCount } = useUnreadNotifications("customer");
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.75}
+      onPress={onPress}
+      style={[
+        styles.notifButton,
+        isDark && {
+          backgroundColor: "#151D24",
+          borderRadius: scale(19),
+          borderWidth: 1,
+          borderColor: "#303B45",
+        },
+      ]}
+      accessibilityLabel="Notifications"
+    >
+      <Feather
+        name="bell"
+        size={scale(19)}
+        color={isDark ? "#F8FAFC" : "#ffffff"}
+      />
+      {unreadCount > 0 && (
+        <View style={styles.notifBadge} pointerEvents="none">
+          <Text style={styles.notifBadgeText}>
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </Text>
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+});
+
+// ── Memoized Static Promotional Banner ──────────────────────────────────────────────
+// Pure visual decoration: cached in memory, zero layout recalculations on scroll
+const HeaderBanner = memo(function HeaderBanner() {
+  return (
+    <View style={styles.bannerRow} pointerEvents="none">
+      {/* Left Vegetable / Food Graphic (Independent Style) */}
+      <Image
+        source={BANNER_LEFT_IMG}
+        style={styles.bannerLeftImg}
+        contentFit="contain"
+        cachePolicy="memory-disk"
+        priority="high"
+        recyclingKey="home-header-cauliflower"
+        transition={null}
+      />
+
+      {/* Center Brand Logo + Tagline */}
+      <View style={styles.bannerCenterContent}>
+        <Image
+          source={BANNER_CENTER_LOGO}
+          style={styles.bannerCenterLogo}
+          contentFit="contain"
+          cachePolicy="memory-disk"
+          priority="high"
+          recyclingKey="home-header-logo"
+          transition={null}
+        />
+        <Text style={styles.bannerTagline}>
+          Simplifying Your Kitchen Needs.
+        </Text>
+      </View>
+
+      {/* Right Cheese / Food Graphic (Independent Style) */}
+      <Image
+        source={BANNER_RIGHT_IMG}
+        style={styles.bannerRightImg}
+        contentFit="contain"
+        cachePolicy="memory-disk"
+        priority="high"
+        recyclingKey="home-header-cheese"
+        transition={null}
+      />
+    </View>
+  );
+});
 
 function Header({
   storeName = "Delivery Address",
@@ -39,7 +146,6 @@ function Header({
   const insets = useSafeAreaInsets();
   const theme = useTheme();
   const isDark = theme.mode === "dark";
-  const { unreadCount } = useUnreadNotifications("customer");
   const [searchValue, setSearchValue] = useState("");
 
   const handleNotificationPress = useCallback(() => {
@@ -73,19 +179,19 @@ function Header({
     }
   }, [onVoicePress, router]);
 
+  const safeAreaStyle = useMemo(
+    () => [styles.safeArea, { paddingTop: insets.top }],
+    [insets.top]
+  );
+
   return (
     <LinearGradient
-      colors={
-        isDark
-          ? ["#003C3A", "#061A19", "#080D0F"]
-          : ["#003844", "#004d5d", "#016073"]
-      }
-      start={{ x: 0, y: 0 }}
-      end={{ x: 0, y: 1 }}
+      colors={isDark ? DARK_GRADIENT_COLORS : LIGHT_GRADIENT_COLORS}
+      start={GRADIENT_START}
+      end={GRADIENT_END}
       style={styles.gradientContainer}
-      renderToHardwareTextureAndroid={true}
     >
-      <View style={[styles.safeArea, { paddingTop: insets.top }]}>
+      <View style={safeAreaStyle}>
         {/* Top Header Row (Store Info, Location, Store & Profile Icons) */}
         <View style={styles.topRow}>
           {/* Left Store & Location Info */}
@@ -103,7 +209,10 @@ function Header({
                 color={isDark ? "#19A9FF" : "#38BDF8"}
                 style={{ marginRight: scale(4) }}
               />
-              <Text numberOfLines={1} style={[styles.locationText, isDark && { color: "#F8FAFC" }]}>
+              <Text
+                numberOfLines={1}
+                style={[styles.locationText, isDark && { color: "#F8FAFC" }]}
+              >
                 {location}
               </Text>
               <Feather
@@ -138,34 +247,11 @@ function Header({
               />
             </TouchableOpacity>
 
-            {/* Notification Bell Icon with Live Badge */}
-            <TouchableOpacity
-              activeOpacity={0.75}
+            {/* Notification Bell Icon with Live Badge (Isolated memoized component) */}
+            <NotificationBellButton
+              isDark={isDark}
               onPress={handleNotificationPress}
-              style={[
-                styles.notifButton,
-                isDark && {
-                  backgroundColor: "#151D24",
-                  borderRadius: scale(19),
-                  borderWidth: 1,
-                  borderColor: "#303B45",
-                },
-              ]}
-              accessibilityLabel="Notifications"
-            >
-              <Feather
-                name="bell"
-                size={scale(19)}
-                color={isDark ? "#F8FAFC" : "#ffffff"}
-              />
-              {unreadCount > 0 && (
-                <View style={styles.notifBadge} pointerEvents="none">
-                  <Text style={styles.notifBadgeText}>
-                    {unreadCount > 99 ? "99+" : unreadCount}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
+            />
 
             {/* Profile Avatar Button */}
             <TouchableOpacity
@@ -205,39 +291,29 @@ function Header({
         />
 
         {/* 3-Part Promotional Brand Banner at Bottom of Header */}
-        <View style={styles.bannerRow}>
-          {/* Left Vegetable / Food Graphic (Independent Style) */}
-          <Image
-            source={require("@/assets/images/Home/fresh-cauliflower.png")}
-            style={styles.bannerLeftImg}
-            contentFit="contain"
-          />
-
-          {/* Center Brand Logo + Tagline */}
-          <View style={styles.bannerCenterContent}>
-            <Image
-              source={require("@/assets/images/Home/bhansa-mart-banner-logo.png")}
-              style={styles.bannerCenterLogo}
-              contentFit="contain"
-            />
-            <Text style={styles.bannerTagline}>
-              Simplifying Your Kitchen Needs.
-            </Text>
-          </View>
-
-          {/* Right Cheese / Food Graphic (Independent Style) */}
-          <Image
-            source={require("@/assets/images/Home/swiss-cheese-wedge.png")}
-            style={styles.bannerRightImg}
-            contentFit="contain"
-          />
-        </View>
+        <HeaderBanner />
       </View>
     </LinearGradient>
   );
 }
 
-export default memo(Header);
+// ── Precise Equality Check to Avoid Unnecessary Re-renders on Scroll ────────────────
+function areHeaderPropsEqual(prev: HeaderProps, next: HeaderProps) {
+  return (
+    prev.storeName === next.storeName &&
+    prev.location === next.location &&
+    prev.selectedCategory === next.selectedCategory &&
+    prev.onSelectCategory === next.onSelectCategory &&
+    prev.onLocationPress === next.onLocationPress &&
+    prev.onStorePress === next.onStorePress &&
+    prev.onNotificationPress === next.onNotificationPress &&
+    prev.onProfilePress === next.onProfilePress &&
+    prev.onSearchPress === next.onSearchPress &&
+    prev.onVoicePress === next.onVoicePress
+  );
+}
+
+export default memo(Header, areHeaderPropsEqual);
 
 const styles = StyleSheet.create({
   gradientContainer: {

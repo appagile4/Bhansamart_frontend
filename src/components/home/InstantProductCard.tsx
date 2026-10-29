@@ -1,5 +1,5 @@
 import { Image } from "expo-image";
-import { useCart } from "@/context/cart-context";
+import { useProductCartQuantity, useCartActions } from "@/context/cart-context";
 import { moderateScale, scale, useTheme } from "@/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -26,16 +26,16 @@ export interface InstantProductCardProps {
   onAddPress?: (product: InstantProductItem) => void;
 }
 
-export default function InstantProductCard({
+const InstantProductCard = React.memo(function InstantProductCard({
   product,
   onPress,
   onAddPress,
 }: InstantProductCardProps) {
   const router = useRouter();
   const theme = useTheme();
-  const { addToCart, updateQuantity, getItemQuantity } = useCart();
+  const { addToCart, updateQuantity } = useCartActions();
   const targetId = String(product.id || (product as any)._id || "").trim();
-  const qty = getItemQuantity(targetId);
+  const qty = useProductCartQuantity(targetId);
 
   const handleAdd = () => {
     if (onAddPress) {
@@ -210,7 +210,9 @@ export default function InstantProductCard({
       </View>
     </TouchableOpacity>
   );
-}
+});
+
+export default InstantProductCard;
 
 const styles = StyleSheet.create({
   cardContainer: {

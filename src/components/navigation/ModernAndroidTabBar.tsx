@@ -1,5 +1,6 @@
 import { useAppSelector } from "@/store/hooks";
 import { useTheme } from "@/theme";
+import { useUnreadNotifications } from "@/utils/notificationSync";
 import {
   Ionicons,
   MaterialCommunityIcons,
@@ -30,6 +31,7 @@ interface TabItemProps {
   isDark: boolean;
   cartCount: number;
   role?: string;
+  deliveryUnreadCount?: number;
   onPress: () => void;
   onLongPress: () => void;
 }
@@ -49,6 +51,7 @@ function TabItem({
   isDark,
   cartCount,
   role,
+  deliveryUnreadCount,
   onPress,
   onLongPress,
 }: TabItemProps) {
@@ -214,10 +217,36 @@ function TabItem({
       case "finance":
         return (
           <Ionicons
-            name={isFocused ? "notifications" : "notifications-outline"}
+            name={isFocused ? "card" : "card-outline"}
             size={iconSize}
             color={color}
           />
+        );
+      case "notifications":
+      case "alerts":
+        return (
+          <View style={styles.iconWrapper}>
+            <Ionicons
+              name={isFocused ? "notifications" : "notifications-outline"}
+              size={iconSize}
+              color={color}
+            />
+            {role === "delivery" && !!deliveryUnreadCount && deliveryUnreadCount > 0 && (
+              <View
+                style={[
+                  styles.cartBadge,
+                  {
+                    backgroundColor: "#EF4444",
+                    borderColor: isDark ? "#161F28" : "#FFFFFF",
+                  },
+                ]}
+              >
+                <Text style={styles.cartBadgeText}>
+                  {deliveryUnreadCount > 99 ? "99+" : deliveryUnreadCount}
+                </Text>
+              </View>
+            )}
+          </View>
         );
       case "profile":
         return role === "staff" ? (
@@ -293,10 +322,9 @@ export default function ModernAndroidTabBar(props: ModernAndroidTabBarProps) {
   const theme = useTheme();
   const isDark = theme.mode === "dark";
 
-  const cartItems = useAppSelector((s) => s.cart?.items || []);
-  const cartCount = cartItems.reduce(
-    (sum: number, item: any) => sum + (item.quantity || 1),
-    0,
+  const cartCount = useAppSelector((s) => s.cart?.totalCount || 0);
+  const { unreadCount: deliveryUnreadCount } = useUnreadNotifications(
+    role === "delivery" ? "delivery" : "customer"
   );
 
   const primaryColor = tintColor || theme.colors.primary || "#0284C7";
@@ -363,6 +391,7 @@ export default function ModernAndroidTabBar(props: ModernAndroidTabBarProps) {
               isDark={isDark}
               cartCount={cartCount}
               role={role}
+              deliveryUnreadCount={deliveryUnreadCount}
               onPress={onPress}
               onLongPress={onLongPress}
             />

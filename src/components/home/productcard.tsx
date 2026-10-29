@@ -1,4 +1,4 @@
-import { useCart } from "@/context/cart-context";
+import { useProductCartQuantity, useCartActions } from "@/context/cart-context";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { toggleWishlist } from "@/store/slices/wishlistSlice";
 import { moderateScale, scale, useTheme } from "@/theme";
@@ -60,7 +60,7 @@ function ProductCardComponent({
   const theme = useTheme();
   const primaryColor = theme.colors.primary || "#004d5d";
   const dispatch = useAppDispatch();
-  const { addToCart, updateQuantity, getItemQuantity } = useCart();
+  const { addToCart, updateQuantity } = useCartActions();
   const targetProductId = String(
     product.id || (product as any)._id || (product as any).productId || "",
   ).trim();
@@ -93,7 +93,7 @@ function ProductCardComponent({
     );
   };
 
-  const qty = getItemQuantity(targetProductId || product.id);
+  const qty = useProductCartQuantity(targetProductId || product.id);
 
   // ── Extra Compact Dynamic Sizing Calculation ─────────────────────────
   const dynamicWidth = useMemo(() => {

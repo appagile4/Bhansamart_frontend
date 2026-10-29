@@ -2,12 +2,12 @@ import { moderateScale, scale, useTheme } from "@/theme";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import React from "react";
 import {
-  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { Image } from "expo-image";
 
 export interface ActiveCartItem {
   id: string;
@@ -27,6 +27,191 @@ interface ActiveCartSectionProps {
   onRemove?: (id: string) => void;
   onSaveForLater: (item: ActiveCartItem) => void;
 }
+
+
+interface ActiveCartRowProps {
+  item: ActiveCartItem;
+  isLast: boolean;
+  isDark: boolean;
+  onIncrement: (id: string) => void;
+  onDecrement: (id: string) => void;
+  onRemove?: (id: string) => void;
+  onSaveForLater: (item: ActiveCartItem) => void;
+}
+
+const ActiveCartRow = React.memo(function ActiveCartRow({
+  item,
+  isLast,
+  isDark,
+  onIncrement,
+  onDecrement,
+  onRemove,
+  onSaveForLater,
+}: ActiveCartRowProps) {
+  const discountPct =
+    item.originalPrice && item.originalPrice > item.price
+      ? Math.round(
+          ((item.originalPrice - item.price) / item.originalPrice) * 100
+        )
+      : null;
+
+  const imgSrc =
+    typeof item.imageUrl === "string" && item.imageUrl.length > 0
+      ? { uri: item.imageUrl }
+      : item.imageUrl && typeof item.imageUrl === "object" && "uri" in (item.imageUrl as any)
+      ? (item.imageUrl as any)
+      : { uri: "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=200&q=80" };
+
+  return (
+    <View
+      style={[
+        styles.itemRow,
+        !isLast && styles.itemDivider,
+        !isLast && isDark && { borderBottomColor: "#1E2A38" },
+      ]}
+    >
+      <View
+        style={[
+          styles.imageBox,
+          isDark && {
+            backgroundColor: "#15222D",
+            borderColor: "#1E2A38",
+          },
+        ]}
+      >
+        <Image
+          source={imgSrc}
+          style={styles.image}
+          contentFit="contain"
+          cachePolicy="memory-disk"
+        />
+        {discountPct ? (
+          <View style={styles.discountBadge}>
+            <Text style={styles.discountBadgeText}>
+              {discountPct}% OFF
+            </Text>
+          </View>
+        ) : null}
+      </View>
+
+      <View style={styles.infoCol}>
+        <Text
+          style={[styles.itemName, isDark && { color: "#F8FAFC" }]}
+          numberOfLines={2}
+        >
+          {item.name}
+        </Text>
+        <Text
+          style={[styles.packInfo, isDark && { color: "#94A3B8" }]}
+        >
+          {item.packInfo || item.weight || "Standard Pack"}
+        </Text>
+
+        <View style={styles.priceRow}>
+          <Text
+            style={[styles.price, isDark && { color: "#F8FAFC" }]}
+          >
+            Rs.{item.price * item.quantity}
+          </Text>
+          {item.originalPrice && item.originalPrice > item.price && (
+            <Text
+              style={[styles.origPrice, isDark && { color: "#64748B" }]}
+            >
+              Rs.{item.originalPrice * item.quantity}
+            </Text>
+          )}
+        </View>
+
+        <View style={styles.actionsRow}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => onSaveForLater(item)}
+            style={styles.actionBtn}
+          >
+            <Ionicons
+              name="bookmark-outline"
+              size={scale(12)}
+              color={isDark ? "#94A3B8" : "#64748B"}
+            />
+            <Text
+              style={[
+                styles.saveForLaterText,
+                isDark && { color: "#94A3B8" },
+              ]}
+            >
+              Save for later
+            </Text>
+          </TouchableOpacity>
+
+          {onRemove && (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => onRemove(item.id)}
+              style={styles.deleteBtn}
+            >
+              <Feather
+                name="trash-2"
+                size={scale(12)}
+                color="#EF4444"
+              />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      <View style={styles.rightCol}>
+        <View
+          style={[
+            styles.stepperContainer,
+            isDark && { backgroundColor: "#016073" },
+          ]}
+        >
+          <TouchableOpacity
+            activeOpacity={0.75}
+            onPress={() => onDecrement(item.id)}
+            style={styles.stepBtn}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            {item.quantity === 1 ? (
+              <Feather
+                name="trash-2"
+                size={scale(13)}
+                color="#FFFFFF"
+              />
+            ) : (
+              <Feather
+                name="minus"
+                size={scale(14)}
+                color="#FFFFFF"
+              />
+            )}
+          </TouchableOpacity>
+          <Text style={styles.quantityText}>{item.quantity}</Text>
+          <TouchableOpacity
+            activeOpacity={0.75}
+            onPress={() => onIncrement(item.id)}
+            style={styles.stepBtn}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            <Feather
+              name="plus"
+              size={scale(14)}
+              color="#FFFFFF"
+            />
+          </TouchableOpacity>
+        </View>
+        <Text
+          style={[
+            styles.unitPriceText,
+            isDark && { color: "#64748B" },
+          ]}
+        >
+          Rs.{item.price} each
+        </Text>
+      </View>
+    </View>
+  );
+});
 
 export default function ActiveCartSection({
   items,
@@ -109,194 +294,18 @@ export default function ActiveCartSection({
 
       {/* Cart Items List */}
       <View style={styles.itemsList}>
-        {items.map((item, index) => {
-          const discountPct =
-            item.originalPrice && item.originalPrice > item.price
-              ? Math.round(
-                  ((item.originalPrice - item.price) / item.originalPrice) * 100
-                )
-              : null;
-
-          return (
-            <View
-              key={item.id}
-              style={[
-                styles.itemRow,
-                index < items.length - 1 && styles.itemDivider,
-                index < items.length - 1 &&
-                  isDark && { borderBottomColor: "#1E2A38" },
-              ]}
-            >
-              {/* Product Image Box */}
-              <View
-                style={[
-                  styles.imageBox,
-                  isDark && {
-                    backgroundColor: "#15222D",
-                    borderColor: "#1E2A38",
-                  },
-                ]}
-              >
-                <Image
-                  source={
-                    typeof item.imageUrl === "number"
-                      ? item.imageUrl
-                      : typeof item.imageUrl === "string" &&
-                        item.imageUrl.length > 0
-                      ? { uri: item.imageUrl }
-                      : item.imageUrl &&
-                        typeof item.imageUrl === "object" &&
-                        "uri" in (item.imageUrl as any)
-                      ? (item.imageUrl as any)
-                      : {
-                          uri: "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=200&q=80",
-                        }
-                  }
-                  style={styles.image}
-                  resizeMode="contain"
-                />
-                {discountPct ? (
-                  <View style={styles.discountBadge}>
-                    <Text style={styles.discountBadgeText}>
-                      {discountPct}% OFF
-                    </Text>
-                  </View>
-                ) : null}
-              </View>
-
-              {/* Middle Info Column */}
-              <View style={styles.infoCol}>
-                <Text
-                  style={[
-                    styles.itemName,
-                    isDark && { color: "#F8FAFC" },
-                  ]}
-                  numberOfLines={2}
-                >
-                  {item.name}
-                </Text>
-                <Text
-                  style={[
-                    styles.packInfo,
-                    isDark && { color: "#94A3B8" },
-                  ]}
-                >
-                  {item.packInfo || item.weight || "Standard Pack"}
-                </Text>
-
-                {/* Price Display */}
-                <View style={styles.priceRow}>
-                  <Text
-                    style={[
-                      styles.price,
-                      isDark && { color: "#F8FAFC" },
-                    ]}
-                  >
-                    Rs.{item.price * item.quantity}
-                  </Text>
-                  {item.originalPrice && item.originalPrice > item.price && (
-                    <Text
-                      style={[
-                        styles.origPrice,
-                        isDark && { color: "#64748B" },
-                      ]}
-                    >
-                      Rs.{item.originalPrice * item.quantity}
-                    </Text>
-                  )}
-                </View>
-
-                {/* Action Buttons: Save for later & Delete */}
-                <View style={styles.actionsRow}>
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    onPress={() => onSaveForLater(item)}
-                    style={styles.actionBtn}
-                  >
-                    <Ionicons
-                      name="bookmark-outline"
-                      size={scale(12)}
-                      color={isDark ? "#94A3B8" : "#64748B"}
-                    />
-                    <Text
-                      style={[
-                        styles.saveForLaterText,
-                        isDark && { color: "#94A3B8" },
-                      ]}
-                    >
-                      Save for later
-                    </Text>
-                  </TouchableOpacity>
-
-                  {onRemove && (
-                    <TouchableOpacity
-                      activeOpacity={0.7}
-                      onPress={() => onRemove(item.id)}
-                      style={styles.deleteBtn}
-                    >
-                      <Feather
-                        name="trash-2"
-                        size={scale(12)}
-                        color="#EF4444"
-                      />
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </View>
-
-              {/* Right Stepper Column */}
-              <View style={styles.rightCol}>
-                <View
-                  style={[
-                    styles.stepperContainer,
-                    isDark && { backgroundColor: "#016073" },
-                  ]}
-                >
-                  <TouchableOpacity
-                    activeOpacity={0.75}
-                    onPress={() => onDecrement(item.id)}
-                    style={styles.stepBtn}
-                  >
-                    {item.quantity === 1 ? (
-                      <Feather
-                        name="trash-2"
-                        size={scale(13)}
-                        color="#FFFFFF"
-                      />
-                    ) : (
-                      <Feather
-                        name="minus"
-                        size={scale(14)}
-                        color="#FFFFFF"
-                      />
-                    )}
-                  </TouchableOpacity>
-                  <Text style={styles.quantityText}>{item.quantity}</Text>
-                  <TouchableOpacity
-                    activeOpacity={0.75}
-                    onPress={() => onIncrement(item.id)}
-                    style={styles.stepBtn}
-                  >
-                    <Feather
-                      name="plus"
-                      size={scale(14)}
-                      color="#FFFFFF"
-                    />
-                  </TouchableOpacity>
-                </View>
-                <Text
-                  style={[
-                    styles.unitPriceText,
-                    isDark && { color: "#64748B" },
-                  ]}
-                >
-                  Rs.{item.price}/each
-                </Text>
-              </View>
-            </View>
-          );
-        })}
-      </View>
+        {items.map((item, index) => (
+          <ActiveCartRow
+            key={item.id}
+            item={item}
+            isLast={index === items.length - 1}
+            isDark={isDark}
+            onIncrement={onIncrement}
+            onDecrement={onDecrement}
+            onRemove={onRemove}
+            onSaveForLater={onSaveForLater}
+          />
+        ))}</View>
     </View>
   );
 }

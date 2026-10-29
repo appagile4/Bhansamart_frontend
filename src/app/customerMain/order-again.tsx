@@ -1,7 +1,7 @@
 import { FloatingCartBar } from "@/components/cart";
 import { SelectLocationModal } from "@/components/home";
 import ProductCard, { DealProduct } from "@/components/home/productcard";
-import { useCart } from "@/context/cart-context";
+import { useCartActions } from "@/context/cart-context";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchCustomerOrders, OrderItem } from "@/store/slices/orderSlice";
 import { fetchPublicProducts } from "@/store/slices/productSlice";
@@ -31,7 +31,7 @@ export default function OrderAgainScreen() {
   const router = useRouter();
   const theme = useTheme();
   const dispatch = useAppDispatch();
-  const { addToCart } = useCart();
+  const { addToCart } = useCartActions();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);

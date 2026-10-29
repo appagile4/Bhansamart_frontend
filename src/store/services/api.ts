@@ -1,28 +1,63 @@
 import storage from "@/utils/storage";
-import axios from "axios";
+import axios, { AxiosInstance } from "axios";
 
 /**
- * Configure dynamic backend URL:
- * - Defaults to LAN IP: http://169.58.31.214:5001/api (works for Physical Devices, Web, and Emulators)
- * - Can be overridden dynamically with process.env.EXPO_PUBLIC_API_URL
+ * Normalizes any backend URL format provided in .env:
+ * - Trims whitespace
+ * - Strips any trailing slashes
+ * - Automatically appends "/api" if omitted (e.g. "http://192.168.1.100:5000" -> "http://192.168.1.100:5000/api")
  */
-const DEFAULT_API_URL = "http://192.168.29.235:5000/api";
+export const normalizeApiUrl = (rawUrl?: string): string => {
+  const fallback = "http://192.168.29.235:5000/api";
+  if (!rawUrl) return fallback;
+  const trimmed = rawUrl.trim().replace(/\/+$/, "");
+  if (!trimmed) return fallback;
 
-const getDefaultApiUrl = () => {
-  return process.env.EXPO_PUBLIC_API_URL || DEFAULT_API_URL;
+  if (trimmed.endsWith("/api")) {
+    return trimmed;
+  }
+  return `${trimmed}/api`;
 };
 
-export const API_BASE_URL = getDefaultApiUrl();
+/**
+ * Extracts the base server origin URL without the /api suffix (useful for Socket.IO)
+ */
+export const getBaseServerUrl = (apiUrl: string = API_BASE_URL): string => {
+  return apiUrl.replace(/\/api\/?$/, "");
+};
+
+/**
+ * Read environment variable from process.env (EXPO_PUBLIC_* variables are bundled by Expo)
+ */
+const resolveEnvApiUrl = (): string => {
+  const envUrl =
+    process.env.EXPO_PUBLIC_API_URL ||
+    process.env.EXPO_PUBLIC_BACKEND_URL ||
+    process.env.EXPO_PUBLIC_API_BASE_URL;
+
+  return normalizeApiUrl(envUrl);
+};
+
+export let API_BASE_URL: string = resolveEnvApiUrl();
 
 console.log(`[BhansaMart API] Base URL configured to: ${API_BASE_URL}`);
 
-const api = axios.create({
+const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
   timeout: 30000,
 });
+
+/**
+ * Helper to dynamically reconfigure the API base URL at runtime if needed
+ */
+export const setApiBaseUrl = (newUrl: string) => {
+  API_BASE_URL = normalizeApiUrl(newUrl);
+  api.defaults.baseURL = API_BASE_URL;
+  console.log(`[BhansaMart API] Base URL updated dynamically to: ${API_BASE_URL}`);
+};
 
 // Request interceptor: Attach JWT token from resilient universal storage
 api.interceptors.request.use(

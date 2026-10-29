@@ -7,6 +7,7 @@ import {
   updateDeliveryBankDetails,
   uploadDeliveryProfilePhoto,
 } from "@/store/slices/deliverySlice";
+import { useUnreadNotifications } from "@/utils/notificationSync";
 import { moderateScale, scale } from "@/theme";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
@@ -67,6 +68,7 @@ export default function DeliveryProfileScreen() {
   const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
   const { partner, actionLoading } = useAppSelector((state) => state.delivery);
+  const { unreadCount: notifUnreadCount } = useUnreadNotifications("delivery");
 
   // Profile photo picker modal
   const [photoPickerModal, setPhotoPickerModal] = useState(false);
@@ -413,6 +415,34 @@ export default function DeliveryProfileScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
+          {/* ── QUICK NOTIFICATION CENTER TILE ────────────── */}
+          <TouchableOpacity
+            style={styles.notifTileCard}
+            onPress={() => router.push("/DeliveryMain/notifications" as any)}
+            activeOpacity={0.8}
+          >
+            <View style={styles.notifTileIconBox}>
+              <Feather name="bell" size={scale(20)} color="#0F766E" />
+              {notifUnreadCount > 0 && <View style={styles.notifTileBadgeDot} />}
+            </View>
+            <View style={{ flex: 1, marginLeft: scale(12) }}>
+              <View style={styles.notifTileTitleRow}>
+                <Text style={styles.cardHeaderTitle}>Notification Center</Text>
+                {notifUnreadCount > 0 && (
+                  <View style={styles.notifBadgePill}>
+                    <Text style={styles.notifBadgePillText}>
+                      {notifUnreadCount > 99 ? "99+" : notifUnreadCount} new
+                    </Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.cardHeaderSubtitle}>
+                Order assignments, payout updates & announcements
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={scale(18)} color="#94A3B8" />
+          </TouchableOpacity>
+
           {/* Vehicle & Zone Info */}
           <View style={styles.infoCard}>
             <Text style={styles.cardHeaderTitle}>Vehicle & Zone</Text>
@@ -1029,6 +1059,59 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: scale(16),
     paddingBottom: moderateScale(140),
+  },
+  notifTileCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderRadius: scale(14),
+    padding: scale(16),
+    marginBottom: moderateScale(14),
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  notifTileIconBox: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(12),
+    backgroundColor: "#F0FDFA",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
+  notifTileBadgeDot: {
+    position: "absolute",
+    top: scale(2),
+    right: scale(2),
+    width: scale(10),
+    height: scale(10),
+    borderRadius: scale(5),
+    backgroundColor: "#EF4444",
+    borderWidth: 1.5,
+    borderColor: "#FFFFFF",
+  },
+  notifTileTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(8),
+  },
+  notifBadgePill: {
+    backgroundColor: "#FEF2F2",
+    borderRadius: scale(10),
+    paddingHorizontal: scale(8),
+    paddingVertical: moderateScale(2),
+    borderWidth: 1,
+    borderColor: "#FCA5A5",
+  },
+  notifBadgePillText: {
+    fontSize: moderateScale(10),
+    fontWeight: "700",
+    color: "#DC2626",
   },
   infoCard: {
     backgroundColor: "#FFFFFF",

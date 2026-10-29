@@ -1,5 +1,6 @@
 import React from "react";
-import { useCart } from "@/context/cart-context";
+import { useCartTotals } from "@/context/cart-context";
+import { useAppSelector } from "@/store/hooks";
 import { moderateScale, scale } from "@/theme";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -19,20 +20,15 @@ interface FloatingCartBarProps {
   showDeliveryNotice?: boolean;
 }
 
-export default function FloatingCartBar({
+const FloatingCartBar = React.memo(function FloatingCartBar({
   bottomOffset,
   onPress,
   showDeliveryNotice = true,
 }: FloatingCartBarProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const {
-    totalCount,
-    totalPrice,
-    totalOriginalPrice,
-    totalSavings,
-    cartItems,
-  } = useCart();
+  const { totalCount, totalPrice, totalOriginalPrice, totalSavings } = useCartTotals();
+  const previewThumbnails = useAppSelector((state) => state.cart.items.slice(0, 3));
 
   if (totalCount === 0) {
     return null;
@@ -52,7 +48,7 @@ export default function FloatingCartBar({
     }
   };
 
-  const previewThumbnails = cartItems.slice(0, 3);
+  
   const freeDeliveryThreshold = 500;
   const isFreeDelivery = totalPrice >= freeDeliveryThreshold;
 
@@ -192,7 +188,9 @@ export default function FloatingCartBar({
       </TouchableOpacity>
     </View>
   );
-}
+});
+
+export default FloatingCartBar;
 
 const styles = StyleSheet.create({
   wrapper: {
