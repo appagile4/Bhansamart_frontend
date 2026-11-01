@@ -56,7 +56,7 @@ export default function CheckoutScreen() {
     params.deliveryAddress ||
       activeDisplayLocation ||
       selectedAddress?.addressLine ||
-      "Floor 5, Building name, land mark, Baneshwor, Kathmandu"
+      "Current Location"
   );
   const [paymentMethod, setPaymentMethod] = useState(
     params.paymentMethod || "Cash on delivery"

@@ -32,7 +32,7 @@ export default memo(function BottomCheckoutBar({
 
   // Calculate bottom clearance so checkout bar sits cleanly above the floating tab bar
   const defaultBottomPadding = Platform.select({
-    android: Math.max(insets.bottom, 22) + scale(64) + moderateScale(14),
+    android: Math.max(insets.bottom, 12) + scale(44) + moderateScale(14),
     ios: Math.max(insets.bottom, scale(12)) + scale(50) + moderateScale(14),
     default: scale(96),
   });

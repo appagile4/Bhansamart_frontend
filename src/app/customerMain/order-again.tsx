@@ -1,5 +1,5 @@
 import { FloatingCartBar } from "@/components/cart";
-import { SelectLocationModal } from "@/components/home";
+import { PreviouslyOrderCard, SelectLocationModal } from "@/components/home";
 import ProductCard, { DealProduct } from "@/components/home/productcard";
 import { useCartActions } from "@/context/cart-context";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
@@ -10,7 +10,7 @@ import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -38,16 +38,10 @@ export default function OrderAgainScreen() {
   const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const {
-    activeDisplayLocation,
-    selectedAddress,
-    latitude,
-    longitude,
-  } = useAppSelector((state) => state.address);
+  const { activeDisplayLocation, selectedAddress, latitude, longitude } =
+    useAppSelector((state) => state.address);
   const currentLocation =
-    activeDisplayLocation ||
-    selectedAddress?.addressLine ||
-    "Sector 24, Rohini, Delhi, India";
+    activeDisplayLocation || selectedAddress?.addressLine || "Current Location";
 
   // Redux state
   const {
@@ -57,14 +51,15 @@ export default function OrderAgainScreen() {
     eligibleVendorsCount,
   } = useAppSelector((state) => state.product);
   const { customerOrders, customerLoading } = useAppSelector(
-    (state) => state.order
+    (state) => state.order,
   );
 
   // Fetch real data from backend with active customer location coordinates
   const loadData = useCallback(async () => {
     try {
       const userLat = latitude != null ? latitude : selectedAddress?.latitude;
-      const userLng = longitude != null ? longitude : selectedAddress?.longitude;
+      const userLng =
+        longitude != null ? longitude : selectedAddress?.longitude;
 
       await Promise.allSettled([
         dispatch(
@@ -73,7 +68,7 @@ export default function OrderAgainScreen() {
             limit: 30,
             lat: userLat != null ? userLat : undefined,
             lng: userLng != null ? userLng : undefined,
-          })
+          }),
         ),
         dispatch(fetchCustomerOrders({ page: 1, limit: 30 })),
       ]);
@@ -125,7 +120,12 @@ export default function OrderAgainScreen() {
 
     const itemMap = new Map<
       string,
-      { item: OrderItem; count: number; vendorId?: string; lastOrderedAt?: string }
+      {
+        item: OrderItem;
+        count: number;
+        vendorId?: string;
+        lastOrderedAt?: string;
+      }
     >();
 
     for (const order of customerOrders) {
@@ -137,7 +137,7 @@ export default function OrderAgainScreen() {
 
       for (const item of order.items) {
         const id = String(
-          item.productId || item.product || item._id || item.name
+          item.productId || item.product || item._id || item.name,
         );
         if (itemMap.has(id)) {
           const entry = itemMap.get(id)!;
@@ -155,7 +155,7 @@ export default function OrderAgainScreen() {
 
     return Array.from(itemMap.values()).map(({ item, count, vendorId }) => {
       const pId = String(
-        item.productId || item.product || item._id || item.name
+        item.productId || item.product || item._id || item.name,
       );
       const pPrice = Number(item.price) || 0;
       const pOrigPrice = Number(item.originalPrice) || pPrice;
@@ -169,7 +169,9 @@ export default function OrderAgainScreen() {
       const isDeliverable =
         !isOutsideDeliveryZone &&
         (deliverableProductIds.has(pId) ||
-          (vendorId ? deliverableVendorIds.has(vendorId) : deliverableProductIds.size > 0));
+          (vendorId
+            ? deliverableVendorIds.has(vendorId)
+            : deliverableProductIds.size > 0));
 
       return {
         id: pId,
@@ -191,7 +193,12 @@ export default function OrderAgainScreen() {
         isAvailableInLocation: isDeliverable,
       };
     });
-  }, [customerOrders, isOutsideDeliveryZone, deliverableProductIds, deliverableVendorIds]);
+  }, [
+    customerOrders,
+    isOutsideDeliveryZone,
+    deliverableProductIds,
+    deliverableVendorIds,
+  ]);
 
   // 2. Real live bestselling products fetched from MongoDB backend
   const liveBestsellers: DealProduct[] = useMemo(() => {
@@ -229,8 +236,8 @@ export default function OrderAgainScreen() {
           prod.tags && prod.tags.length > 0
             ? prod.tags
             : prod.visibility?.isBestSeller
-            ? ["Bestseller"]
-            : ["Popular"],
+              ? ["Bestseller"]
+              : ["Popular"],
         isAvailableInLocation: !isOutsideDeliveryZone,
       };
     });
@@ -244,7 +251,7 @@ export default function OrderAgainScreen() {
       (p) =>
         p.name.toLowerCase().includes(query) ||
         p.category.toLowerCase().includes(query) ||
-        (p.subCategory && p.subCategory.toLowerCase().includes(query))
+        (p.subCategory && p.subCategory.toLowerCase().includes(query)),
     );
   }, [previousOrderedProducts, searchQuery]);
 
@@ -255,7 +262,7 @@ export default function OrderAgainScreen() {
       (p) =>
         p.name.toLowerCase().includes(query) ||
         p.category.toLowerCase().includes(query) ||
-        (p.subCategory && p.subCategory.toLowerCase().includes(query))
+        (p.subCategory && p.subCategory.toLowerCase().includes(query)),
     );
   }, [liveBestsellers, searchQuery]);
 
@@ -290,14 +297,14 @@ export default function OrderAgainScreen() {
             text: "Change Location",
             onPress: () => setIsLocationModalVisible(true),
           },
-        ]
+        ],
       );
       return;
     }
 
-    const targetId = String(
-      product.id || product._id || product.productId || ""
-    ).trim() || `item-${Date.now()}`;
+    const targetId =
+      String(product.id || product._id || product.productId || "").trim() ||
+      `item-${Date.now()}`;
     let imgUrl = "";
     if (typeof product.imageUrl === "string" && product.imageUrl) {
       imgUrl = product.imageUrl;
@@ -342,17 +349,14 @@ export default function OrderAgainScreen() {
           {/* Store Info & Location Row */}
           <View style={styles.topRow}>
             <View style={styles.locationCol}>
-              <Text style={styles.storeName}>Delivery Address</Text>
+              <Text style={styles.storeName}>Delivering to</Text>
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => setIsLocationModalVisible(true)}
                 style={styles.locationButton}
               >
                 <Text
-                  style={[
-                    styles.locationText,
-                    isDark && { color: "#BAE6FD" },
-                  ]}
+                  style={[styles.locationText, isDark && { color: "#BAE6FD" }]}
                   numberOfLines={1}
                 >
                   {currentLocation}
@@ -480,19 +484,19 @@ export default function OrderAgainScreen() {
                 Delivery Unavailable at this Location
               </Text>
               <Text
-                style={[
-                  styles.outsideZoneSub,
-                  isDark && { color: "#A8B2BE" },
-                ]}
+                style={[styles.outsideZoneSub, isDark && { color: "#A8B2BE" }]}
               >
-                No partner stores currently deliver to "{currentLocation}". Orders cannot be placed at this address.
+                No partner stores currently deliver to "{currentLocation}".
+                Orders cannot be placed at this address.
               </Text>
               <TouchableOpacity
                 activeOpacity={0.8}
                 onPress={() => setIsLocationModalVisible(true)}
                 style={styles.changeLocBtn}
               >
-                <Text style={styles.changeLocBtnText}>Change Delivery Address</Text>
+                <Text style={styles.changeLocBtnText}>
+                  Change Delivery Address
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -535,10 +539,7 @@ export default function OrderAgainScreen() {
                   color={isDark ? "#F87171" : "#DC2626"}
                 />
                 <Text
-                  style={[
-                    styles.topRankText,
-                    isDark && { color: "#F87171" },
-                  ]}
+                  style={[styles.topRankText, isDark && { color: "#F87171" }]}
                 >
                   {previousOrderedProducts.length} Items
                 </Text>
@@ -546,28 +547,20 @@ export default function OrderAgainScreen() {
             </View>
 
             {filteredPastProducts.length > 0 ? (
-              <View style={styles.productsGrid}>
+              <View style={styles.pastOrdersList}>
                 {filteredPastProducts.map((item) => (
-                  <View
+                  <PreviouslyOrderCard
                     key={`past-${item.id}`}
-                    style={styles.productCardWrapper}
-                  >
-                    <ProductCard
-                      product={item}
-                      cardWidth={CARD_WIDTH}
-                      onPress={handleProductPress}
-                      onAddPress={handleAddToCart}
-                    />
-                  </View>
+                    product={item}
+                    onPress={handleProductPress}
+                    onAddPress={handleAddToCart}
+                  />
                 ))}
               </View>
             ) : (
               <View style={styles.noSearchBox}>
                 <Text
-                  style={[
-                    styles.noSearchText,
-                    isDark && { color: "#94A3B8" },
-                  ]}
+                  style={[styles.noSearchText, isDark && { color: "#94A3B8" }]}
                 >
                   No past items match "{searchQuery}"
                 </Text>
@@ -626,10 +619,7 @@ export default function OrderAgainScreen() {
             </View>
 
             <Text
-              style={[
-                styles.reorderingTitle,
-                isDark && { color: "#F8FAFC" },
-              ]}
+              style={[styles.reorderingTitle, isDark && { color: "#F8FAFC" }]}
             >
               Reordering Will Be Easy
             </Text>
@@ -705,10 +695,7 @@ export default function OrderAgainScreen() {
                 color={isDark ? "#38BDF8" : "#003844"}
               />
               <Text
-                style={[
-                  styles.loadingText,
-                  isDark && { color: "#94A3B8" },
-                ]}
+                style={[styles.loadingText, isDark && { color: "#94A3B8" }]}
               >
                 Loading fresh products from store...
               </Text>
@@ -717,10 +704,7 @@ export default function OrderAgainScreen() {
             /* 2-Column Responsive Grid with ProductCard */
             <View style={styles.productsGrid}>
               {filteredBestsellers.map((item) => (
-                <View
-                  key={`best-${item.id}`}
-                  style={styles.productCardWrapper}
-                >
+                <View key={`best-${item.id}`} style={styles.productCardWrapper}>
                   <ProductCard
                     product={item}
                     cardWidth={CARD_WIDTH}
@@ -738,10 +722,7 @@ export default function OrderAgainScreen() {
                 color={isDark ? "#475569" : "#94A3B8"}
               />
               <Text
-                style={[
-                  styles.noSearchText,
-                  isDark && { color: "#64748B" },
-                ]}
+                style={[styles.noSearchText, isDark && { color: "#64748B" }]}
               >
                 {searchQuery.trim()
                   ? `No products found matching "${searchQuery}"`
@@ -843,7 +824,7 @@ const styles = StyleSheet.create({
     padding: scale(4),
   },
   scrollContent: {
-    paddingBottom: moderateScale(130),
+    paddingBottom: moderateScale(190),
   },
   outsideZoneBanner: {
     flexDirection: "row",
@@ -987,6 +968,10 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(11),
     fontWeight: "800",
     color: "#DC2626",
+  },
+  pastOrdersList: {
+    gap: scale(10),
+    marginBottom: scale(6),
   },
   productsGrid: {
     flexDirection: "row",

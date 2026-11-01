@@ -1,10 +1,12 @@
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import {
-  fetchAddresses,
-  setSelectedAddress,
-} from "@/store/slices/addressSlice";
 import { SavedAddress } from "@/store/services/addressService";
-import socketService from "@/store/services/socketService";
+import {
+  detectCurrentLocation,
+  fetchAddresses,
+  formatGeocodedAddress,
+  setSelectedAddress,
+  setUserCoordinates,
+} from "@/store/slices/addressSlice";
 import { moderateScale, scale, useTheme } from "@/theme";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Location from "expo-location";
@@ -33,6 +35,14 @@ export interface LocationItem {
   address: string;
 }
 
+export interface SearchPlaceResult {
+  id: string;
+  title: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+}
+
 interface SelectLocationModalProps {
   visible: boolean;
   onClose: () => void;
@@ -50,102 +60,144 @@ export default function SelectLocationModal({
   const dispatch = useAppDispatch();
   const theme = useTheme();
 
-  const { addresses, selectedAddress, loading } = useAppSelector(
-    (state) => state.address
-  );
+  const {
+    addresses,
+    selectedAddress,
+    selectedAddressId,
+    selectedLocationType,
+    currentGpsLocation,
+    activeDisplayLocation,
+    permissionStatus,
+    isLocationLoading,
+    loading,
+  } = useAppSelector((state) => state.address);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [isLocationEnabled, setIsLocationEnabled] = useState<boolean | null>(null);
-  const [isLocating, setIsLocating] = useState(false);
+  const [isSearchingPlaces, setIsSearchingPlaces] = useState(false);
+  const [placeResults, setPlaceResults] = useState<SearchPlaceResult[]>([]);
 
   useEffect(() => {
     if (visible) {
       dispatch(fetchAddresses());
-      Location.getForegroundPermissionsAsync().then(({ status }) => {
-        setIsLocationEnabled(status === "granted");
-      });
     }
   }, [visible, dispatch]);
 
+  // Real-time Place Geocoding Search
+  useEffect(() => {
+    const trimmed = searchQuery.trim();
+    if (!trimmed || trimmed.length < 2) {
+      setPlaceResults([]);
+      setIsSearchingPlaces(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearchingPlaces(true);
+      try {
+        const geoResults = await Location.geocodeAsync(trimmed);
+        if (geoResults && geoResults.length > 0) {
+          const topResults = geoResults.slice(0, 5);
+          const resolved: SearchPlaceResult[] = await Promise.all(
+            topResults.map(async (pos, idx) => {
+              try {
+                const rev = await Location.reverseGeocodeAsync({
+                  latitude: pos.latitude,
+                  longitude: pos.longitude,
+                });
+                if (rev && rev.length > 0) {
+                  const item = rev[0];
+                  const area =
+                    item.name && item.name !== item.streetNumber && item.name !== item.city
+                      ? item.name
+                      : item.street || item.subregion || item.city || trimmed;
+                  const formatted = formatGeocodedAddress(item);
+                  return {
+                    id: `place-${idx}-${pos.latitude.toFixed(4)}-${pos.longitude.toFixed(4)}`,
+                    title: area,
+                    address: formatted,
+                    latitude: pos.latitude,
+                    longitude: pos.longitude,
+                  };
+                }
+              } catch {}
+              return {
+                id: `place-${idx}-${pos.latitude.toFixed(4)}-${pos.longitude.toFixed(4)}`,
+                title: trimmed,
+                address: `${trimmed} (${pos.latitude.toFixed(4)}, ${pos.longitude.toFixed(4)})`,
+                latitude: pos.latitude,
+                longitude: pos.longitude,
+              };
+            })
+          );
+          setPlaceResults(resolved);
+        } else {
+          setPlaceResults([]);
+        }
+      } catch (err) {
+        setPlaceResults([]);
+      } finally {
+        setIsSearchingPlaces(false);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   const handleEnableLocation = async () => {
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status === "granted") {
-        setIsLocationEnabled(true);
-        handleUseCurrentLocation();
-      } else {
-        setIsLocationEnabled(false);
+      const resultAction = await dispatch(
+        detectCurrentLocation({
+          forceGpsAsActive: true,
+          promptIfUndetermined: true,
+        }),
+      );
+      if (detectCurrentLocation.fulfilled.match(resultAction)) {
+        onSelectLocation?.({
+          id: "current-location",
+          title: "Current Location",
+          address: resultAction.payload.readableAddress,
+        });
+        onClose();
+      } else if (detectCurrentLocation.rejected.match(resultAction)) {
+        const err = resultAction.payload as any;
+        Alert.alert(
+          "Location Access",
+          err?.message ||
+            "Location permission was not granted. You can select a saved address below.",
+          [{ text: "OK" }],
+        );
       }
     } catch {
-      setIsLocationEnabled(false);
+      Alert.alert("Location", "Could not enable location access.");
     }
   };
 
   const handleUseCurrentLocation = async () => {
     try {
-      setIsLocating(true);
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        setIsLocationEnabled(false);
-        Alert.alert(
-          "Permission Denied",
-          "Please enable location permission in settings."
-        );
-        return;
-      }
-      setIsLocationEnabled(true);
-      const loc = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-
-      const results = await Location.reverseGeocodeAsync({
-        latitude: loc.coords.latitude,
-        longitude: loc.coords.longitude,
-      });
-
-      let area = "Current Location";
-      let fullAddress = "Kathmandu, Bagmati, Nepal";
-
-      if (results && results.length > 0) {
-        const item = results[0];
-        area = item.name || item.street || item.district || item.subregion || "Current Location";
-        fullAddress = [
-          item.city || item.subregion || "Kathmandu",
-          item.country || "Nepal",
-        ]
-          .filter(Boolean)
-          .join(", ");
-      }
-
-      const formattedLocation = `${area}, ${fullAddress}`;
-
-      dispatch(
-        setSelectedAddress({
-          id: "current-location",
-          type: "Other",
-          addressLine: formattedLocation,
-          phone: "",
-          latitude: loc.coords.latitude,
-          longitude: loc.coords.longitude,
-        })
+      const resultAction = await dispatch(
+        detectCurrentLocation({
+          forceGpsAsActive: true,
+          promptIfUndetermined: true,
+        }),
       );
-
-      // Notify backend of fresh location for live delivery zone matching
-      socketService.emitCustomerLocation(loc.coords.latitude, loc.coords.longitude).catch(() => {});
-
-      const currentLocItem: LocationItem = {
-        id: "loc-current",
-        title: area,
-        address: formattedLocation,
-      };
-
-      onSelectLocation?.(currentLocItem);
-      onClose();
+      if (detectCurrentLocation.fulfilled.match(resultAction)) {
+        onSelectLocation?.({
+          id: "current-location",
+          title: "Current Location",
+          address: resultAction.payload.readableAddress,
+        });
+        onClose();
+      } else if (detectCurrentLocation.rejected.match(resultAction)) {
+        const err = resultAction.payload as any;
+        Alert.alert(
+          "Location Access",
+          err?.message ||
+            "Could not detect GPS location. Please check your settings or select a saved address.",
+          [{ text: "OK" }],
+        );
+      }
     } catch (e) {
-      console.log("Current location error:", e);
       Alert.alert("Location", "Could not fetch current GPS coordinates.");
-    } finally {
-      setIsLocating(false);
     }
   };
 
@@ -154,8 +206,49 @@ export default function SelectLocationModal({
     router.push("/Screens/Profile/add-address" as any);
   };
 
-  const handleSelectSavedAddress = (addr: SavedAddress) => {
-    dispatch(setSelectedAddress(addr));
+  const handleSelectPlace = (place: SearchPlaceResult) => {
+    dispatch(
+      setUserCoordinates({
+        latitude: place.latitude,
+        longitude: place.longitude,
+        addressLine: place.address,
+      }),
+    );
+    onSelectLocation?.({
+      id: place.id,
+      title: place.title,
+      address: place.address,
+    });
+    onClose();
+  };
+
+  const handleSelectSavedAddress = async (addr: SavedAddress) => {
+    let lat = addr.latitude;
+    let lng = addr.longitude;
+
+    // If saved address coordinates are missing, resolve them automatically
+    if (lat == null || lng == null || isNaN(Number(lat)) || isNaN(Number(lng))) {
+      try {
+        const query =
+          addr.addressLine ||
+          [addr.houseNo, addr.street, addr.city].filter(Boolean).join(", ");
+        const geo = await Location.geocodeAsync(query);
+        if (geo && geo.length > 0) {
+          lat = geo[0].latitude;
+          lng = geo[0].longitude;
+        }
+      } catch (e) {
+        console.warn("Geocode saved address fallback failed:", e);
+      }
+    }
+
+    const addrWithCoords: SavedAddress = {
+      ...addr,
+      latitude: lat != null ? Number(lat) : undefined,
+      longitude: lng != null ? Number(lng) : undefined,
+    };
+
+    dispatch(setSelectedAddress(addrWithCoords));
     onSelectLocation?.({
       id: addr.id || addr._id || "",
       title: addr.type,
@@ -167,7 +260,7 @@ export default function SelectLocationModal({
   const filteredAddresses = addresses.filter(
     (addr) =>
       addr.addressLine.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      addr.type.toLowerCase().includes(searchQuery.toLowerCase())
+      addr.type.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const getAddressIcon = (type: string) => {
@@ -204,6 +297,96 @@ export default function SelectLocationModal({
     }
   };
 
+  const renderSavedAddressCard = (item: SavedAddress) => {
+    const isSelected =
+      selectedLocationType === "saved_address" &&
+      (selectedAddress?.id === item.id ||
+        selectedAddress?._id === item.id ||
+        selectedAddressId === item.id ||
+        selectedAddressId === item._id ||
+        (selectedAddress?.id && selectedAddress?.id === item._id));
+
+    return (
+      <TouchableOpacity
+        key={item.id || item._id}
+        activeOpacity={0.75}
+        onPress={() => handleSelectSavedAddress(item)}
+        style={[
+          styles.locationCard,
+          isDark && {
+            backgroundColor: "#1A242F",
+            borderColor: "#2B3A4A",
+          },
+          isSelected && styles.locationCardSelected,
+          isSelected &&
+            isDark && {
+              backgroundColor: "#122A26",
+              borderColor: "#008080",
+            },
+        ]}
+      >
+        {/* Location Icon Badge */}
+        <View
+          style={[
+            styles.locationIconBadge,
+            { backgroundColor: getAddressBg(item.type) },
+          ]}
+        >
+          {getAddressIcon(item.type)}
+        </View>
+
+        {/* Location Text Group */}
+        <View style={styles.locationTextGroup}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: scale(6),
+            }}
+          >
+            <Text
+              style={[
+                styles.locationName,
+                isDark && { color: "#F8FAFC" },
+              ]}
+            >
+              {item.type}
+            </Text>
+            {item.isDefault && (
+              <View style={styles.defaultPill}>
+                <Text style={styles.defaultPillText}>DEFAULT</Text>
+              </View>
+            )}
+          </View>
+          <Text
+            style={[
+              styles.locationAddress,
+              isDark && { color: "#94A3B8" },
+            ]}
+            numberOfLines={2}
+          >
+            {item.addressLine}
+          </Text>
+        </View>
+
+        {/* Checkmark or Chevron */}
+        {isSelected ? (
+          <Ionicons
+            name="checkmark-circle"
+            size={scale(22)}
+            color="#008080"
+          />
+        ) : (
+          <Feather
+            name="chevron-right"
+            size={scale(18)}
+            color={isDark ? "#94A3B8" : "#64748B"}
+          />
+        )}
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <Modal
       visible={visible}
@@ -218,9 +401,16 @@ export default function SelectLocationModal({
         </TouchableWithoutFeedback>
 
         {/* Bottom Sheet Card */}
-        <View style={[styles.sheetCard, isDark && { backgroundColor: "#111820" }]}>
+        <View
+          style={[styles.sheetCard, isDark && { backgroundColor: "#111820" }]}
+        >
           {/* Top Pull Handle */}
-          <View style={[styles.pullHandle, isDark && { backgroundColor: "#334155" }]} />
+          <View
+            style={[
+              styles.pullHandle,
+              isDark && { backgroundColor: "#334155" },
+            ]}
+          />
 
           <ScrollView
             showsVerticalScrollIndicator={false}
@@ -229,11 +419,14 @@ export default function SelectLocationModal({
             keyboardShouldPersistTaps="handled"
           >
             {/* 1. Device Location Not Enabled Notice Banner */}
-            {isLocationEnabled === false && (
+            {permissionStatus === "denied" && (
               <View
                 style={[
                   styles.noticeBanner,
-                  isDark && { backgroundColor: "#1A242F", borderColor: "#2B3A4A" },
+                  isDark && {
+                    backgroundColor: "#1A242F",
+                    borderColor: "#2B3A4A",
+                  },
                 ]}
               >
                 <View style={styles.noticeIconWrap}>
@@ -246,10 +439,7 @@ export default function SelectLocationModal({
 
                 <View style={styles.noticeTextGroup}>
                   <Text
-                    style={[
-                      styles.noticeTitle,
-                      isDark && { color: "#F8FAFC" },
-                    ]}
+                    style={[styles.noticeTitle, isDark && { color: "#F8FAFC" }]}
                   >
                     Device Location not enabled
                   </Text>
@@ -275,12 +465,7 @@ export default function SelectLocationModal({
 
             {/* 2. Select Location Header */}
             <View style={styles.headerRow}>
-              <Text
-                style={[
-                  styles.mainTitle,
-                  isDark && { color: "#F8FAFC" },
-                ]}
-              >
+              <Text style={[styles.mainTitle, isDark && { color: "#F8FAFC" }]}>
                 Select Delivery Location
               </Text>
               <TouchableOpacity
@@ -297,7 +482,10 @@ export default function SelectLocationModal({
             <View
               style={[
                 styles.searchBarContainer,
-                isDark && { backgroundColor: "#1A242F", borderColor: "#2B3A4A" },
+                isDark && {
+                  backgroundColor: "#1A242F",
+                  borderColor: "#2B3A4A",
+                },
               ]}
             >
               <Feather
@@ -306,17 +494,21 @@ export default function SelectLocationModal({
                 color={isDark ? "#94A3B8" : "#64748B"}
               />
               <TextInput
-                style={[
-                  styles.searchInput,
-                  isDark && { color: "#F8FAFC" },
-                ]}
-                placeholder="Search area, landmark, saved address..."
+                style={[styles.searchInput, isDark && { color: "#F8FAFC" }]}
+                placeholder="Search area, landmark, city, address..."
                 placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 autoCorrect={false}
               />
-              {searchQuery.length > 0 && (
+              {isSearchingPlaces && (
+                <ActivityIndicator
+                  size="small"
+                  color="#008080"
+                  style={{ marginRight: scale(4) }}
+                />
+              )}
+              {searchQuery.length > 0 && !isSearchingPlaces && (
                 <TouchableOpacity
                   onPress={() => setSearchQuery("")}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -330,181 +522,284 @@ export default function SelectLocationModal({
               )}
             </View>
 
-            {/* 4. Action Card (Use Current Location & Add New Address) */}
-            <View
-              style={[
-                styles.actionCard,
-                isDark && { backgroundColor: "#1A242F", borderColor: "#2B3A4A" },
-              ]}
-            >
-              {/* Use current location row */}
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={handleUseCurrentLocation}
-                disabled={isLocating}
-                style={styles.actionRow}
-              >
-                <View style={styles.actionLeft}>
-                  {isLocating ? (
-                    <ActivityIndicator size="small" color="#265935" />
-                  ) : (
-                    <MaterialCommunityIcons
-                      name="crosshairs-gps"
-                      size={scale(20)}
-                      color={isDark ? "#4ADE80" : "#265935"}
-                    />
-                  )}
-                  <Text
-                    style={[
-                      styles.actionText,
-                      isDark && { color: "#4ADE80" },
-                    ]}
+            {/* When user is actively searching: Show Place Results + Matching Saved */}
+            {searchQuery.trim().length >= 2 ? (
+              <View>
+                {/* 1. Searching places indicator */}
+                {isSearchingPlaces && (
+                  <View
+                    style={{
+                      paddingVertical: scale(14),
+                      alignItems: "center",
+                      flexDirection: "row",
+                      justifyContent: "center",
+                      gap: scale(8),
+                    }}
                   >
-                    {isLocating ? "Fetching GPS location..." : "Use current location"}
-                  </Text>
-                </View>
-                <Feather
-                  name="chevron-right"
-                  size={scale(18)}
-                  color={isDark ? "#94A3B8" : "#64748B"}
-                />
-              </TouchableOpacity>
+                    <Text
+                      style={{
+                        fontSize: moderateScale(13),
+                        color: isDark ? "#94A3B8" : "#64748B",
+                      }}
+                    >
+                      Searching places for "{searchQuery}"...
+                    </Text>
+                  </View>
+                )}
 
-              {/* Divider */}
-              <View
-                style={[
-                  styles.actionDivider,
-                  isDark && { backgroundColor: "#2B3A4A" },
-                ]}
-              />
-
-              {/* Add New address row */}
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={handleAddNewAddress}
-                style={styles.actionRow}
-              >
-                <View style={styles.actionLeft}>
-                  <Feather
-                    name="plus"
-                    size={scale(20)}
-                    color={isDark ? "#4ADE80" : "#265935"}
-                  />
-                  <Text
-                    style={[
-                      styles.actionText,
-                      isDark && { color: "#4ADE80" },
-                    ]}
-                  >
-                    Add new address
-                  </Text>
-                </View>
-                <Feather
-                  name="chevron-right"
-                  size={scale(18)}
-                  color={isDark ? "#94A3B8" : "#64748B"}
-                />
-              </TouchableOpacity>
-            </View>
-
-            {/* 5. Saved Addresses Section */}
-            <Text
-              style={[
-                styles.recentSectionTitle,
-                isDark && { color: "#94A3B8" },
-              ]}
-            >
-              Your Saved Addresses
-            </Text>
-
-            {loading && addresses.length === 0 ? (
-              <View style={{ paddingVertical: scale(20), alignItems: "center" }}>
-                <ActivityIndicator size="small" color="#008080" />
-              </View>
-            ) : filteredAddresses.length > 0 ? (
-              filteredAddresses.map((item) => {
-                const isSelected =
-                  selectedAddress?.id === item.id ||
-                  selectedAddress?._id === item.id ||
-                  (selectedAddress?.id && selectedAddress?.id === item._id);
-
-                return (
-                  <TouchableOpacity
-                    key={item.id || item._id}
-                    activeOpacity={0.75}
-                    onPress={() => handleSelectSavedAddress(item)}
-                    style={[
-                      styles.locationCard,
-                      isDark && { backgroundColor: "#1A242F", borderColor: "#2B3A4A" },
-                      isSelected && styles.locationCardSelected,
-                      isSelected && isDark && { backgroundColor: "#122A26", borderColor: "#008080" },
-                    ]}
-                  >
-                    {/* Location Icon Badge */}
-                    <View
+                {/* 2. Place Search Results */}
+                {placeResults.length > 0 && (
+                  <View style={{ marginBottom: scale(14) }}>
+                    <Text
                       style={[
-                        styles.locationIconBadge,
-                        { backgroundColor: getAddressBg(item.type) },
+                        styles.recentSectionTitle,
+                        isDark && { color: "#94A3B8" },
                       ]}
                     >
-                      {getAddressIcon(item.type)}
-                    </View>
-
-                    {/* Location Text Group */}
-                    <View style={styles.locationTextGroup}>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: scale(6) }}>
-                        <Text
+                      Places & Locations
+                    </Text>
+                    {placeResults.map((place) => (
+                      <TouchableOpacity
+                        key={place.id}
+                        activeOpacity={0.75}
+                        onPress={() => handleSelectPlace(place)}
+                        style={[
+                          styles.locationCard,
+                          isDark && {
+                            backgroundColor: "#1A242F",
+                            borderColor: "#2B3A4A",
+                          },
+                        ]}
+                      >
+                        <View
                           style={[
-                            styles.locationName,
-                            isDark && { color: "#F8FAFC" },
+                            styles.locationIconBadge,
+                            {
+                              backgroundColor: isDark ? "#122A26" : "#E0F2FE",
+                            },
                           ]}
                         >
-                          {item.type}
-                        </Text>
-                        {item.isDefault && (
-                          <View style={styles.defaultPill}>
-                            <Text style={styles.defaultPillText}>DEFAULT</Text>
-                          </View>
-                        )}
-                      </View>
+                          <MaterialCommunityIcons
+                            name="map-marker-radius-outline"
+                            size={scale(20)}
+                            color={isDark ? "#2DD4BF" : "#008080"}
+                          />
+                        </View>
+
+                        <View style={styles.locationTextGroup}>
+                          <Text
+                            style={[
+                              styles.locationName,
+                              isDark && { color: "#F8FAFC" },
+                            ]}
+                          >
+                            {place.title}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.locationAddress,
+                              isDark && { color: "#94A3B8" },
+                            ]}
+                            numberOfLines={2}
+                          >
+                            {place.address}
+                          </Text>
+                        </View>
+
+                        <Feather
+                          name="arrow-up-right"
+                          size={scale(18)}
+                          color={isDark ? "#94A3B8" : "#64748B"}
+                        />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+
+                {/* 3. Matching Saved Addresses */}
+                {filteredAddresses.length > 0 && (
+                  <View style={{ marginBottom: scale(14) }}>
+                    <Text
+                      style={[
+                        styles.recentSectionTitle,
+                        isDark && { color: "#94A3B8" },
+                      ]}
+                    >
+                      Matching Saved Addresses
+                    </Text>
+                    {filteredAddresses.map((item) => renderSavedAddressCard(item))}
+                  </View>
+                )}
+
+                {/* 4. Empty Result */}
+                {placeResults.length === 0 &&
+                  filteredAddresses.length === 0 &&
+                  !isSearchingPlaces && (
+                    <View style={styles.noSavedBox}>
                       <Text
                         style={[
-                          styles.locationAddress,
-                          isDark && { color: "#94A3B8" },
+                          styles.noSavedText,
+                          isDark && { color: "#64748B" },
                         ]}
-                        numberOfLines={2}
                       >
-                        {item.addressLine}
+                        No places or saved addresses found for "{searchQuery}"
                       </Text>
                     </View>
-
-                    {/* Checkmark or Chevron */}
-                    {isSelected ? (
-                      <Ionicons
-                        name="checkmark-circle"
-                        size={scale(22)}
-                        color="#008080"
-                      />
+                  )}
+              </View>
+            ) : (
+              /* When Not Searching: Show Action Card & All Saved Addresses */
+              <View>
+                {/* 4. Action Card (Use Current Location & Add New Address) */}
+                <View
+                  style={[
+                    styles.actionCard,
+                    isDark && {
+                      backgroundColor: "#1A242F",
+                      borderColor: "#2B3A4A",
+                    },
+                  ]}
+                >
+                  {/* Use current location row */}
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={handleUseCurrentLocation}
+                    disabled={isLocationLoading}
+                    style={[
+                      styles.actionRow,
+                      selectedLocationType === "current_location" && {
+                        backgroundColor: isDark ? "#0D261C" : "#F0FDF4",
+                      },
+                    ]}
+                  >
+                    <View style={styles.actionLeft}>
+                      {isLocationLoading ? (
+                        <ActivityIndicator
+                          size="small"
+                          color={isDark ? "#4ADE80" : "#265935"}
+                        />
+                      ) : (
+                        <MaterialCommunityIcons
+                          name="crosshairs-gps"
+                          size={scale(20)}
+                          color={isDark ? "#4ADE80" : "#265935"}
+                        />
+                      )}
+                      <View style={{ flex: 1 }}>
+                        <Text
+                          style={[
+                            styles.actionText,
+                            isDark && { color: "#4ADE80" },
+                          ]}
+                        >
+                          {isLocationLoading
+                            ? "Detecting GPS location..."
+                            : "Use current location"}
+                        </Text>
+                        {(currentGpsLocation || activeDisplayLocation) && (
+                          <Text
+                            style={[
+                              styles.currentLocationSub,
+                              isDark && { color: "#94A3B8" },
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {currentGpsLocation || activeDisplayLocation}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                    {selectedLocationType === "current_location" ? (
+                      <View style={styles.actionRightIcon}>
+                        <Ionicons
+                          name="checkmark-circle"
+                          size={scale(20)}
+                          color="#008080"
+                        />
+                      </View>
                     ) : (
+                      <View style={styles.actionRightIcon}>
+                        <Feather
+                          name="chevron-right"
+                          size={scale(18)}
+                          color={isDark ? "#94A3B8" : "#64748B"}
+                        />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+
+                  {/* Divider */}
+                  <View
+                    style={[
+                      styles.actionDivider,
+                      isDark && { backgroundColor: "#2B3A4A" },
+                    ]}
+                  />
+
+                  {/* Add New address row */}
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={handleAddNewAddress}
+                    style={styles.actionRow}
+                  >
+                    <View style={styles.actionLeft}>
+                      <Feather
+                        name="plus"
+                        size={scale(20)}
+                        color={isDark ? "#4ADE80" : "#265935"}
+                      />
+                      <Text
+                        style={[
+                          styles.actionText,
+                          isDark && { color: "#4ADE80" },
+                        ]}
+                      >
+                        Add new address
+                      </Text>
+                    </View>
+                    <View style={styles.actionRightIcon}>
                       <Feather
                         name="chevron-right"
                         size={scale(18)}
                         color={isDark ? "#94A3B8" : "#64748B"}
                       />
-                    )}
+                    </View>
                   </TouchableOpacity>
-                );
-              })
-            ) : (
-              <View style={styles.noSavedBox}>
+                </View>
+
+                {/* 5. Saved Addresses Section */}
                 <Text
                   style={[
-                    styles.noSavedText,
-                    isDark && { color: "#64748B" },
+                    styles.recentSectionTitle,
+                    isDark && { color: "#94A3B8" },
                   ]}
                 >
-                  No saved addresses found
+                  Your Saved Addresses
                 </Text>
+
+                {loading && addresses.length === 0 ? (
+                  <View
+                    style={{
+                      paddingVertical: scale(20),
+                      alignItems: "center",
+                    }}
+                  >
+                    <ActivityIndicator size="small" color="#008080" />
+                  </View>
+                ) : addresses.length > 0 ? (
+                  addresses.map((item) => renderSavedAddressCard(item))
+                ) : (
+                  <View style={styles.noSavedBox}>
+                    <Text
+                      style={[
+                        styles.noSavedText,
+                        isDark && { color: "#64748B" },
+                      ]}
+                    >
+                      No saved addresses found
+                    </Text>
+                  </View>
+                )}
               </View>
             )}
           </ScrollView>
@@ -644,14 +939,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(14),
   },
   actionLeft: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: scale(10),
+    marginRight: scale(12),
+  },
+  actionRightIcon: {
+    flexShrink: 0,
+    alignItems: "center",
+    justifyContent: "center",
   },
   actionText: {
     fontSize: moderateScale(14),
     fontWeight: "700",
     color: "#2D6A4F",
+  },
+  currentLocationSub: {
+    fontSize: moderateScale(11.5),
+    color: "#64748B",
+    marginTop: scale(2),
   },
   actionDivider: {
     height: 1,

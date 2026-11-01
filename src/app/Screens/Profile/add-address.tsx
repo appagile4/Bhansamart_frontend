@@ -308,6 +308,8 @@ export default function AddAddressScreen() {
               phone: phone.trim(),
               city: currentCity.trim(),
               addressLine: constructedAddressLine,
+              latitude: region.latitude,
+              longitude: region.longitude,
             },
           }),
         ).unwrap();
@@ -330,6 +332,8 @@ export default function AddAddressScreen() {
             city: currentCity.trim(),
             addressLine: constructedAddressLine,
             isDefault: true,
+            latitude: region.latitude,
+            longitude: region.longitude,
           }),
         ).unwrap();
         Alert.alert("Success", "Address saved to address book!", [

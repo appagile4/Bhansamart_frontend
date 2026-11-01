@@ -13,6 +13,11 @@ import {
   fetchWishlist,
   loadWishlistFromStorage,
 } from "@/store/slices/wishlistSlice";
+import {
+  detectCurrentLocation,
+  fetchAddresses,
+  loadAddressFromStorage,
+} from "@/store/slices/addressSlice";
 import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
 import { LogBox } from "react-native";
@@ -42,10 +47,16 @@ function AppContent() {
     dispatch(loadWishlistFromStorage());
     dispatch(fetchWishlist());
 
-    // 2. Register for Mobile Push Notifications & create Android channels
+    // 2. Global Automatic Location Detection on App Start
+    dispatch(loadAddressFromStorage()).then(() => {
+      dispatch(fetchAddresses());
+      dispatch(detectCurrentLocation());
+    });
+
+    // 3. Register for Mobile Push Notifications & create Android channels
     registerForPushNotificationsAsync("customer");
 
-    // 3. Initialize Notification Listeners (handles foreground popup + background tap + cold-start)
+    // 4. Initialize Notification Listeners (handles foreground popup + background tap + cold-start)
     const cleanupPushListeners = initPushNotificationListeners((foregroundNotif) => {
       const data = foregroundNotif.data as any;
       const targetRole = data?.targetRole || data?.role || "customer";

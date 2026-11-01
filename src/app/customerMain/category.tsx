@@ -419,7 +419,7 @@ export default function CategoryScreen() {
   const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
   const { activeDisplayLocation } = useAppSelector((state) => state.address);
   const currentLocation =
-    activeDisplayLocation || "Baneshwor, Kathmandu, Bagmati, Nepal";
+    activeDisplayLocation || "Current Location";
 
   // Filter sections and their category items according to the in-page search query
   const filteredSections = useMemo(() => {
@@ -497,7 +497,7 @@ export default function CategoryScreen() {
           <View style={styles.headerTopRow}>
             {/* Store & Location */}
             <View style={styles.locationContainer}>
-              <Text style={styles.storeName}>Delivery Address</Text>
+              <Text style={styles.storeName}>Delivering to</Text>
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => setIsLocationModalVisible(true)}

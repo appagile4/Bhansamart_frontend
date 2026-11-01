@@ -142,6 +142,7 @@ export default function CartScreen() {
   const {
     activeDisplayLocation,
     selectedAddress,
+    selectedLocationType,
     addresses,
     latitude,
     longitude,
@@ -161,28 +162,43 @@ export default function CartScreen() {
   const deliveryAddress =
     activeDisplayLocation ||
     selectedAddress?.addressLine ||
-    "Home • Kathmandu, Ward 4";
+    "Current Location";
   const [paymentMethod, setPaymentMethod] = useState("Cash on delivery");
 
   // Check if customer has selected a proper saved address (Home, Work, Other with full details)
-  const isSavedProperAddress = useCallback((addr: SavedAddress | null): boolean => {
-    if (!addr) return false;
-    const addrId = String(addr.id || (addr as any)._id || "").trim();
-    if (!addrId || addrId === "current-location") return false;
+  const isSavedProperAddress = useCallback(
+    (addr: SavedAddress | null): boolean => {
+      if (!addr) return false;
+      if (selectedLocationType === "current_location") return false;
+      const addrId = String(addr.id || (addr as any)._id || "").trim();
+      if (!addrId || addrId === "current-location") return false;
 
-    // Must match a saved address record in Redux addresses or have valid MongoDB ObjectId format
-    const matchesSaved = addresses.some(
-      (a) => (a.id && a.id === addrId) || ((a as any)._id && (a as any)._id === addrId)
-    );
+      // Must match a saved address record in Redux addresses or have valid MongoDB ObjectId format
+      const matchesSaved = addresses.some(
+        (a) =>
+          (a.id && a.id === addrId) ||
+          ((a as any)._id && (a as any)._id === addrId),
+      );
 
-    const hasLine = Boolean(addr.addressLine && addr.addressLine.trim().length > 3);
-    const hasPhone = Boolean(addr.phone && addr.phone.trim().length >= 7);
-    const hasHouseOrStreet = Boolean(
-      addr.houseNo || addr.street || (addr.addressLine && addr.addressLine.includes(","))
-    );
+      const hasLine = Boolean(
+        addr.addressLine && addr.addressLine.trim().length > 3,
+      );
+      const hasPhone = Boolean(addr.phone && addr.phone.trim().length >= 7);
+      const hasHouseOrStreet = Boolean(
+        addr.houseNo ||
+        addr.street ||
+        (addr.addressLine && addr.addressLine.includes(",")),
+      );
 
-    return (matchesSaved || addrId.length >= 24) && hasLine && hasPhone && hasHouseOrStreet;
-  }, [addresses]);
+      return (
+        (matchesSaved || addrId.length >= 24) &&
+        hasLine &&
+        hasPhone &&
+        hasHouseOrStreet
+      );
+    },
+    [addresses, selectedLocationType],
+  );
 
   // Handle Checkout / Pay flow
   const handleProceedToPay = async () => {
@@ -202,7 +218,7 @@ export default function CartScreen() {
         if (res && res.allDeliverable === false) {
           Alert.alert(
             "Delivery Unavailable",
-            "Sorry, one or more stores in your cart do not deliver to this saved address. Please update your address."
+            "Sorry, one or more stores in your cart do not deliver to this saved address. Please update your address.",
           );
           setIsAddressModalVisible(true);
           return;
@@ -279,34 +295,46 @@ export default function CartScreen() {
   }, [savedOnItems, deliverySaving, couponDiscount, cartItems.length]);
 
   // Cart Handlers
-  const handleIncrement = useCallback((id: string) => {
-    updateQuantity(id, 1);
-  }, [updateQuantity]);
+  const handleIncrement = useCallback(
+    (id: string) => {
+      updateQuantity(id, 1);
+    },
+    [updateQuantity],
+  );
 
-  const handleDecrement = useCallback((id: string) => {
-    updateQuantity(id, -1);
-  }, [updateQuantity]);
+  const handleDecrement = useCallback(
+    (id: string) => {
+      updateQuantity(id, -1);
+    },
+    [updateQuantity],
+  );
 
-  const handleRemove = useCallback((id: string) => {
-    removeFromCart(id);
-  }, [removeFromCart]);
+  const handleRemove = useCallback(
+    (id: string) => {
+      removeFromCart(id);
+    },
+    [removeFromCart],
+  );
 
-  const handleSaveForLater = useCallback((item: any) => {
-    removeFromCart(item.id);
-    setSavedItems((prev) => [
-      ...prev,
-      {
-        id: `saved-${Date.now()}-${item.id}`,
-        name: item.name,
-        packInfo: item.packInfo || item.weight || "Standard Pack",
-        price: item.price,
-        originalPrice: item.originalPrice || item.price + 30,
-        imageUrl:
-          item.imageUrl ||
-          "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=200&q=80",
-      },
-    ]);
-  }, [removeFromCart]);
+  const handleSaveForLater = useCallback(
+    (item: any) => {
+      removeFromCart(item.id);
+      setSavedItems((prev) => [
+        ...prev,
+        {
+          id: `saved-${Date.now()}-${item.id}`,
+          name: item.name,
+          packInfo: item.packInfo || item.weight || "Standard Pack",
+          price: item.price,
+          originalPrice: item.originalPrice || item.price + 30,
+          imageUrl:
+            item.imageUrl ||
+            "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=200&q=80",
+        },
+      ]);
+    },
+    [removeFromCart],
+  );
 
   const handleAddToCartFromSaved = (item: SavedCartItem) => {
     setSavedItems((prev) => prev.filter((s) => s.id !== item.id));
@@ -432,19 +460,11 @@ export default function CartScreen() {
                 color={isDark ? "#38BDF8" : "#008080"}
               />
             </View>
-            <Text
-              style={[
-                styles.emptyTitle,
-                isDark && { color: "#F8FAFC" },
-              ]}
-            >
+            <Text style={[styles.emptyTitle, isDark && { color: "#F8FAFC" }]}>
               Your Cart is Empty
             </Text>
             <Text
-              style={[
-                styles.emptySubtitle,
-                isDark && { color: "#94A3B8" },
-              ]}
+              style={[styles.emptySubtitle, isDark && { color: "#94A3B8" }]}
             >
               Looks like you haven't added anything to your cart yet. Explore
               thousands of items with fast delivery!
@@ -456,7 +476,9 @@ export default function CartScreen() {
               style={styles.shopNowBtnWrapper}
             >
               <LinearGradient
-                colors={isDark ? ["#071418", "#0B2129", "#0F2E3A"] : GRADIENT_COLORS}
+                colors={
+                  isDark ? ["#071418", "#0B2129", "#0F2E3A"] : GRADIENT_COLORS
+                }
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.shopNowBtn}
@@ -564,7 +586,9 @@ export default function CartScreen() {
                       lineHeight: moderateScale(16),
                     }}
                   >
-                    Partner stores cannot deliver items in your cart to "{deliveryAddress}". Please switch to a deliverable address to place an order.
+                    Partner stores cannot deliver items in your cart to "
+                    {deliveryAddress}". Please switch to a deliverable address
+                    to place an order.
                   </Text>
                 </View>
               </View>
@@ -904,7 +928,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: scale(14),
-    paddingBottom: moderateScale(190),
+    paddingBottom: moderateScale(70),
   },
   addressBar: {
     flexDirection: "row",

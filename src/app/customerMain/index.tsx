@@ -171,58 +171,6 @@ export default function HomeScreen() {
     }
   }, [publicLoadingMore]);
 
-  // ── Auto-Detect Live Device GPS on Startup ─────────────────────────────
-  useEffect(() => {
-    let isMounted = true;
-    (async () => {
-      try {
-        const { status } = await Location.getForegroundPermissionsAsync();
-        if (status === "granted") {
-          const loc = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-          });
-          if (!isMounted) return;
-          try {
-            const geocode = await Location.reverseGeocodeAsync({
-              latitude: loc.coords.latitude,
-              longitude: loc.coords.longitude,
-            });
-            let readable = "Current Location";
-            if (geocode && geocode.length > 0) {
-              const g = geocode[0];
-              const parts = [
-                g.name,
-                g.street,
-                g.subregion || g.district,
-                g.city,
-              ].filter(Boolean);
-              readable = parts.join(", ") || "Current Location";
-            }
-            dispatch(
-              setUserCoordinates({
-                latitude: loc.coords.latitude,
-                longitude: loc.coords.longitude,
-                addressLine: readable,
-              }),
-            );
-          } catch {
-            dispatch(
-              setUserCoordinates({
-                latitude: loc.coords.latitude,
-                longitude: loc.coords.longitude,
-              }),
-            );
-          }
-        }
-      } catch (err) {
-        console.warn("[HomeScreen Auto GPS]", err);
-      }
-    })();
-    return () => {
-      isMounted = false;
-    };
-  }, [dispatch]);
-
   // ── 1. Initial Load & Category/Location Change (Page 1) ─────────────
   useEffect(() => {
     isFetchingMoreRef.current = false;
@@ -361,7 +309,7 @@ export default function HomeScreen() {
 
   // ── Memoized Values ─────────────────────────────────────────────────
   const displayLocation = useMemo(
-    () => activeDisplayLocation || "Baneshwor, Kathmandu, Bagmati, Nepal",
+    () => activeDisplayLocation || "Current Location",
     [activeDisplayLocation],
   );
 
@@ -1161,7 +1109,7 @@ export default function HomeScreen() {
 
         {/* Top Header with Gradient, Store Location, SearchBar & Category Scroller */}
         <Header
-          storeName="Delivery Address"
+          storeName="Delivering to"
           location={displayLocation}
           selectedCategory={selectedCategory}
           onSelectCategory={handleSelectCategory}

@@ -29,3 +29,5 @@ export { default as TopDeals } from "./TopDeals";
 export { default as SelectLocationModal } from "./SelectLocationModal";
 export * from "./SelectLocationModal";
 export { default as NearbyStoresModal } from "./NearbyStoresModal";
+export { default as PreviouslyOrderCard } from "./previouslyOrderCard";
+export * from "./previouslyOrderCard";
