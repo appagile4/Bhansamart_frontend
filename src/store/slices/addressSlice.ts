@@ -124,6 +124,8 @@ export const addAddress = createAsyncThunk(
         landmark: payload.landmark,
         phone: payload.phone,
         isDefault: payload.isDefault || false,
+        latitude: payload.latitude,
+        longitude: payload.longitude,
       };
       return fallbackAddr;
     }

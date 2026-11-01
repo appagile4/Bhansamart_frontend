@@ -2,6 +2,7 @@ import {
   ActiveCartSection,
   BillDetailsSection,
   BottomCheckoutBar,
+  ConfirmAddressModal,
   PromoCardsSection,
   RecommendedProduct,
   SavedCartItem,
@@ -10,6 +11,8 @@ import {
 } from "@/components/cart";
 import { useCart } from "@/context/cart-context";
 import { useAppSelector } from "@/store/hooks";
+import { SavedAddress } from "@/store/services/addressService";
+import { validateCartDeliveryApi } from "@/store/services/cartService";
 import { moderateScale, scale, useTheme } from "@/theme";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -136,9 +139,13 @@ export default function CartScreen() {
     totalSavings: savedOnItems,
   } = useCart();
 
-  const { activeDisplayLocation, selectedAddress } = useAppSelector(
-    (state) => state.address,
-  );
+  const {
+    activeDisplayLocation,
+    selectedAddress,
+    addresses,
+    latitude,
+    longitude,
+  } = useAppSelector((state) => state.address);
   const { isOutsideDeliveryZone } = useAppSelector((state) => state.product);
 
   const [savedItems, setSavedItems] =
@@ -148,6 +155,7 @@ export default function CartScreen() {
     "FLAT50",
   );
   const [riderTip, setRiderTip] = useState(0);
+  const [isAddressModalVisible, setIsAddressModalVisible] = useState(false);
 
   // Delivery Address from Redux & Payment state
   const deliveryAddress =
@@ -155,6 +163,86 @@ export default function CartScreen() {
     selectedAddress?.addressLine ||
     "Home • Kathmandu, Ward 4";
   const [paymentMethod, setPaymentMethod] = useState("Cash on delivery");
+
+  // Check if customer has selected a proper saved address (Home, Work, Other with full details)
+  const isSavedProperAddress = useCallback((addr: SavedAddress | null): boolean => {
+    if (!addr) return false;
+    const addrId = String(addr.id || (addr as any)._id || "").trim();
+    if (!addrId || addrId === "current-location") return false;
+
+    // Must match a saved address record in Redux addresses or have valid MongoDB ObjectId format
+    const matchesSaved = addresses.some(
+      (a) => (a.id && a.id === addrId) || ((a as any)._id && (a as any)._id === addrId)
+    );
+
+    const hasLine = Boolean(addr.addressLine && addr.addressLine.trim().length > 3);
+    const hasPhone = Boolean(addr.phone && addr.phone.trim().length >= 7);
+    const hasHouseOrStreet = Boolean(
+      addr.houseNo || addr.street || (addr.addressLine && addr.addressLine.includes(","))
+    );
+
+    return (matchesSaved || addrId.length >= 24) && hasLine && hasPhone && hasHouseOrStreet;
+  }, [addresses]);
+
+  // Handle Checkout / Pay flow
+  const handleProceedToPay = async () => {
+    // Condition 1: Proper Saved Address is Selected
+    if (isSavedProperAddress(selectedAddress)) {
+      try {
+        const res = await validateCartDeliveryApi({
+          latitude: selectedAddress!.latitude ?? latitude ?? undefined,
+          longitude: selectedAddress!.longitude ?? longitude ?? undefined,
+          addressId: selectedAddress!.id || selectedAddress!._id,
+          items: cartItems.map((it) => ({
+            productId: it.id,
+            quantity: it.quantity,
+          })),
+        });
+
+        if (res && res.allDeliverable === false) {
+          Alert.alert(
+            "Delivery Unavailable",
+            "Sorry, one or more stores in your cart do not deliver to this saved address. Please update your address."
+          );
+          setIsAddressModalVisible(true);
+          return;
+        }
+      } catch (e) {
+        // Continue if offline or network error
+      }
+
+      // Direct navigation to checkout screen (no address modal shown)
+      router.push({
+        pathname: "/Screens/Cart/checkout" as any,
+        params: {
+          paymentMethod,
+          deliveryAddress: selectedAddress!.addressLine,
+          addressId: selectedAddress!.id || selectedAddress!._id,
+          latitude: String(selectedAddress!.latitude ?? latitude ?? ""),
+          longitude: String(selectedAddress!.longitude ?? longitude ?? ""),
+        },
+      });
+      return;
+    }
+
+    // Condition 2: Only Current GPS Location Selected or Missing Doorstep Details
+    // Open address confirmation & Blinkit-style delivery estimate modal
+    setIsAddressModalVisible(true);
+  };
+
+  const handleAddressConfirmed = (confirmedAddress: SavedAddress) => {
+    setIsAddressModalVisible(false);
+    router.push({
+      pathname: "/Screens/Cart/checkout" as any,
+      params: {
+        paymentMethod,
+        deliveryAddress: confirmedAddress.addressLine,
+        addressId: confirmedAddress.id || confirmedAddress._id,
+        latitude: String(confirmedAddress.latitude ?? latitude ?? ""),
+        longitude: String(confirmedAddress.longitude ?? longitude ?? ""),
+      },
+    });
+  };
 
   // Coupon calculations
   const couponDiscount = useMemo(() => {
@@ -425,7 +513,7 @@ export default function CartScreen() {
 
               <TouchableOpacity
                 activeOpacity={0.7}
-                onPress={() => router.push("/Screens/Profile/address" as any)}
+                onPress={() => setIsAddressModalVisible(true)}
               >
                 <Text
                   style={[
@@ -729,24 +817,17 @@ export default function CartScreen() {
           <BottomCheckoutBar
             totalCount={totalCount}
             totalPrice={grandTotal}
-            onCheckout={() => {
-              if (isOutsideDeliveryZone) {
-                Alert.alert(
-                  "Delivery Unavailable",
-                  "Your delivery location is outside the store delivery zone. Orders cannot be created for this location. Please update your delivery location."
-                );
-                return;
-              }
-              router.push({
-                pathname: "/Screens/Cart/checkout" as any,
-                params: {
-                  paymentMethod,
-                  deliveryAddress,
-                },
-              });
-            }}
+            onCheckout={handleProceedToPay}
           />
         )}
+
+        {/* Blinkit-Style Address Confirmation & Delivery Estimate Modal */}
+        <ConfirmAddressModal
+          visible={isAddressModalVisible}
+          onClose={() => setIsAddressModalVisible(false)}
+          onProceedToCheckout={handleAddressConfirmed}
+          cartItems={cartItems}
+        />
       </View>
     </View>
   );

@@ -1,4 +1,6 @@
 import api from "./api";
+import type { CartItem } from "../slices/cartSlice";
+export type { CartItem };
 
 export interface AddCartItemPayload {
   productId: string;
@@ -101,5 +103,51 @@ export const syncCartApi = async (
   items: any[]
 ): Promise<CartApiResponse> => {
   const response = await api.post<CartApiResponse>("/cart/sync", { items });
+  return response.data;
+};
+
+export interface VendorDeliveryEstimate {
+  vendorId: string;
+  storeName: string;
+  distanceKm: number;
+  deliveryRadiusKm: number;
+  estimatedDelivery: string;
+  isDeliverable: boolean;
+  isStoreOpen: boolean;
+  reason: string | null;
+  items: {
+    productId: string;
+    name: string;
+    price: number;
+    quantity: number;
+    imageUrl?: string;
+  }[];
+}
+
+export interface ValidateCartDeliveryResponse {
+  success: boolean;
+  allDeliverable: boolean;
+  hasMultipleVendors: boolean;
+  customerLocation: {
+    latitude: number | null;
+    longitude: number | null;
+  };
+  vendorEstimates: VendorDeliveryEstimate[];
+  message?: string;
+}
+
+/**
+ * Validate delivery availability and retrieve Blinkit-style dynamic store distance & ETA
+ */
+export const validateCartDeliveryApi = async (payload: {
+  latitude?: number | null;
+  longitude?: number | null;
+  addressId?: string;
+  items?: { productId: string; quantity: number }[];
+}): Promise<ValidateCartDeliveryResponse> => {
+  const response = await api.post<ValidateCartDeliveryResponse>(
+    "/cart/validate-delivery",
+    payload
+  );
   return response.data;
 };

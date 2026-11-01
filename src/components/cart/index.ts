@@ -12,5 +12,8 @@ export { default as PromoCardsSection } from "./promo-cards";
 export { default as SavedItemsSection } from "./saved-items";
 export type { SavedCartItem } from "./saved-items";
 
+export { default as ConfirmAddressModal } from "./ConfirmAddressModal";
+export type { ConfirmAddressModalProps } from "./ConfirmAddressModal";
+
 export { default as YouMightLikeSection } from "./you-might-like";
 export type { RecommendedProduct } from "./you-might-like";

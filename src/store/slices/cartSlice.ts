@@ -589,7 +589,16 @@ export const selectCartTotals = createSelector(
     totalPrice,
     totalOriginalPrice,
     totalSavings,
-  })
+  }),
+  {
+    memoizeOptions: {
+      resultEqualityCheck: (a: any, b: any) =>
+        a?.totalCount === b?.totalCount &&
+        a?.totalPrice === b?.totalPrice &&
+        a?.totalOriginalPrice === b?.totalOriginalPrice &&
+        a?.totalSavings === b?.totalSavings,
+    },
+  }
 );
 
 /**

@@ -32,6 +32,9 @@ export default function CheckoutScreen() {
   const params = useLocalSearchParams<{
     paymentMethod?: string;
     deliveryAddress?: string;
+    addressId?: string;
+    latitude?: string;
+    longitude?: string;
   }>();
 
   const { activeDisplayLocation, selectedAddress, latitude, longitude } =
@@ -182,6 +185,13 @@ export default function CheckoutScreen() {
         weight: item.weight,
       }));
 
+      const parsedLat = params.latitude
+        ? Number(params.latitude)
+        : selectedAddress?.latitude ?? (latitude != null ? latitude : undefined);
+      const parsedLng = params.longitude
+        ? Number(params.longitude)
+        : selectedAddress?.longitude ?? (longitude != null ? longitude : undefined);
+
       const actionResult = await dispatch(
         createOrder({
           items: itemsPayload,
@@ -192,9 +202,10 @@ export default function CheckoutScreen() {
             street: selectedAddress?.street || "",
             houseNo: selectedAddress?.houseNo || "",
             landmark: selectedAddress?.landmark || "",
-            latitude: selectedAddress?.latitude ?? (latitude != null ? latitude : undefined),
-            longitude: selectedAddress?.longitude ?? (longitude != null ? longitude : undefined),
+            latitude: parsedLat,
+            longitude: parsedLng,
           },
+          addressId: params.addressId || selectedAddress?.id || selectedAddress?._id,
           paymentMethod,
           idempotencyKey: orderId,
         })
