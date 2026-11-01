@@ -13,6 +13,7 @@ import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   RefreshControl,
   ScrollView,
@@ -37,26 +38,41 @@ export default function OrderAgainScreen() {
   const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const { activeDisplayLocation } = useAppSelector((state) => state.address);
+  const {
+    activeDisplayLocation,
+    selectedAddress,
+    latitude,
+    longitude,
+  } = useAppSelector((state) => state.address);
   const currentLocation =
-    activeDisplayLocation || "Sector 24, Rohini, Delhi, India";
+    activeDisplayLocation ||
+    selectedAddress?.addressLine ||
+    "Sector 24, Rohini, Delhi, India";
 
   // Redux state
-  const { publicProducts, publicLoading } = useAppSelector(
-    (state) => state.product
-  );
+  const {
+    publicProducts,
+    publicLoading,
+    isOutsideDeliveryZone,
+    eligibleVendorsCount,
+  } = useAppSelector((state) => state.product);
   const { customerOrders, customerLoading } = useAppSelector(
     (state) => state.order
   );
 
-  // Fetch real data from backend
+  // Fetch real data from backend with active customer location coordinates
   const loadData = useCallback(async () => {
     try {
+      const userLat = latitude != null ? latitude : selectedAddress?.latitude;
+      const userLng = longitude != null ? longitude : selectedAddress?.longitude;
+
       await Promise.allSettled([
         dispatch(
           fetchPublicProducts({
             sortBy: "popularity",
             limit: 30,
+            lat: userLat != null ? userLat : undefined,
+            lng: userLng != null ? userLng : undefined,
           })
         ),
         dispatch(fetchCustomerOrders({ page: 1, limit: 30 })),
@@ -64,7 +80,13 @@ export default function OrderAgainScreen() {
     } catch (e) {
       console.warn("Failed to load order-again data:", e);
     }
-  }, [dispatch]);
+  }, [
+    dispatch,
+    latitude,
+    longitude,
+    selectedAddress?.latitude,
+    selectedAddress?.longitude,
+  ]);
 
   useEffect(() => {
     loadData();
@@ -76,17 +98,43 @@ export default function OrderAgainScreen() {
     setRefreshing(false);
   }, [loadData]);
 
+  // Set of deliverable products and vendor IDs active in customer's delivery zone
+  const { deliverableProductIds, deliverableVendorIds } = useMemo(() => {
+    const pIds = new Set<string>();
+    const vIds = new Set<string>();
+
+    if (publicProducts && publicProducts.length > 0 && !isOutsideDeliveryZone) {
+      for (const p of publicProducts) {
+        if (p._id) pIds.add(String(p._id));
+        if (p.id) pIds.add(String(p.id));
+
+        const vendorId =
+          typeof p.vendor === "object" && p.vendor
+            ? String((p.vendor as any)._id || (p.vendor as any).id || "")
+            : String(p.vendor || "");
+        if (vendorId) vIds.add(vendorId);
+      }
+    }
+
+    return { deliverableProductIds: pIds, deliverableVendorIds: vIds };
+  }, [publicProducts, isOutsideDeliveryZone]);
+
   // 1. Previously ordered products extracted from customer's actual order history
   const previousOrderedProducts: DealProduct[] = useMemo(() => {
     if (!customerOrders || customerOrders.length === 0) return [];
 
     const itemMap = new Map<
       string,
-      { item: OrderItem; count: number; lastOrderedAt?: string }
+      { item: OrderItem; count: number; vendorId?: string; lastOrderedAt?: string }
     >();
 
     for (const order of customerOrders) {
       if (!order.items || !Array.isArray(order.items)) continue;
+      const orderVendorId =
+        typeof order.vendor === "object" && order.vendor
+          ? String((order.vendor as any)._id || (order.vendor as any).id || "")
+          : String(order.vendor || "");
+
       for (const item of order.items) {
         const id = String(
           item.productId || item.product || item._id || item.name
@@ -98,13 +146,14 @@ export default function OrderAgainScreen() {
           itemMap.set(id, {
             item,
             count: item.quantity || 1,
+            vendorId: orderVendorId,
             lastOrderedAt: order.createdAt,
           });
         }
       }
     }
 
-    return Array.from(itemMap.values()).map(({ item, count }) => {
+    return Array.from(itemMap.values()).map(({ item, count, vendorId }) => {
       const pId = String(
         item.productId || item.product || item._id || item.name
       );
@@ -114,6 +163,13 @@ export default function OrderAgainScreen() {
         pOrigPrice > pPrice
           ? Math.round(((pOrigPrice - pPrice) / pOrigPrice) * 100)
           : 0;
+
+      // Geospatial delivery availability validation:
+      // Item is deliverable only if area is not outside zone, and (product is in active store catalog OR store matches active vendors)
+      const isDeliverable =
+        !isOutsideDeliveryZone &&
+        (deliverableProductIds.has(pId) ||
+          (vendorId ? deliverableVendorIds.has(vendorId) : deliverableProductIds.size > 0));
 
       return {
         id: pId,
@@ -132,9 +188,10 @@ export default function OrderAgainScreen() {
               uri: "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&q=80",
             },
         tags: [`Ordered ${count}x`],
+        isAvailableInLocation: isDeliverable,
       };
     });
-  }, [customerOrders]);
+  }, [customerOrders, isOutsideDeliveryZone, deliverableProductIds, deliverableVendorIds]);
 
   // 2. Real live bestselling products fetched from MongoDB backend
   const liveBestsellers: DealProduct[] = useMemo(() => {
@@ -174,9 +231,10 @@ export default function OrderAgainScreen() {
             : prod.visibility?.isBestSeller
             ? ["Bestseller"]
             : ["Popular"],
+        isAvailableInLocation: !isOutsideDeliveryZone,
       };
     });
-  }, [publicProducts]);
+  }, [publicProducts, isOutsideDeliveryZone]);
 
   // Search filtering
   const filteredPastProducts = useMemo(() => {
@@ -222,6 +280,21 @@ export default function OrderAgainScreen() {
   };
 
   const handleAddToCart = (product: any) => {
+    if (isOutsideDeliveryZone || product.isAvailableInLocation === false) {
+      Alert.alert(
+        "Product Unavailable in Your Area",
+        "This product is not deliverable to your currently selected address. Please select another delivery address or choose products from nearby stores.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Change Location",
+            onPress: () => setIsLocationModalVisible(true),
+          },
+        ]
+      );
+      return;
+    }
+
     const targetId = String(
       product.id || product._id || product.productId || ""
     ).trim() || `item-${Date.now()}`;
@@ -374,6 +447,56 @@ export default function OrderAgainScreen() {
           />
         }
       >
+        {/* Delivery Zone Availability Warning Banner */}
+        {isOutsideDeliveryZone && (
+          <View
+            style={[
+              styles.outsideZoneBanner,
+              isDark && {
+                backgroundColor: "#151D24",
+                borderColor: "#FF2028",
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.outsideZoneIconBox,
+                isDark && { backgroundColor: "rgba(255, 32, 40, 0.15)" },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name="map-marker-alert"
+                size={scale(22)}
+                color={isDark ? "#FF2028" : "#DC2626"}
+              />
+            </View>
+            <View style={{ flex: 1, marginLeft: scale(10) }}>
+              <Text
+                style={[
+                  styles.outsideZoneTitle,
+                  isDark && { color: "#FF2028" },
+                ]}
+              >
+                Delivery Unavailable at this Location
+              </Text>
+              <Text
+                style={[
+                  styles.outsideZoneSub,
+                  isDark && { color: "#A8B2BE" },
+                ]}
+              >
+                No partner stores currently deliver to "{currentLocation}". Orders cannot be placed at this address.
+              </Text>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => setIsLocationModalVisible(true)}
+                style={styles.changeLocBtn}
+              >
+                <Text style={styles.changeLocBtnText}>Change Delivery Address</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
         {/* Previously Ordered Items Section (When Customer Has Past Orders) */}
         {hasPastOrders ? (
           <View style={styles.bestsellersSection}>
@@ -720,7 +843,51 @@ const styles = StyleSheet.create({
     padding: scale(4),
   },
   scrollContent: {
-    paddingBottom: moderateScale(120),
+    paddingBottom: moderateScale(130),
+  },
+  outsideZoneBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    backgroundColor: "#FEF2F2",
+    borderRadius: scale(14),
+    padding: scale(14),
+    marginHorizontal: scale(14),
+    marginTop: scale(12),
+    marginBottom: scale(8),
+    borderWidth: 1,
+    borderColor: "#FECACA",
+  },
+  outsideZoneIconBox: {
+    width: scale(38),
+    height: scale(38),
+    borderRadius: scale(19),
+    backgroundColor: "#FEE2E2",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  outsideZoneTitle: {
+    fontSize: moderateScale(14),
+    fontWeight: "700",
+    color: "#DC2626",
+    marginBottom: scale(2),
+  },
+  outsideZoneSub: {
+    fontSize: moderateScale(11.5),
+    color: "#7F1D1D",
+    lineHeight: moderateScale(16),
+    marginBottom: scale(8),
+  },
+  changeLocBtn: {
+    alignSelf: "flex-start",
+    backgroundColor: "#DC2626",
+    paddingHorizontal: scale(12),
+    paddingVertical: scale(6),
+    borderRadius: scale(8),
+  },
+  changeLocBtnText: {
+    color: "#FFFFFF",
+    fontSize: moderateScale(11.5),
+    fontWeight: "700",
   },
   illustrationSection: {
     alignItems: "center",

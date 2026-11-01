@@ -5,6 +5,7 @@ import {
   acceptOfferedOrder,
   cancelOrderDelivery,
   clearIncomingOffer,
+  setIncomingOffer,
   fetchActiveAssignment,
   fetchDeliveryProfile,
   markOrderArrivedCustomer,
@@ -312,6 +313,30 @@ export default function DeliveryDashboardScreen() {
     dispatch(fetchDeliveryProfile());
     dispatch(fetchActiveAssignment());
     loadReturnPickups();
+
+    // Direct dashboard screen socket listeners
+    const unsubOffer = socketService.onDeliveryOrderRequest((offer) => {
+      console.log("[DeliveryDashboard] Incoming offer received via socket:", offer?.orderNumber);
+      dispatch(setIncomingOffer(offer));
+    });
+
+    const unsubExpired = socketService.onDeliveryOrderExpired(() => {
+      console.log("[DeliveryDashboard] Offer expired/cancelled");
+      dispatch(clearIncomingOffer());
+    });
+
+    const unsubNotif = socketService.onDeliveryNotification((notif) => {
+      if (notif?.type === "delivery_request_received") {
+        console.log("[DeliveryDashboard] Notification received -> syncing active assignment");
+        dispatch(fetchActiveAssignment());
+      }
+    });
+
+    return () => {
+      unsubOffer();
+      unsubExpired();
+      unsubNotif();
+    };
   }, [dispatch]);
 
   // Handle offer countdown timer
@@ -956,7 +981,10 @@ export default function DeliveryDashboardScreen() {
         style={{ flex: 1 }}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: Math.max(insets.bottom, 16) + moderateScale(110) },
+          ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -1558,198 +1586,7 @@ export default function DeliveryDashboardScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* ── REAL-TIME ORDER OFFER MODAL (60-second timer) ──────────── */}
-      <Modal
-        visible={!!offeredAssignment}
-        transparent
-        animationType="slide"
-        onRequestClose={handleRejectOffer}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.offerCard}>
-            {/* Timer Header */}
-            <View style={styles.offerTimerRow}>
-              <View style={styles.timerBadge}>
-                <Ionicons
-                  name="timer-outline"
-                  size={scale(18)}
-                  color="#EF4444"
-                />
-                <Text style={styles.timerText}>{timeLeft}s left</Text>
-              </View>
-              <View style={styles.earningsBanner}>
-                <Text style={styles.earningsAmount}>
-                  ₹{offeredAssignment?.estimatedEarnings || 60}
-                </Text>
-                <Text style={styles.earningsLabel}>Estimated Pay</Text>
-              </View>
-            </View>
-
-            <Text style={styles.newOrderAlertTitle}>
-              New Grocery Order Request!
-            </Text>
-            <Text style={styles.orderNumberBadge}>
-              Order #{offeredAssignment?.orderNumber} •{" "}
-              {offeredAssignment?.itemsCount || 1} Item(s)
-            </Text>
-
-            {/* Interactive Live Route Map (Store, Partner Location & Delivery Location) */}
-            {mapData && (
-              <View style={styles.offerMapContainer}>
-                <MapView
-                  ref={mapRef}
-                  style={styles.offerMapView}
-                  provider={
-                    Platform.OS === "android"
-                      ? PROVIDER_GOOGLE
-                      : PROVIDER_DEFAULT
-                  }
-                  initialRegion={mapData.initialRegion}
-                  onMapReady={onMapReady}
-                  showsCompass={false}
-                  toolbarEnabled={false}
-                  rotateEnabled={false}
-                >
-                  {/* Partner Current Location Marker */}
-                  <Marker
-                    coordinate={mapData.partnerCoord}
-                    title="My Location"
-                    description="Your current position"
-                  >
-                    <View style={styles.partnerMarkerPin}>
-                      <Text style={styles.markerEmoji}>🛵</Text>
-                    </View>
-                  </Marker>
-
-                  {/* Store Pickup Location Marker */}
-                  <Marker
-                    coordinate={mapData.storeCoord}
-                    title={
-                      offeredAssignment?.pickup?.storeName || "Store Pickup"
-                    }
-                    description={
-                      offeredAssignment?.pickup?.address || "Pickup warehouse"
-                    }
-                  >
-                    <View style={styles.storeMarkerPin}>
-                      <Text style={styles.markerEmoji}>🏬</Text>
-                    </View>
-                  </Marker>
-
-                  {/* Customer Drop Location Marker */}
-                  <Marker
-                    coordinate={mapData.dropCoord}
-                    title={
-                      offeredAssignment?.drop?.customerName || "Customer Drop"
-                    }
-                    description={
-                      offeredAssignment?.drop?.address || "Delivery destination"
-                    }
-                  >
-                    <View style={styles.customerMarkerPin}>
-                      <Text style={styles.markerEmoji}>🏠</Text>
-                    </View>
-                  </Marker>
-
-                  {/* Line 1: Partner -> Store Pickup (dashed teal) */}
-                  <Polyline
-                    coordinates={mapData.leg1Coords}
-                    strokeColor="#0F766E"
-                    strokeWidth={3}
-                    lineDashPattern={[6, 4]}
-                  />
-
-                  {/* Line 2: Store -> Customer Drop (solid blue) */}
-                  <Polyline
-                    coordinates={mapData.leg2Coords}
-                    strokeColor="#2563EB"
-                    strokeWidth={3.5}
-                  />
-                </MapView>
-
-                {/* Floating Way Route Legend Overlay */}
-                <View style={styles.mapRouteOverlay}>
-                  <View style={styles.mapRouteStep}>
-                    <Text style={styles.mapRouteIcon}>🛵</Text>
-                    <Text style={styles.mapRouteStepText}>You</Text>
-                  </View>
-                  <Feather
-                    name="arrow-right"
-                    size={scale(12)}
-                    color="#0F766E"
-                  />
-                  <View style={styles.mapRouteStep}>
-                    <Text style={styles.mapRouteIcon}>🏬</Text>
-                    <Text style={styles.mapRouteStepText}>Store</Text>
-                  </View>
-                  <Feather
-                    name="arrow-right"
-                    size={scale(12)}
-                    color="#2563EB"
-                  />
-                  <View style={styles.mapRouteStep}>
-                    <Text style={styles.mapRouteIcon}>🏠</Text>
-                    <Text style={styles.mapRouteStepText}>Drop</Text>
-                  </View>
-                </View>
-              </View>
-            )}
-
-            {/* Pickup Details */}
-            <View style={styles.offerLocationRow}>
-              <View style={styles.offerDotStore} />
-              <View style={{ flex: 1, marginLeft: scale(10) }}>
-                <View style={styles.locationTitleRow}>
-                  <Text style={styles.offerLocationLabel}>PICKUP FROM</Text>
-                  {offeredAssignment?.pickup?.distanceKm ? (
-                    <Text style={styles.distanceBadgeText}>
-                      ~{offeredAssignment.pickup.distanceKm} km away
-                    </Text>
-                  ) : null}
-                </View>
-                <Text style={styles.offerLocationName}>
-                  {offeredAssignment?.pickup?.storeName || "Store"}
-                </Text>
-                <Text style={styles.offerLocationAddress} numberOfLines={1}>
-                  {offeredAssignment?.pickup?.address}
-                </Text>
-              </View>
-            </View>
-
-            {/* Drop Details */}
-            <View style={styles.offerLocationRow}>
-              <View style={styles.offerDotCustomer} />
-              <View style={{ flex: 1, marginLeft: scale(10) }}>
-                <Text style={styles.offerLocationLabel}>DELIVER TO</Text>
-                <Text style={styles.offerLocationName}>
-                  {offeredAssignment?.drop?.customerName || "Customer"}
-                </Text>
-                <Text style={styles.offerLocationAddress} numberOfLines={1}>
-                  {offeredAssignment?.drop?.address}
-                </Text>
-              </View>
-            </View>
-
-            {/* Action Buttons */}
-            <View style={styles.modalButtonsRow}>
-              <TouchableOpacity
-                style={styles.rejectBtn}
-                onPress={handleRejectOffer}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.rejectBtnText}>Decline</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.acceptBtn}
-                onPress={handleAcceptOffer}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.acceptBtnText}>Accept Order</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      {/* Real-time Order Offer Modal is rendered globally across all delivery tabs in DeliveryMain/_layout.tsx */}
 
       {/* ── LIVE NAVIGATION GOOGLE MAP MODAL ──────────── */}
       <Modal
@@ -2154,7 +1991,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: scale(16),
-    paddingBottom: moderateScale(40),
+    paddingBottom: moderateScale(130),
   },
   alertBanner: {
     flexDirection: "row",

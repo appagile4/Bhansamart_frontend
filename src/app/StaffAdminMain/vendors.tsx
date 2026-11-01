@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(11.5),
   },
   listContent: {
-    paddingBottom: moderateScale(30),
+    paddingBottom: moderateScale(130),
   },
   loadingCenter: {
     flex: 1,

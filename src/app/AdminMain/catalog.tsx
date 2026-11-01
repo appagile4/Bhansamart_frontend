@@ -1964,6 +1964,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: scale(16),
+    paddingBottom: moderateScale(130),
     gap: scale(12),
   },
   catCard: {

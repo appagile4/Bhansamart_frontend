@@ -1,7 +1,15 @@
 import VendorHeader from "@/components/VendorComponent/header";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import socketService from "@/store/services/socketService";
+import {
+  fetchVendorOrders,
+  OrderRecord,
+  orderStatusUpdatedRealtime,
+  vendorOrderNewRealtime,
+} from "@/store/slices/orderSlice";
 import { moderateScale, scale } from "@/theme";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -16,14 +24,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import {
-  fetchVendorOrders,
-  orderStatusUpdatedRealtime,
-  vendorOrderNewRealtime,
-  OrderRecord,
-} from "@/store/slices/orderSlice";
-import socketService from "@/store/services/socketService";
 
 const TABS = ["All", "Active", "Out For Delivery", "Delivered"] as const;
 type TabType = (typeof TABS)[number];
@@ -89,7 +89,9 @@ const getDeliveryStatus = (order: OrderRecord) => {
 
 export default function VendorDeliveryScreen() {
   const dispatch = useAppDispatch();
-  const { vendorOrders, vendorLoading } = useAppSelector((state) => state.order);
+  const { vendorOrders, vendorLoading } = useAppSelector(
+    (state) => state.order,
+  );
 
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("All");
@@ -142,9 +144,12 @@ export default function VendorDeliveryScreen() {
 
     vendorOrders.forEach((o) => {
       if (
-        ["ACCEPTED", "PREPARING", "READY_FOR_PICKUP", "OUT_FOR_DELIVERY"].includes(
-          o.orderStatus
-        )
+        [
+          "ACCEPTED",
+          "PREPARING",
+          "READY_FOR_PICKUP",
+          "OUT_FOR_DELIVERY",
+        ].includes(o.orderStatus)
       ) {
         active++;
       }
@@ -158,9 +163,10 @@ export default function VendorDeliveryScreen() {
 
     const total = vendorOrders.length;
     const nonCancelled = vendorOrders.filter(
-      (o) => !["CANCELLED", "REJECTED"].includes(o.orderStatus)
+      (o) => !["CANCELLED", "REJECTED"].includes(o.orderStatus),
     ).length;
-    const onTimeRate = total > 0 ? Math.round((nonCancelled / total) * 100) : 100;
+    const onTimeRate =
+      total > 0 ? Math.round((nonCancelled / total) * 100) : 100;
 
     return {
       active,
@@ -176,9 +182,12 @@ export default function VendorDeliveryScreen() {
       // Tab filter
       if (activeTab === "Active") {
         if (
-          !["ACCEPTED", "PREPARING", "READY_FOR_PICKUP", "OUT_FOR_DELIVERY"].includes(
-            order.orderStatus
-          )
+          ![
+            "ACCEPTED",
+            "PREPARING",
+            "READY_FOR_PICKUP",
+            "OUT_FOR_DELIVERY",
+          ].includes(order.orderStatus)
         ) {
           return false;
         }
@@ -199,8 +208,7 @@ export default function VendorDeliveryScreen() {
         const riderName =
           order.assignedDeliveryBoy?.fullName?.toLowerCase() || "";
         const custName = order.customer?.name?.toLowerCase() || "";
-        const address =
-          order.deliveryAddress?.addressLine?.toLowerCase() || "";
+        const address = order.deliveryAddress?.addressLine?.toLowerCase() || "";
 
         return (
           orderNum.includes(query) ||
@@ -218,7 +226,7 @@ export default function VendorDeliveryScreen() {
     if (!phone) {
       Alert.alert(
         "Rider Contact",
-        "A delivery partner has not yet been assigned to this order, or phone contact is unavailable."
+        "A delivery partner has not yet been assigned to this order, or phone contact is unavailable.",
       );
       return;
     }
@@ -230,7 +238,10 @@ export default function VendorDeliveryScreen() {
 
   const handleCallCustomer = (phone?: string, name?: string) => {
     if (!phone) {
-      Alert.alert("Customer Contact", "Customer contact number is unavailable.");
+      Alert.alert(
+        "Customer Contact",
+        "Customer contact number is unavailable.",
+      );
       return;
     }
     const cleanPhone = phone.replace(/[^0-9+]/g, "");
@@ -242,7 +253,9 @@ export default function VendorDeliveryScreen() {
   const renderDeliveryCard = ({ item }: { item: OrderRecord }) => {
     const statusStyle = getDeliveryStatus(item);
     const rider = item.assignedDeliveryBoy;
-    const isPickedUp = ["OUT_FOR_DELIVERY", "DELIVERED"].includes(item.orderStatus);
+    const isPickedUp = ["OUT_FOR_DELIVERY", "DELIVERED"].includes(
+      item.orderStatus,
+    );
 
     const formattedTime = item.createdAt
       ? new Date(item.createdAt).toLocaleTimeString([], {
@@ -259,14 +272,19 @@ export default function VendorDeliveryScreen() {
             <Text style={styles.orderNumber}>{item.orderNumber}</Text>
             <Text style={styles.etaText}>
               Placed: <Text style={styles.etaHighlight}>{formattedTime}</Text>
-              {item.estimatedDeliveryTime ? ` • ETA: ${item.estimatedDeliveryTime}` : ""}
+              {item.estimatedDeliveryTime
+                ? ` • ETA: ${item.estimatedDeliveryTime}`
+                : ""}
             </Text>
           </View>
 
           <View
             style={[
               styles.statusBadge,
-              { backgroundColor: statusStyle.bg, borderColor: statusStyle.border },
+              {
+                backgroundColor: statusStyle.bg,
+                borderColor: statusStyle.border,
+              },
             ]}
           >
             <MaterialCommunityIcons
@@ -304,7 +322,11 @@ export default function VendorDeliveryScreen() {
                     <Text style={styles.riderName}>{rider.fullName}</Text>
                     {rider.metrics?.rating ? (
                       <View style={styles.ratingBadge}>
-                        <Ionicons name="star" size={scale(10)} color="#F59E0B" />
+                        <Ionicons
+                          name="star"
+                          size={scale(10)}
+                          color="#F59E0B"
+                        />
                         <Text style={styles.ratingText}>
                           {Number(rider.metrics.rating).toFixed(1)}
                         </Text>
@@ -338,7 +360,9 @@ export default function VendorDeliveryScreen() {
             <View style={{ flex: 1, marginLeft: scale(8) }}>
               <Text style={styles.customerName}>
                 Deliver to: {item.customer?.name || "Customer"}
-                {item.deliveryAddress?.phone ? ` (${item.deliveryAddress.phone})` : ""}
+                {item.deliveryAddress?.phone
+                  ? ` (${item.deliveryAddress.phone})`
+                  : ""}
               </Text>
               <Text style={styles.addressText} numberOfLines={2}>
                 {item.deliveryAddress?.addressLine || "Kathmandu Address"}
@@ -349,7 +373,8 @@ export default function VendorDeliveryScreen() {
           {/* Items & Payment pill */}
           <View style={styles.itemsSummaryRow}>
             <Text style={styles.itemsSummaryText}>
-              📦 {item.totalCount || item.items?.length || 1} Item(s) • Total: ₹{item.totalAmount}
+              📦 {item.totalCount || item.items?.length || 1} Item(s) • Total: ₹
+              {item.totalAmount}
             </Text>
             <Text style={styles.paymentMethodText}>
               {item.paymentMethod || "COD"} ({item.paymentStatus || "pending"})
@@ -363,7 +388,11 @@ export default function VendorDeliveryScreen() {
           {item.vendorPickupOtp ? (
             isPickedUp ? (
               <View style={styles.otpCompletedBox}>
-                <Ionicons name="checkmark-circle" size={scale(14)} color="#15803D" />
+                <Ionicons
+                  name="checkmark-circle"
+                  size={scale(14)}
+                  color="#15803D"
+                />
                 <Text style={styles.otpCompletedText}>Package Handed Over</Text>
               </View>
             ) : (
@@ -395,7 +424,9 @@ export default function VendorDeliveryScreen() {
                 disabled
               >
                 <Feather name="clock" size={scale(13)} color="#94A3B8" />
-                <Text style={styles.callRiderBtnTextDisabled}>Awaiting Rider</Text>
+                <Text style={styles.callRiderBtnTextDisabled}>
+                  Awaiting Rider
+                </Text>
               </TouchableOpacity>
             )}
 
@@ -405,7 +436,7 @@ export default function VendorDeliveryScreen() {
                 onPress={() =>
                   handleCallCustomer(
                     item.deliveryAddress?.phone || item.customer?.phone,
-                    item.customer?.name
+                    item.customer?.name,
                   )
                 }
                 activeOpacity={0.8}
@@ -633,7 +664,8 @@ const styles = StyleSheet.create({
     marginHorizontal: scale(16),
     marginBottom: scale(10),
     paddingHorizontal: scale(12),
-    paddingVertical: Platform.OS === "ios" ? moderateScale(8) : moderateScale(4),
+    paddingVertical:
+      Platform.OS === "ios" ? moderateScale(8) : moderateScale(4),
     borderRadius: scale(10),
     borderWidth: 1,
     borderColor: "#E2E8F0",
@@ -646,7 +678,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: scale(16),
-    paddingBottom: moderateScale(30),
+    paddingBottom: moderateScale(130),
     gap: moderateScale(12),
   },
   card: {

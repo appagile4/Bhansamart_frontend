@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: scale(14),
     paddingTop: moderateScale(14),
-    paddingBottom: moderateScale(100),
+    paddingBottom: moderateScale(130),
     gap: moderateScale(14),
   },
   topCardsRow: {

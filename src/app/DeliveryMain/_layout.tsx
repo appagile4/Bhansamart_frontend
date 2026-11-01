@@ -3,8 +3,10 @@ import {
   initializeDeliveryAuth,
   setIncomingOffer,
   clearIncomingOffer,
+  fetchActiveAssignment,
 } from "@/store/slices/deliverySlice";
 import socketService from "@/store/services/socketService";
+import OrderOfferModal from "@/components/DeliveryBoyComponent/OrderOfferModal";
 import { useRouter } from "expo-router";
 import { NativeTabs } from "expo-router/native-tabs";
 import { Tabs } from "expo-router/tabs";
@@ -17,7 +19,7 @@ const DELIVERY_PRIMARY = "#0F766E";
 export default function DeliveryTabLayout() {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { isAuthenticated, isInitialized } = useAppSelector(
+  const { isAuthenticated, isInitialized, availability, activeOrder } = useAppSelector(
     (state) => state.delivery,
   );
 
@@ -34,76 +36,98 @@ export default function DeliveryTabLayout() {
 
   // Connect Delivery Socket & Listen for Incoming Orders (60s window)
   useEffect(() => {
-    if (isAuthenticated) {
-      socketService.connect("delivery").then(() => {
-        console.log("[Delivery Layout] Socket connected for delivery partner");
-      });
+    socketService.connect("delivery").then(() => {
+      console.log("[Delivery Layout] Socket connected for delivery partner");
+    });
 
-      const unsubscribe = socketService.onDeliveryOrderRequest((offer) => {
-        dispatch(setIncomingOffer(offer));
-      });
+    const unsubscribe = socketService.onDeliveryOrderRequest((offer) => {
+      console.log("[Delivery Layout] Received delivery:order:request:", offer?.orderNumber);
+      dispatch(setIncomingOffer(offer));
+    });
 
-      const unsubExpired = socketService.onDeliveryOrderExpired(() => {
-        dispatch(clearIncomingOffer());
-      });
+    const unsubExpired = socketService.onDeliveryOrderExpired(() => {
+      console.log("[Delivery Layout] Received delivery:order:expired");
+      dispatch(clearIncomingOffer());
+    });
 
-      return () => {
-        unsubscribe();
-        unsubExpired();
-      };
-    }
-  }, [isAuthenticated, dispatch]);
+    const unsubNotif = socketService.onDeliveryNotification((notif) => {
+      if (notif?.type === "delivery_request_received") {
+        console.log("[Delivery Layout] Delivery request notification arrived -> syncing active assignment");
+        dispatch(fetchActiveAssignment());
+      }
+    });
+
+    // Fallback sync polling: every 5 seconds while online and not on an active delivery order
+    const pollTimer = setInterval(() => {
+      if (availability === "ONLINE" && !activeOrder) {
+        dispatch(fetchActiveAssignment());
+      }
+    }, 5000);
+
+    return () => {
+      unsubscribe();
+      unsubExpired();
+      unsubNotif();
+      clearInterval(pollTimer);
+    };
+  }, [dispatch, availability, activeOrder]);
 
   // iOS: Keep existing native tab bar unchanged
   if (Platform.OS === "ios") {
     return (
-      <NativeTabs tintColor={DELIVERY_PRIMARY} indicatorColor={DELIVERY_PRIMARY}>
-        {/* 1. DASHBOARD & ACTIVE ORDERS */}
-        <NativeTabs.Trigger name="index">
-          <NativeTabs.Trigger.Icon sf="bicycle" md="moped" />
-          <NativeTabs.Trigger.Label>Deliveries</NativeTabs.Trigger.Label>
-        </NativeTabs.Trigger>
+      <>
+        <OrderOfferModal />
+        <NativeTabs tintColor={DELIVERY_PRIMARY} indicatorColor={DELIVERY_PRIMARY}>
+          {/* 1. DASHBOARD & ACTIVE ORDERS */}
+          <NativeTabs.Trigger name="index">
+            <NativeTabs.Trigger.Icon sf="bicycle" md="moped" />
+            <NativeTabs.Trigger.Label>Deliveries</NativeTabs.Trigger.Label>
+          </NativeTabs.Trigger>
 
-        {/* 2. EARNINGS & SECURITY DEPOSIT */}
-        <NativeTabs.Trigger name="wallet">
-          <NativeTabs.Trigger.Icon sf="banknote" md="account_balance_wallet" />
-          <NativeTabs.Trigger.Label>Earnings</NativeTabs.Trigger.Label>
-        </NativeTabs.Trigger>
+          {/* 2. EARNINGS & SECURITY DEPOSIT */}
+          <NativeTabs.Trigger name="wallet">
+            <NativeTabs.Trigger.Icon sf="banknote" md="account_balance_wallet" />
+            <NativeTabs.Trigger.Label>Earnings</NativeTabs.Trigger.Label>
+          </NativeTabs.Trigger>
 
-        {/* 3. DEDICATED NOTIFICATIONS */}
-        <NativeTabs.Trigger name="notifications">
-          <NativeTabs.Trigger.Icon sf="bell" md="notifications" />
-          <NativeTabs.Trigger.Label>Alerts</NativeTabs.Trigger.Label>
-        </NativeTabs.Trigger>
+          {/* 3. DEDICATED NOTIFICATIONS */}
+          <NativeTabs.Trigger name="notifications">
+            <NativeTabs.Trigger.Icon sf="bell" md="notifications" />
+            <NativeTabs.Trigger.Label>Alerts</NativeTabs.Trigger.Label>
+          </NativeTabs.Trigger>
 
-        {/* 4. PROFILE & KYC DOCUMENTS */}
-        <NativeTabs.Trigger name="profile">
-          <NativeTabs.Trigger.Icon sf="person.crop.circle" md="person" />
-          <NativeTabs.Trigger.Label>Profile & KYC</NativeTabs.Trigger.Label>
-        </NativeTabs.Trigger>
-      </NativeTabs>
+          {/* 4. PROFILE & KYC DOCUMENTS */}
+          <NativeTabs.Trigger name="profile">
+            <NativeTabs.Trigger.Icon sf="person.crop.circle" md="person" />
+            <NativeTabs.Trigger.Label>Profile & KYC</NativeTabs.Trigger.Label>
+          </NativeTabs.Trigger>
+        </NativeTabs>
+      </>
     );
   }
 
   // Android: Custom modern tab bar matching design
   return (
-    <Tabs
-      tabBar={(props) => (
-        <ModernAndroidTabBar
-          {...props}
-          role="delivery"
-          tintColor={DELIVERY_PRIMARY}
-        />
-      )}
-      screenOptions={{
-        headerShown: false,
-        tabBarShowLabel: false,
-      }}
-    >
-      <Tabs.Screen name="index" />
-      <Tabs.Screen name="wallet" />
-      <Tabs.Screen name="notifications" />
-      <Tabs.Screen name="profile" />
-    </Tabs>
+    <>
+      <OrderOfferModal />
+      <Tabs
+        tabBar={(props) => (
+          <ModernAndroidTabBar
+            {...props}
+            role="delivery"
+            tintColor={DELIVERY_PRIMARY}
+          />
+        )}
+        screenOptions={{
+          headerShown: false,
+          tabBarShowLabel: false,
+        }}
+      >
+        <Tabs.Screen name="index" />
+        <Tabs.Screen name="wallet" />
+        <Tabs.Screen name="notifications" />
+        <Tabs.Screen name="profile" />
+      </Tabs>
+    </>
   );
 }

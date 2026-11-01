@@ -570,7 +570,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: scale(16),
-    paddingBottom: moderateScale(100),
+    paddingBottom: moderateScale(130),
     gap: moderateScale(12),
   },
   orderCard: {

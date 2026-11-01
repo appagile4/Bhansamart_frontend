@@ -17,6 +17,8 @@ export interface CreateOrderPayload {
     landmark?: string;
     phone: string;
     type?: string;
+    latitude?: number;
+    longitude?: number;
   };
   addressId?: string;
   paymentMethod?: string;

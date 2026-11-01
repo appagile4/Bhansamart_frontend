@@ -228,7 +228,7 @@ export default function AdminDashboardOverviewScreen() {
           styles.content,
           {
             paddingHorizontal: horizontalPadding,
-            paddingBottom: insets.bottom + scale(48),
+            paddingBottom: insets.bottom + moderateScale(110),
           },
         ]}
         showsVerticalScrollIndicator={false}

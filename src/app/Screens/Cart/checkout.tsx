@@ -34,9 +34,9 @@ export default function CheckoutScreen() {
     deliveryAddress?: string;
   }>();
 
-  const { activeDisplayLocation, selectedAddress } = useAppSelector(
-    (state) => state.address
-  );
+  const { activeDisplayLocation, selectedAddress, latitude, longitude } =
+    useAppSelector((state) => state.address);
+  const { isOutsideDeliveryZone } = useAppSelector((state) => state.product);
 
   const {
     cartItems,
@@ -164,6 +164,14 @@ export default function CheckoutScreen() {
       return;
     }
 
+    if (isOutsideDeliveryZone) {
+      Alert.alert(
+        "Delivery Unavailable",
+        "Your delivery address is outside the store's delivery zone. Orders cannot be created for this location. Please choose a deliverable address."
+      );
+      return;
+    }
+
     try {
       const itemsPayload = cartItems.map((item) => ({
         productId: item.id,
@@ -184,6 +192,8 @@ export default function CheckoutScreen() {
             street: selectedAddress?.street || "",
             houseNo: selectedAddress?.houseNo || "",
             landmark: selectedAddress?.landmark || "",
+            latitude: selectedAddress?.latitude ?? (latitude != null ? latitude : undefined),
+            longitude: selectedAddress?.longitude ?? (longitude != null ? longitude : undefined),
           },
           paymentMethod,
           idempotencyKey: orderId,
@@ -463,10 +473,11 @@ export default function CheckoutScreen() {
           <TouchableOpacity
             activeOpacity={0.88}
             onPress={handleConfirmOrder}
-            disabled={customerLoading}
+            disabled={customerLoading || isOutsideDeliveryZone}
             style={[
               styles.confirmOrderBtn,
               customerLoading && { opacity: 0.75 },
+              isOutsideDeliveryZone && { backgroundColor: "#64748B", opacity: 0.7 },
             ]}
           >
             <View style={styles.btnPriceCol}>

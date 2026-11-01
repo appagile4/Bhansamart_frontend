@@ -62,7 +62,9 @@ export default function VendorDashboardScreen() {
   } = useAppSelector((state) => state.vendorFinance);
 
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedRadius, setSelectedRadius] = useState<number>(deliveryRadiusKm || 5);
+  const [selectedRadius, setSelectedRadius] = useState<number>(
+    deliveryRadiusKm || 5,
+  );
   const [savingRadius, setSavingRadius] = useState(false);
   const [togglingStore, setTogglingStore] = useState(false);
   const [processingOrderAction, setProcessingOrderAction] = useState(false);
@@ -91,7 +93,7 @@ export default function VendorDashboardScreen() {
       await dispatch(updateVendorDeliveryRadius(newRadius)).unwrap();
       Alert.alert(
         "Delivery Radius Updated",
-        `Your store delivery radius is now set to ${newRadius} km. Nearby customer product availability has updated in real-time.`
+        `Your store delivery radius is now set to ${newRadius} km. Nearby customer product availability has updated in real-time.`,
       );
     } catch (err: any) {
       Alert.alert("Error", err || "Failed to update delivery radius");
@@ -304,7 +306,11 @@ export default function VendorDashboardScreen() {
         <View style={styles.radiusCard}>
           <View style={styles.radiusHeaderRow}>
             <View style={styles.radiusIconBox}>
-              <Ionicons name="location-outline" size={scale(20)} color="#016073" />
+              <Ionicons
+                name="location-outline"
+                size={scale(20)}
+                color="#016073"
+              />
             </View>
             <View style={{ flex: 1, marginLeft: scale(10) }}>
               <Text style={styles.radiusTitle}>Delivery Coverage Radius</Text>
@@ -322,10 +328,13 @@ export default function VendorDashboardScreen() {
             <TouchableOpacity
               activeOpacity={0.7}
               disabled={selectedRadius <= 1 || savingRadius}
-              onPress={() => handleUpdateRadius(Math.max(1, selectedRadius - 1))}
+              onPress={() =>
+                handleUpdateRadius(Math.max(1, selectedRadius - 1))
+              }
               style={[
                 styles.radiusStepBtn,
-                (selectedRadius <= 1 || savingRadius) && styles.radiusStepBtnDisabled,
+                (selectedRadius <= 1 || savingRadius) &&
+                  styles.radiusStepBtnDisabled,
               ]}
             >
               <Feather name="minus" size={scale(16)} color="#016073" />
@@ -339,10 +348,13 @@ export default function VendorDashboardScreen() {
             <TouchableOpacity
               activeOpacity={0.7}
               disabled={selectedRadius >= 50 || savingRadius}
-              onPress={() => handleUpdateRadius(Math.min(50, selectedRadius + 1))}
+              onPress={() =>
+                handleUpdateRadius(Math.min(50, selectedRadius + 1))
+              }
               style={[
                 styles.radiusStepBtn,
-                (selectedRadius >= 50 || savingRadius) && styles.radiusStepBtnDisabled,
+                (selectedRadius >= 50 || savingRadius) &&
+                  styles.radiusStepBtnDisabled,
               ]}
             >
               <Feather name="plus" size={scale(16)} color="#016073" />
@@ -446,7 +458,9 @@ export default function VendorDashboardScreen() {
               { backgroundColor: "#FEF9C3", borderColor: "#FDE047" },
             ]}
             activeOpacity={0.8}
-            onPress={() => router.push("/Screens/vendorScreens/cod-handover" as any)}
+            onPress={() =>
+              router.push("/Screens/vendorScreens/cod-handover" as any)
+            }
           >
             <View style={styles.financeCardHeader}>
               <Text style={[styles.financeCardLabel, { color: "#854D0E" }]}>
@@ -510,7 +524,9 @@ export default function VendorDashboardScreen() {
               },
             ]}
             activeOpacity={0.7}
-            onPress={() => router.push("/VendorMain/order?status=pending" as any)}
+            onPress={() =>
+              router.push("/VendorMain/order?status=pending" as any)
+            }
           >
             <View style={[styles.metricIcon, { backgroundColor: "#FFFBEB" }]}>
               <Feather name="clock" size={scale(15)} color="#D97706" />
@@ -525,7 +541,9 @@ export default function VendorDashboardScreen() {
           <TouchableOpacity
             style={styles.metricCard}
             activeOpacity={0.7}
-            onPress={() => router.push("/VendorMain/order?status=preparing" as any)}
+            onPress={() =>
+              router.push("/VendorMain/order?status=preparing" as any)
+            }
           >
             <View style={[styles.metricIcon, { backgroundColor: "#F5F3FF" }]}>
               <MaterialCommunityIcons
@@ -544,7 +562,9 @@ export default function VendorDashboardScreen() {
           <TouchableOpacity
             style={styles.metricCard}
             activeOpacity={0.7}
-            onPress={() => router.push("/VendorMain/order?status=completed" as any)}
+            onPress={() =>
+              router.push("/VendorMain/order?status=completed" as any)
+            }
           >
             <View style={[styles.metricIcon, { backgroundColor: "#ECFDF5" }]}>
               <Ionicons
@@ -563,7 +583,9 @@ export default function VendorDashboardScreen() {
           <TouchableOpacity
             style={styles.metricCard}
             activeOpacity={0.7}
-            onPress={() => router.push("/VendorMain/order?status=cancelled" as any)}
+            onPress={() =>
+              router.push("/VendorMain/order?status=cancelled" as any)
+            }
           >
             <View style={[styles.metricIcon, { backgroundColor: "#FEF2F2" }]}>
               <Feather name="x-circle" size={scale(15)} color="#EF4444" />
@@ -601,7 +623,9 @@ export default function VendorDashboardScreen() {
 
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => router.push("/Screens/vendorScreens/cod-handover" as any)}
+            onPress={() =>
+              router.push("/Screens/vendorScreens/cod-handover" as any)
+            }
             style={styles.actionBtn}
           >
             <LinearGradient
@@ -621,7 +645,9 @@ export default function VendorDashboardScreen() {
 
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => router.push("/Screens/vendorScreens/payment-qr" as any)}
+            onPress={() =>
+              router.push("/Screens/vendorScreens/payment-qr" as any)
+            }
             style={styles.actionBtn}
           >
             <LinearGradient
@@ -783,7 +809,9 @@ export default function VendorDashboardScreen() {
                       key={notifId}
                       activeOpacity={0.7}
                       onPress={() =>
-                        router.push("/Screens/vendorScreens/notifications" as any)
+                        router.push(
+                          "/Screens/vendorScreens/notifications" as any,
+                        )
                       }
                       style={[
                         styles.notifItem,
@@ -999,7 +1027,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   scrollContent: {
-    paddingBottom: moderateScale(30),
+    paddingBottom: moderateScale(130),
   },
   banner: {
     marginHorizontal: scale(16),

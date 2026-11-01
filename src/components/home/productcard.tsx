@@ -12,6 +12,7 @@ import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { memo, useMemo } from "react";
 import {
+  Alert,
   Dimensions,
   ImageSourcePropType,
   StyleSheet,
@@ -39,6 +40,7 @@ export interface DealProduct {
   unitPriceText?: string;
   ordersCount?: number;
   tags?: string[];
+  isAvailableInLocation?: boolean;
 }
 
 export interface ProductCardProps {
@@ -372,7 +374,18 @@ function ProductCardComponent({
     }
   };
 
+  const isDark = theme.mode === "dark";
+  const isAvailable = product.isAvailableInLocation !== false;
+
   const handleAddToCart = () => {
+    if (!isAvailable) {
+      Alert.alert(
+        "Item Unavailable",
+        "This product is not deliverable to your current location. Please change your delivery address or choose products from nearby stores."
+      );
+      return;
+    }
+
     if (onAddPress) {
       onAddPress(product);
     } else {
@@ -401,8 +414,6 @@ function ProductCardComponent({
       });
     }
   };
-
-  const isDark = theme.mode === "dark";
 
   return (
     <TouchableOpacity
@@ -436,6 +447,18 @@ function ProductCardComponent({
         {discountPercent > 0 && (
           <View style={[styles.discountBadge, { backgroundColor: "#FF2028" }]}>
             <Text style={styles.discountBadgeText}>{discountPercent}% OFF</Text>
+          </View>
+        )}
+
+        {/* Unavailable in Delivery Area Overlay Badge */}
+        {!isAvailable && (
+          <View style={styles.unavailableBadge}>
+            <MaterialCommunityIcons
+              name="map-marker-off"
+              size={scale(10)}
+              color="#FFFFFF"
+            />
+            <Text style={styles.unavailableBadgeText}>Unavailable in Area</Text>
           </View>
         )}
 
@@ -593,7 +616,40 @@ function ProductCardComponent({
         ) : null}
 
         {/* Full-Width Add to Cart Button */}
-        {qty === 0 ? (
+        {!isAvailable ? (
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => {
+              Alert.alert(
+                "Item Unavailable",
+                "This product cannot be delivered to your selected location. Please change your delivery address or pick another item."
+              );
+            }}
+            style={[
+              styles.addToCartBtn,
+              {
+                backgroundColor: isDark ? "#1E2A38" : "#E2E8F0",
+                shadowOpacity: 0,
+                elevation: 0,
+              },
+            ]}
+          >
+            <MaterialCommunityIcons
+              name="map-marker-off"
+              size={scale(11)}
+              color={isDark ? "#94A3B8" : "#64748B"}
+              style={{ marginRight: scale(4) }}
+            />
+            <Text
+              style={[
+                styles.addToCartBtnText,
+                { color: isDark ? "#94A3B8" : "#64748B", fontWeight: "600" },
+              ]}
+            >
+              Unavailable
+            </Text>
+          </TouchableOpacity>
+        ) : qty === 0 ? (
           <TouchableOpacity
             activeOpacity={0.88}
             onPress={handleAddToCart}
@@ -686,6 +742,26 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(8.5),
     fontWeight: "800",
     letterSpacing: 0.2,
+  },
+  unavailableBadge: {
+    position: "absolute",
+    bottom: scale(6),
+    left: scale(6),
+    right: scale(6),
+    backgroundColor: "rgba(15, 23, 42, 0.88)",
+    paddingVertical: scale(2.5),
+    paddingHorizontal: scale(4),
+    borderRadius: scale(4),
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: scale(3),
+    zIndex: 10,
+  },
+  unavailableBadgeText: {
+    color: "#FFFFFF",
+    fontSize: moderateScale(9),
+    fontWeight: "700",
   },
   wishlistBtn: {
     position: "absolute",

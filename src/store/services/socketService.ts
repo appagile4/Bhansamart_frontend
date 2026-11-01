@@ -20,7 +20,33 @@ const getSocketUrl = (): string => {
 class SocketService {
   private socket: Socket | null = null;
   private isConnecting: boolean = false;
+  private connectPromise: Promise<Socket | null> | null = null;
   private activeSubscriptions: Set<string> = new Set();
+  private currentRole: string | null = null;
+  private currentToken: string | null = null;
+  private persistentListeners: Map<string, Set<(data: any) => void>> = new Map();
+
+  /**
+   * Register a persistent listener that stays attached across reconnections and role switches
+   */
+  public registerListener(event: string, handler: (data: any) => void): () => void {
+    if (!this.persistentListeners.has(event)) {
+      this.persistentListeners.set(event, new Set());
+    }
+    this.persistentListeners.get(event)!.add(handler);
+
+    if (this.socket) {
+      this.socket.on(event, handler);
+    }
+
+    return () => {
+      this.persistentListeners.get(event)?.delete(handler);
+      if (this.persistentListeners.get(event)?.size === 0) {
+        this.persistentListeners.delete(event);
+      }
+      this.socket?.off(event, handler);
+    };
+  }
 
   /**
    * Connect socket with authentication token from storage
@@ -33,14 +59,32 @@ class SocketService {
       | "customer"
       | "admin" = "customer",
   ): Promise<Socket | null> {
-    if (this.socket && this.socket.connected) {
-      return this.socket;
+    const roleStr =
+      typeof roleOrIsVendor === "boolean"
+        ? roleOrIsVendor
+          ? "vendor"
+          : "customer"
+        : roleOrIsVendor;
+
+    if (this.connectPromise) {
+      if (this.currentRole === roleStr) {
+        return this.connectPromise;
+      }
+      try {
+        await this.connectPromise;
+      } catch (_) {}
     }
 
-    if (this.isConnecting) {
-      return null;
+    this.connectPromise = this.doConnect(roleStr);
+    try {
+      const res = await this.connectPromise;
+      return res;
+    } finally {
+      this.connectPromise = null;
     }
+  }
 
+  private async doConnect(roleStr: string): Promise<Socket | null> {
     try {
       this.isConnecting = true;
       const adminToken = await storage.getItem("bhansa_admin_token");
@@ -49,17 +93,19 @@ class SocketService {
       const deliveryToken = await storage.getItem("bhansa_delivery_token");
 
       let token = customerToken;
-      const roleStr =
-        typeof roleOrIsVendor === "boolean"
-          ? roleOrIsVendor
-            ? "vendor"
-            : "customer"
-          : roleOrIsVendor;
-
       if (roleStr === "admin") {
         token = adminToken || customerToken;
       } else if (roleStr === "delivery") {
         token = deliveryToken;
+        if (!token && customerToken) {
+          try {
+            const rawUser = await storage.getItem("bhansa_user");
+            if (rawUser && JSON.parse(rawUser)?.role === "delivery_boy") {
+              token = customerToken;
+              await storage.setItem("bhansa_delivery_token", customerToken);
+            }
+          } catch (_) {}
+        }
       } else if (roleStr === "vendor") {
         token = vendorToken || customerToken;
       } else {
@@ -72,6 +118,27 @@ class SocketService {
         );
         this.isConnecting = false;
         return null;
+      }
+
+      // If socket is already connected with the identical role and token, reuse it
+      if (
+        this.socket &&
+        this.socket.connected &&
+        this.currentRole === roleStr &&
+        this.currentToken === token
+      ) {
+        return this.socket;
+      }
+
+      // If switching role or token while connected, cleanly disconnect previous socket
+      if (this.socket) {
+        try {
+          console.log(
+            `[SocketService] Role/token changed from '${this.currentRole}' to '${roleStr}', disconnecting previous socket...`,
+          );
+          this.socket.disconnect();
+        } catch {}
+        this.socket = null;
       }
 
       if (roleStr === "vendor") {
@@ -88,6 +155,9 @@ class SocketService {
         `[SocketService] Connecting to ${socketUrl} (Role: ${roleStr})`,
       );
 
+      this.currentRole = roleStr;
+      this.currentToken = token;
+
       this.socket = io(socketUrl, {
         auth: {
           token,
@@ -101,10 +171,26 @@ class SocketService {
         timeout: 30000,
       });
 
+      // Attach all registered persistent listeners to the new socket instance immediately
+      this.persistentListeners.forEach((handlers, event) => {
+        handlers.forEach((handler) => {
+          this.socket?.on(event, handler);
+        });
+      });
+
       this.socket.on("connect", () => {
         console.log(
-          `[SocketService] Connected successfully! ID: ${this.socket?.id} (Transport: ${this.socket?.io?.engine?.transport?.name})`,
+          `[SocketService] Connected successfully! ID: ${this.socket?.id} (Transport: ${this.socket?.io?.engine?.transport?.name}) [Role: ${this.currentRole}]`,
         );
+
+        // Re-attach persistent listeners on connection/reconnection
+        this.persistentListeners.forEach((handlers, event) => {
+          handlers.forEach((handler) => {
+            this.socket?.off(event, handler);
+            this.socket?.on(event, handler);
+          });
+        });
+
         // Re-subscribe to active rooms after reconnection
         this.activeSubscriptions.forEach((room) => {
           if (room.startsWith("order:")) {
@@ -150,8 +236,10 @@ class SocketService {
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
+      this.currentRole = null;
+      this.currentToken = null;
       this.activeSubscriptions.clear();
-      console.log("[SocketService] Disconnected and cleared subscriptions");
+      console.log("[SocketService] Disconnected and cleared socket instance");
     }
   }
 
@@ -363,15 +451,12 @@ class SocketService {
     const wrappedHandler = (offer: any) => {
       console.log(
         `[SocketService] Received delivery order request:`,
-        offer?.orderNumber,
+        offer?.orderNumber || offer?.assignmentId,
       );
       handler(offer);
     };
 
-    this.socket?.on("delivery:order:request", wrappedHandler);
-    return () => {
-      this.socket?.off("delivery:order:request", wrappedHandler);
-    };
+    return this.registerListener("delivery:order:request", wrappedHandler);
   }
 
   /**
@@ -386,11 +471,11 @@ class SocketService {
       handler(notif);
     };
 
-    this.socket?.on("delivery:notification", wrappedHandler);
-    this.socket?.on("delivery:portal:announcement", wrappedHandler);
+    const unsub1 = this.registerListener("delivery:notification", wrappedHandler);
+    const unsub2 = this.registerListener("delivery:portal:announcement", wrappedHandler);
     return () => {
-      this.socket?.off("delivery:notification", wrappedHandler);
-      this.socket?.off("delivery:portal:announcement", wrappedHandler);
+      unsub1();
+      unsub2();
     };
   }
 
@@ -406,11 +491,11 @@ class SocketService {
       handler(data);
     };
 
-    this.socket?.on("delivery:order:expired", wrappedHandler);
-    this.socket?.on("delivery:order:cancelled", wrappedHandler);
+    const unsub1 = this.registerListener("delivery:order:expired", wrappedHandler);
+    const unsub2 = this.registerListener("delivery:order:cancelled", wrappedHandler);
     return () => {
-      this.socket?.off("delivery:order:expired", wrappedHandler);
-      this.socket?.off("delivery:order:cancelled", wrappedHandler);
+      unsub1();
+      unsub2();
     };
   }
 

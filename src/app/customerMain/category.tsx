@@ -292,6 +292,12 @@ export const ALL_CATEGORY_SECTIONS: SectionCategoryData[] = [
         imageUrl:
           "https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?w=300&q=80",
       },
+      {
+        id: "baby-toys",
+        name: "Baby Toys",
+        imageUrl:
+          "https://images.unsplash.com/photo-1599623560574-39d485900c95?w=300&q=80",
+      },
     ],
   },
   {

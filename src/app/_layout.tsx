@@ -4,6 +4,12 @@ import { useAppDispatch } from "@/store/hooks";
 import { initializeAuth } from "@/store/slices/authSlice";
 import { initializeVendorAuth } from "@/store/slices/vendorAuthSlice";
 import {
+  initializeDeliveryAuth,
+  setIncomingOffer,
+  clearIncomingOffer,
+  fetchActiveAssignment,
+} from "@/store/slices/deliverySlice";
+import {
   fetchWishlist,
   loadWishlistFromStorage,
 } from "@/store/slices/wishlistSlice";
@@ -32,6 +38,7 @@ function AppContent() {
     // 1. Attempt automatic session restoration on boot
     dispatch(initializeAuth());
     dispatch(initializeVendorAuth());
+    dispatch(initializeDeliveryAuth());
     dispatch(loadWishlistFromStorage());
     dispatch(fetchWishlist());
 
@@ -40,10 +47,24 @@ function AppContent() {
 
     // 3. Initialize Notification Listeners (handles foreground popup + background tap + cold-start)
     const cleanupPushListeners = initPushNotificationListeners((foregroundNotif) => {
-      const targetRole = (foregroundNotif.data as any)?.targetRole || (foregroundNotif.data as any)?.role || "customer";
+      const data = foregroundNotif.data as any;
+      const targetRole = data?.targetRole || data?.role || "customer";
       if (targetRole === "vendor") incrementUnread("vendor");
       else if (targetRole === "admin" || targetRole === "staff") incrementUnread("admin");
-      else incrementUnread("customer");
+      else if (targetRole === "delivery_boy") {
+        incrementUnread("delivery");
+        dispatch(fetchActiveAssignment());
+      } else {
+        incrementUnread("customer");
+      }
+
+      if (
+        targetRole === "delivery_boy" ||
+        data?.screen === "DeliveryMain" ||
+        data?.type === "delivery_request_received"
+      ) {
+        dispatch(fetchActiveAssignment());
+      }
 
       setBannerMessage({
         id: `push_${Date.now()}`,
@@ -64,9 +85,30 @@ function AppContent() {
       });
     });
 
+    // 5. Global delivery partner socket listeners
+    const unsubDeliveryOffer = socketService.onDeliveryOrderRequest((offer) => {
+      console.log("[RootLayout] Delivery order request received:", offer?.orderNumber);
+      dispatch(setIncomingOffer(offer));
+    });
+
+    const unsubDeliveryExpired = socketService.onDeliveryOrderExpired(() => {
+      console.log("[RootLayout] Delivery order expired");
+      dispatch(clearIncomingOffer());
+    });
+
+    const unsubDeliveryNotif = socketService.onDeliveryNotification((notif) => {
+      incrementUnread("delivery");
+      if (notif?.type === "delivery_request_received") {
+        dispatch(fetchActiveAssignment());
+      }
+    });
+
     return () => {
       cleanupPushListeners();
       unsubVendor();
+      unsubDeliveryOffer();
+      unsubDeliveryExpired();
+      unsubDeliveryNotif();
     };
   }, [dispatch]);
 

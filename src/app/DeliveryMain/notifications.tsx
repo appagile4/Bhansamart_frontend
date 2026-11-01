@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
 import { Feather, Ionicons, MaterialCommunityIcons, FontAwesome5 } from "@expo/vector-icons";
@@ -378,6 +378,7 @@ const DeliveryNotificationRow = memo(
 
 export default function DeliveryNotificationsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const theme = useTheme();
   const isDark = theme.mode === "dark";
 
@@ -675,7 +676,10 @@ export default function DeliveryNotificationsScreen() {
               onPress={handlePress}
             />
           )}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: Math.max(insets.bottom, 16) + moderateScale(110) },
+          ]}
           showsVerticalScrollIndicator={false}
           onEndReached={onEndReached}
           onEndReachedThreshold={0.4}
@@ -825,7 +829,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: scale(16),
-    paddingBottom: moderateScale(40),
+    paddingBottom: moderateScale(130),
   },
   notifCard: {
     flexDirection: "row",

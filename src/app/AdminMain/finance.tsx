@@ -1302,7 +1302,7 @@ const styles = StyleSheet.create({
   },
   gridListContent: {
     padding: scale(12),
-    paddingBottom: scale(90),
+    paddingBottom: moderateScale(130),
   },
   withdrawalGridCard: {
     flex: 1,
@@ -1436,7 +1436,7 @@ const styles = StyleSheet.create({
   listContent: {
     padding: scale(12),
     gap: scale(10),
-    paddingBottom: scale(90),
+    paddingBottom: moderateScale(130),
   },
   emptyContainer: {
     alignItems: "center",

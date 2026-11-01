@@ -22,6 +22,7 @@ import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   ScrollView,
   Share,
@@ -229,7 +230,7 @@ export default function ProductDetailScreen() {
   const [isSellerModalVisible, setIsSellerModalVisible] = useState(false);
 
   // Redux state
-  const { currentProduct, relatedProducts, loading } = useAppSelector(
+  const { currentProduct, relatedProducts, loading, isOutsideDeliveryZone } = useAppSelector(
     (state) => state.product
   );
 
@@ -359,6 +360,13 @@ export default function ProductDetailScreen() {
   };
 
   const handleAddToCart = () => {
+    if (isOutsideDeliveryZone) {
+      Alert.alert(
+        "Delivery Unavailable",
+        "This product is not deliverable to your current location. Please update your delivery location to order this product."
+      );
+      return;
+    }
     addToCart({
       id: productId,
       name: productName,
@@ -1079,6 +1087,13 @@ export default function ProductDetailScreen() {
                   isDark={isDark}
                   onPress={handleProductCardPress}
                   onAddToCart={(it) => {
+                    if (isOutsideDeliveryZone) {
+                      Alert.alert(
+                        "Delivery Unavailable",
+                        "This product is not deliverable to your current location."
+                      );
+                      return;
+                    }
                     const sImg = it.images && it.images.length > 0 ? it.images[0].url : "";
                     addToCart({
                       id: it._id || it.id || "",
@@ -1179,7 +1194,20 @@ export default function ProductDetailScreen() {
         </View>
 
         {/* Right Add to Cart / Counter CTA */}
-        {!inStock ? (
+        {isOutsideDeliveryZone ? (
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => {
+              Alert.alert(
+                "Delivery Unavailable",
+                "This product cannot be delivered to your selected location. Please change your delivery address."
+              );
+            }}
+            style={[styles.bottomAddToCartBtn, { backgroundColor: isDark ? "#243545" : "#64748B" }]}
+          >
+            <Text style={styles.bottomAddToCartText}>Unavailable in Area</Text>
+          </TouchableOpacity>
+        ) : !inStock ? (
           <View style={styles.outOfStockBtn}>
             <Text style={styles.outOfStockBtnText}>Out of Stock</Text>
           </View>

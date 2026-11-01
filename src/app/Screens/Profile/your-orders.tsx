@@ -18,7 +18,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   fetchCustomerOrders,
@@ -29,6 +29,7 @@ import socketService from "@/store/services/socketService";
 
 export default function YourOrdersScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const theme = useTheme();
   const isDark = theme.mode === "dark";
   const dispatch = useAppDispatch();
@@ -132,7 +133,10 @@ export default function YourOrdersScreen() {
       {/* 2. Orders Cards List */}
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: Math.max(insets.bottom, 16) + moderateScale(110) },
+        ]}
         refreshControl={
           <RefreshControl
             refreshing={customerLoading}
@@ -459,7 +463,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: scale(16),
-    paddingBottom: moderateScale(30),
+    paddingBottom: moderateScale(130),
     gap: moderateScale(14),
   },
   emptyContainer: {

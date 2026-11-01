@@ -90,6 +90,9 @@ export const initializeAuth = createAsyncThunk(
         const profileRes = await authService.getMe();
         const liveUser = profileRes.data.user;
         await storage.setItem("bhansa_user", JSON.stringify(liveUser));
+        if (liveUser?.role === "delivery_boy") {
+          await storage.setItem("bhansa_delivery_token", storedToken);
+        }
         return { token: storedToken, user: liveUser };
       } catch (apiErr: any) {
         // Only clear storage if explicitly 401/403 (invalid or expired token)
@@ -168,6 +171,13 @@ export const loginUser = createAsyncThunk(
       // Save token and user info in universal storage
       await storage.setItem("bhansa_token", token);
       await storage.setItem("bhansa_user", JSON.stringify(user));
+      if (user.role === "delivery_boy") {
+        await storage.setItem("bhansa_delivery_token", token);
+      } else if (user.role === "vendor") {
+        await storage.setItem("bhansa_vendor_token", token);
+      } else if (user.role === "admin" || user.role === "superadmin") {
+        await storage.setItem("bhansa_admin_token", token);
+      }
 
       // Register device for push notifications
       registerForPushNotificationsAsync(user.role || "customer").catch(() => {});

@@ -139,6 +139,7 @@ export default function CartScreen() {
   const { activeDisplayLocation, selectedAddress } = useAppSelector(
     (state) => state.address,
   );
+  const { isOutsideDeliveryZone } = useAppSelector((state) => state.product);
 
   const [savedItems, setSavedItems] =
     useState<SavedCartItem[]>(INITIAL_SAVED_ITEMS);
@@ -437,6 +438,50 @@ export default function CartScreen() {
               </TouchableOpacity>
             </View>
 
+            {/* Delivery Zone Availability Warning Banner */}
+            {isOutsideDeliveryZone && (
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  backgroundColor: isDark ? "#2A1215" : "#FEF2F2",
+                  borderColor: isDark ? "#5C1D24" : "#FECACA",
+                  borderWidth: 1,
+                  borderRadius: scale(10),
+                  padding: scale(12),
+                  marginBottom: moderateScale(12),
+                  gap: scale(10),
+                }}
+              >
+                <MaterialCommunityIcons
+                  name="map-marker-alert"
+                  size={scale(22)}
+                  color="#DC2626"
+                />
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      fontSize: moderateScale(13),
+                      fontWeight: "700",
+                      color: "#DC2626",
+                      marginBottom: scale(2),
+                    }}
+                  >
+                    Delivery Unavailable in this Area
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: moderateScale(11.5),
+                      color: isDark ? "#F87171" : "#991B1B",
+                      lineHeight: moderateScale(16),
+                    }}
+                  >
+                    Partner stores cannot deliver items in your cart to "{deliveryAddress}". Please switch to a deliverable address to place an order.
+                  </Text>
+                </View>
+              </View>
+            )}
+
             {/* 1. Active Cart Items */}
             {cartItems.length > 0 && (
               <ActiveCartSection
@@ -685,6 +730,13 @@ export default function CartScreen() {
             totalCount={totalCount}
             totalPrice={grandTotal}
             onCheckout={() => {
+              if (isOutsideDeliveryZone) {
+                Alert.alert(
+                  "Delivery Unavailable",
+                  "Your delivery location is outside the store delivery zone. Orders cannot be created for this location. Please update your delivery location."
+                );
+                return;
+              }
               router.push({
                 pathname: "/Screens/Cart/checkout" as any,
                 params: {

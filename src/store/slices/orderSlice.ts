@@ -52,6 +52,8 @@ export interface OrderRecord {
     landmark?: string;
     phone: string;
     type?: string;
+    latitude?: number;
+    longitude?: number;
   };
   paymentMethod: string;
   paymentStatus: string;

@@ -6,12 +6,8 @@ import {
   VendorTransactionRecord,
 } from "@/store/slices/vendorFinanceSlice";
 import { moderateScale, scale } from "@/theme";
-import {
-  Feather,
-  Ionicons,
-  MaterialCommunityIcons,
-} from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
+import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -77,10 +73,13 @@ export default function VendorTransactionScreen() {
   // Filter transactions based on tab
   const filteredTransactions = transactions.filter((t) => {
     if (activeTab === "ALL") return true;
-    if (activeTab === "SETTLED") return t.type === "ORDER_EARNING" && t.status === "SETTLED";
-    if (activeTab === "PENDING") return t.status === "PENDING" || t.status === "CASH_IN_CUSTODY";
+    if (activeTab === "SETTLED")
+      return t.type === "ORDER_EARNING" && t.status === "SETTLED";
+    if (activeTab === "PENDING")
+      return t.status === "PENDING" || t.status === "CASH_IN_CUSTODY";
     if (activeTab === "WITHDRAWAL") return t.type === "WITHDRAWAL";
-    if (activeTab === "COD") return t.type === "COD_COLLECTION" || t.type === "COD_HANDOVER";
+    if (activeTab === "COD")
+      return t.type === "COD_COLLECTION" || t.type === "COD_HANDOVER";
     return true;
   });
 
@@ -99,7 +98,7 @@ export default function VendorTransactionScreen() {
     if (amt > metrics.availableWithdrawalBalance) {
       Alert.alert(
         "Insufficient Balance",
-        `Your withdrawable balance is NPR ${metrics.availableWithdrawalBalance.toLocaleString()}.`
+        `Your withdrawable balance is NPR ${metrics.availableWithdrawalBalance.toLocaleString()}.`,
       );
       return;
     }
@@ -109,7 +108,7 @@ export default function VendorTransactionScreen() {
         requestWithdrawal({
           amount: amt,
           notes: withdrawNotes.trim() || undefined,
-        })
+        }),
       ).unwrap();
 
       setWithdrawModalVisible(false);
@@ -119,14 +118,21 @@ export default function VendorTransactionScreen() {
 
       Alert.alert(
         "Withdrawal Requested",
-        `Withdrawal of NPR ${amt.toLocaleString()} has been queued for daily bank settlement.`
+        `Withdrawal of NPR ${amt.toLocaleString()} has been queued for daily bank settlement.`,
       );
     } catch (err: any) {
-      Alert.alert("Withdrawal Failed", err || "Failed to process withdrawal request.");
+      Alert.alert(
+        "Withdrawal Failed",
+        err || "Failed to process withdrawal request.",
+      );
     }
   };
 
-  const renderTransactionCard = ({ item }: { item: VendorTransactionRecord }) => {
+  const renderTransactionCard = ({
+    item,
+  }: {
+    item: VendorTransactionRecord;
+  }) => {
     const isDirectQr = item.type === "DIRECT_QR_PAYMENT";
     const isCredit =
       item.type === "ORDER_EARNING" ||
@@ -172,22 +178,22 @@ export default function VendorTransactionScreen() {
       item.type === "ORDER_EARNING"
         ? "Order Settlement"
         : item.type === "COD_COLLECTION"
-        ? "COD in Rider Custody"
-        : item.type === "COD_HANDOVER"
-        ? "COD Store Handover"
-        : item.type === "WITHDRAWAL"
-        ? "Bank Withdrawal"
-        : item.type === "DIRECT_QR_PAYMENT"
-        ? "Direct Store QR Paid"
-        : item.type === "REFUND_DEDUCTION"
-        ? "Customer Refund Deduction"
-        : item.type === "COMMISSION_REVERSAL"
-        ? "Commission Reversal (+1.5%)"
-        : item.type === "COMMISSION_DEDUCTION"
-        ? "Platform Commission (-1.5%)"
-        : item.type === "RECOVERY_ADJUSTMENT"
-        ? "Deficit Recovery Offset"
-        : "Platform Fee";
+          ? "COD in Rider Custody"
+          : item.type === "COD_HANDOVER"
+            ? "COD Store Handover"
+            : item.type === "WITHDRAWAL"
+              ? "Bank Withdrawal"
+              : item.type === "DIRECT_QR_PAYMENT"
+                ? "Direct Store QR Paid"
+                : item.type === "REFUND_DEDUCTION"
+                  ? "Customer Refund Deduction"
+                  : item.type === "COMMISSION_REVERSAL"
+                    ? "Commission Reversal (+1.5%)"
+                    : item.type === "COMMISSION_DEDUCTION"
+                      ? "Platform Commission (-1.5%)"
+                      : item.type === "RECOVERY_ADJUSTMENT"
+                        ? "Deficit Recovery Offset"
+                        : "Platform Fee";
 
     return (
       <View style={styles.txnCard}>
@@ -203,11 +209,18 @@ export default function VendorTransactionScreen() {
                 : item.notes || typeLabel}
             </Text>
             <Text style={styles.txnSubtitle} numberOfLines={1}>
-              {typeLabel} &middot; {new Date(item.createdAt).toLocaleDateString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+              {typeLabel} &middot;{" "}
+              {new Date(item.createdAt).toLocaleDateString([], {
+                month: "short",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
             </Text>
             {item.grossAmount > 0 && item.commission > 0 && (
               <Text style={styles.txnBreakdown}>
-                Gross: NPR {item.grossAmount} &middot; Superadmin Fee (1.5%): NPR {item.commission}
+                Gross: NPR {item.grossAmount} &middot; Superadmin Fee (1.5%):
+                NPR {item.commission}
               </Text>
             )}
           </View>
@@ -221,22 +234,27 @@ export default function VendorTransactionScreen() {
                 color: isDirectQr
                   ? "#0284C7"
                   : isCodCustody
-                  ? "#D97706"
-                  : isCredit
-                  ? "#15803D"
-                  : "#DC2626",
+                    ? "#D97706"
+                    : isCredit
+                      ? "#15803D"
+                      : "#DC2626",
               },
             ]}
           >
-            {isCodCustody ? "" : isDirectQr ? "✓ " : isCredit ? "+" : "-"} NPR {Math.abs(item.amount).toLocaleString()}
+            {isCodCustody ? "" : isDirectQr ? "✓ " : isCredit ? "+" : "-"} NPR{" "}
+            {Math.abs(item.amount).toLocaleString()}
           </Text>
           <View
             style={[
               styles.statusBadge,
               item.status === "SETTLED" && { backgroundColor: "#DCFCE7" },
               item.status === "COMPLETED" && { backgroundColor: "#DCFCE7" },
-              item.status === "DIRECT_SETTLED" && { backgroundColor: "#E0F2FE" },
-              item.status === "CASH_IN_CUSTODY" && { backgroundColor: "#FEF9C3" },
+              item.status === "DIRECT_SETTLED" && {
+                backgroundColor: "#E0F2FE",
+              },
+              item.status === "CASH_IN_CUSTODY" && {
+                backgroundColor: "#FEF9C3",
+              },
               item.status === "PENDING" && { backgroundColor: "#EFF6FF" },
               item.status === "RECOVERED" && { backgroundColor: "#F3E8FF" },
             ]}
@@ -255,8 +273,8 @@ export default function VendorTransactionScreen() {
               {item.status === "CASH_IN_CUSTODY"
                 ? "In Custody"
                 : item.status === "DIRECT_SETTLED"
-                ? "Direct Paid"
-                : item.status}
+                  ? "Direct Paid"
+                  : item.status}
             </Text>
           </View>
         </View>
@@ -293,7 +311,8 @@ export default function VendorTransactionScreen() {
               NPR {(metrics.availableWithdrawalBalance || 0).toLocaleString()}
             </Text>
             <Text style={styles.balancePendingSub}>
-              Pending Settlement: NPR {(metrics.pendingSettlement || 0).toLocaleString()}
+              Pending Settlement: NPR{" "}
+              {(metrics.pendingSettlement || 0).toLocaleString()}
             </Text>
           </View>
 
@@ -314,27 +333,49 @@ export default function VendorTransactionScreen() {
         {/* COD In Custody Alert Pill */}
         {metrics.codCashWithDeliveryBoys > 0 && (
           <View style={styles.codAlertBanner}>
-            <MaterialCommunityIcons name="hand-coin" size={scale(16)} color="#854D0E" />
+            <MaterialCommunityIcons
+              name="hand-coin"
+              size={scale(16)}
+              color="#854D0E"
+            />
             <Text style={styles.codAlertText}>
-              NPR {metrics.codCashWithDeliveryBoys.toLocaleString()} Cash on Delivery currently with riders.
+              NPR {metrics.codCashWithDeliveryBoys.toLocaleString()} Cash on
+              Delivery currently with riders.
             </Text>
           </View>
         )}
 
         {/* Pending Recovery Deficit Alert Pill */}
         {(metrics.pendingRecoveries || 0) > 0 && (
-          <View style={[styles.codAlertBanner, { backgroundColor: "#FEF2F2", borderColor: "#FCA5A5" }]}>
-            <MaterialCommunityIcons name="alert-circle-outline" size={scale(16)} color="#DC2626" />
+          <View
+            style={[
+              styles.codAlertBanner,
+              { backgroundColor: "#FEF2F2", borderColor: "#FCA5A5" },
+            ]}
+          >
+            <MaterialCommunityIcons
+              name="alert-circle-outline"
+              size={scale(16)}
+              color="#DC2626"
+            />
             <Text style={[styles.codAlertText, { color: "#991B1B" }]}>
-              NPR {(metrics.pendingRecoveries || 0).toLocaleString()} Pending Recovery Deficit: Deducted automatically from future payouts due to post-withdrawal refund.
+              NPR {(metrics.pendingRecoveries || 0).toLocaleString()} Pending
+              Recovery Deficit: Deducted automatically from future payouts due
+              to post-withdrawal refund.
             </Text>
           </View>
         )}
 
         <View style={styles.payoutScheduleRow}>
-          <Ionicons name="information-circle-outline" size={scale(14)} color="#86C4CB" />
+          <Ionicons
+            name="information-circle-outline"
+            size={scale(14)}
+            color="#86C4CB"
+          />
           <Text style={styles.payoutScheduleText}>
-            Payouts sent to registered bank ({vendorDetails?.bankDetails?.bankName || "Bank"} A/C {bankAccountMasked}).
+            Payouts sent to registered bank (
+            {vendorDetails?.bankDetails?.bankName || "Bank"} A/C{" "}
+            {bankAccountMasked}).
           </Text>
         </View>
       </View>
@@ -354,7 +395,10 @@ export default function VendorTransactionScreen() {
             key={tab.key}
             activeOpacity={0.7}
             onPress={() => setActiveTab(tab.key)}
-            style={[styles.tabBtn, activeTab === tab.key && styles.tabBtnActive]}
+            style={[
+              styles.tabBtn,
+              activeTab === tab.key && styles.tabBtnActive,
+            ]}
           >
             <Text
               style={[
@@ -391,7 +435,9 @@ export default function VendorTransactionScreen() {
           ) : (
             <View style={styles.emptyContainer}>
               <Feather name="file-text" size={scale(32)} color="#CBD5E1" />
-              <Text style={styles.emptyText}>No transactions found for this filter.</Text>
+              <Text style={styles.emptyText}>
+                No transactions found for this filter.
+              </Text>
             </View>
           )
         }
@@ -414,7 +460,9 @@ export default function VendorTransactionScreen() {
             </View>
 
             <View style={styles.modalBalanceBox}>
-              <Text style={styles.modalBalanceLabel}>Available Withdrawable Balance:</Text>
+              <Text style={styles.modalBalanceLabel}>
+                Available Withdrawable Balance:
+              </Text>
               <Text style={styles.modalBalanceVal}>
                 NPR {(metrics.availableWithdrawalBalance || 0).toLocaleString()}
               </Text>
@@ -423,10 +471,14 @@ export default function VendorTransactionScreen() {
             <View style={styles.modalBankBox}>
               <Text style={styles.modalBankLabel}>Payout Destination:</Text>
               <Text style={styles.modalBankVal}>
-                {vendorDetails?.bankDetails?.bankName || "Bank"} &bull; A/C: {bankAccountMasked}
+                {vendorDetails?.bankDetails?.bankName || "Bank"} &bull; A/C:{" "}
+                {bankAccountMasked}
               </Text>
               <Text style={styles.modalBankSub}>
-                Holder: {vendorDetails?.bankDetails?.accountHolderName || vendorDetails?.businessDetails?.businessName || "Store"}
+                Holder:{" "}
+                {vendorDetails?.bankDetails?.accountHolderName ||
+                  vendorDetails?.businessDetails?.businessName ||
+                  "Store"}
               </Text>
             </View>
 
@@ -439,7 +491,9 @@ export default function VendorTransactionScreen() {
               onChangeText={setWithdrawAmount}
             />
 
-            <Text style={styles.inputLabel}>Remarks / Reference (Optional):</Text>
+            <Text style={styles.inputLabel}>
+              Remarks / Reference (Optional):
+            </Text>
             <TextInput
               style={[styles.textInput, { height: scale(60) }]}
               placeholder="e.g. Weekly settlement"
@@ -597,7 +651,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: scale(16),
-    paddingBottom: moderateScale(25),
+    paddingBottom: moderateScale(130),
     gap: scale(8),
   },
   txnCard: {

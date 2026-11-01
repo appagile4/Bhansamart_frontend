@@ -102,7 +102,22 @@ export const initializeDeliveryAuth = createAsyncThunk(
   "delivery/initializeAuth",
   async (_, { rejectWithValue }) => {
     try {
-      const token = await storage.getItem("bhansa_delivery_token");
+      let token = await storage.getItem("bhansa_delivery_token");
+      if (!token) {
+        // Fallback: check if bhansa_token belongs to delivery_boy
+        try {
+          const rawUser = await storage.getItem("bhansa_user");
+          const customerToken = await storage.getItem("bhansa_token");
+          if (rawUser && customerToken) {
+            const parsedUser = JSON.parse(rawUser);
+            if (parsedUser.role === "delivery_boy") {
+              token = customerToken;
+              await storage.setItem("bhansa_delivery_token", customerToken);
+            }
+          }
+        } catch (_) {}
+      }
+
       if (!token) {
         return { isAuthenticated: false, partner: null, token: null };
       }
@@ -518,9 +533,14 @@ export const deliverySlice = createSlice({
 
     // fetchActiveAssignment
     builder.addCase(fetchActiveAssignment.fulfilled, (state, action) => {
-      state.activeOrder = action.payload.hasActiveOrder ? action.payload.order : null;
+      state.activeOrder = action.payload?.hasActiveOrder ? action.payload.order : null;
       if (state.activeOrder) {
         state.availability = "BUSY";
+        state.offeredAssignment = null;
+      } else if (action.payload?.hasPendingOffer && action.payload?.pendingOffer) {
+        state.offeredAssignment = action.payload.pendingOffer;
+      } else if (!action.payload?.hasPendingOffer && !action.payload?.hasActiveOrder && state.offeredAssignment) {
+        state.offeredAssignment = null;
       }
     });
 

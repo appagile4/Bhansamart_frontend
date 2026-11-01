@@ -27,7 +27,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 const STATUS_STEPS: { key: OrderStatus; label: string; icon: any }[] = [
   { key: "PLACED", label: "Order Placed", icon: "receipt-outline" },
@@ -48,6 +48,7 @@ const STATUS_STEPS: { key: OrderStatus; label: string; icon: any }[] = [
 
 export default function OrderSummaryScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const theme = useTheme();
   const isDark = theme.mode === "dark";
   const dispatch = useAppDispatch();
@@ -529,7 +530,10 @@ export default function OrderSummaryScreen() {
       {/* 2. Scrollable Body */}
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: Math.max(insets.bottom, 16) + moderateScale(110) },
+        ]}
       >
         {/* ── Live Real-Time Status Card ─────────────────────────────── */}
         <View
@@ -1296,6 +1300,8 @@ export default function OrderSummaryScreen() {
                     styles.liveTrackingText,
                     isDark && { color: "#4ADE80" },
                   ]}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
                 >
                   {liveRiderLocation
                     ? `Live GPS Active • (${liveRiderLocation.latitude.toFixed(4)}°N, ${liveRiderLocation.longitude.toFixed(4)}°E)`
@@ -2205,7 +2211,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: scale(16),
-    paddingBottom: moderateScale(30),
+    paddingBottom: moderateScale(130),
     gap: moderateScale(14),
   },
   statusCard: {
@@ -2516,8 +2522,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   partnerCard: {
-    flexDirection: "row",
-    alignItems: "center",
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: "#E2E8F0",
@@ -2568,6 +2572,7 @@ const styles = StyleSheet.create({
   partnerCardTop: {
     flexDirection: "row",
     alignItems: "center",
+    width: "100%",
   },
   liveTrackingRow: {
     flexDirection: "row",
@@ -2580,6 +2585,7 @@ const styles = StyleSheet.create({
     gap: scale(8),
     borderWidth: 1,
     borderColor: "#A7F3D0",
+    width: "100%",
   },
   liveTrackingDot: {
     width: scale(8),
@@ -2592,6 +2598,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#065F46",
     flex: 1,
+    flexShrink: 1,
   },
   actionBtnOutline: {
     flexDirection: "row",

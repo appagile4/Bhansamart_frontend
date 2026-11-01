@@ -1230,7 +1230,7 @@ const styles = StyleSheet.create({
   /* LIST VIEW CARD */
   listContent: {
     paddingHorizontal: scale(16),
-    paddingBottom: moderateScale(30),
+    paddingBottom: moderateScale(130),
     gap: moderateScale(10),
   },
   productCardList: {

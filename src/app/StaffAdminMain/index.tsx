@@ -853,7 +853,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: moderateScale(12),
-    paddingBottom: moderateScale(30),
+    paddingBottom: moderateScale(130),
   },
   sectionHeader: {
     marginTop: moderateScale(14),

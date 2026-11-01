@@ -247,7 +247,10 @@ export default function DeliveryWalletScreen() {
         style={{ flex: 1 }}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: Math.max(insets.bottom, 16) + moderateScale(110) },
+          ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           refreshControl={
@@ -910,7 +913,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: scale(16),
-    paddingBottom: moderateScale(40),
+    paddingBottom: moderateScale(130),
   },
   custodyAlertBanner: {
     flexDirection: "row",

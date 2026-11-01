@@ -52,7 +52,7 @@ export const navigateFromNotificationData = (data?: NotificationPayloadData | nu
 
       // If delivery partner target
       if (data.targetRole === "delivery_boy" || screenTarget.includes("delivery")) {
-        router.navigate("/DeliveryMain/orders" as any);
+        router.navigate("/DeliveryMain" as any);
         return;
       }
 
@@ -63,7 +63,7 @@ export const navigateFromNotificationData = (data?: NotificationPayloadData | nu
 
     // 3. Delivery partner tasks
     if (notifType.includes("DELIVERY") || screenTarget.includes("delivery")) {
-      router.navigate("/DeliveryMain/orders" as any);
+      router.navigate("/DeliveryMain" as any);
       return;
     }
 

@@ -73,7 +73,15 @@ api.interceptors.request.use(
       if (config.url?.includes("/admin")) {
         token = adminToken || customerToken || vendorToken;
       } else if (config.url?.includes("/delivery")) {
-        token = deliveryToken || vendorToken || customerToken;
+        token = deliveryToken;
+        if (!token && customerToken) {
+          try {
+            const rawUser = await storage.getItem("bhansa_user");
+            if (rawUser && JSON.parse(rawUser)?.role === "delivery_boy") {
+              token = customerToken;
+            }
+          } catch (_) {}
+        }
       } else if (
         config.url?.includes("/vendor") ||
         config.url?.includes("/auth/vendor") ||

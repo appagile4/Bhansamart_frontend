@@ -93,8 +93,10 @@ export default function LoginScreen() {
           await storage.setItem("bhansa_admin_token", result.token);
           router.replace("/AdminMain" as any);
         } else if (userRole === "vendor") {
+          await storage.setItem("bhansa_vendor_token", result.token);
           router.replace("/VendorMain" as any);
         } else if (userRole === "delivery_boy") {
+          await storage.setItem("bhansa_delivery_token", result.token);
           router.replace("/DeliveryMain" as any);
         } else {
           router.replace("/customerMain" as any);
