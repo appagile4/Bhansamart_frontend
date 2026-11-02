@@ -687,9 +687,15 @@ export default function SelectLocationModal({
                 <View
                   style={[
                     styles.actionCard,
+                    selectedLocationType === "current_location" && {
+                      borderColor: "#008080",
+                    },
                     isDark && {
                       backgroundColor: "#1A242F",
-                      borderColor: "#2B3A4A",
+                      borderColor:
+                        selectedLocationType === "current_location"
+                          ? "#008080"
+                          : "#2B3A4A",
                     },
                   ]}
                 >
@@ -970,8 +976,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingVertical: scale(13),
-    paddingHorizontal: scale(14),
-    width: "100%",
+    paddingLeft: scale(14),
+    paddingRight: scale(18),
   },
   actionLeft: {
     flex: 1,
@@ -980,7 +986,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: scale(10),
-    marginRight: scale(12),
+    marginRight: scale(10),
   },
   actionTextWrap: {
     flex: 1,
@@ -994,6 +1000,7 @@ const styles = StyleSheet.create({
     height: scale(24),
     alignItems: "center",
     justifyContent: "center",
+    marginRight: scale(2),
   },
   actionText: {
     fontSize: moderateScale(14),
@@ -1021,12 +1028,13 @@ const styles = StyleSheet.create({
     borderRadius: scale(12),
     borderWidth: 1.5,
     borderColor: "#E2E8F0",
-    padding: scale(12),
+    paddingVertical: scale(12),
+    paddingLeft: scale(12),
+    paddingRight: scale(16),
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: scale(10),
-    width: "100%",
   },
   locationCardSelected: {
     borderColor: "#008080",
@@ -1052,6 +1060,7 @@ const styles = StyleSheet.create({
     height: scale(24),
     alignItems: "center",
     justifyContent: "center",
+    marginRight: scale(2),
   },
   locationName: {
     fontSize: moderateScale(14),
