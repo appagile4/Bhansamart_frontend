@@ -7,7 +7,7 @@ import {
 import { moderateScale, scale, useTheme } from "@/theme";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -30,59 +30,115 @@ export default function AdminVendorsScreen() {
   const PAGE_SIZE = 8;
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filterVerification, setFilterVerification] = useState("");
   const [page, setPage] = useState(1);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
+  // Maintain latest refs to prevent stale closure access in callbacks
+  const debouncedSearchRef = useRef(debouncedSearch);
+  debouncedSearchRef.current = debouncedSearch;
+  const filterVerificationRef = useRef(filterVerification);
+  filterVerificationRef.current = filterVerification;
+
   const { vendors, vendorsTotal, loading } = useAppSelector(
     (state) => state.admin,
   );
 
-  const loadVendors = async (pageNum = 1, fresh = false) => {
-    if (pageNum === 1) {
-      if (fresh) setIsRefreshing(true);
-    } else {
-      setIsLoadingMore(true);
+  // Debounce search text input (400ms).
+  // When text is cleared to empty, reset debounced search immediately.
+  useEffect(() => {
+    const trimmed = search.trim();
+    if (!trimmed) {
+      setDebouncedSearch("");
+      return;
     }
 
-    try {
-      await dispatch(
-        fetchAdminVendors({
-          search: search.trim() || undefined,
-          verification: filterVerification || undefined,
-          page: pageNum,
-          limit: PAGE_SIZE,
-        }),
-      ).unwrap();
-      setPage(pageNum);
-    } catch (err) {
-      console.error("Failed to load vendors:", err);
-    } finally {
-      setIsRefreshing(false);
-      setIsLoadingMore(false);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(trimmed);
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const loadVendors = useCallback(
+    async (
+      pageNum = 1,
+      searchQuery?: string,
+      verification?: string,
+      fresh = false,
+    ) => {
+      if (pageNum === 1) {
+        if (fresh) setIsRefreshing(true);
+      } else {
+        setIsLoadingMore(true);
+      }
+
+      try {
+        const activeSearch =
+          searchQuery !== undefined
+            ? searchQuery.trim()
+            : debouncedSearchRef.current.trim();
+        const activeVerification =
+          verification !== undefined
+            ? verification
+            : filterVerificationRef.current;
+
+        await dispatch(
+          fetchAdminVendors({
+            search: activeSearch || undefined,
+            verification: activeVerification || undefined,
+            page: pageNum,
+            limit: PAGE_SIZE,
+          }),
+        ).unwrap();
+        setPage(pageNum);
+      } catch (err) {
+        console.error("Failed to load vendors:", err);
+      } finally {
+        setIsRefreshing(false);
+        setIsLoadingMore(false);
+      }
+    },
+    [dispatch],
+  );
+
+  // Automatically fetch when debouncedSearch or filterVerification changes
+  useEffect(() => {
+    setPage(1);
+    loadVendors(1, debouncedSearch, filterVerification);
+  }, [debouncedSearch, filterVerification, loadVendors]);
+
+  const handleSearchSubmit = () => {
+    const trimmed = search.trim();
+    if (trimmed !== debouncedSearch) {
+      setDebouncedSearch(trimmed);
+    } else {
+      setPage(1);
+      loadVendors(1, trimmed, filterVerification);
     }
   };
 
-  useEffect(() => {
-    setPage(1);
-    loadVendors(1);
-  }, [filterVerification, dispatch]);
-
-  const handleSearchSubmit = () => {
-    setPage(1);
-    loadVendors(1);
+  const handleClearSearch = () => {
+    setSearch("");
+    if (debouncedSearch === "") {
+      setPage(1);
+      loadVendors(1, "", filterVerification);
+    } else {
+      setDebouncedSearch("");
+    }
   };
 
   const handleRefresh = () => {
     setPage(1);
-    loadVendors(1, true);
+    loadVendors(1, debouncedSearch, filterVerification, true);
   };
 
   const handleEndReached = () => {
     if (isLoadingMore || loading || isRefreshing) return;
     if (vendors.length >= vendorsTotal) return;
-    loadVendors(page + 1);
+    loadVendors(page + 1, debouncedSearch, filterVerification);
   };
 
   const handleUpdateStatus = (vendorId: string, status: string) => {
@@ -100,7 +156,7 @@ export default function AdminVendorsScreen() {
                 verificationStatus: status,
               }),
             );
-            loadVendors(1);
+            loadVendors(1, debouncedSearch, filterVerification);
           },
         },
       ],
@@ -167,23 +223,21 @@ export default function AdminVendorsScreen() {
             placeholder="Search by store, seller or phone..."
             placeholderTextColor="#94A3B8"
             value={search}
-            onChangeText={(txt) => {
-              setSearch(txt);
-              if (txt === "") {
-                setPage(1);
-                loadVendors(1);
-              }
-            }}
+            onChangeText={setSearch}
             onSubmitEditing={handleSearchSubmit}
             returnKeyType="search"
           />
+          {loading && search.length > 0 && (
+            <ActivityIndicator
+              size="small"
+              color="#0284C7"
+              style={{ marginRight: scale(6) }}
+            />
+          )}
           {search.length > 0 && (
             <TouchableOpacity
-              onPress={() => {
-                setSearch("");
-                setPage(1);
-                loadVendors(1);
-              }}
+              onPress={handleClearSearch}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <Feather name="x" size={scale(16)} color="#94A3B8" />
             </TouchableOpacity>
@@ -290,7 +344,20 @@ export default function AdminVendorsScreen() {
         onEndReachedThreshold={0.4}
         ListFooterComponent={renderFooter}
         ListEmptyComponent={
-          !loading ? (
+          loading && !isRefreshing ? (
+            <View style={{ paddingVertical: scale(40), alignItems: "center" }}>
+              <ActivityIndicator size="large" color="#0284C7" />
+              <Text
+                style={{
+                  marginTop: scale(12),
+                  color: textSecondary,
+                  fontSize: moderateScale(13),
+                }}
+              >
+                Loading stores...
+              </Text>
+            </View>
+          ) : (
             <View style={styles.emptyContainer}>
               <MaterialCommunityIcons
                 name="storefront-remove"
@@ -304,7 +371,7 @@ export default function AdminVendorsScreen() {
                 No vendors match the selected filter criteria.
               </Text>
             </View>
-          ) : undefined
+          )
         }
         renderItem={({ item }) => {
           const itemStatus = (

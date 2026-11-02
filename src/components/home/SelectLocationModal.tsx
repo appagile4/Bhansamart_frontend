@@ -399,19 +399,21 @@ export default function SelectLocationModal({
         </View>
 
         {/* Checkmark or Chevron */}
-        {isSelected ? (
-          <Ionicons
-            name="checkmark-circle"
-            size={scale(22)}
-            color="#008080"
-          />
-        ) : (
-          <Feather
-            name="chevron-right"
-            size={scale(18)}
-            color={isDark ? "#94A3B8" : "#64748B"}
-          />
-        )}
+        <View style={styles.locationRightAction}>
+          {isSelected ? (
+            <Ionicons
+              name="checkmark-circle"
+              size={scale(22)}
+              color="#008080"
+            />
+          ) : (
+            <Feather
+              name="chevron-right"
+              size={scale(18)}
+              color={isDark ? "#94A3B8" : "#64748B"}
+            />
+          )}
+        </View>
       </TouchableOpacity>
     );
   };
@@ -635,11 +637,13 @@ export default function SelectLocationModal({
                           </Text>
                         </View>
 
-                        <Feather
-                          name="arrow-up-right"
-                          size={scale(18)}
-                          color={isDark ? "#94A3B8" : "#64748B"}
-                        />
+                        <View style={styles.locationRightAction}>
+                          <Feather
+                            name="arrow-up-right"
+                            size={scale(18)}
+                            color={isDark ? "#94A3B8" : "#64748B"}
+                          />
+                        </View>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -714,7 +718,7 @@ export default function SelectLocationModal({
                           color={isDark ? "#4ADE80" : "#265935"}
                         />
                       )}
-                      <View style={{ flex: 1 }}>
+                      <View style={styles.actionTextWrap}>
                         <Text
                           style={[
                             styles.actionText,
@@ -732,6 +736,7 @@ export default function SelectLocationModal({
                               isDark && { color: "#94A3B8" },
                             ]}
                             numberOfLines={1}
+                            ellipsizeMode="tail"
                           >
                             {currentGpsLocation || activeDisplayLocation}
                           </Text>
@@ -966,16 +971,27 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: scale(13),
     paddingHorizontal: scale(14),
+    width: "100%",
   },
   actionLeft: {
     flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
     flexDirection: "row",
     alignItems: "center",
     gap: scale(10),
     marginRight: scale(12),
   },
+  actionTextWrap: {
+    flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
+    justifyContent: "center",
+  },
   actionRightIcon: {
     flexShrink: 0,
+    width: scale(24),
+    height: scale(24),
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1008,7 +1024,9 @@ const styles = StyleSheet.create({
     padding: scale(12),
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: scale(10),
+    width: "100%",
   },
   locationCardSelected: {
     borderColor: "#008080",
@@ -1024,6 +1042,16 @@ const styles = StyleSheet.create({
   },
   locationTextGroup: {
     flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
+    marginRight: scale(10),
+  },
+  locationRightAction: {
+    flexShrink: 0,
+    width: scale(24),
+    height: scale(24),
+    alignItems: "center",
+    justifyContent: "center",
   },
   locationName: {
     fontSize: moderateScale(14),
