@@ -221,16 +221,20 @@ function TopDeals({
   const theme = useTheme();
   const isDark = theme.mode === "dark";
   const dispatch = useAppDispatch();
-  const { publicProducts, publicLoading } = useAppSelector(
+  const { publicProducts, publicLoading, isOutsideDeliveryZone } = useAppSelector(
     (state) => state.product
   );
 
-  // Self-heal: Fetch live products if not yet loaded in Redux
+  // Self-heal: Fetch live products if not yet loaded in Redux and not currently loading or outside zone
   useEffect(() => {
-    if (!publicProducts || publicProducts.length === 0) {
+    if (
+      !publicLoading &&
+      !isOutsideDeliveryZone &&
+      (!publicProducts || publicProducts.length === 0)
+    ) {
       dispatch(fetchPublicProducts({ limit: 40, sortBy: "popularity" }));
     }
-  }, [dispatch, publicProducts]);
+  }, [dispatch, publicProducts, publicLoading, isOutsideDeliveryZone]);
 
   // Smooth Pulse Animation for Skeletons
   const pulseAnim = useRef(new Animated.Value(0.35)).current;

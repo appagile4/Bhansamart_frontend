@@ -445,9 +445,32 @@ export const addressSlice = createSlice({
         if (addr.addressLine) {
           state.activeDisplayLocation = addr.addressLine;
         }
-        if (addr.latitude != null && addr.longitude != null) {
-          state.latitude = Number(addr.latitude);
-          state.longitude = Number(addr.longitude);
+        let lat = addr.latitude;
+        let lng = addr.longitude;
+
+        if (lat == null || lng == null || isNaN(Number(lat)) || isNaN(Number(lng))) {
+          const lower = (addr.addressLine + " " + (addr.city || "")).toLowerCase();
+          if (lower.includes("dwarka") || lower.includes("dawarka")) {
+            lat = 28.5921;
+            lng = 77.0460;
+          } else if (lower.includes("rohini")) {
+            lat = 28.7212;
+            lng = 77.1038;
+          } else if (lower.includes("meerut")) {
+            lat = 28.9845;
+            lng = 77.7064;
+          } else if (lower.includes("delhi")) {
+            lat = 28.6139;
+            lng = 77.2090;
+          } else if (lower.includes("kathmandu")) {
+            lat = 27.7172;
+            lng = 85.3240;
+          }
+        }
+
+        if (lat != null && lng != null) {
+          state.latitude = Number(lat);
+          state.longitude = Number(lng);
           saveCoordsToStorage(state.latitude, state.longitude);
           socketService.emitCustomerLocation(state.latitude, state.longitude).catch(() => {});
         }

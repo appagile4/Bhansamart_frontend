@@ -194,7 +194,7 @@ function DealsOfTheDays({
   const isDark = theme.mode === "dark";
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { publicProducts, publicLoading } = useAppSelector(
+  const { publicProducts, publicLoading, isOutsideDeliveryZone } = useAppSelector(
     (state) => state.product,
   );
 
@@ -223,7 +223,7 @@ function DealsOfTheDays({
 
   // Automatically fetch products on mount if not loaded
   useEffect(() => {
-    if (!publicProducts || publicProducts.length === 0) {
+    if (!publicLoading && !isOutsideDeliveryZone && (!publicProducts || publicProducts.length === 0)) {
       dispatch(fetchPublicProducts());
     }
   }, [dispatch, publicProducts]);

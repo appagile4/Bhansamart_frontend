@@ -130,6 +130,12 @@ export default function HomeScreen() {
   );
   const customerLat = useAppSelector((state) => state.address?.latitude);
   const customerLng = useAppSelector((state) => state.address?.longitude);
+  const selectedAddressId = useAppSelector(
+    (state) => state.address?.selectedAddressId,
+  );
+  const selectedLocationType = useAppSelector(
+    (state) => state.address?.selectedLocationType,
+  );
   const isOutsideDeliveryZone = useAppSelector(
     (state) => state.product?.isOutsideDeliveryZone,
   );
@@ -183,7 +189,14 @@ export default function HomeScreen() {
         limit: PAGE_SIZE,
       }),
     );
-  }, [dispatch, selectedCategory, customerLat, customerLng]);
+  }, [
+    dispatch,
+    selectedCategory,
+    customerLat,
+    customerLng,
+    selectedAddressId,
+    selectedLocationType,
+  ]);
 
   // ── 2. Infinite Scroll: Fetch Next Batch of Records ──────────────────
   const handleLoadMore = useCallback(() => {

@@ -229,16 +229,45 @@ export default function SelectLocationModal({
     // If saved address coordinates are missing, resolve them automatically
     if (lat == null || lng == null || isNaN(Number(lat)) || isNaN(Number(lng))) {
       try {
-        const query =
-          addr.addressLine ||
-          [addr.houseNo, addr.street, addr.city].filter(Boolean).join(", ");
-        const geo = await Location.geocodeAsync(query);
-        if (geo && geo.length > 0) {
-          lat = geo[0].latitude;
-          lng = geo[0].longitude;
+        const queries = [
+          addr.addressLine,
+          [addr.houseNo, addr.street, addr.city].filter(Boolean).join(", "),
+          [addr.street, addr.city].filter(Boolean).join(", "),
+          addr.city,
+        ].filter((q): q is string => Boolean(q && q.trim().length > 0));
+
+        for (const q of queries) {
+          try {
+            const geo = await Location.geocodeAsync(q);
+            if (geo && geo.length > 0) {
+              lat = geo[0].latitude;
+              lng = geo[0].longitude;
+              break;
+            }
+          } catch {}
         }
       } catch (e) {
         console.warn("Geocode saved address fallback failed:", e);
+      }
+    }
+
+    if (lat == null || lng == null || isNaN(Number(lat)) || isNaN(Number(lng))) {
+      const lower = (addr.addressLine + " " + (addr.city || "")).toLowerCase();
+      if (lower.includes("dwarka") || lower.includes("dawarka")) {
+        lat = 28.5921;
+        lng = 77.0460;
+      } else if (lower.includes("rohini")) {
+        lat = 28.7212;
+        lng = 77.1038;
+      } else if (lower.includes("meerut")) {
+        lat = 28.9845;
+        lng = 77.7064;
+      } else if (lower.includes("delhi")) {
+        lat = 28.6139;
+        lng = 77.2090;
+      } else if (lower.includes("kathmandu")) {
+        lat = 27.7172;
+        lng = 85.3240;
       }
     }
 

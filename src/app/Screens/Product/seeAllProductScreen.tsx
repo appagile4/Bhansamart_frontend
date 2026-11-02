@@ -340,6 +340,9 @@ export default function SeeAllProductScreen() {
   const publicCurrentPage = useAppSelector(
     (state) => state.product?.publicCurrentPage || 1
   );
+  
+  const customerLat = useAppSelector((state) => state.address?.latitude);
+  const customerLng = useAppSelector((state) => state.address?.longitude);
 
   const pulseAnim = useRef(new Animated.Value(0.35)).current;
 
@@ -366,6 +369,8 @@ export default function SeeAllProductScreen() {
     async (page = 1) => {
       await dispatch(
         fetchPublicProducts({
+          lat: customerLat || undefined,
+          lng: customerLng || undefined,
           page,
           limit: 20,
           category:
@@ -375,7 +380,7 @@ export default function SeeAllProductScreen() {
         })
       );
     },
-    [dispatch, params.category]
+    [dispatch, params.category, customerLat, customerLng]
   );
 
   useEffect(() => {
