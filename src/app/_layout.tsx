@@ -29,6 +29,7 @@ import {
 } from "@/services/pushNotificationService";
 import socketService from "@/store/services/socketService";
 import { incrementUnread } from "@/utils/notificationSync";
+import AdminNoInternetModal from "@/components/admin/AdminNoInternetModal";
 
 // Suppress internal React Navigation / Expo Router development-only reconciliation warnings
 LogBox.ignoreLogs([
@@ -130,6 +131,7 @@ function AppContent() {
         onDismiss={() => setBannerMessage(null)}
         durationMs={3000}
       />
+      <AdminNoInternetModal />
       <Stack
         screenOptions={{
           headerShown: false,

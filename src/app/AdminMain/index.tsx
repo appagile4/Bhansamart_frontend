@@ -3,12 +3,13 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   fetchAdminDashboardCharts,
   fetchAdminDashboardStats,
+  setAdminNetworkError,
 } from "@/store/slices/adminSlice";
 import { moderateScale, scale, useTheme } from "@/theme";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Platform,
   RefreshControl,
@@ -20,6 +21,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useNetInfo } from "@react-native-community/netinfo";
 
 const TIMEFRAMES = [
   { id: "all", label: "All Time" },
@@ -54,20 +56,52 @@ export default function AdminDashboardOverviewScreen() {
   const [selectedTimeframe, setSelectedTimeframe] = useState("all");
   const [chartMetric, setChartMetric] = useState<"sales" | "orders">("sales");
 
+  const netInfo = useNetInfo();
+  const isOffline =
+    netInfo.isConnected === false ||
+    (netInfo.isConnected === true && netInfo.isInternetReachable === false);
+
   const { stats, charts, loading } = useAppSelector((state) => state.admin);
   const { user } = useAppSelector((state) => state.auth);
 
   const isSuperAdmin =
     user?.role === "superadmin" || stats?.isSuperAdmin === true;
 
-  const loadData = () => {
-    dispatch(fetchAdminDashboardStats({ timeframe: selectedTimeframe }));
-    dispatch(fetchAdminDashboardCharts(7));
+  const loadData = async () => {
+    try {
+      await Promise.all([
+        dispatch(fetchAdminDashboardStats({ timeframe: selectedTimeframe })).unwrap(),
+        dispatch(fetchAdminDashboardCharts(7)).unwrap(),
+      ]);
+      dispatch(setAdminNetworkError(false));
+    } catch (err: any) {
+      const msg = (err?.message || "").toLowerCase();
+      if (
+        msg.includes("network") ||
+        msg.includes("internet") ||
+        msg.includes("connection") ||
+        !err?.statusCode
+      ) {
+        dispatch(setAdminNetworkError(true));
+      }
+    }
   };
 
   useEffect(() => {
-    loadData();
+    if (!isOffline) {
+      loadData();
+    }
   }, [selectedTimeframe, dispatch]);
+
+  // Auto-reload data when network connection is restored
+  const prevOfflineRef = useRef(isOffline);
+  useEffect(() => {
+    if (prevOfflineRef.current && !isOffline) {
+      dispatch(setAdminNetworkError(false));
+      loadData();
+    }
+    prevOfflineRef.current = isOffline;
+  }, [isOffline]);
 
   const kpi = stats?.kpi;
 

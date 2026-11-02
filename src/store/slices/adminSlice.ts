@@ -61,6 +61,7 @@ export interface AdminState {
   loading: boolean;
   actionLoading: boolean;
   error: string | null;
+  isNetworkError: boolean;
 }
 
 const initialState: AdminState = {
@@ -89,6 +90,7 @@ const initialState: AdminState = {
   loading: false,
   actionLoading: false,
   error: null,
+  isNetworkError: false,
 };
 
 // ── Async Thunks ──────────────────────────────────────────────────────
@@ -311,6 +313,9 @@ export const adminSlice = createSlice({
     clearCurrentTicket: (state) => {
       state.currentTicket = null;
     },
+    setAdminNetworkError: (state, action: PayloadAction<boolean>) => {
+      state.isNetworkError = action.payload;
+    },
   },
   extraReducers: (builder) => {
     // Stats
@@ -459,6 +464,7 @@ export const adminSlice = createSlice({
   },
 });
 
-export const { clearCurrentVendor, clearCurrentTicket } = adminSlice.actions;
+export const { clearCurrentVendor, clearCurrentTicket, setAdminNetworkError } =
+  adminSlice.actions;
 
 export default adminSlice.reducer;
