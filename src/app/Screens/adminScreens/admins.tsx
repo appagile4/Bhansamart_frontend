@@ -73,6 +73,12 @@ export default function AdminAdminsScreen() {
   const [selectedVendorIds, setSelectedVendorIds] = useState<string[]>([]);
   const [permissions, setPermissions] = useState<AdminPermissions>(DEFAULT_PERMISSIONS);
   const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState<{
+    name?: string;
+    email?: string;
+    password?: string;
+    phone?: string;
+  }>({});
 
   const { admins, vendors, loading } = useAppSelector((state) => state.admin);
   const { user } = useAppSelector((state) => state.auth);
@@ -87,6 +93,127 @@ export default function AdminAdminsScreen() {
     loadData();
   }, [dispatch]);
 
+  // Real-time input change handlers with validation
+  const handleNameChange = (val: string) => {
+    setName(val);
+    if (!val.trim()) {
+      setErrors((prev) => ({ ...prev, name: "Staff member name is required." }));
+    } else if (val.trim().length < 2) {
+      setErrors((prev) => ({ ...prev, name: "Name must be at least 2 characters long." }));
+    } else {
+      setErrors((prev) => ({ ...prev, name: undefined }));
+    }
+  };
+
+  const handleEmailChange = (val: string) => {
+    setEmail(val);
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!val.trim()) {
+      setErrors((prev) => ({ ...prev, email: "Email address is required." }));
+    } else if (!emailRegex.test(val.trim())) {
+      setErrors((prev) => ({
+        ...prev,
+        email: "Please enter a valid email address (e.g., admin@bhansamart.com).",
+      }));
+    } else {
+      setErrors((prev) => ({ ...prev, email: undefined }));
+    }
+  };
+
+  const handlePasswordChange = (val: string) => {
+    setPassword(val);
+    if (!editingAdmin && !val) {
+      setErrors((prev) => ({ ...prev, password: "Initial password is required." }));
+    } else if (val && val.length < 6) {
+      setErrors((prev) => ({
+        ...prev,
+        password: "Password must be at least 6 characters long.",
+      }));
+    } else {
+      setErrors((prev) => ({ ...prev, password: undefined }));
+    }
+  };
+
+  const handlePhoneChange = (val: string) => {
+    // Enforce maximum 10-digit limit
+    const trimmed = val.slice(0, 10);
+    setPhone(trimmed);
+
+    if (!trimmed.trim()) {
+      setErrors((prev) => ({ ...prev, phone: "Phone number is required." }));
+    } else if (/[^0-9]/.test(trimmed)) {
+      setErrors((prev) => ({
+        ...prev,
+        phone: "Invalid phone number. Digits only, no symbols (+, -, etc.) or letters.",
+      }));
+    } else if (trimmed.length < 10) {
+      setErrors((prev) => ({
+        ...prev,
+        phone: `Phone number must be exactly 10 digits (${trimmed.length}/10).`,
+      }));
+    } else {
+      setErrors((prev) => ({ ...prev, phone: undefined }));
+    }
+  };
+
+  // Form Validation
+  const validateForm = (): boolean => {
+    const newErrors: {
+      name?: string;
+      email?: string;
+      password?: string;
+      phone?: string;
+    } = {};
+
+    // 1. Name validation
+    if (!name.trim()) {
+      newErrors.name = "Staff member name is required.";
+    } else if (name.trim().length < 2) {
+      newErrors.name = "Name must be at least 2 characters long.";
+    }
+
+    // 2. Email validation (mandatory when creating)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!editingAdmin) {
+      if (!email.trim()) {
+        newErrors.email = "Email address is required.";
+      } else if (!emailRegex.test(email.trim())) {
+        newErrors.email = "Please enter a valid email address (e.g., admin@bhansamart.com).";
+      }
+    }
+
+    // 3. Password validation
+    if (!editingAdmin) {
+      if (!password) {
+        newErrors.password = "Initial password is required.";
+      } else if (password.length < 6) {
+        newErrors.password = "Password must be at least 6 characters long.";
+      }
+    } else if (password && password.length < 6) {
+      newErrors.password = "New password must be at least 6 characters long.";
+    }
+
+    // 4. Phone validation (10 digits, digits only, required)
+    const cleanPhone = phone.trim();
+    if (!cleanPhone) {
+      newErrors.phone = "Phone number is required.";
+    } else if (/[^0-9]/.test(cleanPhone)) {
+      newErrors.phone = "Invalid phone number. Digits only, no symbols (+, -, etc.) or letters.";
+    } else if (cleanPhone.length !== 10) {
+      newErrors.phone = `Phone number must be exactly 10 digits (currently ${cleanPhone.length} digits).`;
+    }
+
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length > 0) {
+      const firstError = Object.values(newErrors)[0];
+      Alert.alert("Validation Error", firstError);
+      return false;
+    }
+
+    return true;
+  };
+
   // Open Create Modal
   const handleOpenCreate = () => {
     setEditingAdmin(null);
@@ -94,6 +221,7 @@ export default function AdminAdminsScreen() {
     setEmail("");
     setPassword("");
     setPhone("");
+    setErrors({});
     setSelectedVendorIds([]);
     setPermissions(DEFAULT_PERMISSIONS);
     setStoreSearch("");
@@ -107,6 +235,7 @@ export default function AdminAdminsScreen() {
     setEmail(admin.email || "");
     setPassword("");
     setPhone(admin.phone || "");
+    setErrors({});
     const vendorIds = (admin.assignedVendors || []).map((v: any) => (v?._id ? v._id : v));
     setSelectedVendorIds(vendorIds);
     setPermissions({
@@ -141,16 +270,8 @@ export default function AdminAdminsScreen() {
   };
 
   const handleSaveAdmin = async () => {
-    if (!name.trim()) {
-      Alert.alert("Validation Error", "Staff member name is required.");
+    if (!validateForm()) {
       return;
-    }
-
-    if (!editingAdmin) {
-      if (!email.trim() || !password) {
-        Alert.alert("Validation Error", "Email address and initial password are required.");
-        return;
-      }
     }
 
     setSubmitting(true);
@@ -824,29 +945,52 @@ export default function AdminAdminsScreen() {
 
                 <Text style={[styles.inputLabel, { color: textPrimary }]}>Full Name *</Text>
                 <TextInput
-                  style={[styles.modalInput, { color: textPrimary, borderColor: border, backgroundColor: isDark ? "#10161C" : "#F8FAFC" }]}
+                  style={[
+                    styles.modalInput,
+                    {
+                      color: textPrimary,
+                      borderColor: errors.name ? "#EF4444" : border,
+                      backgroundColor: isDark ? "#10161C" : "#F8FAFC",
+                    },
+                  ]}
                   placeholder="e.g., Rajesh Sharma"
                   placeholderTextColor="#94A3B8"
                   value={name}
-                  onChangeText={setName}
+                  onChangeText={handleNameChange}
                 />
+                {errors.name ? (
+                  <View style={styles.errorRow}>
+                    <Feather name="alert-circle" size={scale(12)} color="#EF4444" />
+                    <Text style={styles.errorText}>{errors.name}</Text>
+                  </View>
+                ) : null}
 
                 <Text style={[styles.inputLabel, { color: textPrimary }]}>Email Address *</Text>
                 <TextInput
                   style={[
                     styles.modalInput,
-                    { color: textPrimary, borderColor: border, backgroundColor: isDark ? "#10161C" : "#F8FAFC" },
+                    {
+                      color: textPrimary,
+                      borderColor: errors.email ? "#EF4444" : border,
+                      backgroundColor: isDark ? "#10161C" : "#F8FAFC",
+                    },
                     Boolean(editingAdmin) && { opacity: 0.65 },
                   ]}
                   placeholder="admin.ops@bhansamart.com"
                   placeholderTextColor="#94A3B8"
                   value={email}
-                  onChangeText={setEmail}
+                  onChangeText={handleEmailChange}
                   keyboardType="email-address"
                   autoCapitalize="none"
+                  autoCorrect={false}
                   editable={!editingAdmin}
                 />
-                {editingAdmin ? (
+                {errors.email ? (
+                  <View style={styles.errorRow}>
+                    <Feather name="alert-circle" size={scale(12)} color="#EF4444" />
+                    <Text style={styles.errorText}>{errors.email}</Text>
+                  </View>
+                ) : editingAdmin ? (
                   <Text style={[styles.fieldNote, { color: textSecondary }]}>
                     Email address is tied to authentication and cannot be changed.
                   </Text>
@@ -856,23 +1000,71 @@ export default function AdminAdminsScreen() {
                   {editingAdmin ? "Change Password (leave blank to keep current)" : "Initial Password *"}
                 </Text>
                 <TextInput
-                  style={[styles.modalInput, { color: textPrimary, borderColor: border, backgroundColor: isDark ? "#10161C" : "#F8FAFC" }]}
+                  style={[
+                    styles.modalInput,
+                    {
+                      color: textPrimary,
+                      borderColor: errors.password ? "#EF4444" : border,
+                      backgroundColor: isDark ? "#10161C" : "#F8FAFC",
+                    },
+                  ]}
                   placeholder={editingAdmin ? "••••••••" : "Minimum 6 characters"}
                   placeholderTextColor="#94A3B8"
                   value={password}
-                  onChangeText={setPassword}
+                  onChangeText={handlePasswordChange}
                   secureTextEntry
                 />
+                {errors.password ? (
+                  <View style={styles.errorRow}>
+                    <Feather name="alert-circle" size={scale(12)} color="#EF4444" />
+                    <Text style={styles.errorText}>{errors.password}</Text>
+                  </View>
+                ) : null}
 
-                <Text style={[styles.inputLabel, { color: textPrimary }]}>Phone Number</Text>
+                <View style={styles.labelRow}>
+                  <Text style={[styles.inputLabel, { color: textPrimary, marginTop: 0 }]}>Phone Number *</Text>
+                  <Text
+                    style={[
+                      styles.phoneCounter,
+                      {
+                        color:
+                          phone.trim().length === 10
+                            ? "#10B981"
+                            : errors.phone
+                            ? "#EF4444"
+                            : textSecondary,
+                      },
+                    ]}
+                  >
+                    {phone.length}/10 digits
+                  </Text>
+                </View>
                 <TextInput
-                  style={[styles.modalInput, { color: textPrimary, borderColor: border, backgroundColor: isDark ? "#10161C" : "#F8FAFC" }]}
+                  style={[
+                    styles.modalInput,
+                    {
+                      color: textPrimary,
+                      borderColor: errors.phone ? "#EF4444" : border,
+                      backgroundColor: isDark ? "#10161C" : "#F8FAFC",
+                    },
+                  ]}
                   placeholder="e.g., 9801234567"
                   placeholderTextColor="#94A3B8"
                   value={phone}
-                  onChangeText={setPhone}
+                  onChangeText={handlePhoneChange}
                   keyboardType="phone-pad"
+                  maxLength={10}
                 />
+                {errors.phone ? (
+                  <View style={styles.errorRow}>
+                    <Feather name="alert-circle" size={scale(12)} color="#EF4444" />
+                    <Text style={styles.errorText}>{errors.phone}</Text>
+                  </View>
+                ) : (
+                  <Text style={[styles.fieldNote, { color: textSecondary }]}>
+                    Enter a valid 10-digit mobile number (e.g., 9801234567).
+                  </Text>
+                )}
               </View>
 
               {/* Vendor Store Scoping Section */}
@@ -1656,6 +1848,13 @@ const styles = StyleSheet.create({
     marginTop: scale(8),
     marginBottom: scale(4),
   },
+  labelRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: scale(8),
+    marginBottom: scale(4),
+  },
   modalInput: {
     borderWidth: 1,
     borderRadius: scale(8),
@@ -1666,6 +1865,21 @@ const styles = StyleSheet.create({
   fieldNote: {
     fontSize: moderateScale(10),
     marginTop: scale(2),
+  },
+  errorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(4),
+    marginTop: scale(3),
+  },
+  errorText: {
+    fontSize: moderateScale(11),
+    color: "#EF4444",
+    fontWeight: "600",
+  },
+  phoneCounter: {
+    fontSize: moderateScale(10.5),
+    fontWeight: "700",
   },
   scopeHeaderRow: {
     flexDirection: "row",

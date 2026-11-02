@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import AdminHeader from "@/components/AdminHeader";
 import AdminStoreFilterDropdown from "@/components/AdminStoreFilterDropdown";
 import { moderateScale, scale, useTheme } from "@/theme";
@@ -22,6 +23,7 @@ import {
 } from "@/store/services/adminService";
 
 export default function VendorAnalyticsScreen() {
+  const router = useRouter();
   const theme = useTheme();
   const isDark = theme.mode === "dark";
 
@@ -30,6 +32,19 @@ export default function VendorAnalyticsScreen() {
   const [assignedVendors, setAssignedVendors] = useState<any[]>([]);
   const [selectedVendorId, setSelectedVendorId] = useState<string>("all");
   const [timeRange, setTimeRange] = useState<"today" | "yesterday" | "7d" | "30d" | "monthly" | "all">("all");
+
+  const handleNavigateToKpiDetails = (
+    tab: "all" | "gross" | "net" | "payment" | "returns"
+  ) => {
+    router.push({
+      pathname: "/Screens/adminScreens/VendorAnalyticsDetailsScreen" as any,
+      params: {
+        vendorId: selectedVendorId,
+        timeRange,
+        initialTab: tab,
+      },
+    });
+  };
 
   // Summary Metrics
   const [summary, setSummary] = useState<any>(null);
@@ -198,12 +213,34 @@ export default function VendorAnalyticsScreen() {
           </View>
         ) : (
           <>
+            {/* KPI Cards Grid Header */}
+            <View style={styles.kpiSectionHeader}>
+              <Text style={[styles.kpiSectionTitle, { color: textPrimary }]}>
+                Performance Overview
+              </Text>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => handleNavigateToKpiDetails("all")}
+                style={styles.viewDetailsLink}
+              >
+                <Text style={styles.viewDetailsText}>Deep-Dive Analysis</Text>
+                <Feather name="arrow-up-right" size={scale(14)} color="#0284C7" />
+              </TouchableOpacity>
+            </View>
+
             {/* KPI Cards Grid */}
             <View style={styles.kpiGrid}>
               {/* Gross Sales */}
-              <View style={[styles.kpiCard, { backgroundColor: cardBg, borderColor: border }]}>
-                <View style={styles.kpiIconWrap}>
-                  <MaterialCommunityIcons name="cash-multiple" size={scale(18)} color="#10B981" />
+              <TouchableOpacity
+                activeOpacity={0.75}
+                onPress={() => handleNavigateToKpiDetails("gross")}
+                style={[styles.kpiCard, { backgroundColor: cardBg, borderColor: border }]}
+              >
+                <View style={styles.kpiHeaderRow}>
+                  <View style={styles.kpiIconWrap}>
+                    <MaterialCommunityIcons name="cash-multiple" size={scale(18)} color="#10B981" />
+                  </View>
+                  <Feather name="chevron-right" size={scale(16)} color={textSecondary} />
                 </View>
                 <Text style={[styles.kpiLabel, { color: textSecondary }]}>Gross Sales</Text>
                 <Text style={[styles.kpiValue, { color: textPrimary }]}>
@@ -212,12 +249,19 @@ export default function VendorAnalyticsScreen() {
                 <Text style={[styles.kpiSub, { color: textSecondary }]}>
                   {summary?.orderCount || summary?.totalOrders || 0} total orders
                 </Text>
-              </View>
+              </TouchableOpacity>
 
               {/* Net Sales */}
-              <View style={[styles.kpiCard, { backgroundColor: cardBg, borderColor: border }]}>
-                <View style={[styles.kpiIconWrap, { backgroundColor: "rgba(14, 165, 233, 0.12)" }]}>
-                  <MaterialCommunityIcons name="chart-line" size={scale(18)} color="#0EA5E9" />
+              <TouchableOpacity
+                activeOpacity={0.75}
+                onPress={() => handleNavigateToKpiDetails("net")}
+                style={[styles.kpiCard, { backgroundColor: cardBg, borderColor: border }]}
+              >
+                <View style={styles.kpiHeaderRow}>
+                  <View style={[styles.kpiIconWrap, { backgroundColor: "rgba(14, 165, 233, 0.12)" }]}>
+                    <MaterialCommunityIcons name="chart-line" size={scale(18)} color="#0EA5E9" />
+                  </View>
+                  <Feather name="chevron-right" size={scale(16)} color={textSecondary} />
                 </View>
                 <Text style={[styles.kpiLabel, { color: textSecondary }]}>Net Realized</Text>
                 <Text style={[styles.kpiValue, { color: textPrimary }]}>
@@ -226,12 +270,19 @@ export default function VendorAnalyticsScreen() {
                 <Text style={[styles.kpiSub, { color: "#10B981" }]}>
                   {summary?.completedOrders || 0} delivered
                 </Text>
-              </View>
+              </TouchableOpacity>
 
               {/* COD vs Prepaid */}
-              <View style={[styles.kpiCard, { backgroundColor: cardBg, borderColor: border }]}>
-                <View style={[styles.kpiIconWrap, { backgroundColor: "rgba(245, 158, 11, 0.12)" }]}>
-                  <MaterialCommunityIcons name="bank-transfer" size={scale(18)} color="#F59E0B" />
+              <TouchableOpacity
+                activeOpacity={0.75}
+                onPress={() => handleNavigateToKpiDetails("payment")}
+                style={[styles.kpiCard, { backgroundColor: cardBg, borderColor: border }]}
+              >
+                <View style={styles.kpiHeaderRow}>
+                  <View style={[styles.kpiIconWrap, { backgroundColor: "rgba(245, 158, 11, 0.12)" }]}>
+                    <MaterialCommunityIcons name="bank-transfer" size={scale(18)} color="#F59E0B" />
+                  </View>
+                  <Feather name="chevron-right" size={scale(16)} color={textSecondary} />
                 </View>
                 <Text style={[styles.kpiLabel, { color: textSecondary }]}>Payment Split</Text>
                 <Text style={[styles.kpiValue, { color: textPrimary, fontSize: moderateScale(13) }]} numberOfLines={1}>
@@ -240,12 +291,19 @@ export default function VendorAnalyticsScreen() {
                 <Text style={[styles.kpiSub, { color: textSecondary }]} numberOfLines={1}>
                   Online: NPR {(summary?.onlineSales || 0).toLocaleString()}
                 </Text>
-              </View>
+              </TouchableOpacity>
 
               {/* Returns & Cancellations */}
-              <View style={[styles.kpiCard, { backgroundColor: cardBg, borderColor: border }]}>
-                <View style={[styles.kpiIconWrap, { backgroundColor: "rgba(239, 68, 68, 0.12)" }]}>
-                  <MaterialCommunityIcons name="keyboard-return" size={scale(18)} color="#EF4444" />
+              <TouchableOpacity
+                activeOpacity={0.75}
+                onPress={() => handleNavigateToKpiDetails("returns")}
+                style={[styles.kpiCard, { backgroundColor: cardBg, borderColor: border }]}
+              >
+                <View style={styles.kpiHeaderRow}>
+                  <View style={[styles.kpiIconWrap, { backgroundColor: "rgba(239, 68, 68, 0.12)" }]}>
+                    <MaterialCommunityIcons name="keyboard-return" size={scale(18)} color="#EF4444" />
+                  </View>
+                  <Feather name="chevron-right" size={scale(16)} color={textSecondary} />
                 </View>
                 <Text style={[styles.kpiLabel, { color: textSecondary }]}>Return / Cancel</Text>
                 <Text style={[styles.kpiValue, { color: "#EF4444" }]}>
@@ -254,7 +312,7 @@ export default function VendorAnalyticsScreen() {
                 <Text style={[styles.kpiSub, { color: textSecondary }]}>
                   {summary?.cancelledOrders || 0} cancelled ({summary?.returnRefundRate || 0}%)
                 </Text>
-              </View>
+              </TouchableOpacity>
             </View>
 
             {/* Top Selling Products Preview */}
@@ -489,6 +547,29 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(12),
     marginTop: scale(10),
   },
+  kpiSectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: scale(8),
+    marginTop: scale(4),
+  },
+  kpiSectionTitle: {
+    fontSize: moderateScale(13),
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  viewDetailsLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(3),
+  },
+  viewDetailsText: {
+    fontSize: moderateScale(11.5),
+    fontWeight: "700",
+    color: "#0284C7",
+  },
   kpiGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -501,6 +582,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: scale(12),
   },
+  kpiHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: scale(6),
+  },
   kpiIconWrap: {
     width: scale(32),
     height: scale(32),
@@ -508,7 +595,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(16, 185, 129, 0.12)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: scale(6),
   },
   kpiLabel: {
     fontSize: moderateScale(11),
