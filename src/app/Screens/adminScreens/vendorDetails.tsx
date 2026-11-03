@@ -24,6 +24,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   fetchAdminVendorDetails,
   reviewAdminWithdrawal,
+  createAdminWithdrawal,
   updateAdminVendorVerification,
 } from "@/store/slices/adminSlice";
 import { moderateScale, scale, useTheme } from "@/theme";
@@ -58,6 +59,12 @@ export default function AdminVendorDetailsScreen() {
   const [payoutReference, setPayoutReference] = useState("");
   const [rejectReason, setRejectReason] = useState("");
   const [submittingWithdrawal, setSubmittingWithdrawal] = useState(false);
+
+  // Create Withdrawal modal state (Super Admin)
+  const [showCreateWithdrawal, setShowCreateWithdrawal] = useState(false);
+  const [createWithdrawAmount, setCreateWithdrawAmount] = useState("");
+  const [createWithdrawNotes, setCreateWithdrawNotes] = useState("");
+  const [creatingWithdrawal, setCreatingWithdrawal] = useState(false);
 
   const { currentVendor, loading } = useAppSelector((state) => state.admin);
   const { user } = useAppSelector((state) => state.auth);
@@ -200,16 +207,63 @@ export default function AdminVendorDetailsScreen() {
           payoutReference: payoutReference.trim() || undefined,
           reason: rejectReason.trim() || undefined,
         })
-      );
+      ).unwrap();
       setSelectedWithdrawal(null);
       setPayoutReference("");
       setRejectReason("");
       loadDetails();
-      Alert.alert("Success", `Withdrawal successfully ${withdrawalAction === "APPROVE" ? "approved" : "declined"}.`);
+      Alert.alert(
+        withdrawalAction === "APPROVE" ? "Withdrawal Approved" : "Withdrawal Declined",
+        withdrawalAction === "APPROVE"
+          ? "Withdrawal successfully approved and settled."
+          : "Withdrawal rejected and funds refunded to vendor wallet."
+      );
     } catch (err: any) {
       Alert.alert("Error", err?.message || "Failed to process withdrawal action.");
     } finally {
       setSubmittingWithdrawal(false);
+    }
+  };
+
+  const handleCreateWithdrawalSubmit = async () => {
+    if (!vendor?._id) return;
+    const amountNum = parseFloat(createWithdrawAmount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      Alert.alert("Invalid Amount", "Please enter a valid withdrawal amount greater than NPR 0.");
+      return;
+    }
+
+    const availableBal = vendor.wallet?.currentBalance || 0;
+    if (amountNum > availableBal) {
+      Alert.alert(
+        "Validation Error",
+        `Withdrawal amount (NPR ${amountNum.toLocaleString()}) exceeds vendor available balance (NPR ${availableBal.toLocaleString()}).`
+      );
+      return;
+    }
+
+    setCreatingWithdrawal(true);
+    try {
+      await dispatch(
+        createAdminWithdrawal({
+          vendorId: vendor._id,
+          amount: amountNum,
+          notes: createWithdrawNotes.trim(),
+        })
+      ).unwrap();
+
+      Alert.alert(
+        "Withdrawal Created",
+        `Withdrawal request of NPR ${amountNum.toLocaleString()} created successfully.`
+      );
+      setShowCreateWithdrawal(false);
+      setCreateWithdrawAmount("");
+      setCreateWithdrawNotes("");
+      loadDetails();
+    } catch (err: any) {
+      Alert.alert("Creation Failed", err || "Failed to create withdrawal request.");
+    } finally {
+      setCreatingWithdrawal(false);
     }
   };
 
@@ -1604,6 +1658,15 @@ export default function AdminVendorDetailsScreen() {
                     Vendor Withdrawal Requests & Settlements
                   </Text>
                 </View>
+                {isSuperAdmin && (
+                  <TouchableOpacity
+                    style={styles.createPayoutBtn}
+                    onPress={() => setShowCreateWithdrawal(true)}
+                  >
+                    <Feather name="plus-circle" size={scale(14)} color="#FFFFFF" />
+                    <Text style={styles.createPayoutBtnText}>Create Withdrawal</Text>
+                  </TouchableOpacity>
+                )}
               </View>
 
               {withdrawals.length === 0 ? (
@@ -1615,8 +1678,9 @@ export default function AdminVendorDetailsScreen() {
               ) : (
                 <View style={{ gap: scale(12), marginTop: scale(10) }}>
                   {withdrawals.map((w: any) => {
-                    const isPendingW = w.status === "PENDING";
-                    const isPaid = w.status === "COMPLETED";
+                    const isPendingW = w.status === "PENDING" || w.status === "SUBMITTED";
+                    const isPaid = w.status === "COMPLETED" || w.status === "SETTLED";
+                    const isDeclined = w.status === "REJECTED" || w.status === "FAILED" || w.status === "REVERSED" || w.status === "DECLINED";
 
                     return (
                       <View
@@ -1630,7 +1694,7 @@ export default function AdminVendorDetailsScreen() {
                         ]}
                       >
                         <View style={styles.withdrawalTopRow}>
-                          <View>
+                          <View style={{ flex: 1, marginRight: scale(8) }}>
                             <Text style={[styles.withdrawalAmount, { color: textPrimary }]}>
                               NPR {Number(w.amount || 0).toLocaleString()}
                             </Text>
@@ -1641,6 +1705,14 @@ export default function AdminVendorDetailsScreen() {
                               <Text style={[styles.payoutRefText, { color: "#10B981" }]}>
                                 Ref: {w.payoutReference}
                               </Text>
+                            )}
+                            {w.rejectionReason && (
+                              <View style={{ flexDirection: "row", alignItems: "center", gap: scale(4), marginTop: scale(4) }}>
+                                <Feather name="alert-circle" size={scale(12)} color="#EF4444" />
+                                <Text style={[styles.payoutRefText, { color: "#EF4444", fontWeight: "600" }]}>
+                                  Reason: {w.rejectionReason}
+                                </Text>
+                              </View>
                             )}
                           </View>
 
@@ -1824,6 +1896,7 @@ export default function AdminVendorDetailsScreen() {
         visible={!!selectedWithdrawal}
         transparent
         animationType="fade"
+        statusBarTranslucent
         onRequestClose={() => setSelectedWithdrawal(null)}
       >
         <View style={styles.modalBackdrop}>
@@ -1889,6 +1962,147 @@ export default function AdminVendorDetailsScreen() {
                   <Text style={styles.modalConfirmBtnText}>
                     {withdrawalAction === "APPROVE" ? "Confirm Payout" : "Confirm Decline"}
                   </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Create Withdrawal Modal (Super Admin) ────────────────────────── */}
+      <Modal
+        visible={showCreateWithdrawal}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => {
+          setShowCreateWithdrawal(false);
+          setCreateWithdrawAmount("");
+          setCreateWithdrawNotes("");
+        }}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalBox, { backgroundColor: cardBg, borderColor: border }]}>
+            <View style={styles.modalHeaderRow}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: scale(8) }}>
+                <MaterialCommunityIcons name="cash-plus" size={scale(22)} color="#10B981" />
+                <Text style={[styles.modalHeading, { color: textPrimary }]}>Create Vendor Withdrawal</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowCreateWithdrawal(false);
+                  setCreateWithdrawAmount("");
+                  setCreateWithdrawNotes("");
+                }}
+              >
+                <Feather name="x" size={scale(20)} color={textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Vendor Wallet & Bank Details Summary */}
+            <View
+              style={[
+                styles.modalVendorBalanceBox,
+                { backgroundColor: isDark ? "#121A21" : "#F8FAFC", borderColor: border },
+              ]}
+            >
+              <Text style={{ fontSize: moderateScale(13), fontWeight: "700", color: textPrimary }}>
+                {vendor?.businessDetails?.businessName || vendor?.sellerDetails?.sellerName || "Store"}
+              </Text>
+              <Text style={{ fontSize: moderateScale(11), color: textSecondary, marginTop: scale(2) }}>
+                Bank: {vendor?.bankDetails?.bankName || "Direct Bank"} &bull; A/C: ...
+                {(vendor?.bankDetails?.accountNumber || "").slice(-4)}
+              </Text>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: scale(6) }}>
+                <Text style={{ fontSize: moderateScale(12), color: textSecondary }}>Available Balance:</Text>
+                <Text style={{ fontSize: moderateScale(14), fontWeight: "800", color: "#10B981" }}>
+                  NPR {(vendor?.wallet?.currentBalance || 0).toLocaleString()}
+                </Text>
+              </View>
+            </View>
+
+            {/* Withdrawal Amount Input */}
+            <View style={{ marginTop: scale(14) }}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                <Text style={[styles.inputLabel, { color: textSecondary }]}>Withdrawal Amount (NPR) *</Text>
+                <Text style={{ fontSize: moderateScale(11), color: textSecondary }}>
+                  Max: NPR {(vendor?.wallet?.currentBalance || 0).toLocaleString()}
+                </Text>
+              </View>
+              <TextInput
+                style={[
+                  styles.textInputStyle,
+                  {
+                    color: textPrimary,
+                    borderColor:
+                      parseFloat(createWithdrawAmount) > (vendor?.wallet?.currentBalance || 0)
+                        ? "#EF4444"
+                        : border,
+                  },
+                ]}
+                placeholder="e.g. 5000"
+                placeholderTextColor="#94A3B8"
+                keyboardType="numeric"
+                value={createWithdrawAmount}
+                onChangeText={setCreateWithdrawAmount}
+              />
+            </View>
+
+            {/* Real-time Validation Warning */}
+            {parseFloat(createWithdrawAmount) > (vendor?.wallet?.currentBalance || 0) && (
+              <View
+                style={[
+                  styles.modalValidationWarning,
+                  { backgroundColor: "rgba(239, 68, 68, 0.1)", borderColor: "#EF4444" },
+                ]}
+              >
+                <MaterialCommunityIcons name="alert-circle" size={scale(16)} color="#EF4444" />
+                <Text style={[styles.modalValidationWarningText, { color: "#EF4444" }]}>
+                  Withdrawal amount (NPR {parseFloat(createWithdrawAmount).toLocaleString()}) exceeds vendor available balance (NPR {(vendor?.wallet?.currentBalance || 0).toLocaleString()}).
+                </Text>
+              </View>
+            )}
+
+            {/* Notes Input */}
+            <View style={{ marginTop: scale(12) }}>
+              <Text style={[styles.inputLabel, { color: textSecondary }]}>Notes / Remarks (Optional)</Text>
+              <TextInput
+                style={[styles.textInputStyle, { color: textPrimary, borderColor: border }]}
+                placeholder="e.g. Manual payout or settlement"
+                placeholderTextColor="#94A3B8"
+                value={createWithdrawNotes}
+                onChangeText={setCreateWithdrawNotes}
+              />
+            </View>
+
+            <View style={styles.modalBtnRow}>
+              <TouchableOpacity
+                style={[styles.modalCancelBtn, { borderColor: border }]}
+                onPress={() => {
+                  setShowCreateWithdrawal(false);
+                  setCreateWithdrawAmount("");
+                  setCreateWithdrawNotes("");
+                }}
+              >
+                <Text style={[styles.modalCancelBtnText, { color: textSecondary }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.modalConfirmBtn,
+                  {
+                    backgroundColor:
+                      parseFloat(createWithdrawAmount) > (vendor?.wallet?.currentBalance || 0)
+                        ? "#94A3B8"
+                        : "#10B981",
+                  },
+                ]}
+                onPress={handleCreateWithdrawalSubmit}
+                disabled={creatingWithdrawal}
+              >
+                {creatingWithdrawal ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.modalConfirmBtnText}>Create Withdrawal</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -2409,6 +2623,40 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: moderateScale(9.5),
     fontWeight: "800",
+  },
+  createPayoutBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#10B981",
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(6),
+    borderRadius: scale(8),
+    gap: scale(4),
+  },
+  createPayoutBtnText: {
+    color: "#FFFFFF",
+    fontSize: moderateScale(11),
+    fontWeight: "700",
+  },
+  modalVendorBalanceBox: {
+    padding: scale(12),
+    borderRadius: scale(10),
+    borderWidth: 1,
+    marginTop: scale(12),
+  },
+  modalValidationWarning: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: scale(8),
+    borderRadius: scale(8),
+    borderWidth: 1,
+    gap: scale(6),
+    marginTop: scale(8),
+  },
+  modalValidationWarningText: {
+    flex: 1,
+    fontSize: moderateScale(11),
+    fontWeight: "600",
   },
 
   /* ── Risk & Tickets Tab ── */

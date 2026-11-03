@@ -2072,6 +2072,7 @@ export default function AdminRefundsWorkflowScreen() {
         visible={activeModal === "EXAMINE"}
         transparent
         animationType="fade"
+        statusBarTranslucent
       >
         <View style={styles.modalOverlay}>
           <View
@@ -2287,6 +2288,7 @@ export default function AdminRefundsWorkflowScreen() {
         visible={activeModal === "PICKUP"}
         transparent
         animationType="fade"
+        statusBarTranslucent
       >
         <View style={styles.modalOverlay}>
           <View
@@ -2493,6 +2495,7 @@ export default function AdminRefundsWorkflowScreen() {
         visible={activeModal === "INSPECTION"}
         transparent
         animationType="fade"
+        statusBarTranslucent
       >
         <View style={styles.modalOverlay}>
           <View
@@ -2720,6 +2723,7 @@ export default function AdminRefundsWorkflowScreen() {
         visible={activeModal === "FINALIZE"}
         transparent
         animationType="fade"
+        statusBarTranslucent
       >
         <View style={styles.modalOverlay}>
           <View
@@ -2927,7 +2931,7 @@ export default function AdminRefundsWorkflowScreen() {
       </Modal>
 
       {/* ─── MODAL 5: AUDIT TIMELINE & DETAILS ─── */}
-      <Modal visible={activeModal === "AUDIT"} transparent animationType="fade">
+      <Modal visible={activeModal === "AUDIT"} transparent animationType="fade" statusBarTranslucent>
         <View style={styles.modalOverlay}>
           <View
             style={[

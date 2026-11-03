@@ -150,7 +150,7 @@ export default function AdminAuditLogsScreen() {
       />
 
       {/* Log Details Modal */}
-      <Modal visible={!!selectedLogModal} animationType="slide" transparent>
+      <Modal visible={!!selectedLogModal} animationType="slide" transparent statusBarTranslucent>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: cardBg, borderColor: border }]}>
             <View style={styles.modalHeader}>

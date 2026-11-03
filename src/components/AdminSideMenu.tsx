@@ -18,6 +18,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
 
 
 interface AdminSideMenuProps {
@@ -296,8 +297,10 @@ export default function AdminSideMenu({
       visible={mounted}
       animationType="none"
       transparent
+      statusBarTranslucent
       onRequestClose={() => handleAnimatedClose()}
     >
+      <StatusBar style={isDark ? "light" : "dark"} />
       <View style={styles.rootOverlay}>
         {/* Animated Fade Backdrop */}
         <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>

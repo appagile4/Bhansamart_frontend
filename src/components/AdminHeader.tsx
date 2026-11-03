@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
 import {
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -40,6 +42,7 @@ export default function AdminHeader({
 
   return (
     <>
+      <StatusBar style={isDark ? "light" : "dark"} animated />
       <SafeAreaView edges={["top"]} style={[styles.safeArea, { backgroundColor: bg }]}>
         <View style={[styles.headerContainer, { borderBottomColor: border }]}>
           {/* Left Button (Menu or Back) */}

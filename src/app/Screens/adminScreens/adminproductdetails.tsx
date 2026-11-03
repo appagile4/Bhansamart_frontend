@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -17,6 +18,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { StatusBar } from "expo-status-bar";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -133,35 +135,41 @@ export default function AdminProductDetailsScreen() {
 
   if (loading && !product) {
     return (
-      <SafeAreaView style={[styles.centerContainer, { backgroundColor: bg }]}>
-        <ActivityIndicator size="large" color="#10B981" />
-        <Text style={[styles.loadingText, { color: textSecondary }]}>
-          Loading product details...
-        </Text>
-      </SafeAreaView>
+      <>
+        <StatusBar style={isDark ? "light" : "dark"} />
+        <SafeAreaView style={[styles.centerContainer, { backgroundColor: bg }]}>
+          <ActivityIndicator size="large" color="#10B981" />
+          <Text style={[styles.loadingText, { color: textSecondary }]}>
+            Loading product details...
+          </Text>
+        </SafeAreaView>
+      </>
     );
   }
 
   if (!product) {
     return (
-      <SafeAreaView style={[styles.centerContainer, { backgroundColor: bg }]}>
-        <MaterialCommunityIcons
-          name="alert-circle-outline"
-          size={scale(48)}
-          color="#EF4444"
-        />
-        <Text
-          style={[
-            styles.loadingText,
-            { color: textPrimary, fontWeight: "700" },
-          ]}
-        >
-          Product not found
-        </Text>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Text style={styles.backBtnText}>Go Back</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
+      <>
+        <StatusBar style={isDark ? "light" : "dark"} />
+        <SafeAreaView style={[styles.centerContainer, { backgroundColor: bg }]}>
+          <MaterialCommunityIcons
+            name="alert-circle-outline"
+            size={scale(48)}
+            color="#EF4444"
+          />
+          <Text
+            style={[
+              styles.loadingText,
+              { color: textPrimary, fontWeight: "700" },
+            ]}
+          >
+            Product not found
+          </Text>
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+            <Text style={styles.backBtnText}>Go Back</Text>
+          </TouchableOpacity>
+        </SafeAreaView>
+      </>
     );
   }
 
@@ -198,10 +206,12 @@ export default function AdminProductDetailsScreen() {
   const vendorPayoutEst = (product.price || 0) - commissionEst;
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: bg }]}
-      edges={["top", "left", "right"]}
-    >
+    <>
+      <StatusBar style={isDark ? "light" : "dark"} />
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: bg }]}
+        edges={["top", "left", "right"]}
+      >
       {/* Top Header */}
       <View
         style={[
@@ -821,6 +831,7 @@ export default function AdminProductDetailsScreen() {
         </TouchableOpacity>
       </View>
     </SafeAreaView>
+  </>
   );
 }
 

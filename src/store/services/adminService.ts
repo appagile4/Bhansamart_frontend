@@ -175,6 +175,15 @@ export const reviewAdminWithdrawalApi = async (
   return response.data;
 };
 
+export const createAdminWithdrawalApi = async (payload: {
+  vendorId: string;
+  amount: number;
+  notes?: string;
+}) => {
+  const response = await api.post("/admin/finance/withdrawals", payload);
+  return response.data;
+};
+
 // 8. Platform Payment Accounts
 export const fetchPlatformPaymentConfigApi = async () => {
   const response = await api.get("/admin/platform-payment/config");

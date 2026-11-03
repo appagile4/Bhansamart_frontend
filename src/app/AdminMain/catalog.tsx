@@ -1513,7 +1513,7 @@ export default function AdminCatalogScreen() {
       )}
 
       {/* Category Creation / Edit Modal */}
-      <Modal visible={showCategoryModal} animationType="slide" transparent>
+      <Modal visible={showCategoryModal} animationType="slide" transparent statusBarTranslucent>
         <View style={styles.modalOverlay}>
           <View
             style={[

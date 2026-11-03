@@ -343,7 +343,7 @@ export default function AdminBrandsReviewScreen() {
       />
 
       {/* Review Modal */}
-      <Modal visible={!!selectedBrand} transparent animationType="slide">
+      <Modal visible={!!selectedBrand} transparent animationType="slide" statusBarTranslucent>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: cardBg, borderColor: border }]}>
             <View style={styles.modalHeader}>

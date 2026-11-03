@@ -20,6 +20,8 @@ import {
   fetchAdminTransactions,
   fetchAdminWithdrawals,
   reviewAdminWithdrawal,
+  createAdminWithdrawal,
+  fetchAdminVendors,
 } from "@/store/slices/adminSlice";
 import { moderateScale, scale, useTheme } from "@/theme";
 import AdminHeader from "@/components/AdminHeader";
@@ -44,11 +46,19 @@ export default function AdminFinanceScreen() {
   const [reviewAction, setReviewAction] = useState<"APPROVE" | "REJECT">("APPROVE");
   const [actionLoading, setActionLoading] = useState(false);
 
+  // Create Withdrawal Modal State (Superadmin)
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [selectedVendorForWithdrawal, setSelectedVendorForWithdrawal] = useState<any | null>(null);
+  const [createWithdrawAmount, setCreateWithdrawAmount] = useState("");
+  const [createWithdrawNotes, setCreateWithdrawNotes] = useState("");
+  const [createSubmitting, setCreateSubmitting] = useState(false);
+  const [createVendorSearch, setCreateVendorSearch] = useState("");
+
   const [txnPage, setTxnPage] = useState(1);
   const [isLoadingMoreTxn, setIsLoadingMoreTxn] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const { withdrawals, transactions, transactionsTotal, stats, loading } = useAppSelector(
+  const { withdrawals, transactions, transactionsTotal, stats, loading, vendors } = useAppSelector(
     (state) => state.admin
   );
   const { user } = useAppSelector((state) => state.auth);
@@ -131,8 +141,10 @@ export default function AdminFinanceScreen() {
       ).unwrap();
 
       Alert.alert(
-        "Settlement Processed",
-        `Withdrawal has been marked as ${reviewAction === "APPROVE" ? "SETTLED" : "DECLINED"}.`
+        reviewAction === "APPROVE" ? "Withdrawal Approved" : "Withdrawal Declined",
+        reviewAction === "APPROVE"
+          ? "Withdrawal has been marked as SETTLED and payout ledger recorded."
+          : "Withdrawal has been rejected. Funds have been refunded to the vendor wallet."
       );
       setSelectedWithdrawal(null);
       setPayoutReference("");
@@ -145,13 +157,77 @@ export default function AdminFinanceScreen() {
     }
   };
 
+  const handleCreateWithdrawalSubmit = async () => {
+    if (!selectedVendorForWithdrawal) {
+      Alert.alert("Vendor Required", "Please select a vendor for the withdrawal.");
+      return;
+    }
+
+    const amountNum = parseFloat(createWithdrawAmount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      Alert.alert("Invalid Amount", "Please enter a valid withdrawal amount greater than NPR 0.");
+      return;
+    }
+
+    const availableBalance = selectedVendorForWithdrawal.wallet?.currentBalance || 0;
+    if (amountNum > availableBalance) {
+      Alert.alert(
+        "Validation Error",
+        `Withdrawal amount (NPR ${amountNum.toLocaleString()}) exceeds vendor available balance (NPR ${availableBalance.toLocaleString()}).`
+      );
+      return;
+    }
+
+    setCreateSubmitting(true);
+    try {
+      await dispatch(
+        createAdminWithdrawal({
+          vendorId: selectedVendorForWithdrawal._id,
+          amount: amountNum,
+          notes: createWithdrawNotes.trim(),
+        })
+      ).unwrap();
+
+      Alert.alert(
+        "Withdrawal Created",
+        `A withdrawal request of NPR ${amountNum.toLocaleString()} has been created successfully for ${
+          selectedVendorForWithdrawal.businessDetails?.businessName ||
+          selectedVendorForWithdrawal.sellerDetails?.sellerName ||
+          "Vendor"
+        }.`
+      );
+      setIsCreateModalOpen(false);
+      setSelectedVendorForWithdrawal(null);
+      setCreateWithdrawAmount("");
+      setCreateWithdrawNotes("");
+      setCreateVendorSearch("");
+      loadData(true);
+    } catch (err: any) {
+      Alert.alert("Creation Failed", err || "Could not create withdrawal request.");
+    } finally {
+      setCreateSubmitting(false);
+    }
+  };
+
+  const filteredVendorsForModal = useMemo(() => {
+    const list = vendors || [];
+    if (!createVendorSearch.trim()) return list.slice(0, 50);
+    const q = createVendorSearch.trim().toLowerCase();
+    return list.filter((v: any) => {
+      const bName = (v.businessDetails?.businessName || "").toLowerCase();
+      const sName = (v.sellerDetails?.sellerName || "").toLowerCase();
+      const phone = (v.sellerDetails?.sellerPhone || v.phone || "").toLowerCase();
+      return bName.includes(q) || sName.includes(q) || phone.includes(q);
+    });
+  }, [vendors, createVendorSearch]);
+
   // Filtered withdrawals
   const filteredWithdrawals = useMemo(() => {
     return (withdrawals || []).filter((w: any) => {
       const st = (w.status || "PENDING").toUpperCase();
       if (withdrawalFilter === "PENDING") return st === "PENDING" || st === "SUBMITTED";
       if (withdrawalFilter === "SETTLED") return st === "SETTLED" || st === "COMPLETED";
-      if (withdrawalFilter === "REJECTED") return st === "REJECTED" || st === "FAILED" || st === "DECLINED";
+      if (withdrawalFilter === "REJECTED") return st === "REJECTED" || st === "FAILED" || st === "DECLINED" || st === "REVERSED";
       return true;
     });
   }, [withdrawals, withdrawalFilter]);
@@ -350,6 +426,32 @@ export default function AdminFinanceScreen() {
       {/* ══ TAB 1: VENDOR WITHDRAWALS & PAYOUT DECISIONS ══ */}
       {activeTab === "withdrawals" && (
         <View style={{ flex: 1 }}>
+          {/* Header Action Bar for Withdrawals */}
+          <View style={[styles.withdrawalsActionBar, { backgroundColor: cardBg, borderBottomColor: border }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.actionBarTitle, { color: textPrimary }]}>
+                Vendor Payout Requests
+              </Text>
+              <Text style={[styles.actionBarSub, { color: textSecondary }]}>
+                {filteredWithdrawals.length} withdrawal(s) shown &bull; {stats?.finances?.pendingWithdrawalsCount || 0} pending review
+              </Text>
+            </View>
+
+            {isSuperAdmin && (
+              <TouchableOpacity
+                style={styles.createWithdrawalBtn}
+                onPress={() => {
+                  setIsCreateModalOpen(true);
+                  dispatch(fetchAdminVendors({ limit: 100 }));
+                }}
+                activeOpacity={0.8}
+              >
+                <Feather name="plus-circle" size={scale(15)} color="#FFFFFF" />
+                <Text style={styles.createWithdrawalBtnText}>Create Withdrawal</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
           {/* Sub-Filter Chips & View Switcher for Withdrawals */}
           <View style={[styles.subFilterRow, { borderBottomColor: border, backgroundColor: cardBg }]}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: scale(8), flexGrow: 1 }}>
@@ -358,15 +460,15 @@ export default function AdminFinanceScreen() {
                   { id: "ALL", label: `All (${withdrawals.length})` },
                   {
                     id: "PENDING",
-                    label: `Pending Approval (${withdrawals.filter((w) => w.status === "PENDING").length})`,
+                    label: `Pending Approval (${withdrawals.filter((w) => w.status === "PENDING" || w.status === "SUBMITTED").length})`,
                   },
                   {
                     id: "SETTLED",
-                    label: `Settled (${withdrawals.filter((w) => w.status === "SETTLED").length})`,
+                    label: `Settled (${withdrawals.filter((w) => w.status === "SETTLED" || w.status === "COMPLETED").length})`,
                   },
                   {
                     id: "REJECTED",
-                    label: `Declined (${withdrawals.filter((w) => w.status === "REJECTED" || w.status === "FAILED").length})`,
+                    label: `Declined (${withdrawals.filter((w) => w.status === "REJECTED" || w.status === "FAILED" || w.status === "DECLINED" || w.status === "REVERSED").length})`,
                   },
                 ] as const
               ).map((f) => (
@@ -438,7 +540,7 @@ export default function AdminFinanceScreen() {
             renderItem={({ item }) => {
               const isPending = item.status === "PENDING" || item.status === "SUBMITTED";
               const isSettled = item.status === "SETTLED" || item.status === "COMPLETED";
-              const isDeclined = item.status === "REJECTED" || item.status === "FAILED";
+              const isDeclined = item.status === "REJECTED" || item.status === "FAILED" || item.status === "DECLINED" || item.status === "REVERSED";
 
               const storeName =
                 item.vendor?.businessDetails?.businessName ||
@@ -531,7 +633,9 @@ export default function AdminFinanceScreen() {
                           style={[styles.gridSettledText, { color: isSettled ? "#10B981" : "#EF4444" }]}
                           numberOfLines={1}
                         >
-                          {isSettled ? (item.payoutReference ? `Ref: ${item.payoutReference}` : "Completed") : "Declined"}
+                          {isSettled
+                            ? (item.payoutReference ? `Ref: ${item.payoutReference}` : "Completed")
+                            : (item.rejectionReason ? `Reason: ${item.rejectionReason}` : "Declined")}
                         </Text>
                       </View>
                     )}
@@ -636,14 +740,14 @@ export default function AdminFinanceScreen() {
                     </View>
                   ) : null}
 
-                  {isDeclined && item.rejectionReason ? (
-                    <View style={[styles.auditRow, { backgroundColor: "rgba(239, 68, 68, 0.08)" }]}>
+                  {isDeclined && (
+                    <View style={[styles.auditRow, { backgroundColor: "rgba(239, 68, 68, 0.08)", borderColor: "rgba(239, 68, 68, 0.2)", borderWidth: 1 }]}>
                       <Feather name="alert-circle" size={scale(13)} color="#EF4444" />
-                      <Text style={[styles.auditText, { color: "#EF4444" }]}>
-                        Decline Reason: {item.rejectionReason}
+                      <Text style={[styles.auditText, { color: "#EF4444", fontWeight: "600" }]}>
+                        Decline Reason: {item.rejectionReason || "No reason specified"}
                       </Text>
                     </View>
-                  ) : null}
+                  )}
 
                   {item.notes ? (
                     <Text style={[styles.notesBubble, { color: textSecondary }]}>
@@ -1083,6 +1187,7 @@ export default function AdminFinanceScreen() {
         visible={!!selectedWithdrawal}
         transparent
         animationType="fade"
+        statusBarTranslucent
         onRequestClose={() => setSelectedWithdrawal(null)}
       >
         <View style={styles.modalOverlay}>
@@ -1176,6 +1281,211 @@ export default function AdminFinanceScreen() {
                   <Text style={{ color: "#FFFFFF", fontWeight: "700" }}>
                     {reviewAction === "APPROVE" ? "Confirm Settlement" : "Confirm Decline"}
                   </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ══ CREATE WITHDRAWAL MODAL (SUPERADMIN ONLY) ══ */}
+      <Modal
+        visible={isCreateModalOpen}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => {
+          setIsCreateModalOpen(false);
+          setSelectedVendorForWithdrawal(null);
+          setCreateWithdrawAmount("");
+          setCreateWithdrawNotes("");
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { backgroundColor: cardBg, borderColor: border, maxHeight: "90%" }]}>
+            <View style={styles.modalHeaderRow}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: scale(8) }}>
+                <MaterialCommunityIcons name="cash-plus" size={scale(22)} color="#10B981" />
+                <Text style={[styles.modalTitle, { color: textPrimary }]}>Create Vendor Withdrawal</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  setIsCreateModalOpen(false);
+                  setSelectedVendorForWithdrawal(null);
+                  setCreateWithdrawAmount("");
+                  setCreateWithdrawNotes("");
+                }}
+              >
+                <Feather name="x" size={scale(18)} color={textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: scale(10) }}>
+              {/* Step 1: Vendor Selection */}
+              <Text style={[styles.inputLabel, { color: textPrimary, marginTop: scale(8) }]}>
+                Select Store / Vendor *
+              </Text>
+
+              {selectedVendorForWithdrawal ? (
+                <View
+                  style={[
+                    styles.selectedVendorCard,
+                    { backgroundColor: isDark ? "#121A21" : "#F8FAFC", borderColor: border },
+                  ]}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.selectedVendorName, { color: textPrimary }]}>
+                      {selectedVendorForWithdrawal.businessDetails?.businessName ||
+                        selectedVendorForWithdrawal.sellerDetails?.sellerName ||
+                        "Store"}
+                    </Text>
+                    <Text style={{ fontSize: moderateScale(11), color: textSecondary, marginTop: scale(2) }}>
+                      Bank: {selectedVendorForWithdrawal.bankDetails?.bankName || "Direct Bank"} &bull; A/C: ...
+                      {(selectedVendorForWithdrawal.bankDetails?.accountNumber || "").slice(-4)}
+                    </Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: scale(6), marginTop: scale(6) }}>
+                      <Text style={{ fontSize: moderateScale(12), color: textSecondary }}>Available Balance:</Text>
+                      <Text style={{ fontSize: moderateScale(13), fontWeight: "800", color: "#10B981" }}>
+                        NPR {(selectedVendorForWithdrawal.wallet?.currentBalance || 0).toLocaleString()}
+                      </Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.changeVendorBtn, { borderColor: border }]}
+                    onPress={() => setSelectedVendorForWithdrawal(null)}
+                  >
+                    <Text style={{ fontSize: moderateScale(11), color: "#0284C7", fontWeight: "700" }}>Change</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View>
+                  <View style={[styles.vendorSearchBox, { backgroundColor: isDark ? "#121A21" : "#F8FAFC", borderColor: border }]}>
+                    <Feather name="search" size={scale(14)} color={textSecondary} />
+                    <TextInput
+                      style={[styles.vendorSearchInput, { color: textPrimary }]}
+                      placeholder="Search vendor by store name..."
+                      placeholderTextColor={textSecondary}
+                      value={createVendorSearch}
+                      onChangeText={setCreateVendorSearch}
+                    />
+                  </View>
+                  <ScrollView style={{ maxHeight: scale(160), marginTop: scale(6) }} nestedScrollEnabled>
+                    {filteredVendorsForModal.map((v: any) => {
+                      const vBalance = v.wallet?.currentBalance || 0;
+                      const vName = v.businessDetails?.businessName || v.sellerDetails?.sellerName || "Store";
+                      return (
+                        <TouchableOpacity
+                          key={v._id}
+                          style={[styles.vendorPickerItem, { borderBottomColor: border }]}
+                          onPress={() => {
+                            setSelectedVendorForWithdrawal(v);
+                            setCreateVendorSearch("");
+                          }}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.vendorPickerName, { color: textPrimary }]}>{vName}</Text>
+                            <Text style={{ fontSize: moderateScale(11), color: textSecondary }}>
+                              {v.sellerDetails?.sellerPhone || v.phone || ""}
+                            </Text>
+                          </View>
+                          <View style={{ alignItems: "flex-end" }}>
+                            <Text style={{ fontSize: moderateScale(11), color: textSecondary }}>Balance</Text>
+                            <Text style={{ fontSize: moderateScale(12), fontWeight: "700", color: "#10B981" }}>
+                              NPR {vBalance.toLocaleString()}
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              )}
+
+              {/* Step 2: Withdrawal Amount */}
+              <View style={{ marginTop: scale(14) }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                  <Text style={[styles.inputLabel, { color: textPrimary }]}>Withdrawal Amount (NPR) *</Text>
+                  {selectedVendorForWithdrawal && (
+                    <Text style={{ fontSize: moderateScale(11), color: textSecondary }}>
+                      Max: NPR {(selectedVendorForWithdrawal.wallet?.currentBalance || 0).toLocaleString()}
+                    </Text>
+                  )}
+                </View>
+                <TextInput
+                  style={[
+                    styles.modalInput,
+                    {
+                      color: textPrimary,
+                      borderColor:
+                        selectedVendorForWithdrawal &&
+                        parseFloat(createWithdrawAmount) > (selectedVendorForWithdrawal.wallet?.currentBalance || 0)
+                          ? "#EF4444"
+                          : border,
+                    },
+                  ]}
+                  placeholder="e.g. 5000"
+                  placeholderTextColor="#94A3B8"
+                  keyboardType="numeric"
+                  value={createWithdrawAmount}
+                  onChangeText={setCreateWithdrawAmount}
+                />
+              </View>
+
+              {/* Real-time Validation Error Banner */}
+              {selectedVendorForWithdrawal &&
+                parseFloat(createWithdrawAmount) > (selectedVendorForWithdrawal.wallet?.currentBalance || 0) && (
+                  <View style={[styles.validationBanner, { backgroundColor: "rgba(239, 68, 68, 0.1)", borderColor: "#EF4444" }]}>
+                    <MaterialCommunityIcons name="alert-circle" size={scale(16)} color="#EF4444" />
+                    <Text style={[styles.validationBannerText, { color: "#EF4444" }]}>
+                      Withdrawal amount (NPR {parseFloat(createWithdrawAmount).toLocaleString()}) exceeds vendor available balance (NPR {(selectedVendorForWithdrawal.wallet?.currentBalance || 0).toLocaleString()}).
+                    </Text>
+                  </View>
+                )}
+
+              {/* Step 3: Notes / Reference */}
+              <View style={{ marginTop: scale(12) }}>
+                <Text style={[styles.inputLabel, { color: textPrimary }]}>Notes / Remarks (Optional)</Text>
+                <TextInput
+                  style={[styles.modalInput, { color: textPrimary, borderColor: border }]}
+                  placeholder="e.g. Weekly settlement or payout request"
+                  placeholderTextColor="#94A3B8"
+                  value={createWithdrawNotes}
+                  onChangeText={setCreateWithdrawNotes}
+                />
+              </View>
+            </ScrollView>
+
+            <View style={styles.modalBtnRow}>
+              <TouchableOpacity
+                style={[styles.modalBtnCancel, { borderColor: border }]}
+                onPress={() => {
+                  setIsCreateModalOpen(false);
+                  setSelectedVendorForWithdrawal(null);
+                  setCreateWithdrawAmount("");
+                  setCreateWithdrawNotes("");
+                }}
+              >
+                <Text style={{ color: textPrimary, fontWeight: "700" }}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.modalBtnConfirm,
+                  {
+                    backgroundColor:
+                      selectedVendorForWithdrawal &&
+                      parseFloat(createWithdrawAmount) > (selectedVendorForWithdrawal.wallet?.currentBalance || 0)
+                        ? "#94A3B8"
+                        : "#10B981",
+                  },
+                ]}
+                onPress={handleCreateWithdrawalSubmit}
+                disabled={createSubmitting}
+              >
+                {createSubmitting ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={{ color: "#FFFFFF", fontWeight: "700" }}>Submit Request</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -1729,6 +2039,96 @@ const styles = StyleSheet.create({
     height: 1,
   },
   footerEndText: {
+    fontSize: moderateScale(11),
+    fontWeight: "600",
+  },
+  withdrawalsActionBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: scale(14),
+    paddingVertical: scale(10),
+    borderBottomWidth: 1,
+  },
+  actionBarTitle: {
+    fontSize: moderateScale(14),
+    fontWeight: "800",
+  },
+  actionBarSub: {
+    fontSize: moderateScale(11),
+    marginTop: scale(2),
+  },
+  createWithdrawalBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#10B981",
+    paddingHorizontal: scale(12),
+    paddingVertical: scale(7),
+    borderRadius: scale(8),
+    gap: scale(6),
+  },
+  createWithdrawalBtnText: {
+    color: "#FFFFFF",
+    fontSize: moderateScale(12),
+    fontWeight: "700",
+  },
+  selectedVendorCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: scale(10),
+    borderRadius: scale(8),
+    borderWidth: 1,
+    marginTop: scale(4),
+  },
+  selectedVendorName: {
+    fontSize: moderateScale(13),
+    fontWeight: "700",
+  },
+  changeVendorBtn: {
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(5),
+    borderRadius: scale(6),
+    borderWidth: 1,
+  },
+  vendorSearchBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(6),
+    borderRadius: scale(8),
+    borderWidth: 1,
+    gap: scale(8),
+    marginTop: scale(4),
+  },
+  vendorSearchInput: {
+    flex: 1,
+    fontSize: moderateScale(12),
+    padding: 0,
+  },
+  vendorPickerItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: scale(8),
+    paddingHorizontal: scale(4),
+    borderBottomWidth: 1,
+  },
+  vendorPickerName: {
+    fontSize: moderateScale(12),
+    fontWeight: "600",
+  },
+  validationBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: scale(8),
+    borderRadius: scale(6),
+    borderWidth: 1,
+    gap: scale(6),
+    marginTop: scale(8),
+  },
+  validationBannerText: {
+    flex: 1,
     fontSize: moderateScale(11),
     fontWeight: "600",
   },

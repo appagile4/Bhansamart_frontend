@@ -905,6 +905,7 @@ export default function AdminAdminsScreen() {
         visible={modalVisible}
         transparent
         animationType="slide"
+        statusBarTranslucent
         onRequestClose={() => setModalVisible(false)}
       >
         <KeyboardAvoidingView

@@ -160,7 +160,10 @@ export default function AdminDashboardOverviewScreen() {
 
   // ── Payment Methods Breakdown ───────────────────────────────────────────
   const paymentBreakdown = useMemo(() => {
-    const raw = charts?.paymentBreakdown || [];
+    const raw =
+      stats?.paymentBreakdown && stats.paymentBreakdown.length > 0
+        ? stats.paymentBreakdown
+        : charts?.paymentBreakdown || [];
 
     const isCodId = (id: string) => {
       const s = (id || "").toLowerCase();
@@ -217,7 +220,7 @@ export default function AdminDashboardOverviewScreen() {
         pct: Math.round((digitalAmount / grandTotal) * 100),
       },
     ];
-  }, [charts, isDark]);
+  }, [stats, charts, isDark]);
 
   // ── Fulfillment Pipeline ────────────────────────────────────────────────
   const fulfillmentMetrics = useMemo(() => {

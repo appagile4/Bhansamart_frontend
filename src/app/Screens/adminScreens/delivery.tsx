@@ -1252,7 +1252,7 @@ export default function AdminDeliveryBoysScreen() {
       )}
 
       {/* COD Dispute Modal */}
-      <Modal visible={!!disputeRider} transparent animationType="fade">
+      <Modal visible={!!disputeRider} transparent animationType="fade" statusBarTranslucent>
         <View style={styles.modalOverlay}>
           <View
             style={[

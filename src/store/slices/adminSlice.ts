@@ -18,6 +18,7 @@ import {
   fetchAdminTransactionsApi,
   fetchAdminWithdrawalsApi,
   reviewAdminWithdrawalApi,
+  createAdminWithdrawalApi,
   fetchPlatformPaymentConfigApi,
   updatePlatformPaymentConfigApi,
   fetchAdminTicketsApi,
@@ -239,6 +240,23 @@ export const reviewAdminWithdrawal = createAsyncThunk(
   }
 );
 
+export const createAdminWithdrawal = createAsyncThunk(
+  "admin/createWithdrawal",
+  async (
+    payload: { vendorId: string; amount: number; notes?: string },
+    { rejectWithValue }
+  ) => {
+    try {
+      const res = await createAdminWithdrawalApi(payload);
+      return res.data;
+    } catch (err: any) {
+      return rejectWithValue(
+        err?.response?.data?.message || err?.message || "Failed to create withdrawal"
+      );
+    }
+  }
+);
+
 export const fetchPlatformPaymentConfig = createAsyncThunk(
   "admin/fetchPaymentConfig",
   async () => {
@@ -424,11 +442,24 @@ export const adminSlice = createSlice({
 
     // Withdrawals
     builder.addCase(fetchAdminWithdrawals.fulfilled, (state, action) => {
-      state.withdrawals = action.payload;
+      state.withdrawals = action.payload || [];
     });
     builder.addCase(reviewAdminWithdrawal.fulfilled, (state, action) => {
       const updated = action.payload;
-      state.withdrawals = state.withdrawals.filter((w) => w._id !== updated._id);
+      if (updated?._id) {
+        const index = state.withdrawals.findIndex((w) => w._id === updated._id);
+        if (index !== -1) {
+          state.withdrawals[index] = { ...state.withdrawals[index], ...updated };
+        } else {
+          state.withdrawals.unshift(updated);
+        }
+      }
+    });
+    builder.addCase(createAdminWithdrawal.fulfilled, (state, action) => {
+      const created = action.payload;
+      if (created?._id) {
+        state.withdrawals = [created, ...state.withdrawals.filter((w) => w._id !== created._id)];
+      }
     });
 
     // Payment Config

@@ -201,7 +201,7 @@ export default function AdminTicketsScreen() {
       />
 
       {/* Ticket Details & Reply Modal */}
-      <Modal visible={!!selectedTicketModal} animationType="slide" transparent>
+      <Modal visible={!!selectedTicketModal} animationType="slide" transparent statusBarTranslucent>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: cardBg, borderColor: border }]}>
             <View style={styles.modalHeader}>

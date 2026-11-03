@@ -1480,6 +1480,7 @@ export default function AdminNotificationsScreen() {
         visible={!!selectedHistoryItem}
         transparent
         animationType="slide"
+        statusBarTranslucent
         onRequestClose={() => setSelectedHistoryItem(null)}
       >
         <View style={styles.modalOverlay}>

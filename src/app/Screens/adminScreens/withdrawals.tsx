@@ -110,6 +110,10 @@ export default function AdminWithdrawalsScreen() {
 
   const handleSaveExamination = async () => {
     if (!examiningItem) return;
+    if (escalationStatus === "REJECT" && !rejectionReason.trim()) {
+      Alert.alert("Reason Required", "Please provide a reason for rejecting this withdrawal.");
+      return;
+    }
     try {
       setSubmitting(true);
       await examineVendorWithdrawalAdminApi(examiningItem._id || examiningItem.id, {
@@ -118,7 +122,12 @@ export default function AdminWithdrawalsScreen() {
         rejectionReason: rejectionReason.trim() || undefined,
       });
 
-      Alert.alert("Success", "Withdrawal examination and escalation saved successfully.");
+      Alert.alert(
+        escalationStatus === "REJECT" ? "Withdrawal Rejected" : "Success",
+        escalationStatus === "REJECT"
+          ? "Withdrawal has been rejected and the reason is recorded."
+          : "Withdrawal examination and escalation saved successfully."
+      );
       setExaminingItem(null);
       loadWithdrawals(page);
     } catch (err: any) {
@@ -295,6 +304,16 @@ export default function AdminWithdrawalsScreen() {
                 </View>
               ) : null}
 
+              {/* Rejection Reason Preview if available */}
+              {item.rejectionReason ? (
+                <View style={[styles.notesPreview, { backgroundColor: "rgba(239, 68, 68, 0.08)", borderColor: "rgba(239, 68, 68, 0.2)", borderWidth: 1 }]}>
+                  <Text style={[styles.notesPreviewLabel, { color: "#EF4444" }]}>Rejection Reason:</Text>
+                  <Text style={[styles.notesPreviewText, { color: "#EF4444" }]} numberOfLines={2}>
+                    {item.rejectionReason}
+                  </Text>
+                </View>
+              ) : null}
+
               {/* Action Button */}
               <TouchableOpacity
                 style={[styles.examineBtn, { borderColor: "#10B981" }]}
@@ -351,7 +370,7 @@ export default function AdminWithdrawalsScreen() {
       />
 
       {/* Examination Modal */}
-      <Modal visible={!!examiningItem} transparent animationType="slide">
+      <Modal visible={!!examiningItem} transparent animationType="slide" statusBarTranslucent>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: cardBg, borderColor: border }]}>
             <View style={styles.modalHeader}>
@@ -383,6 +402,7 @@ export default function AdminWithdrawalsScreen() {
                       { label: "Forward to Finance", val: "FORWARDED_TO_FINANCE", color: "#A855F7" },
                       { label: "Needs Clarification", val: "NEEDS_CLARIFICATION", color: "#F59E0B" },
                       { label: "Examined / Verified", val: "EXAMINED_BY_STAFF", color: "#0EA5E9" },
+                      ...(isSuperadmin ? [{ label: "Reject Request", val: "REJECT", color: "#EF4444" }] : []),
                     ].map((opt) => {
                       const isSel = escalationStatus === opt.val;
                       return (

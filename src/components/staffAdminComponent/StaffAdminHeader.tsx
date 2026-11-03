@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
 import {
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -42,7 +44,9 @@ export default function StaffAdminHeader({
   const assignedCount = user?.assignedVendors?.length || 0;
 
   return (
-    <SafeAreaView edges={["top"]} style={[styles.safeArea, { backgroundColor: headerBg }]}>
+    <>
+      <StatusBar style={isDark ? "light" : "dark"} />
+      <SafeAreaView edges={["top"]} style={[styles.safeArea, { backgroundColor: headerBg }]}>
       <View style={[styles.headerContainer, { borderBottomColor: border }]}>
         {/* Left: Back / Staff Identity */}
         <View style={styles.leftSection}>
@@ -109,6 +113,7 @@ export default function StaffAdminHeader({
         </View>
       </View>
     </SafeAreaView>
+  </>
   );
 }
 
