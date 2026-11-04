@@ -1,10 +1,11 @@
+import { useAppSelector } from "@/store/hooks";
 import { moderateScale, scale, useTheme } from "@/theme";
 import { useUnreadNotifications } from "@/utils/notificationSync";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { memo, useCallback, useMemo, useState } from "react";
+import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import CategoryScroller from "./category-scroller";
@@ -33,6 +34,7 @@ interface HeaderProps {
   storeName?: string;
   location?: string;
   selectedCategory?: string;
+  profileImage?: string;
   onSelectCategory?: (id: string) => void;
   onLocationPress?: () => void;
   onStorePress?: () => void;
@@ -79,6 +81,58 @@ const NotificationBellButton = memo(function NotificationBellButton({
             {unreadCount > 99 ? "99+" : unreadCount}
           </Text>
         </View>
+      )}
+    </TouchableOpacity>
+  );
+});
+
+// ── Memoized User Profile Avatar Button ─────────────────────────────────────────────
+// Displays user profile picture if available, otherwise falls back to clean person icon
+const ProfileAvatarButton = memo(function ProfileAvatarButton({
+  isDark,
+  onPress,
+  profileImage,
+}: {
+  isDark: boolean;
+  onPress: () => void;
+  profileImage?: string;
+}) {
+  const { user } = useAppSelector((state) => state.auth);
+  const avatarUri = profileImage || user?.avatar;
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    setImageError(false);
+  }, [avatarUri]);
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onPress={onPress}
+      style={[
+        styles.profileAvatar,
+        isDark && {
+          backgroundColor: "#151D24",
+        },
+      ]}
+      accessibilityLabel="User Profile"
+    >
+      {avatarUri && !imageError ? (
+        <Image
+          source={{ uri: avatarUri }}
+          style={styles.profileAvatarImage}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          priority="high"
+          recyclingKey={`profile-avatar-${avatarUri}`}
+          onError={() => setImageError(true)}
+        />
+      ) : (
+        <Ionicons
+          name="person"
+          size={scale(18)}
+          color={isDark ? "#FFFFFF" : "#003844"}
+        />
       )}
     </TouchableOpacity>
   );
@@ -134,6 +188,7 @@ function Header({
   storeName = "Delivery Address",
   location = "",
   selectedCategory = "all",
+  profileImage,
   onSelectCategory,
   onLocationPress,
   onStorePress,
@@ -155,6 +210,14 @@ function Header({
       router.push("/Screens/Profile/notifications" as any);
     }
   }, [onNotificationPress, router]);
+
+  const handleProfilePress = useCallback(() => {
+    if (onProfilePress) {
+      onProfilePress();
+    } else {
+      router.push("/Screens/Profile/profile" as any);
+    }
+  }, [onProfilePress, router]);
 
   const handleCategorySelect = useCallback(
     (id: string) => {
@@ -253,25 +316,12 @@ function Header({
               onPress={handleNotificationPress}
             />
 
-            {/* Profile Avatar Button */}
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={onProfilePress}
-              style={[
-                styles.profileAvatar,
-                isDark && {
-                  backgroundColor: "#151D24",
-                  borderWidth: 1,
-                  borderColor: "#303B45",
-                },
-              ]}
-            >
-              <Ionicons
-                name="person"
-                size={scale(18)}
-                color={isDark ? "#FFFFFF" : "#003844"}
-              />
-            </TouchableOpacity>
+            {/* Profile Avatar Button with Image Support */}
+            <ProfileAvatarButton
+              isDark={isDark}
+              onPress={handleProfilePress}
+              profileImage={profileImage}
+            />
           </View>
         </View>
 
@@ -303,6 +353,7 @@ function areHeaderPropsEqual(prev: HeaderProps, next: HeaderProps) {
     prev.storeName === next.storeName &&
     prev.location === next.location &&
     prev.selectedCategory === next.selectedCategory &&
+    prev.profileImage === next.profileImage &&
     prev.onSelectCategory === next.onSelectCategory &&
     prev.onLocationPress === next.onLocationPress &&
     prev.onStorePress === next.onStorePress &&
@@ -406,11 +457,19 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: scale(1.8),
+    borderColor: "#FFFFFF",
     shadowColor: "#000000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
     elevation: 3,
+    overflow: "hidden",
+  },
+  profileAvatarImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: scale(18),
   },
   bannerRow: {
     alignItems: "center",
