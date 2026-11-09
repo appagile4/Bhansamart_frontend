@@ -20,12 +20,16 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://192.168.29.235:5000/api",
-        "EXPO_PUBLIC_SOCKET_URL": "http://192.168.29.235:5000"
+        "EXPO_PUBLIC_API_URL": "https://bhansamart.webstudiomatrix.com/api",
+        "EXPO_PUBLIC_SOCKET_URL": "https://bhansamart.webstudiomatrix.com"
       }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://bhansamart.webstudiomatrix.com/api",
+        "EXPO_PUBLIC_SOCKET_URL": "https://bhansamart.webstudiomatrix.com"
+      }
     }
   },
   "submit": {
