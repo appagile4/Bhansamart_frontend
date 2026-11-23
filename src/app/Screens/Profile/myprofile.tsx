@@ -934,7 +934,7 @@ export default function MyProfileDetailsScreen() {
         <DateTimePicker
           value={birthDate}
           mode="date"
-          display="calendar"
+          display="default"
           maximumDate={new Date()}
           minimumDate={new Date(1920, 0, 1)}
           onChange={handleDateChange}
