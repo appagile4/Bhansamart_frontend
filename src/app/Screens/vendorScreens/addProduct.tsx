@@ -7,6 +7,7 @@ import {
 import { fetchBrands, fetchAttributes } from "@/store/slices/brandSlice";
 import { fetchBrandsApi, BrandItem } from "@/store/services/brandService";
 import AddBrandModal from "@/components/VendorComponent/AddBrandModal";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { moderateScale, scale } from "@/theme";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
@@ -136,6 +137,21 @@ export default function AddProductScreen() {
   );
   const [supplierName, setSupplierName] = useState(SUPPLIER_OPTIONS[0]);
   const [expirationDate, setExpirationDate] = useState("");
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [pickerDate, setPickerDate] = useState<Date>(new Date());
+
+  const handleExpirationDateChange = (_event: any, selectedDate?: Date) => {
+    if (Platform.OS === "android") {
+      setShowDatePicker(false);
+    }
+    if (selectedDate) {
+      setPickerDate(selectedDate);
+      const y = selectedDate.getFullYear();
+      const m = String(selectedDate.getMonth() + 1).padStart(2, "0");
+      const d = String(selectedDate.getDate()).padStart(2, "0");
+      setExpirationDate(`${y}-${m}-${d}`);
+    }
+  };
   const [brand, setBrand] = useState("Generic / Store Brand");
   const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null);
   const [isAddBrandModalVisible, setIsAddBrandModalVisible] = useState(false);
@@ -881,19 +897,30 @@ export default function AddProductScreen() {
                   </TouchableOpacity>
                 </View>
 
-                {/* Expiration Date */}
+                {/* Expiration Date with Interactive Calendar Picker */}
                 <View style={styles.col}>
                   <Text style={styles.inputLabel}>Expiration Date</Text>
-                  <View style={styles.dateInputBox}>
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => setShowDatePicker(true)}
+                    style={styles.dateInputBox}
+                  >
                     <TextInput
-                      placeholder="DD/MM/YYYY"
+                      placeholder="YYYY-MM-DD or Tap Calendar"
                       placeholderTextColor="#94A3B8"
                       value={expirationDate}
                       onChangeText={setExpirationDate}
                       style={styles.dateTextInput}
                     />
-                    <Feather name="calendar" size={scale(14)} color="#94A3B8" />
-                  </View>
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={() => setShowDatePicker(true)}
+                      style={{ padding: scale(4) }}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Feather name="calendar" size={scale(16)} color="#016073" />
+                    </TouchableOpacity>
+                  </TouchableOpacity>
                 </View>
 
                 {/* Brand */}
@@ -1940,6 +1967,53 @@ export default function AddProductScreen() {
         </View>
       </Modal>
 
+      {/* Expiration Date DateTimePicker */}
+      {showDatePicker && Platform.OS === "android" && (
+        <DateTimePicker
+          value={pickerDate}
+          mode="date"
+          display="calendar"
+          minimumDate={new Date()}
+          onChange={handleExpirationDateChange}
+        />
+      )}
+
+      {Platform.OS === "ios" && (
+        <Modal
+          visible={showDatePicker}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowDatePicker(false)}
+        >
+          <View style={styles.iosDateModalOverlay}>
+            <View style={styles.iosDateModalCard}>
+              <View style={styles.iosDateModalHeader}>
+                <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                  <Text style={styles.iosDateModalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <Text style={styles.iosDateModalTitle}>Select Expiration Date</Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    handleExpirationDateChange(null, pickerDate);
+                    setShowDatePicker(false);
+                  }}
+                >
+                  <Text style={styles.iosDateModalDoneText}>Done</Text>
+                </TouchableOpacity>
+              </View>
+              <DateTimePicker
+                value={pickerDate}
+                mode="date"
+                display="spinner"
+                minimumDate={new Date()}
+                onChange={(_e, d) => d && setPickerDate(d)}
+                style={{ height: scale(200) }}
+              />
+            </View>
+          </View>
+        </Modal>
+      )}
+
       {/* ADD BRAND MODAL */}
       <AddBrandModal
         visible={isAddBrandModalVisible}
@@ -2131,6 +2205,41 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: moderateScale(11.5),
     color: "#0F172A",
+  },
+  iosDateModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.45)",
+    justifyContent: "flex-end",
+  },
+  iosDateModalCard: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: scale(20),
+    borderTopRightRadius: scale(20),
+    paddingBottom: scale(24),
+    paddingHorizontal: scale(16),
+  },
+  iosDateModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: moderateScale(14),
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+  },
+  iosDateModalTitle: {
+    fontSize: moderateScale(14),
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+  iosDateModalCancelText: {
+    fontSize: moderateScale(13),
+    color: "#64748B",
+    fontWeight: "600",
+  },
+  iosDateModalDoneText: {
+    fontSize: moderateScale(13),
+    color: "#016073",
+    fontWeight: "700",
   },
 
   /* DROPZONE PHOTOS */
