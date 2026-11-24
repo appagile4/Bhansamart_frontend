@@ -45,6 +45,29 @@ export interface UpdateProfilePayload {
   address?: string;
 }
 
+export interface CustomerSendOtpPayload {
+  email: string;
+  purpose?: string;
+}
+
+export interface CustomerVerifyOtpPayload {
+  email: string;
+  otp: string;
+  purpose?: string;
+}
+
+export interface CustomerCompleteRegistrationPayload {
+  registrationToken: string;
+  password: string;
+  confirmPassword?: string;
+  name?: string;
+  referralCode?: string;
+}
+
+export interface CustomerGoogleAuthPayload {
+  idToken: string;
+}
+
 export const authService = {
   // Screen 2: Sign Up / Register
   register: async (data: RegisterPayload) => {
@@ -66,6 +89,42 @@ export const authService = {
   // Screen 1: Login
   login: async (data: LoginPayload) => {
     const response = await api.post("/auth/login", data);
+    return response.data;
+  },
+
+  // ── Customer Unified Authentication Endpoints ──
+  checkCustomerEmail: async (email: string) => {
+    const response = await api.post("/customer/auth/check-email", { email });
+    return response.data;
+  },
+
+  sendCustomerOtp: async (data: CustomerSendOtpPayload) => {
+    const response = await api.post("/customer/auth/send-otp", data);
+    return response.data;
+  },
+
+  verifyCustomerOtp: async (data: CustomerVerifyOtpPayload) => {
+    const response = await api.post("/customer/auth/verify-otp", data);
+    return response.data;
+  },
+
+  completeCustomerRegistration: async (
+    data: CustomerCompleteRegistrationPayload
+  ) => {
+    const response = await api.post(
+      "/customer/auth/complete-registration",
+      data
+    );
+    return response.data;
+  },
+
+  customerPasswordLogin: async (data: LoginPayload) => {
+    const response = await api.post("/customer/auth/login", data);
+    return response.data;
+  },
+
+  customerGoogleAuth: async (data: CustomerGoogleAuthPayload) => {
+    const response = await api.post("/customer/auth/google", data);
     return response.data;
   },
 

@@ -7,6 +7,10 @@ import {
 import {
   authService,
   ChangePasswordPayload,
+  CustomerCompleteRegistrationPayload,
+  CustomerGoogleAuthPayload,
+  CustomerSendOtpPayload,
+  CustomerVerifyOtpPayload,
   LoginPayload,
   RegisterPayload,
   ResetPasswordPayload,
@@ -237,6 +241,111 @@ export const changePassword = createAsyncThunk(
       return response;
     } catch (error: any) {
       return rejectWithValue(error.message || "Failed to change password");
+    }
+  }
+);
+
+// ── Customer Unified Auth Thunks ──
+
+export const checkCustomerEmail = createAsyncThunk(
+  "auth/checkCustomerEmail",
+  async (email: string, { rejectWithValue }) => {
+    try {
+      const response = await authService.checkCustomerEmail(email);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.message || "Failed to check email");
+    }
+  }
+);
+
+export const sendCustomerOtp = createAsyncThunk(
+  "auth/sendCustomerOtp",
+  async (data: CustomerSendOtpPayload, { rejectWithValue }) => {
+    try {
+      const response = await authService.sendCustomerOtp(data);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.message || "Failed to send OTP");
+    }
+  }
+);
+
+export const verifyCustomerOtp = createAsyncThunk(
+  "auth/verifyCustomerOtp",
+  async (data: CustomerVerifyOtpPayload, { rejectWithValue }) => {
+    try {
+      const response = await authService.verifyCustomerOtp(data);
+      const token = response.data?.token;
+      const user = response.data?.user;
+
+      if (token && user) {
+        await storage.setItem("bhansa_token", token);
+        await storage.setItem("bhansa_user", JSON.stringify(user));
+        registerForPushNotificationsAsync().catch(() => {});
+      }
+
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.message || "Failed to verify OTP");
+    }
+  }
+);
+
+export const completeCustomerRegistration = createAsyncThunk(
+  "auth/completeCustomerRegistration",
+  async (data: CustomerCompleteRegistrationPayload, { rejectWithValue }) => {
+    try {
+      const response = await authService.completeCustomerRegistration(data);
+      const { user, token } = response.data;
+
+      if (token && user) {
+        await storage.setItem("bhansa_token", token);
+        await storage.setItem("bhansa_user", JSON.stringify(user));
+        registerForPushNotificationsAsync().catch(() => {});
+      }
+
+      return { user, token, message: response.message };
+    } catch (error: any) {
+      return rejectWithValue(
+        error.message || "Failed to complete registration"
+      );
+    }
+  }
+);
+
+export const customerPasswordLogin = createAsyncThunk(
+  "auth/customerPasswordLogin",
+  async (data: LoginPayload, { rejectWithValue }) => {
+    try {
+      const response = await authService.customerPasswordLogin(data);
+      const { user, token } = response.data;
+
+      await storage.setItem("bhansa_token", token);
+      await storage.setItem("bhansa_user", JSON.stringify(user));
+      registerForPushNotificationsAsync().catch(() => {});
+
+      return { user, token, message: response.message };
+    } catch (error: any) {
+      return rejectWithValue(error.message || "Login failed");
+    }
+  }
+);
+
+export const customerGoogleAuth = createAsyncThunk(
+  "auth/customerGoogleAuth",
+  async (data: CustomerGoogleAuthPayload, { rejectWithValue }) => {
+    try {
+      const response = await authService.customerGoogleAuth(data);
+      const { user, token } = response.data;
+
+      await storage.setItem("bhansa_token", token);
+      await storage.setItem("bhansa_user", JSON.stringify(user));
+      registerForPushNotificationsAsync().catch(() => {});
+
+      return { user, token, message: response.message };
+    } catch (error: any) {
+      return rejectWithValue(error.message || "Google sign in failed");
     }
   }
 );
@@ -545,6 +654,98 @@ const authSlice = createSlice({
       .addCase(removeAvatarImage.rejected, (state, action) => {
         state.isLoading = false;
         state.error = (action.payload as string) || "Failed to remove avatar";
+      });
+
+    // ── Customer Unified Auth Cases ──
+
+    // Customer OTP Send
+    builder
+      .addCase(sendCustomerOtp.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(sendCustomerOtp.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.successMessage = action.payload?.message;
+      })
+      .addCase(sendCustomerOtp.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = (action.payload as string) || "Failed to send OTP";
+      });
+
+    // Customer OTP Verify
+    builder
+      .addCase(verifyCustomerOtp.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(verifyCustomerOtp.fulfilled, (state, action) => {
+        state.isLoading = false;
+        if (action.payload?.data?.token) {
+          state.isAuthenticated = true;
+          state.token = action.payload.data.token;
+          state.user = action.payload.data.user;
+          state.successMessage = action.payload.message || "Login successful";
+        }
+      })
+      .addCase(verifyCustomerOtp.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = (action.payload as string) || "Verification failed";
+      });
+
+    // Customer Complete Registration
+    builder
+      .addCase(completeCustomerRegistration.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(completeCustomerRegistration.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.isAuthenticated = true;
+        state.token = action.payload.token;
+        state.user = action.payload.user;
+        state.successMessage = action.payload.message;
+      })
+      .addCase(completeCustomerRegistration.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error =
+          (action.payload as string) || "Failed to complete registration";
+      });
+
+    // Customer Password Login
+    builder
+      .addCase(customerPasswordLogin.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(customerPasswordLogin.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.isAuthenticated = true;
+        state.token = action.payload.token;
+        state.user = action.payload.user;
+        state.successMessage = action.payload.message;
+      })
+      .addCase(customerPasswordLogin.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = (action.payload as string) || "Login failed";
+      });
+
+    // Customer Google Auth
+    builder
+      .addCase(customerGoogleAuth.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(customerGoogleAuth.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.isAuthenticated = true;
+        state.token = action.payload.token;
+        state.user = action.payload.user;
+        state.successMessage = action.payload.message;
+      })
+      .addCase(customerGoogleAuth.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = (action.payload as string) || "Google login failed";
       });
 
     // 13. Logout
