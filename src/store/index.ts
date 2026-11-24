@@ -1,6 +1,5 @@
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "./slices/authSlice";
-import vendorAuthReducer from "./slices/vendorAuthSlice";
 import productReducer from "./slices/productSlice";
 import reviewReducer from "./slices/reviewSlice";
 import wishlistReducer from "./slices/wishlistSlice";
@@ -8,16 +7,13 @@ import cartReducer from "./slices/cartSlice";
 import addressReducer from "./slices/addressSlice";
 import orderReducer from "./slices/orderSlice";
 import deliveryReducer from "./slices/deliverySlice";
-import vendorFinanceReducer from "./slices/vendorFinanceSlice";
 import referralReducer from "./slices/referralSlice";
 import paymentReducer from "./slices/paymentSlice";
 import brandReducer from "./slices/brandSlice";
-import adminReducer from "./slices/adminSlice";
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
-    vendorAuth: vendorAuthReducer,
     product: productReducer,
     review: reviewReducer,
     wishlist: wishlistReducer,
@@ -25,11 +21,9 @@ export const store = configureStore({
     address: addressReducer,
     order: orderReducer,
     delivery: deliveryReducer,
-    vendorFinance: vendorFinanceReducer,
     referral: referralReducer,
     payment: paymentReducer,
     brand: brandReducer,
-    admin: adminReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

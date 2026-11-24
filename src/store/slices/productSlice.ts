@@ -4,7 +4,6 @@ import {
   deleteProductApi,
   getAllProductsApi,
   getProductByIdApi,
-  getVendorProductsApi,
   GetProductsParams,
   GetPublicProductsParams,
   toggleProductStockApi,
@@ -214,22 +213,7 @@ export const createProduct = createAsyncThunk(
   }
 );
 
-// 2. Fetch Vendor Products Thunk
-export const fetchVendorProducts = createAsyncThunk(
-  "product/fetchVendorProducts",
-  async (params: GetProductsParams | undefined, { rejectWithValue }) => {
-    try {
-      const response = await getVendorProductsApi(params);
-      return response;
-    } catch (error: any) {
-      return rejectWithValue(
-        error.message || "Failed to fetch products."
-      );
-    }
-  }
-);
-
-// 3. Fetch Global Public Products Thunk (For Customer Home Screens)
+// 2. Fetch Global Public Products Thunk (For Customer Home Screens)
 export const fetchPublicProducts = createAsyncThunk(
   "product/fetchPublicProducts",
   async (params: GetPublicProductsParams | undefined, { rejectWithValue, getState }) => {
@@ -395,27 +379,6 @@ export const productSlice = createSlice({
     });
     builder.addCase(createProduct.rejected, (state, action) => {
       state.createLoading = false;
-      state.error = action.payload as string;
-    });
-
-    // ── FETCH VENDOR PRODUCTS ────────────────────────────────
-    builder.addCase(fetchVendorProducts.pending, (state) => {
-      state.loading = true;
-      state.error = null;
-    });
-    builder.addCase(fetchVendorProducts.fulfilled, (state, action) => {
-      state.loading = false;
-      const fetched = action.payload?.products || [];
-      state.products = fetched.map((p: any) => ({
-        ...p,
-        id: p._id || p.id,
-      }));
-      state.totalProducts = action.payload?.total || fetched.length;
-      state.totalPages = action.payload?.totalPages || 1;
-      state.currentPage = action.payload?.currentPage || 1;
-    });
-    builder.addCase(fetchVendorProducts.rejected, (state, action) => {
-      state.loading = false;
       state.error = action.payload as string;
     });
 

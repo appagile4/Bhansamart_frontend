@@ -98,13 +98,6 @@ export const createProductApi = async (data: CreateProductPayload | FormData) =>
   return response.data;
 };
 
-export const getVendorProductsApi = async (params?: GetProductsParams) => {
-  const response = await api.get("/products/my-products", {
-    params,
-  });
-  return response.data;
-};
-
 export const getProductByIdApi = async (id: string) => {
   const response = await api.get(`/products/${id}`);
   return response.data;

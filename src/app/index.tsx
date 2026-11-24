@@ -42,39 +42,18 @@ const Index = () => {
   const router = useRouter();
   const { isAuthenticated: isCustomerAuthenticated, user: customerUser } =
     useAppSelector((state) => state.auth);
-  const {
-    isVendorAuthenticated,
-    vendorUser,
-    vendorDetails,
-  } = useAppSelector((state) => state.vendorAuth);
 
   useEffect(() => {
     let isMounted = true;
 
     const checkAuthAndRoute = async () => {
       try {
-        const adminToken = await storage.getItem("bhansa_admin_token");
         const customerToken = await storage.getItem("bhansa_token");
-        const vendorToken = await storage.getItem("bhansa_vendor_token");
         const deliveryToken = await storage.getItem("bhansa_delivery_token");
 
-        let currentVendorUser = vendorUser;
-        let currentVendorDetails = vendorDetails;
         let currentCustomerUser = customerUser;
 
-        // Read cached objects from persistent storage if Redux is still initializing
-        if (vendorToken && (!currentVendorUser || !currentVendorDetails)) {
-          try {
-            const rawVU = await storage.getItem("bhansa_vendor_user");
-            if (rawVU) currentVendorUser = JSON.parse(rawVU);
-            const rawVD = await storage.getItem("bhansa_vendor_details");
-            if (rawVD) currentVendorDetails = JSON.parse(rawVD);
-          } catch (e) {
-            console.warn("[Splash] Error reading vendor storage cache", e);
-          }
-        }
-
-        if ((customerToken || adminToken) && !currentCustomerUser) {
+        if (customerToken && !currentCustomerUser) {
           try {
             const rawCU = await storage.getItem("bhansa_user");
             if (rawCU) currentCustomerUser = JSON.parse(rawCU);
@@ -86,55 +65,20 @@ const Index = () => {
         const timer = setTimeout(() => {
           if (!isMounted) return;
 
-          // 1. Superadmin / Staff Admin check
-          const userRole = (currentCustomerUser?.role || customerUser?.role || "").toLowerCase();
-          if (adminToken || userRole === "superadmin" || userRole === "admin") {
-            if (adminToken || customerToken || isCustomerAuthenticated) {
-              if (userRole === "admin") {
-                router.replace("/StaffAdminMain" as any);
-                return;
-              }
-              router.replace("/AdminMain" as any);
-              return;
-            }
-          }
-
-          // 2. Vendor check (Pending / Draft vs Approved / Active)
-          if (vendorToken || isVendorAuthenticated) {
-            const status = (
-              currentVendorDetails?.status ||
-              currentVendorUser?.status ||
-              "pending"
-            ).toLowerCase();
-
-            if (status === "approved" || status === "active") {
-              // Vendor — Approved or Active: Navigate to Vendor Dashboard
-              router.replace("/VendorMain/dashboard" as any);
-              return;
-            } else {
-              // Vendor — Pending or Draft: Navigate to review-submit screen
-              router.replace({
-                pathname: "/(auth)/vendorAuth/registrationProcess" as any,
-                params: { step: "6" },
-              });
-              return;
-            }
-          }
-
-          // 3. Delivery Partner check
+          // 1. Delivery Partner check
           if (deliveryToken) {
             router.replace("/DeliveryMain" as any);
             return;
           }
 
-          // 4. Customer check
+          // 2. Customer check
           if (customerToken || isCustomerAuthenticated) {
             // Customer: Navigate to Customer Dashboard
             router.replace("/customerMain" as any);
             return;
           }
 
-          // 5. Unauthenticated / No Token: Navigate to Login
+          // 3. Unauthenticated / No Token: Navigate to Login
           router.replace("/(auth)/login");
         }, 2200);
 
@@ -157,9 +101,6 @@ const Index = () => {
   }, [
     isCustomerAuthenticated,
     customerUser,
-    isVendorAuthenticated,
-    vendorUser,
-    vendorDetails,
     router,
   ]);
 

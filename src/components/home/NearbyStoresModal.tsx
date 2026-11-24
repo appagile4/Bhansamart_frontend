@@ -18,7 +18,7 @@ import { moderateScale, scale, useTheme } from "@/theme";
 import {
   getNearbyStoresApi,
   NearbyStore,
-} from "@/store/services/vendorService";
+} from "@/store/services/storeService";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -118,7 +118,7 @@ export default function NearbyStoresModal({
         const matchAddr = store.shippingLocations?.warehouseAddress
           ?.toLowerCase()
           .includes(q);
-        const matchCat = store.businessDetails?.categories?.some((c) =>
+        const matchCat = store.businessDetails?.categories?.some((c: string) =>
           c.toLowerCase().includes(q)
         );
         if (!matchName && !matchAddr && !matchCat) return false;
@@ -512,7 +512,7 @@ export default function NearbyStoresModal({
                     {store.businessDetails?.categories &&
                       store.businessDetails.categories.length > 0 && (
                         <View style={styles.catTagsRow}>
-                          {store.businessDetails.categories.slice(0, 3).map((cat, cIdx) => (
+                          {store.businessDetails.categories.slice(0, 3).map((cat: string, cIdx: number) => (
                             <View key={cIdx} style={styles.catTag}>
                               <Text style={styles.catTagText}>{cat}</Text>
                             </View>

@@ -6,10 +6,8 @@ import {
   Feather,
   FontAwesome,
   Ionicons,
-  MaterialCommunityIcons,
 } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
@@ -54,11 +52,7 @@ export default function LoginScreen() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      if (user?.role === "superadmin" || user?.role === "admin") {
-        router.replace("/AdminMain" as any);
-      } else if (user?.role === "vendor") {
-        router.replace("/VendorMain" as any);
-      } else if (user?.role === "delivery_boy") {
+      if (user?.role === "delivery_boy") {
         router.replace("/DeliveryMain" as any);
       } else {
         router.replace("/customerMain" as any);
@@ -89,13 +83,7 @@ export default function LoginScreen() {
 
       if (result?.token) {
         const userRole = result?.user?.role;
-        if (userRole === "superadmin" || userRole === "admin") {
-          await storage.setItem("bhansa_admin_token", result.token);
-          router.replace("/AdminMain" as any);
-        } else if (userRole === "vendor") {
-          await storage.setItem("bhansa_vendor_token", result.token);
-          router.replace("/VendorMain" as any);
-        } else if (userRole === "delivery_boy") {
+        if (userRole === "delivery_boy") {
           await storage.setItem("bhansa_delivery_token", result.token);
           router.replace("/DeliveryMain" as any);
         } else {
@@ -120,50 +108,9 @@ export default function LoginScreen() {
     );
   };
 
-  const handleVendorPress = () => {
-    router.push("/(auth)/vendorAuth/login/vendorlogin" as any);
-  };
-
   return (
     <SafeAreaView style={styles.root}>
       <StatusBar style="dark" />
-
-      {/* Top Right Glass Mirror Vendor Button */}
-      <View style={styles.vendorGlassWrapper}>
-        <TouchableOpacity
-          activeOpacity={0.75}
-          onPress={handleVendorPress}
-          style={styles.vendorGlassButton}
-        >
-          <LinearGradient
-            colors={[
-              "rgba(255, 255, 255, 0.85)",
-              "rgba(255, 255, 255, 0.45)",
-              "rgba(0, 56, 68, 0.08)",
-            ]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.vendorGlassGradient}
-          >
-            {/* Mirror Glass Sheen Overlay */}
-
-            <View style={styles.vendorIconBadge}>
-              <MaterialCommunityIcons
-                name="storefront-outline"
-                size={scale(15)}
-                color="#003844"
-              />
-            </View>
-            <Text style={styles.vendorText}>Vendor</Text>
-            <Feather
-              name="chevron-right"
-              size={scale(13)}
-              color="#005B66"
-              style={{ marginLeft: -scale(2) }}
-            />
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -532,56 +479,5 @@ const styles = StyleSheet.create({
     backgroundColor: "#86C4CB",
     opacity: 0.55,
     transform: [{ scaleX: 1.4 }, { scaleY: 0.9 }],
-  },
-  vendorGlassWrapper: {
-    position: "absolute",
-    top: Platform.OS === "ios" ? moderateScale(44) : moderateScale(18),
-    right: scale(18),
-    zIndex: 99,
-    // Glass shadow & glow
-    shadowColor: "#003844",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  vendorGlassButton: {
-    borderRadius: scale(22),
-    borderWidth: 1.2,
-    borderColor: "rgba(255, 255, 255, 0.9)",
-    backgroundColor: "rgba(255, 255, 255, 0.45)",
-    overflow: "hidden",
-  },
-  vendorGlassGradient: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: moderateScale(6),
-    paddingHorizontal: scale(10),
-    borderRadius: scale(22),
-    gap: scale(6),
-  },
-  vendorSheenHighlight: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: "50%",
-    backgroundColor: "rgba(255, 255, 255, 0.4)",
-    borderTopLeftRadius: scale(22),
-    borderTopRightRadius: scale(22),
-  },
-  vendorIconBadge: {
-    width: scale(24),
-    height: scale(24),
-    borderRadius: scale(12),
-    backgroundColor: "rgba(0, 56, 68, 0.08)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  vendorText: {
-    fontSize: moderateScale(12),
-    fontWeight: "700",
-    color: "#003844",
-    letterSpacing: 0.3,
   },
 });

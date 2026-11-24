@@ -2,29 +2,29 @@ import { useEffect, useState } from "react";
 import api from "@/store/services/api";
 import socketService from "@/store/services/socketService";
 
-export type NotificationRole = "admin" | "staff" | "vendor" | "customer" | "delivery";
+export type NotificationRole = "customer" | "delivery" | "admin" | "staff" | "vendor";
 
 // Centralized in-memory unread counts across all active headers/components
 const unreadState: Record<NotificationRole, number> = {
+  customer: 0,
+  delivery: 0,
   admin: 0,
   staff: 0,
   vendor: 0,
-  customer: 0,
-  delivery: 0,
 };
 
 type Listener = (count: number) => void;
 const listeners: Record<NotificationRole, Set<Listener>> = {
+  customer: new Set(),
+  delivery: new Set(),
   admin: new Set(),
   staff: new Set(),
   vendor: new Set(),
-  customer: new Set(),
-  delivery: new Set(),
 };
 
 const notifyRole = (role: NotificationRole) => {
   const count = unreadState[role];
-  listeners[role].forEach((fn) => {
+  listeners[role]?.forEach((fn) => {
     try {
       fn(count);
     } catch (_) {}
@@ -60,33 +60,14 @@ export const setUnread = (role: NotificationRole, count: number) => {
  */
 export const fetchUnreadCount = async (role: NotificationRole): Promise<number> => {
   try {
-    if (role === "admin" || role === "staff") {
-      const res = await api.get("/admin/staff-operations/notifications", {
-        params: { unreadOnly: true, limit: 1 },
-      });
-      const count =
-        res.data?.unreadCount !== undefined
-          ? res.data.unreadCount
-          : res.data?.total !== undefined
-          ? res.data.total
-          : 0;
-      setUnread(role, count);
-      return count;
-    } else if (role === "vendor") {
-      const res = await api.get("/notifications/unread-count", {
-        params: { role: "vendor" },
-      });
-      const count = res.data?.unreadCount || 0;
-      setUnread("vendor", count);
-      return count;
-    } else if (role === "delivery") {
+    if (role === "delivery") {
       const res = await api.get("/notifications/unread-count", {
         params: { role: "delivery" },
       });
       const count = res.data?.unreadCount || 0;
       setUnread("delivery", count);
       return count;
-    } else {
+    } else if (role === "customer") {
       const res = await api.get("/notifications/unread-count", {
         params: { role: "customer" },
       });
@@ -94,19 +75,20 @@ export const fetchUnreadCount = async (role: NotificationRole): Promise<number> 
       setUnread("customer", count);
       return count;
     }
+    return 0;
   } catch (err) {
-    return unreadState[role];
+    return unreadState[role] || 0;
   }
 };
 
 /**
  * React hook for any Notification Bell icon or badge:
- * - Provides live unread count
+ * - Provides live unread count for customer or delivery
  * - Automatically registers socket listeners for real-time increments
  * - Syncs immediately when marked as read from any screen
  */
 export const useUnreadNotifications = (role: NotificationRole) => {
-  const [unreadCount, setCount] = useState<number>(unreadState[role]);
+  const [unreadCount, setCount] = useState<number>(unreadState[role] || 0);
 
   useEffect(() => {
     let isMounted = true;
@@ -117,7 +99,9 @@ export const useUnreadNotifications = (role: NotificationRole) => {
         setCount(newCount);
       }
     };
-    listeners[role].add(listener);
+    if (listeners[role]) {
+      listeners[role].add(listener);
+    }
 
     // 2. Initial fetch
     fetchUnreadCount(role).then((count) => {
@@ -126,32 +110,25 @@ export const useUnreadNotifications = (role: NotificationRole) => {
 
     // 3. Connect real-time socket events for live count increments
     let socketUnsub: (() => void) | null = null;
-    const socketRole = role === "staff" ? "admin" : role;
 
-    socketService.connect(socketRole).then(() => {
-      if (!isMounted) return;
-      if (role === "admin" || role === "staff") {
-        socketUnsub = socketService.onStaffNotification(() => {
-          incrementUnread(role);
-        });
-      } else if (role === "vendor") {
-        socketUnsub = socketService.onVendorNotification(() => {
-          incrementUnread("vendor");
-        });
-      } else if (role === "customer") {
-        socketUnsub = socketService.onCustomerNotification(() => {
-          incrementUnread("customer");
-        });
-      } else if (role === "delivery") {
-        socketUnsub = socketService.onDeliveryNotification(() => {
-          incrementUnread("delivery");
-        });
-      }
-    });
+    if (role === "customer" || role === "delivery") {
+      socketService.connect(role).then(() => {
+        if (!isMounted) return;
+        if (role === "customer") {
+          socketUnsub = socketService.onCustomerNotification(() => {
+            incrementUnread("customer");
+          });
+        } else if (role === "delivery") {
+          socketUnsub = socketService.onDeliveryNotification(() => {
+            incrementUnread("delivery");
+          });
+        }
+      });
+    }
 
     return () => {
       isMounted = false;
-      listeners[role].delete(listener);
+      listeners[role]?.delete(listener);
       socketUnsub?.();
     };
   }, [role]);
