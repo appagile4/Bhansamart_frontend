@@ -8,7 +8,7 @@ import axios, { AxiosInstance } from "axios";
  * - Automatically appends "/api" if omitted (e.g. "http://192.168.1.100:5000" -> "http://192.168.1.100:5000/api")
  */
 export const normalizeApiUrl = (rawUrl?: string): string => {
-  const fallback = "https://bhansamart.webstudiomatrix.com/api";
+  const fallback = "https://api.bhansamart.com/api";
   if (!rawUrl) return fallback;
   const trimmed = rawUrl.trim().replace(/\/+$/, "");
   if (!trimmed) return fallback;
