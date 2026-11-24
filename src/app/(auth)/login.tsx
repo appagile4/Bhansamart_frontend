@@ -112,6 +112,18 @@ export default function LoginScreen() {
     <SafeAreaView style={styles.root}>
       <StatusBar style="dark" />
 
+      {/* Top Right Skip / Guest Access Button */}
+      <View style={styles.topGuestBar}>
+        <TouchableOpacity
+          activeOpacity={0.75}
+          onPress={() => router.replace("/customerMain" as any)}
+          style={styles.guestSkipButton}
+        >
+          <Text style={styles.guestSkipText}>Skip</Text>
+          <Feather name="chevron-right" size={scale(15)} color="#008080" />
+        </TouchableOpacity>
+      </View>
+
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -479,5 +491,27 @@ const styles = StyleSheet.create({
     backgroundColor: "#86C4CB",
     opacity: 0.55,
     transform: [{ scaleX: 1.4 }, { scaleY: 0.9 }],
+  },
+  topGuestBar: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? moderateScale(48) : moderateScale(18),
+    right: scale(18),
+    zIndex: 99,
+  },
+  guestSkipButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F0FDFA",
+    borderWidth: 1,
+    borderColor: "#CCFBF1",
+    paddingVertical: moderateScale(5),
+    paddingHorizontal: scale(12),
+    borderRadius: scale(20),
+    gap: scale(2),
+  },
+  guestSkipText: {
+    fontSize: moderateScale(12.5),
+    fontWeight: "700",
+    color: "#008080",
   },
 });

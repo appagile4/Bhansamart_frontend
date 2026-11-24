@@ -139,6 +139,7 @@ export default function CartScreen() {
     totalSavings: savedOnItems,
   } = useCart();
 
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
   const {
     activeDisplayLocation,
     selectedAddress,
@@ -202,6 +203,22 @@ export default function CartScreen() {
 
   // Handle Checkout / Pay flow
   const handleProceedToPay = async () => {
+    // Require authentication before proceeding to payment/checkout
+    if (!isAuthenticated) {
+      Alert.alert(
+        "Sign In Required",
+        "Please sign in or create an account to proceed to checkout and place your order.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Sign In",
+            onPress: () => router.push("/(auth)/login" as any),
+          },
+        ]
+      );
+      return;
+    }
+
     // Condition 1: Proper Saved Address is Selected
     if (isSavedProperAddress(selectedAddress)) {
       try {

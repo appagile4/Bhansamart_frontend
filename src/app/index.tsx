@@ -71,15 +71,9 @@ const Index = () => {
             return;
           }
 
-          // 2. Customer check
-          if (customerToken || isCustomerAuthenticated) {
-            // Customer: Navigate to Customer Dashboard
-            router.replace("/customerMain" as any);
-            return;
-          }
-
-          // 3. Unauthenticated / No Token: Navigate to Login
-          router.replace("/(auth)/login");
+          // 2. Customer & Guest Access:
+          // Directly enter Customer Storefront (supports full guest browsing)
+          router.replace("/customerMain" as any);
         }, 2200);
 
         return () => clearTimeout(timer);
@@ -87,7 +81,7 @@ const Index = () => {
         console.warn("[Splash] checkAuthAndRoute error:", err);
         const timer = setTimeout(() => {
           if (!isMounted) return;
-          router.replace("/(auth)/login");
+          router.replace("/customerMain" as any);
         }, 2200);
         return () => clearTimeout(timer);
       }

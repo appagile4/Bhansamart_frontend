@@ -9,16 +9,6 @@ import ModernAndroidTabBar from "@/components/navigation/ModernAndroidTabBar";
 
 export default function TabLayout() {
   const theme = useTheme();
-  const router = useRouter();
-  const { isAuthenticated, isInitialized } = useAppSelector(
-    (state) => state.auth,
-  );
-
-  useEffect(() => {
-    if (isInitialized && !isAuthenticated) {
-      router.replace("/(auth)/login" as any);
-    }
-  }, [isInitialized, isAuthenticated, router]);
 
   // iOS: Keep existing native tab bar unchanged
   if (Platform.OS === "ios") {

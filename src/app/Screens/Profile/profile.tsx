@@ -57,7 +57,7 @@ export default function ProfileScreen() {
   const dispatch = useAppDispatch();
 
   // Redux state selectors (Live data from backend)
-  const { user } = useAppSelector((state) => state.auth);
+  const { user, isAuthenticated } = useAppSelector((state) => state.auth);
   const wishlistItems = useAppSelector((state) => state.wishlist.items);
   const wishlistCount = wishlistItems.length;
 
@@ -86,8 +86,27 @@ export default function ProfileScreen() {
 
   const referrerBonus = summary?.campaign?.referrerRewardPoints;
 
+  const requireAuth = (action: () => void) => {
+    if (isAuthenticated) {
+      action();
+    } else {
+      Alert.alert(
+        "Sign In Required",
+        "Please sign in or create an account to access this feature.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Sign In",
+            onPress: () => router.push("/(auth)/login" as any),
+          },
+        ]
+      );
+    }
+  };
+
   // Concurrent loader for real backend data
   const loadProfileData = useCallback(async () => {
+    if (!isAuthenticated) return;
     try {
       await Promise.allSettled([
         dispatch(fetchUserProfile()),
@@ -100,7 +119,7 @@ export default function ProfileScreen() {
     } catch (e) {
       console.warn("Failed to refresh profile backend data:", e);
     }
-  }, [dispatch]);
+  }, [dispatch, isAuthenticated]);
 
   // Initial load
   useEffect(() => {
@@ -202,7 +221,8 @@ export default function ProfileScreen() {
           iconBg: isDark ? "rgba(100, 116, 139, 0.16)" : "#E2E8F0",
           iconColor: isDark ? "#94A3B8" : "#475569",
           label: "My profile",
-          onPress: () => router.push("/Screens/Profile/myprofile" as any),
+          onPress: () =>
+            requireAuth(() => router.push("/Screens/Profile/myprofile" as any)),
         },
         {
           id: "wishlist",
@@ -217,7 +237,8 @@ export default function ProfileScreen() {
               ? `${wishlistCount} ${wishlistCount === 1 ? "Item" : "Items"}`
               : undefined,
           badgeColor: isDark ? "#56d37c" : "#56d37c",
-          onPress: () => router.push("/Screens/Profile/wishlist" as any),
+          onPress: () =>
+            requireAuth(() => router.push("/Screens/Profile/wishlist" as any)),
         },
         {
           id: "orders",
@@ -245,7 +266,10 @@ export default function ProfileScreen() {
               : isDark
                 ? "#94A3B8"
                 : "#64748B",
-          onPress: () => router.push("/Screens/Profile/your-orders" as any),
+          onPress: () =>
+            requireAuth(() =>
+              router.push("/Screens/Profile/your-orders" as any)
+            ),
         },
         {
           id: "address-book",
@@ -257,7 +281,8 @@ export default function ProfileScreen() {
           label: "Address Book",
           badge: addresses.length > 0 ? `${addresses.length} Saved` : undefined,
           badgeColor: isDark ? "#56d37c" : "#56d37c",
-          onPress: () => router.push("/Screens/Profile/address" as any),
+          onPress: () =>
+            requireAuth(() => router.push("/Screens/Profile/address" as any)),
         },
       ],
     },
@@ -274,7 +299,8 @@ export default function ProfileScreen() {
           label: "Loyalty Points",
           badge: `${availablePoints} Pts`,
           badgeColor: isDark ? "#56d37c" : "#56d37c",
-          onPress: () => router.push("/Screens/Profile/loyalty" as any),
+          onPress: () =>
+            requireAuth(() => router.push("/Screens/Profile/loyalty" as any)),
         },
         {
           id: "coupons",
@@ -291,7 +317,9 @@ export default function ProfileScreen() {
           badge: undefined,
           badgeColor: isDark ? "#56d37c" : "#56d37c",
           onPress: () =>
-            router.push("/Screens/Profile/collected-coupons" as any),
+            requireAuth(() =>
+              router.push("/Screens/Profile/collected-coupons" as any)
+            ),
         },
         {
           id: "refer",
@@ -304,7 +332,9 @@ export default function ProfileScreen() {
           badge: referrerBonus ? `Get ${referrerBonus} Pts` : undefined,
           badgeColor: isDark ? "#56d37c" : "#56d37c",
           onPress: () =>
-            router.push("/Screens/Profile/refer-and-earned" as any),
+            requireAuth(() =>
+              router.push("/Screens/Profile/refer-and-earned" as any)
+            ),
         },
         {
           id: "payment-settings",
@@ -318,7 +348,10 @@ export default function ProfileScreen() {
           iconBg: isDark ? "rgba(100, 116, 139, 0.16)" : "#E2E8F0",
           iconColor: isDark ? "#94A3B8" : "#475569",
           label: "Payment Settings",
-          onPress: () => router.push("/Screens/Profile/paymentsetting" as any),
+          onPress: () =>
+            requireAuth(() =>
+              router.push("/Screens/Profile/paymentsetting" as any)
+            ),
         },
       ],
     },
@@ -463,7 +496,7 @@ export default function ProfileScreen() {
                 <Text
                   style={[styles.userNameText, { color: colors.textPrimary }]}
                 >
-                  {user?.name || "Customer"}
+                  {isAuthenticated ? (user?.name || "Customer") : "Guest User"}
                 </Text>
                 <View
                   style={[
@@ -478,27 +511,35 @@ export default function ProfileScreen() {
                     ]}
                   >
                     👑{" "}
-                    {user?.role === "admin"
-                      ? "Admin"
-                      : user?.role === "vendor"
-                        ? "Vendor"
-                        : "Member"}
+                    {!isAuthenticated
+                      ? "Guest"
+                      : user?.role === "admin"
+                        ? "Admin"
+                        : user?.role === "vendor"
+                          ? "Vendor"
+                          : "Member"}
                   </Text>
                 </View>
               </View>
               <Text
                 style={[styles.userPhoneText, { color: colors.textSecondary }]}
               >
-                {user?.phone
-                  ? user.phone
-                  : user?.email || "No contact info registered"}
+                {isAuthenticated
+                  ? user?.phone
+                    ? user.phone
+                    : user?.email || "No contact info registered"
+                  : "Sign in to manage orders & address"}
               </Text>
             </View>
 
             {/* Edit Profile Action */}
             <TouchableOpacity
               activeOpacity={0.75}
-              onPress={() => router.push("/Screens/Profile/myprofile" as any)}
+              onPress={() =>
+                requireAuth(() =>
+                  router.push("/Screens/Profile/myprofile" as any)
+                )
+              }
               style={[
                 styles.editProfileBtn,
                 { backgroundColor: colors.editBtnBg },
@@ -524,7 +565,9 @@ export default function ProfileScreen() {
           >
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={() => router.push("/Screens/Profile/loyalty" as any)}
+              onPress={() =>
+                requireAuth(() => router.push("/Screens/Profile/loyalty" as any))
+              }
               style={styles.walletItem}
             >
               <Ionicons name="star" size={scale(16)} color="#F59E0B" />
@@ -535,7 +578,7 @@ export default function ProfileScreen() {
                     { color: colors.textPrimary },
                   ]}
                 >
-                  {availablePoints} RP
+                  {isAuthenticated ? `${availablePoints} RP` : "--"}
                 </Text>
                 <Text
                   style={[
@@ -558,7 +601,9 @@ export default function ProfileScreen() {
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() =>
-                router.push("/Screens/Profile/collected-coupons" as any)
+                requireAuth(() =>
+                  router.push("/Screens/Profile/collected-coupons" as any)
+                )
               }
               style={styles.walletItem}
             >
@@ -594,7 +639,9 @@ export default function ProfileScreen() {
           {/* Address */}
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => router.push("/Screens/Profile/address" as any)}
+            onPress={() =>
+              requireAuth(() => router.push("/Screens/Profile/address" as any))
+            }
             style={[
               styles.quickActionTile,
               {
@@ -618,7 +665,7 @@ export default function ProfileScreen() {
                 size={scale(22)}
                 color={isDark ? "#38BDF8" : "#0284C7"}
               />
-              {addresses.length > 0 && (
+              {isAuthenticated && addresses.length > 0 && (
                 <View
                   style={[
                     styles.notifBadge,
@@ -640,7 +687,11 @@ export default function ProfileScreen() {
           {/* Notifications */}
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => router.push("/Screens/Profile/notifications" as any)}
+            onPress={() =>
+              requireAuth(() =>
+                router.push("/Screens/Profile/notifications" as any)
+              )
+            }
             style={[
               styles.quickActionTile,
               {
@@ -664,7 +715,7 @@ export default function ProfileScreen() {
                 size={scale(22)}
                 color={isDark ? "#4ADE80" : "#16A34A"}
               />
-              {unreadNotificationsCount > 0 && (
+              {isAuthenticated && unreadNotificationsCount > 0 && (
                 <View
                   style={[styles.notifBadge, { borderColor: colors.cardBg }]}
                 >
@@ -684,7 +735,9 @@ export default function ProfileScreen() {
           {/* Reviews */}
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => router.push("/Screens/Profile/reviews" as any)}
+            onPress={() =>
+              requireAuth(() => router.push("/Screens/Profile/reviews" as any))
+            }
             style={[
               styles.quickActionTile,
               {
@@ -810,32 +863,67 @@ export default function ProfileScreen() {
           </View>
         ))}
 
-        {/* Logout Button Card */}
+        {/* Logout / Sign In Button Card */}
         <TouchableOpacity
           activeOpacity={0.8}
-          onPress={handleLogout}
+          onPress={
+            isAuthenticated
+              ? handleLogout
+              : () => router.push("/(auth)/login" as any)
+          }
           style={[
             styles.logoutCard,
             {
-              backgroundColor: colors.logoutBg,
-              borderColor: colors.logoutBorder,
+              backgroundColor: isAuthenticated
+                ? colors.logoutBg
+                : isDark
+                  ? "rgba(16, 185, 129, 0.12)"
+                  : "#ECFDF5",
+              borderColor: isAuthenticated
+                ? colors.logoutBorder
+                : isDark
+                  ? "rgba(16, 185, 129, 0.25)"
+                  : "#A7F3D0",
             },
           ]}
         >
           <View
             style={[
               styles.logoutIconBox,
-              { backgroundColor: colors.logoutIconBox },
+              {
+                backgroundColor: isAuthenticated
+                  ? colors.logoutIconBox
+                  : isDark
+                    ? "rgba(16, 185, 129, 0.2)"
+                    : "#D1FAE5",
+              },
             ]}
           >
             <MaterialIcons
-              name="logout"
+              name={isAuthenticated ? "logout" : "login"}
               size={scale(20)}
-              color={colors.logoutText}
+              color={
+                isAuthenticated
+                  ? colors.logoutText
+                  : isDark
+                    ? "#34D399"
+                    : "#059669"
+              }
             />
           </View>
-          <Text style={[styles.logoutText, { color: colors.logoutText }]}>
-            Log Out
+          <Text
+            style={[
+              styles.logoutText,
+              {
+                color: isAuthenticated
+                  ? colors.logoutText
+                  : isDark
+                    ? "#34D399"
+                    : "#059669",
+              },
+            ]}
+          >
+            {isAuthenticated ? "Log Out" : "Sign In / Register"}
           </Text>
         </TouchableOpacity>
 

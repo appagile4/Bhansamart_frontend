@@ -40,6 +40,7 @@ export default function CheckoutScreen() {
   const { activeDisplayLocation, selectedAddress, latitude, longitude } =
     useAppSelector((state) => state.address);
   const { isOutsideDeliveryZone } = useAppSelector((state) => state.product);
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
 
   const {
     cartItems,
@@ -135,6 +136,21 @@ export default function CheckoutScreen() {
   };
 
   const handleConfirmOrder = async () => {
+    if (!isAuthenticated) {
+      Alert.alert(
+        "Sign In Required",
+        "Please sign in or create an account to place your order.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Sign In",
+            onPress: () => router.push("/(auth)/login" as any),
+          },
+        ]
+      );
+      return;
+    }
+
     if (cartItems.length === 0) {
       Alert.alert("Cart Empty", "Please add items to your cart before checking out.");
       return;

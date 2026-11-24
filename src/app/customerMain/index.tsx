@@ -314,12 +314,6 @@ export default function HomeScreen() {
     dispatch(fetchAddresses());
   }, [dispatch]);
 
-  useEffect(() => {
-    if (isInitialized && !isAuthenticated) {
-      router.replace("/(auth)/login" as any);
-    }
-  }, [isInitialized, isAuthenticated]);
-
   // ── Memoized Values ─────────────────────────────────────────────────
   const displayLocation = useMemo(
     () => activeDisplayLocation || "Current Location",
