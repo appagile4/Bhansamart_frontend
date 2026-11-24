@@ -37,6 +37,30 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Svg, { Path } from "react-native-svg";
+
+function GoogleIcon({ size = 20 }: { size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        fill="#4285F4"
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+      />
+      <Path
+        fill="#34A853"
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+      />
+      <Path
+        fill="#FBBC05"
+        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+      />
+      <Path
+        fill="#EA4335"
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+      />
+    </Svg>
+  );
+}
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -48,8 +72,8 @@ export default function LoginScreen() {
   );
 
   // Mode Selection
-  // primaryMode: "email" | "google"
-  const [primaryMode, setPrimaryMode] = useState<"email" | "google">("email");
+  // authView: "choice" | "email"
+  const [authView, setAuthView] = useState<"choice" | "email">("choice");
   // emailMethod: "otp" | "password"
   const [emailMethod, setEmailMethod] = useState<"otp" | "password">("otp");
 
@@ -355,79 +379,54 @@ export default function LoginScreen() {
             </Text>
           </View>
 
-          {/* 2. Primary Method Segment (Email vs Google) */}
-          <View style={styles.primarySegmentContainer}>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => setPrimaryMode("email")}
-              style={[
-                styles.primarySegmentBtn,
-                primaryMode === "email" && styles.primarySegmentBtnActive,
-              ]}
-            >
-              <Feather
-                name="mail"
-                size={scale(14)}
-                color={primaryMode === "email" ? "#008080" : "#64748B"}
-              />
-              <Text
-                style={[
-                  styles.primarySegmentText,
-                  primaryMode === "email" && styles.primarySegmentTextActive,
-                ]}
+          {/* 2. Primary Method Choice Buttons (Stacked Pill UI in App Theme) */}
+          {authView === "choice" && (
+            <View style={styles.choiceSection}>
+              {/* Button 1: Continue with Email (Solid Teal Pill) */}
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => setAuthView("email")}
+                style={styles.continueWithEmailPill}
               >
-                Continue with Email
-              </Text>
-            </TouchableOpacity>
+                <Feather name="mail" size={scale(19)} color="#FFFFFF" strokeWidth={2.2} />
+                <Text style={styles.continueWithEmailText}>Continue with Email</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => setPrimaryMode("google")}
-              style={[
-                styles.primarySegmentBtn,
-                primaryMode === "google" && styles.primarySegmentBtnActive,
-              ]}
-            >
-              <FontAwesome
-                name="google"
-                size={scale(14)}
-                color={primaryMode === "google" ? "#EA4335" : "#64748B"}
-              />
-              <Text
-                style={[
-                  styles.primarySegmentText,
-                  primaryMode === "google" && styles.primarySegmentTextActive,
-                ]}
-              >
-                Continue with Google
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* ══════════════ 1. GOOGLE MODE ══════════════ */}
-          {primaryMode === "google" && (
-            <View style={styles.modeCard}>
-              <Text style={styles.modeCardDesc}>
-                Instant sign-in with your Google account. If you are a new customer, your account will be created automatically without requiring a password.
-              </Text>
-
+              {/* Button 2: Continue with Google (White Pill with Outline) */}
               <TouchableOpacity
                 activeOpacity={0.85}
                 onPress={handleGoogleSignIn}
                 disabled={isLoading}
-                style={styles.googleBtn}
+                style={styles.continueWithGooglePill}
               >
-                <View style={styles.googleIconContainer}>
-                  <FontAwesome name="google" size={scale(17)} color="#EA4335" />
-                </View>
-                <Text style={styles.googleBtnText}>Continue with Google</Text>
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#008080" />
+                ) : (
+                  <>
+                    <GoogleIcon size={scale(20)} />
+                    <Text style={styles.continueWithGoogleText}>Continue with Google</Text>
+                  </>
+                )}
               </TouchableOpacity>
             </View>
           )}
 
-          {/* ══════════════ 2. EMAIL MODE ══════════════ */}
-          {primaryMode === "email" && (
+          {/* ══════════════ EMAIL MODE ══════════════ */}
+          {authView === "email" && (
             <View style={styles.modeCard}>
+              {/* Back to all options header */}
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => {
+                  setAuthView("choice");
+                  setOtpSent(false);
+                }}
+                style={styles.backToChoiceRow}
+              >
+                <Feather name="arrow-left" size={scale(15)} color="#008080" />
+                <Text style={styles.backToChoiceText}>All sign-in options</Text>
+              </TouchableOpacity>
+
               {/* Sub-method tabs: Email OTP vs Email & Password */}
               <View style={styles.subTabRow}>
                 <TouchableOpacity
@@ -735,6 +734,23 @@ export default function LoginScreen() {
                   </TouchableOpacity>
                 </View>
               )}
+
+              {/* Alternate quick Google sign-in */}
+              <View style={styles.orDividerRow}>
+                <View style={styles.orDividerLine} />
+                <Text style={styles.orDividerText}>OR</Text>
+                <View style={styles.orDividerLine} />
+              </View>
+
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={handleGoogleSignIn}
+                disabled={isLoading}
+                style={styles.continueWithGooglePill}
+              >
+                <GoogleIcon size={scale(20)} />
+                <Text style={styles.continueWithGoogleText}>Continue with Google</Text>
+              </TouchableOpacity>
             </View>
           )}
 
@@ -946,39 +962,84 @@ const styles = StyleSheet.create({
     marginTop: moderateScale(2),
   },
 
-  // Primary Segment
-  primarySegmentContainer: {
-    flexDirection: "row",
-    backgroundColor: "#E2E8F0",
-    borderRadius: scale(14),
-    padding: scale(3),
-    marginBottom: moderateScale(16),
+  // Choice Section (Exact UI like screenshot with App Theme)
+  choiceSection: {
+    width: "100%",
+    gap: moderateScale(13),
+    marginBottom: moderateScale(18),
+    marginTop: moderateScale(4),
   },
-  primarySegmentBtn: {
-    flex: 1,
+  continueWithEmailPill: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: moderateScale(9),
-    borderRadius: scale(11),
-    gap: scale(6),
+    backgroundColor: "#008080", // App theme Teal
+    height: moderateScale(52),
+    borderRadius: moderateScale(26),
+    paddingHorizontal: scale(20),
+    gap: scale(10),
+    shadowColor: "#008080",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.28,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  primarySegmentBtnActive: {
+  continueWithEmailText: {
+    fontSize: moderateScale(15),
+    fontWeight: "700",
+    color: "#FFFFFF",
+    letterSpacing: 0.2,
+  },
+  continueWithGooglePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: "#FFFFFF",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    borderWidth: 1.5,
+    borderColor: "#E2E8F0",
+    height: moderateScale(52),
+    borderRadius: moderateScale(26),
+    paddingHorizontal: scale(20),
+    gap: scale(10),
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 1.5 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1.5,
   },
-  primarySegmentText: {
-    fontSize: moderateScale(12),
+  continueWithGoogleText: {
+    fontSize: moderateScale(15),
     fontWeight: "600",
-    color: "#64748B",
+    color: "#1E293B",
+    letterSpacing: 0.2,
   },
-  primarySegmentTextActive: {
+  backToChoiceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(6),
+    marginBottom: moderateScale(14),
+    alignSelf: "flex-start",
+  },
+  backToChoiceText: {
+    fontSize: moderateScale(12.5),
     fontWeight: "700",
     color: "#008080",
+  },
+  orDividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: moderateScale(14),
+  },
+  orDividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#E2E8F0",
+  },
+  orDividerText: {
+    paddingHorizontal: scale(10),
+    fontSize: moderateScale(11),
+    fontWeight: "600",
+    color: "#94A3B8",
   },
 
   // Mode Card
