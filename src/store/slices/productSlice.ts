@@ -154,6 +154,17 @@ interface ProductState {
   // Active Category Selection for Customer Home Screen & Scrollers
   selectedCategory: string;
 
+  // In-Memory Category Catalog Cache for Instant 0ms Tab Switching
+  categoryCatalogCache: Record<
+    string,
+    {
+      products: ProductItem[];
+      total: number;
+      totalPages: number;
+      hasMore: boolean;
+    }
+  >;
+
   // Real-Time Geospatial Delivery Zone Status
   isOutsideDeliveryZone: boolean;
   eligibleVendorsCount: number;
@@ -178,6 +189,7 @@ const initialState: ProductState = {
   publicLoading: false,
   publicLoadingMore: false,
   publicError: null,
+  categoryCatalogCache: {},
 
   isOutsideDeliveryZone: false,
   eligibleVendorsCount: 0,
@@ -355,7 +367,20 @@ export const productSlice = createSlice({
       state.currentProduct = action.payload;
     },
     setSelectedCategory: (state, action: PayloadAction<string>) => {
-      state.selectedCategory = action.payload;
+      const newCat = action.payload;
+      state.selectedCategory = newCat;
+      const catKey = (newCat || "all").toLowerCase();
+
+      // Instant 0ms switch if this category has already been loaded
+      if (state.categoryCatalogCache && state.categoryCatalogCache[catKey]) {
+        const cached = state.categoryCatalogCache[catKey];
+        state.publicProducts = cached.products;
+        state.publicTotal = cached.total;
+        state.publicTotalPages = cached.totalPages;
+        state.publicCurrentPage = 1;
+        state.publicHasMore = cached.hasMore;
+        state.publicLoading = false;
+      }
     },
   },
   extraReducers: (builder) => {
@@ -385,9 +410,15 @@ export const productSlice = createSlice({
     // ── FETCH PUBLIC PRODUCTS (GLOBAL CUSTOMER CATALOG) ──────
     builder.addCase(fetchPublicProducts.pending, (state, action) => {
       const page = action.meta.arg?.page || 1;
+      const catKey = (action.meta.arg?.category || "all").toLowerCase();
+      const hasCached = Boolean(
+        state.categoryCatalogCache &&
+          state.categoryCatalogCache[catKey]?.products?.length
+      );
+
       if (page > 1) {
         state.publicLoadingMore = true;
-      } else {
+      } else if (!hasCached) {
         state.publicLoading = true;
       }
       state.publicError = null;
@@ -421,6 +452,20 @@ export const productSlice = createSlice({
       state.isOutsideDeliveryZone = Boolean(action.payload?.isOutsideDeliveryZone);
       state.eligibleVendorsCount =
         action.payload?.eligibleVendorsCount ?? (mapped.length > 0 ? 1 : 0);
+
+      // Save page 1 in in-memory category catalog cache for instant subsequent switches
+      const catKey = (action.meta.arg?.category || "all").toLowerCase();
+      if (!state.categoryCatalogCache) {
+        state.categoryCatalogCache = {};
+      }
+      if (page === 1) {
+        state.categoryCatalogCache[catKey] = {
+          products: mapped,
+          total: state.publicTotal,
+          totalPages: state.publicTotalPages,
+          hasMore: state.publicHasMore,
+        };
+      }
     });
     builder.addCase(fetchPublicProducts.rejected, (state, action) => {
       state.publicLoading = false;

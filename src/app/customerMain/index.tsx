@@ -331,9 +331,10 @@ export default function HomeScreen() {
   // ── Memoized Navigation & Action Callbacks ──────────────────────────
   const handleSelectCategory = useCallback(
     (catId: string) => {
+      if (catId === selectedCategory) return;
       dispatch(setSelectedCategory(catId));
     },
-    [dispatch],
+    [dispatch, selectedCategory],
   );
 
   const handleOpenLocationModal = useCallback(() => {
@@ -586,6 +587,7 @@ export default function HomeScreen() {
             key="all-top-deals-2"
             title="Find Your Favorites"
             isDoubleRow={true}
+            enablePagination={true}
             onProductPress={handleProductPress}
             onAddPress={handleAddToCart}
             onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}
@@ -689,6 +691,7 @@ export default function HomeScreen() {
             category="grocery"
             title="Find Your Favorites"
             isDoubleRow={true}
+            enablePagination={true}
             onProductPress={handleProductPress}
             onAddPress={handleAddToCart}
             onSeeMorePress={(prod) => handleCategoryPress(prod.name, prod.id)}

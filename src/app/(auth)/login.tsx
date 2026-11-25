@@ -388,7 +388,7 @@ export default function LoginScreen() {
                 onPress={() => setAuthView("email")}
                 style={styles.continueWithEmailPill}
               >
-                <Feather name="mail" size={scale(19)} color="#FFFFFF" strokeWidth={2.2} />
+                <Ionicons name="mail" size={scale(20)} color="#FFFFFF" />
                 <Text style={styles.continueWithEmailText}>Continue with Email</Text>
               </TouchableOpacity>
 
@@ -985,17 +985,17 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   continueWithEmailText: {
-    fontSize: moderateScale(15),
-    fontWeight: "700",
+    fontSize: moderateScale(15.5),
+    fontWeight: "600",
     color: "#FFFFFF",
-    letterSpacing: 0.2,
+    letterSpacing: 0.15,
   },
   continueWithGooglePill: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#FFFFFF",
-    borderWidth: 1.5,
+    borderWidth: 1.2,
     borderColor: "#E2E8F0",
     height: moderateScale(52),
     borderRadius: moderateScale(26),
@@ -1003,15 +1003,15 @@ const styles = StyleSheet.create({
     gap: scale(10),
     shadowColor: "#000000",
     shadowOffset: { width: 0, height: 1.5 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.04,
     shadowRadius: 3,
-    elevation: 1.5,
+    elevation: 1,
   },
   continueWithGoogleText: {
-    fontSize: moderateScale(15),
+    fontSize: moderateScale(15.5),
     fontWeight: "600",
     color: "#1E293B",
-    letterSpacing: 0.2,
+    letterSpacing: 0.15,
   },
   backToChoiceRow: {
     flexDirection: "row",

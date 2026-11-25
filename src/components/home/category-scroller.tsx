@@ -2,7 +2,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { setSelectedCategory as setReduxCategory } from "@/store/slices/productSlice";
 import { moderateScale, scale, useTheme } from "@/theme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import React, { memo, useCallback, useEffect, useMemo, useRef } from "react";
+import React, { memo, useCallback, useEffect, useRef } from "react";
 import {
   Animated,
   Platform,
@@ -43,18 +43,19 @@ interface CategoryButtonProps {
   onPress: (id: string, layoutX: number, layoutWidth: number) => void;
 }
 
-// ── Memoized & Smoothly Animated Category Tab Button ──────────────────
+// ── Memoized & 60fps Native-Animated Category Tab Button ─────────────
 const CategoryButton = memo(
   function CategoryButton({ item, isSelected, onPress }: CategoryButtonProps) {
     const theme = useTheme();
     const isDark = theme.mode === "dark";
+
+    // Animated values for smooth native transitions
     const scaleAnim = useRef(new Animated.Value(isSelected ? 1.08 : 1)).current;
     const underlineAnim = useRef(new Animated.Value(isSelected ? 1 : 0)).current;
     const layoutRef = useRef({ x: 0, width: 0 });
     const isFirstMount = useRef(true);
 
     useEffect(() => {
-      // Skip animation on initial mount to prevent jank while loading
       if (isFirstMount.current) {
         isFirstMount.current = false;
         return;
@@ -63,13 +64,13 @@ const CategoryButton = memo(
       Animated.parallel([
         Animated.spring(scaleAnim, {
           toValue: isSelected ? 1.08 : 1,
-          friction: 8,
-          tension: 100,
+          friction: 9,
+          tension: 120,
           useNativeDriver: true,
         }),
         Animated.timing(underlineAnim, {
           toValue: isSelected ? 1 : 0,
-          duration: 180,
+          duration: 150,
           useNativeDriver: true,
         }),
       ]).start();
@@ -79,41 +80,35 @@ const CategoryButton = memo(
       onPress(item.id, layoutRef.current.x, layoutRef.current.width);
     }, [item.id, onPress]);
 
-    const itemColor = useMemo(() => {
-      if (item.id === "beauty") return "#FF4F81"; // Beauty: Pink #FF4F81
-      if (item.id === "baby" || item.id === "kids") return "#FF8C32"; // Baby: Orange #FF8C32
-      if (item.id === "gifting") return "#AD70FF"; // Gifting: Purple #AD70FF
-      if (isSelected) return isDark ? "#39D353" : "#ffd215"; // Primary brand: Emerald Green #39D353
-      return isDark ? "#A8B2BE" : "rgba(255, 210, 21, 0.85)";
-    }, [item.id, isSelected, isDark]);
+    // Active accent color (Yellow / Emerald Green in Dark Mode)
+    const activeAccentColor = isDark ? "#39D353" : "#ffd215";
 
     return (
       <TouchableOpacity
-        activeOpacity={0.72}
+        activeOpacity={0.75}
         onPress={handlePress}
         onLayout={(e) => {
-          if (layoutRef.current.width === 0) {
-            layoutRef.current = {
-              x: e.nativeEvent.layout.x,
-              width: e.nativeEvent.layout.width,
-            };
-          }
+          layoutRef.current = {
+            x: e.nativeEvent.layout.x,
+            width: e.nativeEvent.layout.width,
+          };
         }}
         style={styles.categoryItem}
       >
-        {/* Icon with smooth spring bounce animation */}
+        {/* ALL ICONS ARE PURE WHITE (#FFFFFF) WITH NATIVE SCALE ANIMATION */}
         <Animated.View
           style={[
             styles.iconContainer,
             {
               transform: [{ scale: scaleAnim }],
+              opacity: isSelected ? 1 : 0.88,
             },
           ]}
         >
           <MaterialCommunityIcons
             name={item.icon}
             size={scale(32)}
-            color={itemColor}
+            color="#FFFFFF"
           />
         </Animated.View>
 
@@ -123,19 +118,19 @@ const CategoryButton = memo(
             style={[
               styles.categoryLabel,
               isSelected
-                ? { color: itemColor, fontWeight: "700" }
-                : { color: isDark ? "#A8B2BE" : "#ffffff" },
+                ? { color: activeAccentColor, fontWeight: "700" }
+                : { color: isDark ? "#A8B2BE" : "#FFFFFF", opacity: 0.88 },
             ]}
           >
             {item.label}
           </Text>
 
-          {/* Underline Indicator Bar with Smooth Scale Animation */}
+          {/* Underline Indicator Bar with Smooth Native Scale Animation */}
           <Animated.View
             style={[
               styles.activeIndicator,
               {
-                backgroundColor: itemColor,
+                backgroundColor: activeAccentColor,
                 transform: [{ scaleX: underlineAnim }],
                 opacity: underlineAnim,
               },
@@ -149,8 +144,7 @@ const CategoryButton = memo(
     prev.isSelected === next.isSelected &&
     prev.item.id === next.item.id &&
     prev.item.label === next.item.label &&
-    prev.item.icon === next.item.icon &&
-    prev.onPress === next.onPress
+    prev.item.icon === next.item.icon
 );
 
 function CategoryScroller({
@@ -160,7 +154,7 @@ function CategoryScroller({
 }: CategoryScrollerProps) {
   const dispatch = useAppDispatch();
   const reduxCategory = useAppSelector(
-    (state) => state.product.selectedCategory
+    (state) => state.product?.selectedCategory
   );
   const activeCategory = propSelectedCategory ?? reduxCategory ?? "all";
   const scrollRef = useRef<any>(null);
@@ -170,6 +164,9 @@ function CategoryScroller({
 
   const handleSelect = useCallback(
     (id: string, layoutX: number, layoutWidth: number) => {
+      if (id === activeCategory) return; // Prevent duplicate work if already active
+
+      // Update Redux state
       dispatch(setReduxCategory(id));
       onSelectCategory?.(id);
 
@@ -182,7 +179,7 @@ function CategoryScroller({
         scrollRef.current.scrollTo({ x: scrollToX, animated: true });
       }
     },
-    [dispatch, onSelectCategory]
+    [activeCategory, dispatch, onSelectCategory]
   );
 
   return (
@@ -261,19 +258,11 @@ const styles = StyleSheet.create({
     textAlign: "center",
     letterSpacing: 0.2,
   },
-  selectedLabel: {
-    color: "#ffd215",
-    fontWeight: "700",
-  },
-  unselectedLabel: {
-    color: "#ffffff",
-  },
   activeIndicator: {
     position: "absolute",
     bottom: 0,
     width: "100%",
     height: scale(2.5),
     borderRadius: scale(1.5),
-    backgroundColor: "#ffd215",
   },
 });

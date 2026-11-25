@@ -1,13 +1,17 @@
 import ProductCard, { DealProduct } from "@/components/home/productcard";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchPublicProducts } from "@/store/slices/productSlice";
+import { getAllProductsApi } from "@/store/services/productService";
 import { moderateScale, scale, useTheme } from "@/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import React, { memo, useEffect, useMemo, useRef } from "react";
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Animated,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   ScrollView,
   StyleSheet,
   Text,
@@ -24,6 +28,7 @@ interface TopDealsProps {
   isDoubleRow?: boolean;
   showBanner?: boolean;
   items?: DealProduct[];
+  enablePagination?: boolean;
   onProductPress?: (product: DealProduct) => void;
   onAddPress?: (product: DealProduct) => void;
   onSeeMorePress?: (product: DealProduct) => void;
@@ -212,6 +217,7 @@ function TopDeals({
   isDoubleRow = true,
   showBanner = true,
   items,
+  enablePagination,
   onProductPress,
   onAddPress,
   onSeeMorePress,
@@ -225,16 +231,164 @@ function TopDeals({
     (state) => state.product
   );
 
+  // Pagination support: Automatically enabled for "Find Your Favorites" or via enablePagination prop
+  const isFavorites = (title || "").toLowerCase().includes("favorites");
+  const isPaginated = Boolean(enablePagination ?? isFavorites);
+
+  const [paginatedItems, setPaginatedItems] = useState<DealProduct[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingInitial, setIsLoadingInitial] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  const customerLat = useAppSelector((state) => state.address?.latitude);
+  const customerLng = useAppSelector((state) => state.address?.longitude);
+
+  const mapProductsToDeals = useCallback((products: any[]): DealProduct[] => {
+    return products.map((p) => {
+      const curPrice = Number(p.price) || 0;
+      const origPrice =
+        p.originalPrice && Number(p.originalPrice) > curPrice
+          ? Number(p.originalPrice)
+          : p.discountValue && Number(p.discountValue) > 0
+          ? Math.round(curPrice / (1 - Number(p.discountValue) / 100))
+          : curPrice;
+
+      const calculatedDisc =
+        origPrice > curPrice
+          ? Math.round(((origPrice - curPrice) / origPrice) * 100)
+          : 0;
+
+      const discountPct = Math.max(
+        p.discountValue ? Number(p.discountValue) : 0,
+        calculatedDisc
+      );
+
+      const ordersCount =
+        p.ordersCount ?? (p.metrics?.orders ?? p.ratingsCount ?? 110);
+
+      const imgUrl =
+        p.images && p.images.length > 0
+          ? p.images[0].url
+          : "https://images.unsplash.com/photo-1542838132-92c53300491e?w=500&q=80";
+
+      return {
+        id: String(p._id || p.id || Math.random()),
+        name: p.name,
+        weight: p.unit || "1 unit",
+        category: p.category || "Grocery",
+        subCategory: p.subCategory || "",
+        rating: p.ratingsAverage || 4.5,
+        reviewsCount: p.ratingsCount || 45,
+        price: curPrice,
+        originalPrice: origPrice > curPrice ? origPrice : curPrice,
+        image: { uri: imgUrl },
+        discountPct,
+        ordersCount,
+        isVeg: true,
+        tags: p.tags || [],
+      };
+    });
+  }, []);
+
+  // Dedicated Initial Page Fetch for Paginated TopDeals Sections (e.g. Find Your Favorites)
+  useEffect(() => {
+    if (!isPaginated || (items && items.length > 0) || isOutsideDeliveryZone) return;
+
+    let isMounted = true;
+    const fetchFirstPage = async () => {
+      setIsLoadingInitial(true);
+      try {
+        const catParam = category && category !== "all" ? category : undefined;
+        const res = await getAllProductsApi({
+          category: catParam,
+          sortBy: "popularity",
+          page: 1,
+          limit: 12,
+          lat: customerLat || undefined,
+          lng: customerLng || undefined,
+        });
+
+        if (isMounted && res?.products) {
+          const mapped = mapProductsToDeals(res.products);
+          setPaginatedItems(mapped);
+          setCurrentPage(1);
+          setHasMore(Boolean(res.hasMore && res.products.length > 0));
+        }
+      } catch (err) {
+        console.warn("[TopDeals initial paginated fetch error]:", err);
+      } finally {
+        if (isMounted) setIsLoadingInitial(false);
+      }
+    };
+
+    fetchFirstPage();
+    return () => {
+      isMounted = false;
+    };
+  }, [isPaginated, category, customerLat, customerLng, items, isOutsideDeliveryZone, mapProductsToDeals]);
+
+  // Load Next Page when scrolling horizontally near right edge
+  const loadMoreItems = useCallback(async () => {
+    if (isLoadingMore || !hasMore || !isPaginated || isOutsideDeliveryZone) return;
+
+    setIsLoadingMore(true);
+    const nextPage = currentPage + 1;
+    try {
+      const catParam = category && category !== "all" ? category : undefined;
+      const res = await getAllProductsApi({
+        category: catParam,
+        sortBy: "popularity",
+        page: nextPage,
+        limit: 12,
+        lat: customerLat || undefined,
+        lng: customerLng || undefined,
+      });
+
+      if (res?.products && res.products.length > 0) {
+        const mapped = mapProductsToDeals(res.products);
+        setPaginatedItems((prev) => {
+          const existingIds = new Set(prev.map((i) => i.id));
+          const newItems = mapped.filter((i) => !existingIds.has(i.id));
+          return [...prev, ...newItems];
+        });
+        setCurrentPage(nextPage);
+        setHasMore(Boolean(res.hasMore && res.products.length > 0));
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.warn("[TopDeals loadMore error]:", err);
+      setHasMore(false);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [currentPage, hasMore, isPaginated, isLoadingMore, category, customerLat, customerLng, isOutsideDeliveryZone, mapProductsToDeals]);
+
+  const handleHorizontalScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (!isPaginated || !hasMore || isLoadingMore || isLoadingInitial) return;
+
+      const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
+      // Trigger when user is within 180px of horizontal end
+      if (layoutMeasurement.width + contentOffset.x >= contentSize.width - scale(180)) {
+        loadMoreItems();
+      }
+    },
+    [isPaginated, hasMore, isLoadingMore, isLoadingInitial, loadMoreItems]
+  );
+
   // Self-heal: Fetch live products if not yet loaded in Redux and not currently loading or outside zone
   useEffect(() => {
     if (
+      !isPaginated &&
       !publicLoading &&
       !isOutsideDeliveryZone &&
       (!publicProducts || publicProducts.length === 0)
     ) {
       dispatch(fetchPublicProducts({ limit: 40, sortBy: "popularity" }));
     }
-  }, [dispatch, publicProducts, publicLoading, isOutsideDeliveryZone]);
+  }, [isPaginated, dispatch, publicProducts, publicLoading, isOutsideDeliveryZone]);
 
   // Smooth Pulse Animation for Skeletons
   const pulseAnim = useRef(new Animated.Value(0.35)).current;
@@ -266,7 +420,12 @@ function TopDeals({
       return items;
     }
 
-    // 2. Map from live MongoDB publicProducts in Redux
+    // 2. Dedicated paginated items for paginated sections (e.g. Find Your Favorites)
+    if (isPaginated && paginatedItems.length > 0) {
+      return paginatedItems;
+    }
+
+    // 3. Map from live MongoDB publicProducts in Redux
     if (publicProducts && publicProducts.length > 0) {
       const allDeals: DealProduct[] = publicProducts.map((p) => {
         const curPrice = Number(p.price) || 0;
@@ -425,7 +584,11 @@ function TopDeals({
   };
 
   // ── 1. Skeleton Loading View ─────────────────────────────────
-  if (publicLoading && (!publicProducts || publicProducts.length === 0)) {
+  const isCurrentlyLoading =
+    (isPaginated && isLoadingInitial && paginatedItems.length === 0) ||
+    (!isPaginated && publicLoading && (!publicProducts || publicProducts.length === 0));
+
+  if (isCurrentlyLoading) {
     const skeletonColumns = isDoubleRow ? [[1, 2], [3, 4], [5, 6]] : [[1], [2], [3], [4]];
 
     return (
@@ -509,6 +672,8 @@ function TopDeals({
         decelerationRate="fast"
         nestedScrollEnabled={true}
         overScrollMode="never"
+        onScroll={isPaginated ? handleHorizontalScroll : undefined}
+        scrollEventThrottle={16}
       >
         {columns.map((column, colIdx) => (
           <View key={`col-${colIdx}`} style={styles.columnContainer}>
@@ -523,6 +688,24 @@ function TopDeals({
             ))}
           </View>
         ))}
+
+        {/* Loading More Indicator at horizontal end */}
+        {isLoadingMore && (
+          <View style={styles.loadingMoreColumn}>
+            <ActivityIndicator
+              size="small"
+              color={isDark ? "#39D353" : "#008080"}
+            />
+            <Text
+              style={[
+                styles.loadingMoreText,
+                isDark && { color: "#A8B2BE" },
+              ]}
+            >
+              Loading...
+            </Text>
+          </View>
+        )}
       </ScrollView>
 
       {/* Bottom "See all products" Bar with 3 Real Live Overlapping Product Thumbnails */}
@@ -699,5 +882,16 @@ const styles = StyleSheet.create({
   addToCartBtnSkeleton: {
     height: scale(30),
     borderRadius: scale(8),
+  },
+  loadingMoreColumn: {
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: scale(16),
+    gap: scale(6),
+  },
+  loadingMoreText: {
+    fontSize: moderateScale(11),
+    fontWeight: "600",
+    color: "#64748B",
   },
 });

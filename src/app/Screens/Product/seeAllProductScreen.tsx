@@ -373,6 +373,7 @@ export default function SeeAllProductScreen() {
           lng: customerLng || undefined,
           page,
           limit: 20,
+          sortBy: params.filter === "favorites" ? "popularity" : undefined,
           category:
             params.category && params.category !== "all"
               ? params.category
@@ -380,7 +381,7 @@ export default function SeeAllProductScreen() {
         })
       );
     },
-    [dispatch, params.category, customerLat, customerLng]
+    [dispatch, params.category, params.filter, customerLat, customerLng]
   );
 
   useEffect(() => {
@@ -399,6 +400,7 @@ export default function SeeAllProductScreen() {
         fetchPublicProducts({
           page: (publicCurrentPage || 1) + 1,
           limit: 20,
+          sortBy: params.filter === "favorites" ? "popularity" : undefined,
           category:
             params.category && params.category !== "all"
               ? params.category
@@ -413,6 +415,7 @@ export default function SeeAllProductScreen() {
     publicHasMore,
     publicCurrentPage,
     params.category,
+    params.filter,
   ]);
 
   // Filtered & Sorted Product List
@@ -482,6 +485,20 @@ export default function SeeAllProductScreen() {
         );
       });
       if (matched.length > 0) list = matched;
+    } else if (params.filter === "favorites") {
+      const matched = list.filter((p) => {
+        const rating = Number(p.ratingsAverage || 0);
+        const orders = Number(p.ordersCount ?? p.metrics?.orders ?? 0);
+        const discount = Number(p.calculatedDiscountPct || 0);
+        return rating >= 4.0 || orders >= 20 || discount >= 15;
+      });
+      if (matched.length > 0) {
+        list = matched.sort(
+          (a, b) =>
+            (Number(b.metrics?.orders || b.ordersCount || 0) - Number(a.metrics?.orders || a.ordersCount || 0)) ||
+            (Number(b.calculatedDiscountPct || 0) - Number(a.calculatedDiscountPct || 0))
+        );
+      }
     } else if (params.filter === "sweet-tooth") {
       const matched = list.filter((p) => {
         const text = `${p.name} ${p.category} ${p.subCategory}`.toLowerCase();
